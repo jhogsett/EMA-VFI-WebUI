@@ -17,7 +17,7 @@
 
 | Example - GIF to MP4 (frame size X2, frame rate X4) | Example - Original GIF |
 |:--:|:--:|
-| https://user-images.githubusercontent.com/825994/224527440-170e5f1c-b243-4c2a-9fae-63d1b39e5424.mp4 | ![http_t0 tagstat com_image03_0_21c475648484948484881505552](https://user-images.githubusercontent.com/825994/224527434-85668d32-a363-4c9a-85c0-535341c598de.gif) |
+| https://user-images.githubusercontent.com/825994/224548062-4cad649c-5cdb-4f66-936d-e2296eb0fbc8.mp4 | ![http_t0 tagstat com_image03_0_21c475648484948484881505552](https://user-images.githubusercontent.com/825994/224527434-85668d32-a363-4c9a-85c0-535341c598de.gif) |
 
 | 🎬 EMA-VFI-WebUI Features | &nbsp; |
 |:--|:--|
