@@ -1,0 +1,15 @@
+ffmpy==0.3.0
+gradio==3.19.1
+matplotlib==3.6.3
+numpy==1.23.5
+opencv_python==4.7.0.68
+Pillow==9.4.0
+PyYAML==6.0
+scikit_image==0.19.3
+scipy==1.10.1
+scikit-image==0.19.3
+tensorboardX==2.6
+timm==0.6.12
+torch==1.13.1
+torchvision==0.14.1
+tqdm==4.64.1

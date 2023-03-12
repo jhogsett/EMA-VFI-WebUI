@@ -1,0 +1,6 @@
+{
+    "files.trimTrailingWhitespace": true,
+    "editor.rulers": [
+        100
+    ],
+}

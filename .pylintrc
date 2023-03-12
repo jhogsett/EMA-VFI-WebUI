@@ -1,0 +1,11 @@
+[MASTER]
+
+extension-pkg-whitelist=cv2
+
+[TYPECHECK]
+
+generated-members=numpy.* ,torch.*, cv2.*
+
+[MESSAGES CONTROL]
+
+disable=C,R,W

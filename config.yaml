@@ -1,0 +1,83 @@
+directories:
+  working: "temp"
+  output_interpolation: "output/interpolation"
+  output_inflation: "output/inflation"
+  output_search: "output/search"
+  output_resynthesis: "output/resynthesis"
+  output_restoration: "output/restoration"
+  output_blender: "output/blender"
+  output_fps_change: "output/fps_change"
+  output_upscaling: "output/upscaling"
+  output_gif_to_mp4: "output/gif_to_mp4"
+model: "ours"
+gpu_ids: "0"
+auto_launch_browser: True
+server_port: 7862
+server_name: "0.0.0.0"
+interpolation_settings:
+  max_splits: 10
+  gif_duration: 3000
+  create_gif: True
+  create_zip: True
+  create_txt: True
+search_settings:
+  max_splits: 60
+restoration_settings:
+  default_frames: 2
+  max_frames: 10
+  default_precision: 10
+  max_precision: 60
+  gif_duration: 1000
+  create_gif: True
+  create_zip: True
+  create_txt: True
+blender_settings:
+  projects_file: "video_blender_projects.csv"
+  skip_frames: 100
+  frame_fixer_depth: 31
+  gif_duration: 1000
+mp4_to_png_settings:
+  frame_rate: 30
+png_to_mp4_settings:
+  minimum_crf: 17 # near-lossless
+  maximum_crf: 28 # great quality, smaller file
+  default_crf: 23 # great quality (default)
+  frame_rate: 30
+fps_change_settings:
+  maximum_fps: 1024
+  starting_fps: 25
+  ending_fps: 30
+  default_precision: 10
+  max_precision: 60
+gif_to_mp4_settings:
+  resampling_precision: 10
+  use_tiling: False
+  file_types:
+  - "gif"
+  - "mp4"
+  - "mpg"
+  - "mpeg"
+  - "mov"
+  - "wmv"
+  - "avi"
+  - "m4v"
+  - "webm"
+realesrgan_settings:
+  model_name: "RealESRGAN_x4plus"
+  fp32: True
+  tiling: 256
+  tile_pad: 10
+upscale_settings:
+  file_types:
+  - "png"
+  - "jpg"
+  - "jpeg"
+  - "gif"
+  - "bmp"
+logviewer_settings:
+  max_lines: 25
+user_interface:
+  tips_path: "guide"
+  theme: "default"
+  css_file: "webui.css"
+  log_file: None
