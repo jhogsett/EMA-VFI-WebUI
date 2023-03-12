@@ -5,7 +5,7 @@ from .simple_icons import *
 
 GOOD_EXAMPLES = [
     (SimpleIcons.SYMBOLS, 4, 6),
-    (SimpleIcons.APP_ICONS, 31, 45)]
+    (SimpleIcons.APP_ICONS, 31, 44)]
 
 def test_SimpleIcons():
     for example, expected_items, expected_len in GOOD_EXAMPLES:

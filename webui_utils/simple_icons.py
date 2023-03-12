@@ -98,6 +98,7 @@ class SimpleIcons:
 
     APP_ICONS = [
         BALLOON,
+        CLAPPER,
         CONTROLS,
         COPYRIGHT,
         DIVIDE,
@@ -116,7 +117,6 @@ class SimpleIcons:
         NOTEBOOK,
         NUMBERS,
         ONE,
-        PROJECTOR,
         PROPERTIES,
         ROCKET,
         SCROLL,

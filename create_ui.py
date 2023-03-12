@@ -33,7 +33,7 @@ def create_ui(config : SimpleConfig,
                     title="EMA-VFI Web UI",
                     theme=config.user_interface["theme"],
                     css=config.user_interface["css_file"]) as app:
-        gr.HTML(SimpleIcons.PROJECTOR + "ENA-VFI Web UI", elem_id="appheading")
+        gr.HTML(SimpleIcons.CLAPPER + "EMA-VFI Web UI", elem_id="appheading")
         FrameInterpolation(config, engine, log.log).render_tab()
         FrameSearch(config, engine, log.log).render_tab()
         VideoInflation(config, engine, log.log).render_tab()
