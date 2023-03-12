@@ -5,20 +5,19 @@
 
 # EMA-VFI-WebUI - AI-Based Movie Restoration
 
-
-<!-- ![Screenshot 2023-03-06 154321](https://user-images.githubusercontent.com/825994/223291544-8f75dcc2-a14e-4d46-8d44-c40c4c2abe4b.png)
+![Screenshot 2023-03-11 213719](https://user-images.githubusercontent.com/825994/224527350-40808713-2f0b-4110-a544-a56b44ed18bf.png)
 
 | Example - Interpolated Frames |
 |:--:|
-| ![example](https://user-images.githubusercontent.com/825994/217553208-8b482d9a-4567-4af4-918d-a5938f709215.gif) |
+| ![example](https://user-images.githubusercontent.com/825994/224527362-90fb4b00-8433-44e9-a179-7c34dcd5f24e.gif) |
 
-| Example - Video Inflation (YouTube) |
+<!-- | Example - Video Inflation (YouTube) |
 |:--:|
-| [Demo of 32X Video Inflation with marked original frames](https://youtu.be/rOiALIN805w) |
+| [Demo of 32X Video Inflation with marked original frames](https://youtu.be/rOiALIN805w) |-->
 
 | Example - GIF to MP4 (frame size X2, frame rate X4) | Example - Original GIF |
 |:--:|:--:|
-| https://user-images.githubusercontent.com/825994/220932548-d40b54b5-811b-4637-8adc-6bf26fdcc52b.mp4 | ![http_t0 tagstat com_image03_0_21c475648484948484881505552](https://user-images.githubusercontent.com/825994/220933026-3fe6bf25-8be7-490e-a90b-85a151e6b156.gif) |-->
+| https://user-images.githubusercontent.com/825994/224527440-170e5f1c-b243-4c2a-9fae-63d1b39e5424.mp4 | ![http_t0 tagstat com_image03_0_21c475648484948484881505552](https://user-images.githubusercontent.com/825994/224527434-85668d32-a363-4c9a-85c0-535341c598de.gif) |
 
 | 🎬 EMA-VFI-WebUI Features | &nbsp; |
 |:--|:--|
