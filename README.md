@@ -1,4 +1,4 @@
-<!-- [![Pylint](https://github.com/jhogsett/VFIformer-WebUI/actions/workflows/pylint.yml/badge.svg)](https://github.com/jhogsett/VFIformer-WebUI/actions/workflows/pylint.yml) -->
+[![Pylint](https://github.com/jhogsett/EMA-VFI-WebUI/actions/workflows/pylint.yml/badge.svg)](https://github.com/jhogsett/EMA-VFI-WebUI/actions/workflows/pylint.yml)
 ![pybadge](https://img.shields.io/badge/Python-3.10.9-4380b0)
 ![ptbadge](https://img.shields.io/badge/Torch-1.13.1-ee4b28)
 ![nvbadge](https://img.shields.io/badge/Cuda-11.7-76b900)
