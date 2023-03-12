@@ -12,7 +12,7 @@ from interpolate_engine import InterpolateEngine
 
 '''==========import from our code=========='''
 sys.path.append('.')
-from benchmark.utils.padder import InputPadder
+from benchmark.utils.padder import InputPadder # pylint: disable=import-error
 
 def main():
     """Use Frame Interpolation from the command line"""

@@ -3,9 +3,8 @@ import sys
 
 '''==========import from our code=========='''
 sys.path.append('.')
-import config as cfg
-from Trainer import Model
-from benchmark.utils.padder import InputPadder
+import config as cfg # pylint: disable=import-error
+from Trainer import Model # pylint: disable=import-error
 from webui_utils.simple_utils import FauxArgs
 
 class InterpolateEngine:
