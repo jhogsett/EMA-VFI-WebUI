@@ -119,6 +119,8 @@ The core feature have command-line equivalents
 
 # Future Ideas
 
+- Use `multi_inference` instead of single inference with _Frame Search_ for time-based frame searches
+- Consolidate the applications; make the interpolation engine switchable in the application
 - add Audio tools
 
 <!--# My Public Uses of VFIformer
