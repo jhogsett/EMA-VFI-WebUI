@@ -10,7 +10,7 @@ from interpolate import Interpolate
 from interpolation_target import TargetInterpolate
 from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import create_directory, get_files
-from webui_utils.simple_utils import restored_frame_searches
+from webui_utils.simple_utils import restored_frame_searches, sortable_float_index
 
 def main():
     """Use the Change FPS feature from the command line"""
@@ -18,29 +18,31 @@ def main():
     parser.add_argument("--model", default="ours",
         type=str)
     parser.add_argument("--gpu_ids", type=str, default="0",
-        help="gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU")
-    parser.add_argument("--input_path", default="./images", type=str,
+        help="gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU (FUTURE USE)")
+    parser.add_argument("--input_path", default="images", type=str,
         help="Input path for PNGs to interpolate")
     parser.add_argument("--original_fps", default=25, type=int,
         help="Original FPS of PNG frames")
-    parser.add_argument("--resampled_fps", default=30, type=int,
+    parser.add_argument("--resampled_fps", default=100, type=int,
         help="Resampled FPS of new PNG frames")
     parser.add_argument("--depth", default=10, type=int,
         help="How deep the frame splits go to reach the target")
-    parser.add_argument("--output_path", default="./output", type=str,
+    parser.add_argument("--output_path", default="images", type=str,
         help="Output path for interpolated PNGs")
     parser.add_argument("--base_filename", default="upsampled_frames", type=str,
         help="Base filename for interpolated PNGs")
+    parser.add_argument("--time_step", dest="time_step", default=False, action="store_true",
+        help="Use Time Step instead of Binary Search interpolation (Default: False)")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
 
     log = SimpleLog(args.verbose)
     create_directory(args.output_path)
-    engine = InterpolateEngine(args.model, args.gpu_ids)
+    engine = InterpolateEngine(args.model, args.gpu_ids, use_time_step=args.time_step)
     interpolater = Interpolate(engine.model, log.log)
     target_interpolater = TargetInterpolate(interpolater, log.log)
-    series_resampler = ResampleSeries(target_interpolater, log.log)
+    series_resampler = ResampleSeries(interpolater, target_interpolater, args.time_step, log.log)
 
     series_resampler.resample_series(args.input_path, args.output_path, args.original_fps,
         args.resampled_fps, args.depth, args.base_filename)
@@ -48,9 +50,13 @@ def main():
 class ResampleSeries():
     """Enscapsulate logic for the Change FPS feature"""
     def __init__(self,
+                interpolater : Interpolate,
                 target_interpolater : TargetInterpolate,
+                time_step : bool,
                 log_fn : Callable | None):
+        self.interpolater = interpolater
         self.target_interpolater = target_interpolater
+        self.time_step = time_step
         self.log_fn = log_fn
         self.output_paths = []
 
@@ -69,7 +75,7 @@ class ResampleSeries():
         # set of needed frame times including original frames
         searches = [0.0] + restored_frame_searches(filler_frames)
 
-        # PNG files found int he input path
+        # PNG files found in the input path
         file_list = sorted(get_files(input_path, "png"))
         file_count = len(file_list)
 
@@ -104,16 +110,24 @@ class ResampleSeries():
                 self.log(f"copying keyframe {before_file} to {output_filepath}")
                 shutil.copy(before_file, output_filepath)
             else:
-                filename = f"{base_filename}[{frame_number}]"
-                self.log(f"searching {before_file} for frame time {search}")
-                self.target_interpolater.split_frames(before_file,
-                                                        after_file,
-                                                        depth,
-                                                        min_target=search,
-                                                        max_target=search,
-                                                        output_path=output_path,
-                                                        base_filename=filename,
-                                                        progress_label="Search")
+                if self.time_step:
+                    filename = f"{base_filename}[{frame_number}]"
+                    time = sortable_float_index(search)
+                    output_filepath = os.path.join(output_path, f"{filename}@{time}.png")
+                    self.log(f"rendering {output_filepath} from {before_file}")
+                    self.interpolater.create_between_frame(before_file, after_file, output_filepath,
+                                                           time_step=search)
+                else:
+                    self.log(f"searching {before_file} for frame time {search}")
+                    filename = f"{base_filename}[{frame_number}]"
+                    self.target_interpolater.split_frames(before_file,
+                                                            after_file,
+                                                            depth,
+                                                            min_target=search,
+                                                            max_target=search,
+                                                            output_path=output_path,
+                                                            base_filename=filename,
+                                                            progress_label="Search")
         self.output_paths.extend(self.target_interpolater.output_paths)
         self.target_interpolater.output_paths = []
 

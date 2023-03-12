@@ -221,7 +221,6 @@ class TargetInterpolate():
             self.progress = None
         else:
             self.progress = tqdm(range(_max), desc=description)
-        # self.progress = tqdm(range(_max), desc=description)
 
     def step_progress(self):
         """Advance the progress bar"""
