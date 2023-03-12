@@ -5,25 +5,25 @@ import sys
 sys.path.append('.')
 import config as cfg # pylint: disable=import-error
 from Trainer import Model # pylint: disable=import-error
-from webui_utils.simple_utils import FauxArgs
 
 class InterpolateEngine:
     """Singleton class encapsulating the EMA-VFI engine and related logic"""
     # model should be "ours" or "ours_small", or your own trained model
     # gpu_ids is for *future use*
-    def __new__(cls, model : str, gpu_ids : str):
+    # if use_time_step is True "_t" is appended to the model name
+    def __new__(cls, model : str, gpu_ids : str, use_time_step : bool=False):
         if not hasattr(cls, 'instance'):
             cls.instance = super(InterpolateEngine, cls).__new__(cls)
-            cls.instance.init(model, gpu_ids)
+            cls.instance.init(model, gpu_ids, use_time_step)
         return cls.instance
 
-    def init(self, model : str, gpu_ids: str):
+    def init(self, model : str, gpu_ids: str, use_time_step):
         """Iniitalize the class by calling into EMA-VFI code"""
         gpu_id_array = self.init_device(gpu_ids)
-        self.model = self.init_model(model, gpu_id_array)
+        self.model = self.init_model(model, gpu_id_array, use_time_step)
 
     def init_device(self, gpu_ids : str):
-        """EMA-VFI code from demo_2x.py"""
+        """for *future use*"""
         str_ids = gpu_ids.split(',')
         gpu_ids = []
         for str_id in str_ids:
@@ -36,7 +36,7 @@ class InterpolateEngine:
         # cudnn.benchmark = True
         return gpu_ids
 
-    def init_model(self, model, gpu_id_array):
+    def init_model(self, model, gpu_id_array, use_time_step):
         """EMA-VFI code from demo_2x.py"""
         # for *future use*
         # device = torch.device('cuda' if len(gpu_id_array) != 0 else 'cpu')
@@ -44,13 +44,13 @@ class InterpolateEngine:
         TTA = True
         if model == 'ours_small':
             TTA = False
-            cfg.MODEL_CONFIG['LOGNAME'] = 'ours_small'
+            cfg.MODEL_CONFIG['LOGNAME'] = 'ours_small' + ("_t" if use_time_step else "")
             cfg.MODEL_CONFIG['MODEL_ARCH'] = cfg.init_model_config(
                 F = 16,
                 depth = [2, 2, 2, 2, 2]
             )
         else:
-            cfg.MODEL_CONFIG['LOGNAME'] = 'ours'
+            cfg.MODEL_CONFIG['LOGNAME'] = 'ours' + ("_t" if use_time_step else "")
             cfg.MODEL_CONFIG['MODEL_ARCH'] = cfg.init_model_config(
                 F = 32,
                 depth = [2, 2, 2, 4, 4]

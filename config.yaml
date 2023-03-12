@@ -9,8 +9,8 @@ directories:
   output_fps_change: "output/fps_change"
   output_upscaling: "output/upscaling"
   output_gif_to_mp4: "output/gif_to_mp4"
-model: "ours"
-gpu_ids: "0"
+model: "ours" # "_t" auto-appended when using multi_inference
+gpu_ids: "0" # *future use* (cuda device:0 is presumed)
 auto_launch_browser: True
 server_port: 7862
 server_name: "0.0.0.0"

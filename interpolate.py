@@ -27,17 +27,22 @@ def main():
         help="Path to after frame image")
     parser.add_argument('--img_new', default="./images/image1.png", type=str,
         help="Path to new middle frame image")
+    parser.add_argument("--time_step", dest="time_step", default=Interpolate.STD_MIDFRAME,
+        type=float, help="Middle frame time step (Default: 0.5)")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
 
     log = SimpleLog(args.verbose)
-    engine = InterpolateEngine(args.model, args.gpu_ids)
+    use_time_step = args.time_step != Interpolate.STD_MIDFRAME
+    engine = InterpolateEngine(args.model, args.gpu_ids, use_time_step)
     interpolater = Interpolate(engine.model, log.log)
-    interpolater.create_between_frame(args.img_before, args.img_after, args.img_new)
+    interpolater.create_between_frame(args.img_before, args.img_after, args.img_new, args.time_step)
 
 class Interpolate:
     """Encapsulate logic for the Frame Interpolation feature"""
+    STD_MIDFRAME = 0.5
+
     def __init__(self,
                 model,
                 log_fn : Callable | None):
@@ -47,7 +52,8 @@ class Interpolate:
     def create_between_frame(self,
                             before_filepath : str,
                             after_filepath : str,
-                            middle_filepath : str):
+                            middle_filepath : str,
+                            time_step : float = STD_MIDFRAME):
         """Invoke the Frame Interpolation feature"""
         # code borrowed from EMA-VFI/demo_2x.py
         I0 = cv2.imread(before_filepath)
@@ -62,7 +68,7 @@ class Interpolate:
         model = self.model["model"]
         TTA = self.model["TTA"]
 
-        mid = (padder.unpad(model.inference(I0_, I2_, TTA=TTA, fast_TTA=TTA))[0].detach().cpu().numpy().transpose(1, 2, 0) * 255.0).astype(np.uint8)
+        mid = (padder.unpad(model.inference(I0_, I2_, TTA=TTA, fast_TTA=TTA, timestep = time_step))[0].detach().cpu().numpy().transpose(1, 2, 0) * 255.0).astype(np.uint8)
         images = [I0[:, :, ::-1], mid[:, :, ::-1], I2[:, :, ::-1]]
         imsave(middle_filepath, images[1])
         self.log("create_mid_frame() saved " + middle_filepath)
