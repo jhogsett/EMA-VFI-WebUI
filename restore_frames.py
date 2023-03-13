@@ -88,7 +88,6 @@ class RestoreFrames():
                                                     progress_label="Search")
             self.output_paths.extend(self.target_interpolater.output_paths)
             self.target_interpolater.output_paths = []
-            print(self.output_paths)
 
     def log(self, message):
         """Logging"""

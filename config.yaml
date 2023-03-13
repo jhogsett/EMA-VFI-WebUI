@@ -23,6 +23,7 @@ interpolation_settings:
   create_txt: True
 search_settings:
   max_splits: 60
+  use_time_step: False # True is faster but may yield different results
 restoration_settings:
   default_frames: 2
   max_frames: 10

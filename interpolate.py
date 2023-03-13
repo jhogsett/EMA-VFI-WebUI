@@ -110,8 +110,8 @@ class Interpolate:
         set_count = 2 if frame_count < 1 else frame_count + 1
 
         output_path, filename, extension = split_filepath(middle_filepath)
-        images = [I0[:, :, ::-1]]
         output_filepath = os.path.join(output_path, f"{filename}@0.0.png")
+        images = [I0[:, :, ::-1]]
         imsave(output_filepath, images[0])
         self.output_paths.append(output_filepath)
         self.log("create_between_frames() saved " + output_filepath)
