@@ -353,7 +353,9 @@ class VideoBlender(TabBase):
         if project_path and after_frame > before_frame:
             interpolater = Interpolate(self.engine.model, self.log)
             target_interpolater = TargetInterpolate(interpolater, self.log)
-            frame_restorer = RestoreFrames(target_interpolater, self.log)
+            use_time_step = self.config.use_time_step
+            frame_restorer = RestoreFrames(interpolater, target_interpolater, use_time_step,
+                                           self.log)
             base_output_path = self.config.directories["output_blender"]
             create_directory(base_output_path)
             output_path, run_index = AutoIncrementDirectory(base_output_path).next_directory("run")

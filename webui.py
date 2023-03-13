@@ -37,7 +37,8 @@ class WebUI:
     def start(self):
         """Create the UI and start the event loop"""
         WebuiTips.set_tips_path(self.config.user_interface["tips_path"])
-        engine = InterpolateEngine(self.config.model, self.config.gpu_ids)
+        use_time_step = self.config.use_time_step
+        engine = InterpolateEngine(self.config.model, self.config.gpu_ids, use_time_step=use_time_step)
         while True:
             print("\nStarting EMA-VFI-WebUI")
             print("Models are loaded on the first interpolation")
