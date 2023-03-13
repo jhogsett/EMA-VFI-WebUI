@@ -15,11 +15,16 @@ class InterpolateEngine:
         if not hasattr(cls, 'instance'):
             cls.instance = super(InterpolateEngine, cls).__new__(cls)
             cls.instance.init(model, gpu_ids, use_time_step)
+        elif cls.instance.model_name != model or cls.instance.use_time_step != use_time_step:
+            cls.instance = super(InterpolateEngine, cls).__new__(cls)
+            cls.instance.init(model, gpu_ids, use_time_step)
         return cls.instance
 
     def init(self, model : str, gpu_ids: str, use_time_step):
         """Iniitalize the class by calling into EMA-VFI code"""
         gpu_id_array = self.init_device(gpu_ids)
+        self.model_name = model
+        self.use_time_step = use_time_step
         self.model = self.init_model(model, gpu_id_array, use_time_step)
 
     def init_device(self, gpu_ids : str):

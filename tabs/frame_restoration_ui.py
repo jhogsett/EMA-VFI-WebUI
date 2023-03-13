@@ -99,8 +99,9 @@ class FrameRestoration(TabBase):
                 preview_gif = os.path.join(output_path, output_basename + str(run_index) + ".gif")
                 self.log(f"creating preview file {preview_gif}")
                 duration = self.config.restoration_settings["gif_duration"] / len(output_paths)
-                gif_paths = [img_before_file, *output_paths, img_after_file]
-                create_gif(gif_paths, preview_gif, duration=duration)
+                # gif_paths = [img_before_file, *output_paths, img_after_file]
+                # create_gif(gif_paths, preview_gif, duration=duration)
+                create_gif(output_paths, preview_gif, duration=duration)
                 downloads.append(preview_gif)
 
             if self.config.restoration_settings["create_zip"]:

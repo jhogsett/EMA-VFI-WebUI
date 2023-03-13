@@ -60,6 +60,7 @@ class Interpolate:
                 log_fn : Callable | None):
         self.model = model
         self.log_fn = log_fn
+        self.output_paths = []
 
     def create_between_frame(self,
                             before_filepath : str,
@@ -83,6 +84,7 @@ class Interpolate:
         mid = (padder.unpad(model.inference(I0_, I2_, TTA=TTA, fast_TTA=TTA, timestep = time_step))[0].detach().cpu().numpy().transpose(1, 2, 0) * 255.0).astype(np.uint8)
         images = [I0[:, :, ::-1], mid[:, :, ::-1], I2[:, :, ::-1]]
         imsave(middle_filepath, images[1])
+        self.output_paths.append(middle_filepath)
         self.log("create_between_frame() saved " + middle_filepath)
 
     def create_between_frames(self,
@@ -111,23 +113,32 @@ class Interpolate:
         images = [I0[:, :, ::-1]]
         output_filepath = os.path.join(output_path, f"{filename}@0.0.png")
         imsave(output_filepath, images[0])
+        self.output_paths.append(output_filepath)
         self.log("create_between_frames() saved " + output_filepath)
 
         preds = model.multi_inference(I0_, I2_, TTA=TTA, time_list=[(i+1)*(1./set_count) for i in range(set_count - 1)], fast_TTA=TTA)
         for pred in preds:
             images.append((padder.unpad(pred).detach().cpu().numpy().transpose(1, 2, 0) * 255.0).astype(np.uint8)[:, :, ::-1])
+            print("@@@@@@@@")
         images.append(I2[:, :, ::-1])
 
+        print("*" * 50)
+        print(len(images))
+
         pbar_desc = "Writing frames"
-        for index, image in enumerate(tqdm(images[1:-1], desc=pbar_desc)):
-            if index > 0:
+        for index, image in enumerate(tqdm(images, desc=pbar_desc)):
+            if 0 < index < len(images) - 1:
                 time = sortable_float_index(index / set_count)
+                print("$")
+                print(time)
                 output_filepath = os.path.join(output_path, f"{filename}@{time}.png")
                 imsave(output_filepath, image)
+                self.output_paths.append(output_filepath)
                 self.log("create_between_frames() saved " + output_filepath)
 
         output_filepath = os.path.join(output_path, f"{filename}@1.0.png")
         imsave(output_filepath, images[-1])
+        self.output_paths.append(output_filepath)
         self.log("create_between_frames() saved " + output_filepath)
 
     def log(self, message):

@@ -109,6 +109,7 @@ class ResampleSeries():
                 output_filepath = os.path.join(output_path, filename)
                 self.log(f"copying keyframe {before_file} to {output_filepath}")
                 shutil.copy(before_file, output_filepath)
+                self.output_paths.append(output_filepath)
             else:
                 if self.time_step:
                     filename = f"{base_filename}[{frame_number}]"
@@ -128,8 +129,12 @@ class ResampleSeries():
                                                             output_path=output_path,
                                                             base_filename=filename,
                                                             progress_label="Search")
-        self.output_paths.extend(self.target_interpolater.output_paths)
-        self.target_interpolater.output_paths = []
+        if self.time_step:
+            self.output_paths.extend(self.interpolater.output_paths)
+            self.interpolater.output_paths = []
+        else:
+            self.output_paths.extend(self.target_interpolater.output_paths)
+            self.target_interpolater.output_paths = []
 
     def log(self, message):
         """Logging"""

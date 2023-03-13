@@ -372,8 +372,9 @@ class VideoBlender(TabBase):
             preview_gif = os.path.join(output_path, output_basename + str(run_index) + ".gif")
             self.log(f"creating preview file {preview_gif}")
             duration = self.config.blender_settings["gif_duration"] / len(output_paths)
-            gif_paths = [before_file, *output_paths, after_file]
-            create_gif(gif_paths, preview_gif, duration=duration)
+            # gif_paths = [before_file, *output_paths, after_file]
+            # create_gif(gif_paths, preview_gif, duration=duration)
+            create_gif(output_paths, preview_gif, duration=duration)
 
             return gr.Image.update(value=preview_gif), gr.Text.update(value=output_path,
                 visible=True)
@@ -385,7 +386,9 @@ class VideoBlender(TabBase):
         """Apply Fixed Frames button handler"""
         fixed_frames = sorted(get_files(fixed_frames_path, "png"))
         frame = before_frame + 1
-        for file in fixed_frames:
+        # for file in fixed_frames:
+        # the outer frames are the orginal before/after frames
+        for file in fixed_frames[1:-1]:
             project_file = locate_frame_file(project_path, frame)
             self.log(f"copying {file} to {project_file}")
             shutil.copy(file, project_file)
