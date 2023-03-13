@@ -15,25 +15,27 @@ def main():
         default="ours", type=str)
     parser.add_argument("--gpu_ids", type=str, default="0",
         help="gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU")
-    parser.add_argument("--input_path", default="./images", type=str,
+    parser.add_argument("--input_path", default="images", type=str,
         help="Input path for PNGs to interpolate")
     parser.add_argument("--depth", default=2, type=int,
         help="How many doublings of the frames")
     parser.add_argument("--offset", default=1, type=int,
         help="Frame series offset, 1 for slow motion, 2+ for frame resynthesis")
-    parser.add_argument("--output_path", default="./output", type=str,
+    parser.add_argument("--output_path", default="images", type=str,
         help="Output path for interpolated PNGs")
     parser.add_argument("--base_filename", default="interpolated_frames", type=str,
         help="Base filename for interpolated PNGs")
+    parser.add_argument("--time_step", dest="time_step", default=False, action="store_true",
+        help="Use Time Step instead of Binary Search interpolation (Default: False)")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
 
     log = SimpleLog(args.verbose)
     create_directory(args.output_path)
-    engine = InterpolateEngine(args.model, args.gpu_ids)
+    engine = InterpolateEngine(args.model, args.gpu_ids, use_time_step=args.time_step)
     interpolater = Interpolate(engine.model, log.log)
-    deep_interpolater = DeepInterpolate(interpolater, log.log)
+    deep_interpolater = DeepInterpolate(interpolater, args.time_step, log.log)
     series_interpolater = InterpolateSeries(deep_interpolater, log.log)
 
     file_list = get_files(args.input_path, extension="png")

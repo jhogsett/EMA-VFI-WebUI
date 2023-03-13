@@ -76,6 +76,7 @@ class DeepInterpolate():
                                                     output_filepath_prefix, num_steps)
             for path in self.interpolater.output_paths:
                 self.register_frame(path)
+            self.interpolater.output_paths = []
         else:
             self._set_up_outer_frames(before_filepath, after_filepath, output_filepath_prefix)
             self._recursive_split_frames(0.0, 1.0, output_filepath_prefix)
