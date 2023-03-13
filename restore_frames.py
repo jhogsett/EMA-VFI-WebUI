@@ -75,7 +75,6 @@ class RestoreFrames():
                                                     num_frames)
             self.output_paths.extend(self.interpolater.output_paths)
             self.interpolater.output_paths = []
-            print(self.output_paths)
         else:
             for search in tqdm(searches, desc=progress_label):
                 self.log(f"searching for frame {search}")

@@ -119,18 +119,12 @@ class Interpolate:
         preds = model.multi_inference(I0_, I2_, TTA=TTA, time_list=[(i+1)*(1./set_count) for i in range(set_count - 1)], fast_TTA=TTA)
         for pred in preds:
             images.append((padder.unpad(pred).detach().cpu().numpy().transpose(1, 2, 0) * 255.0).astype(np.uint8)[:, :, ::-1])
-            print("@@@@@@@@")
         images.append(I2[:, :, ::-1])
-
-        print("*" * 50)
-        print(len(images))
 
         pbar_desc = "Writing frames"
         for index, image in enumerate(tqdm(images, desc=pbar_desc)):
             if 0 < index < len(images) - 1:
                 time = sortable_float_index(index / set_count)
-                print("$")
-                print(time)
                 output_filepath = os.path.join(output_path, f"{filename}@{time}.png")
                 imsave(output_filepath, image)
                 self.output_paths.append(output_filepath)

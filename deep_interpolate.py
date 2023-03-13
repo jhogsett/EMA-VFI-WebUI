@@ -17,25 +17,27 @@ def main():
         default="ours", type=str)
     parser.add_argument("--gpu_ids", type=str, default="0",
         help="gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU")
-    parser.add_argument("--img_before", default="./images/image0.png", type=str,
+    parser.add_argument("--img_before", default="images/image0.png", type=str,
         help="Path to before frame image")
-    parser.add_argument("--img_after", default="./images/image2.png", type=str,
+    parser.add_argument("--img_after", default="images/image2.png", type=str,
         help="Path to after frame image")
     parser.add_argument("--depth", default=2, type=int,
         help="how many doublings of the frames")
-    parser.add_argument("--output_path", default="./output", type=str,
+    parser.add_argument("--output_path", default="images", type=str,
         help="Output path for interpolated PNGs")
     parser.add_argument("--base_filename", default="interpolated_frame", type=str,
         help="Base filename for interpolated PNGs")
+    parser.add_argument("--time_step", dest="time_step", default=False, action="store_true",
+        help="Use Time Step instead of Binary Search interpolation (Default: False)")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
 
     log = SimpleLog(args.verbose)
     create_directory(args.output_path)
-    engine = InterpolateEngine(args.model, args.gpu_ids)
+    engine = InterpolateEngine(args.model, args.gpu_ids, use_time_step=args.time_step)
     interpolater = Interpolate(engine.model, log.log)
-    deep_interpolater = DeepInterpolate(interpolater, log.log)
+    deep_interpolater = DeepInterpolate(interpolater, args.time_step, log.log)
     deep_interpolater.split_frames(args.img_before, args.img_after, args.depth, args.output_path,
         args.base_filename)
 
@@ -43,8 +45,10 @@ class DeepInterpolate():
     """Encapsulates logic for the Frame Interpolation feature"""
     def __init__(self,
                 interpolater : Interpolate,
+                time_step : bool,
                 log_fn : Callable | None):
         self.interpolater = interpolater
+        self.time_step = time_step
         self.log_fn = log_fn
         self.split_count = 0
         self.frame_register = []
@@ -66,9 +70,15 @@ class DeepInterpolate():
         num_steps = max_steps(num_splits)
         self.init_progress(num_splits, num_steps, progress_label)
         output_filepath_prefix = os.path.join(output_path, base_filename)
-        self._set_up_outer_frames(before_filepath, after_filepath, output_filepath_prefix)
 
-        self._recursive_split_frames(0.0, 1.0, output_filepath_prefix)
+        if self.time_step:
+            self.interpolater.create_between_frames(before_filepath, after_filepath,
+                                                    output_filepath_prefix, num_steps)
+            for path in self.interpolater.output_paths:
+                self.register_frame(path)
+        else:
+            self._set_up_outer_frames(before_filepath, after_filepath, output_filepath_prefix)
+            self._recursive_split_frames(0.0, 1.0, output_filepath_prefix)
         self._integerize_filenames(output_path, base_filename, continued, resynthesis)
         self.close_progress()
 
