@@ -64,7 +64,7 @@ class FrameSearch(TabBase):
             output_path, _ = AutoIncrementDirectory(base_output_path).next_directory("run")
             output_basename = "frame"
 
-            if self.config.search_settings["use_time_step"]:
+            if self.config.use_time_step:
                 # use the time step feature of the model to reach the midpoint of the target range
                 interpolater = Interpolate(self.engine.model, self.log)
                 midpoint = float(min_target) + (float(max_target) - float(min_target)) / 2.0
