@@ -10,7 +10,7 @@ directories:
   output_upscaling: "output/upscaling"
   output_gif_to_mp4: "output/gif_to_mp4"
 model: "ours" # "_t" auto-appended when using time step
-use_time_step: True
+use_time_step: False
 gpu_ids: "0" # *future use* (cuda device:0 is presumed)
 auto_launch_browser: True
 server_port: 7862
