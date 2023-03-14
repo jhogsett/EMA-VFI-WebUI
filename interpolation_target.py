@@ -18,10 +18,10 @@ def main():
     parser.add_argument("--model",
         default="ours", type=str)
     parser.add_argument("--gpu_ids", type=str, default="0",
-        help="gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU")
-    parser.add_argument("--img_before", default="./images/image0.png", type=str,
+        help="gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU (FUTURE USE)")
+    parser.add_argument("--img_before", default="images/image0.png", type=str,
         help="Path to before frame image")
-    parser.add_argument("--img_after", default="./images/image2.png", type=str,
+    parser.add_argument("--img_after", default="images/image2.png", type=str,
         help="Path to after frame image")
     parser.add_argument("--depth", default=10, type=int,
         help="How deep the frame splits go to reach the target")
@@ -29,23 +29,36 @@ def main():
         help="Lower bound of target time")
     parser.add_argument("--max_target", default=0.334, type=float,
         help="Upper bound of target time")
-    parser.add_argument("--output_path", default="./output", type=str,
+    parser.add_argument("--output_path", default="images", type=str,
         help="Output path for interpolated PNGs")
     parser.add_argument("--base_filename", default="interpolated_frame", type=str,
         help="Base filename for interpolated PNGs")
     parser.add_argument("--keep_samples", dest="keep_samples", default=False, action="store_true",
-        help="True to keep the interative sample PNGs")
+        help="Keep the interative sample PNGs (Default: False)")
+    parser.add_argument("--time_step", dest="time_step", default=False, action="store_true",
+        help="Use Time Step instead of Binary Search interpolation (Default: False)")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
-        help="Show extra details")
+        help="Show extra details (Default: False)")
     args = parser.parse_args()
 
     log = SimpleLog(args.verbose)
     create_directory(args.output_path)
-    engine = InterpolateEngine(args.model, args.gpu_ids)
-    interpolater = Interpolate(engine.model, log.log)
-    target_interpolater = TargetInterpolate(interpolater, log.log)
-    target_interpolater.split_frames(args.img_before, args.img_after, args.depth, args.min_target,
-        args.max_target, args.output_path, args.base_filename, args.keep_samples)
+
+    if args.time_step:
+        # use the time step feature of the model to reach the midpoint of the target range
+        engine = InterpolateEngine(args.model, args.gpu_ids, use_time_step=True)
+        interpolater = Interpolate(engine.model, log.log)
+        midpoint = args.min_target + (args.max_target - args.min_target) / 2.0
+        img_new = os.path.join(args.output_path, f"{args.base_filename}@{midpoint}.png")
+        interpolater.create_between_frame(args.img_before, args.img_after, img_new, midpoint)
+    else:
+        # use binary search interpolation to reach the target range
+        engine = InterpolateEngine(args.model, args.gpu_ids, use_time_step=False)
+        interpolater = Interpolate(engine.model, log.log)
+        target_interpolater = TargetInterpolate(interpolater, log.log)
+        target_interpolater.split_frames(args.img_before, args.img_after, args.depth,
+                                         args.min_target, args.max_target, args.output_path,
+                                         args.base_filename, args.keep_samples)
 
 class TargetInterpolate():
     """Enscapsulate logic for the Frame Search feature"""
@@ -208,7 +221,6 @@ class TargetInterpolate():
             self.progress = None
         else:
             self.progress = tqdm(range(_max), desc=description)
-        # self.progress = tqdm(range(_max), desc=description)
 
     def step_progress(self):
         """Advance the progress bar"""

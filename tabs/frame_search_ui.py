@@ -1,4 +1,5 @@
 """Frame Search feature UI and event handlers"""
+import os
 from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
@@ -58,16 +59,27 @@ class FrameSearch(TabBase):
                     max_target : float):
         """Search button handler"""
         if img_before_file and img_after_file and min_target and max_target:
-            interpolater = Interpolate(self.engine.model, self.log)
-            target_interpolater = TargetInterpolate(interpolater, self.log)
             base_output_path = self.config.directories["output_search"]
             create_directory(base_output_path)
             output_path, _ = AutoIncrementDirectory(base_output_path).next_directory("run")
             output_basename = "frame"
 
-            self.log(f"beginning targeted interpolations at {output_path}")
-            target_interpolater.split_frames(img_before_file, img_after_file, num_splits,
-                float(min_target), float(max_target), output_path, output_basename)
-            output_paths = target_interpolater.output_paths
+            if self.config.use_time_step:
+                # use the time step feature of the model to reach the midpoint of the target range
+                interpolater = Interpolate(self.engine.model, self.log)
+                midpoint = float(min_target) + (float(max_target) - float(min_target)) / 2.0
+                img_new = os.path.join(output_path, f"{output_basename}@{midpoint}.png")
+                interpolater.create_between_frame(img_before_file, img_after_file, img_new,
+                                                  midpoint)
+                output_paths = interpolater.output_paths
+            else:
+                # use binary search interpolation to reach the target range
+                interpolater = Interpolate(self.engine.model, self.log)
+                target_interpolater = TargetInterpolate(interpolater, self.log)
+
+                self.log(f"beginning targeted interpolations at {output_path}")
+                target_interpolater.split_frames(img_before_file, img_after_file, num_splits,
+                    float(min_target), float(max_target), output_path, output_basename)
+                output_paths = target_interpolater.output_paths
             return gr.Image.update(value=output_paths[0]), gr.File.update(value=output_paths,
                 visible=True)

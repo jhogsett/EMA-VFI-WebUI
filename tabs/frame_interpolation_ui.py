@@ -56,7 +56,8 @@ class FrameInterpolation(TabBase):
         """Interpolate button handler"""
         if img_before_file and img_after_file:
             interpolater = Interpolate(self.engine.model, self.log_fn)
-            deep_interpolater = DeepInterpolate(interpolater, self.log_fn)
+            use_time_step = self.config.use_time_step
+            deep_interpolater = DeepInterpolate(interpolater, use_time_step, self.log_fn)
             base_output_path = self.config.directories["output_interpolation"]
             output_path, run_index = AutoIncrementDirectory(base_output_path).next_directory("run")
             output_basename = "interpolated_frames"

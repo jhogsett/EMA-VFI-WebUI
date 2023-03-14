@@ -89,7 +89,9 @@ class ChangeFPS(TabBase):
         if input_path:
             interpolater = Interpolate(self.engine.model, self.log)
             target_interpolater = TargetInterpolate(interpolater, self.log)
-            series_resampler = ResampleSeries(target_interpolater, self.log)
+            use_time_step = self.config.use_time_step
+            series_resampler = ResampleSeries(interpolater, target_interpolater, use_time_step,
+                                              self.log)
             if output_path:
                 base_output_path = output_path
                 create_directory(base_output_path)

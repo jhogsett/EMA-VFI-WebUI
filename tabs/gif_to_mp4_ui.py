@@ -189,7 +189,9 @@ class GIFtoMP4(TabBase):
                                 precision : int):
         interpolater = Interpolate(self.engine.model, self.log)
         target_interpolater = TargetInterpolate(interpolater, self.log)
-        series_resampler = ResampleSeries(target_interpolater, self.log)
+        use_time_step = self.config.use_time_step
+        series_resampler = ResampleSeries(interpolater, target_interpolater, use_time_step,
+                                          self.log)
         series_resampler.resample_series(input_path, output_path, 1, inflate_factor, precision,
             f"resampledX{inflate_factor}")
 
@@ -198,7 +200,8 @@ class GIFtoMP4(TabBase):
                                 output_path : str,
                                 inflate_factor: int):
         interpolater = Interpolate(self.engine.model, self.log)
-        deep_interpolater = DeepInterpolate(interpolater, self.log)
+        use_time_step = self.config.use_time_step
+        deep_interpolater = DeepInterpolate(interpolater, use_time_step, self.log)
         series_interpolater = InterpolateSeries(deep_interpolater, self.log)
 
         file_list = get_files(input_path)

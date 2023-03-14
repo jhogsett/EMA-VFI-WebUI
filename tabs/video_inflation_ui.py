@@ -54,7 +54,8 @@ class VideoInflation(TabBase):
         """Inflate Video button handler"""
         if input_path:
             interpolater = Interpolate(self.engine.model, self.log)
-            deep_interpolater = DeepInterpolate(interpolater, self.log)
+            use_time_step = self.config.use_time_step
+            deep_interpolater = DeepInterpolate(interpolater, use_time_step, self.log)
             series_interpolater = InterpolateSeries(deep_interpolater, self.log)
 
             if output_path:

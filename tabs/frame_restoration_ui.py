@@ -82,7 +82,9 @@ class FrameRestoration(TabBase):
         if img_before_file and img_after_file:
             interpolater = Interpolate(self.engine.model, self.log)
             target_interpolater = TargetInterpolate(interpolater, self.log)
-            frame_restorer = RestoreFrames(target_interpolater, self.log)
+            use_time_step = self.config.use_time_step
+            frame_restorer = RestoreFrames(interpolater, target_interpolater, use_time_step,
+                                           self.log)
             base_output_path = self.config.directories["output_restoration"]
             create_directory(base_output_path)
             output_path, run_index = AutoIncrementDirectory(base_output_path).next_directory("run")
@@ -99,8 +101,9 @@ class FrameRestoration(TabBase):
                 preview_gif = os.path.join(output_path, output_basename + str(run_index) + ".gif")
                 self.log(f"creating preview file {preview_gif}")
                 duration = self.config.restoration_settings["gif_duration"] / len(output_paths)
-                gif_paths = [img_before_file, *output_paths, img_after_file]
-                create_gif(gif_paths, preview_gif, duration=duration)
+                # gif_paths = [img_before_file, *output_paths, img_after_file]
+                # create_gif(gif_paths, preview_gif, duration=duration)
+                create_gif(output_paths, preview_gif, duration=duration)
                 downloads.append(preview_gif)
 
             if self.config.restoration_settings["create_zip"]:
