@@ -21,17 +21,17 @@
 
 | 🎬 EMA-VFI-WebUI Features | &nbsp; |
 |:--|:--|
-| **➗ [Frame Interpolation](https://github.com/jhogsett/VFIformer-WebUI/wiki/Frame-Interpolation)** | _Restore Missing Frames, Reveal Hidden Motion_ |
-| **🔎 [Frame Search](https://github.com/jhogsett/VFIformer-WebUI/wiki/Frame-Search)** | _Synthesize_ Between _Frames At Precise Times_ |
-| **🎈 [Video Inflation](https://github.com/jhogsett/VFIformer-WebUI/wiki/Video-Inflation)** | _Create Super Slow-Motion_ |
-| **💕 [Resynthesize Video](https://github.com/jhogsett/VFIformer-WebUI/wiki/Resynthesize-Video)** | _Create a Complete Set of Replacement Frames_ |
-| **🪄 [Frame Restoration](https://github.com/jhogsett/VFIformer-WebUI/wiki/Frame-Restoration)** | _Restore Adjacent Missing / Damaged Frames_ |
-| **🔬 [Video Blender](https://github.com/jhogsett/VFIformer-WebUI/wiki/Video-Blender)** | _Project-Based Movie Restoration_ |
-| **📁 [File Conversion](https://github.com/jhogsett/VFIformer-WebUI/wiki/Tools)** | _Convert between PNG Sequences and Videos_ |
-| **🔢 [Resequence Files](https://github.com/jhogsett/VFIformer-WebUI/wiki/Resequence-Files)** | _Renumber for Import into Video Editing Software_ |
-| **🎞️ [Change FPS](https://github.com/jhogsett/VFIformer-WebUI/wiki/Change-FPS)** | _Convert any FPS to any other FPS_ |
-| **💎 [GIF to MP4](https://github.com/jhogsett/VFIformer-WebUI/wiki/GIF-to-MP4)** | _Convert Animated GIF to MP4 in one click_ |
-| **📈 [Upscale Frames](https://github.com/jhogsett/VFIformer-WebUI/wiki/Upscale-Frames)** | _Use_ Real-ESRGAN _to Enlarge and Clean Frames_ |
+| **➗ [Frame Interpolation](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Frame-Interpolation)** | _Restore Missing Frames, Reveal Hidden Motion_ |
+| **🔎 [Frame Search](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Frame-Search)** | _Synthesize_ Between _Frames At Precise Times_ |
+| **🎈 [Video Inflation](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Video-Inflation)** | _Create Super Slow-Motion_ |
+| **💕 [Resynthesize Video](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Resynthesize-Video)** | _Create a Complete Set of Replacement Frames_ |
+| **🪄 [Frame Restoration](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Frame-Restoration)** | _Restore Adjacent Missing / Damaged Frames_ |
+| **🔬 [Video Blender](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Video-Blender)** | _Project-Based Movie Restoration_ |
+| **📁 [File Conversion](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Tools)** | _Convert between PNG Sequences and Videos_ |
+| **🔢 [Resequence Files](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Resequence-Files)** | _Renumber for Import into Video Editing Software_ |
+| **🎞️ [Change FPS](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Change-FPS)** | _Convert any FPS to any other FPS_ |
+| **💎 [GIF to MP4](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/GIF-to-MP4)** | _Convert Animated GIF to MP4 in one click_ |
+| **📈 [Upscale Frames](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Upscale-Frames)** | _Use_ Real-ESRGAN _to Enlarge and Clean Frames_ |
 
 # Set Up For Use
 
