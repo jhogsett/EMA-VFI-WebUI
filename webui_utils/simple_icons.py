@@ -27,6 +27,7 @@ class SimpleIcons:
     BELL = "🔔"
     NO_BELL = "🔕"
     BULB = "💡"
+    BUILDING = "🏗️"
     CONSTRUCTION = "🚧"
     CONTROLS = "🎛️"
     DATE = "📅"
@@ -78,6 +79,7 @@ class SimpleIcons:
     ROBOT = "🤖"
     ROCKET = "🚀"
     SCROLL = "📜"
+    SEEDLING = "🌱"
     SOAP = "🧼"
     STILL = "⚗️"
     SWEAT = "💦"
@@ -120,6 +122,7 @@ class SimpleIcons:
         PROPERTIES,
         ROCKET,
         SCROLL,
+        SEEDLING,
         STILL,
         TELEVISION,
         THREE,
