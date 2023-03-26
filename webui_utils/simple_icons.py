@@ -10,6 +10,7 @@ class SimpleIcons:
     OPEN_FOLDER = "📂"
 
     DIVIDE = "➗"
+    FOUR = "4️⃣"
     GEAR = "⚙️"
     INFO = "ℹ️"
     LEFTRIGHT_ARROW = "↔️"
@@ -106,6 +107,7 @@ class SimpleIcons:
         DIVIDE,
         FILM,
         FOLDER,
+        FOUR,
         GEAR,
         GEMSTONE,
         GLOBE,
