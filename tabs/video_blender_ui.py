@@ -33,9 +33,6 @@ class VideoBlender(TabBase):
         skip_frames = self.config.blender_settings["skip_frames"]
         frame_rate = self.config.png_to_mp4_settings["frame_rate"]
         with gr.Tab("Video Blender"):
-            # gr.HTML(SimpleIcons.MICROSCOPE +
-            #     "Combine original and replacement frames to manually restore a video",
-            #     elem_id="tabheading")
             with gr.Tabs() as tabs_video_blender:
 
                 ### PROJECT SETTINGS
@@ -171,6 +168,38 @@ class VideoBlender(TabBase):
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                         WebuiTips.video_blender_video_preview.render()
 
+                ### NEW PROJECT
+                with gr.Tab(SimpleIcons.SEEDLING + "New Project", id=4):
+                    with gr.Row():
+                        with gr.Column(scale=1):
+                            new_project_name = gr.Textbox(max_lines=1, label="New Project Name", placeholder="Name for the new project")
+                        with gr.Column(scale=12):
+                            new_project_path = gr.Textbox(max_lines=1, label="New Project Path", placeholder="Path on this server for the new project")
+                    with gr.Row():
+                        with gr.Column():
+                            gr.HTML("Project Setup Steps:")
+                            with gr.Row(variant="panel"):
+                                with gr.Column(scale=1):
+                                    step1_enabled = gr.Checkbox(value=True, label=SimpleIcons.ONE + " Split MP4 to PNG Frames")
+                                with gr.Column(scale=12):
+                                    step1_input = gr.Textbox(max_lines=1, label="MP4 Path", placeholder="Path on this server to the MP4 file to be split")
+                            with gr.Row(variant="panel"):
+                                with gr.Column(scale=1):
+                                    step2_enabled = gr.Checkbox(value=True, label=SimpleIcons.TWO + " Create Resynthesized Frames")
+                                with gr.Column(scale=12):
+                                    step2_input = gr.Textbox(max_lines=1, label="Resynthesized Frames Path", placeholder="Path on this server to the set of resynthesized frames")
+                            with gr.Row(variant="panel"):
+                                with gr.Column(scale=1):
+                                    step3_enabled = gr.Checkbox(value=True, label=SimpleIcons.THREE + " Duplicate Source Frames to Restoration Set")
+                                with gr.Column(scale=12):
+                                    step3_input = gr.Textbox(max_lines=1, label="Restoration Set Path", placeholder="Path on this server to the set of restoration set frames")
+                            with gr.Row(variant="panel"):
+                                with gr.Column(scale=1):
+                                    step4_enabled = gr.Checkbox(value=True, label=SimpleIcons.FOUR + " Remove Frame #0 from Souce and Restoration Sets")
+                                with gr.Column(scale=12):
+                                    gr.Textbox(visible=False)
+                    new_project_button = gr.Button("Create New Project " + SimpleIcons.SLOW_SYMBOL, variant="primary")
+
         load_project_button_vb.click(self.video_blender_choose_project,
             inputs=[projects_dropdown_vb],
             outputs=[input_project_name_vb, input_project_path_vb, input_path1_vb,
@@ -193,11 +222,6 @@ class VideoBlender(TabBase):
             outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
                 output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb],
                 show_progress=False)
-        # go_button_vb.click(self.video_blender_goto_frame,
-        #     inputs=[input_text_frame_vb],
-        #     outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-        #         output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb],
-        #         show_progress=False)
         input_text_frame_vb.submit(self.video_blender_goto_frame,
             inputs=[input_text_frame_vb],
             outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
@@ -292,8 +316,6 @@ class VideoBlender(TabBase):
         """Frame count change handler"""
         frame = int(frame)
         frame = 0 if frame < 0 else frame
-        # frames = self.video_blender_state.goto_frame(frame)
-        # return frames[0], frames[1], frames[2], frames[3], frames[4]
         return tuple(self.video_blender_state.goto_frame(frame))
 
     def video_blender_skip_next(self, frame : str):
@@ -374,8 +396,6 @@ class VideoBlender(TabBase):
             preview_gif = os.path.join(output_path, output_basename + str(run_index) + ".gif")
             self.log(f"creating preview file {preview_gif}")
             duration = self.config.blender_settings["gif_duration"] / len(output_paths)
-            # gif_paths = [before_file, *output_paths, after_file]
-            # create_gif(gif_paths, preview_gif, duration=duration)
             create_gif(output_paths, preview_gif, duration=duration)
 
             return gr.Image.update(value=preview_gif), gr.Text.update(value=output_path,
