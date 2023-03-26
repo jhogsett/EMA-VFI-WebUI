@@ -183,22 +183,22 @@ class VideoBlender(TabBase):
                             gr.HTML("Check Applicable Setup Steps")
                             with gr.Row(variant="panel"):
                                 with gr.Column(scale=1):
-                                    step1_enabled = gr.Checkbox(value=True, label=SimpleIcons.ONE + " Split MP4 to PNG Frames")
+                                    step1_enabled = gr.Checkbox(value=True, label=SimpleIcons.ONE + " Split MP4 to PNG Frames Set")
                                 with gr.Column(scale=12):
-                                    step1_input = gr.Textbox(max_lines=1, label="MP4 Path", placeholder="Path on this server to the MP4 file to be split")
+                                    step1_input = gr.Textbox(max_lines=1, interactive=True, label="MP4 Path", placeholder="Path on this server to the source MP4 file")
                             with gr.Row(variant="panel"):
                                 with gr.Column(scale=1):
-                                    step2_enabled = gr.Checkbox(value=True, label=SimpleIcons.TWO + " Create Resynthesized Frames")
+                                    step2_enabled = gr.Checkbox(value=True, label=SimpleIcons.TWO + " Resynthesize Repair Frames Set")
                                 with gr.Column(scale=12):
-                                    step2_input = gr.Textbox(max_lines=1, label="Resynthesized Frames Path", placeholder="Path on this server to the set of resynthesized frames")
+                                    step2_input = gr.Textbox(max_lines=1, interactive=False, label="n/a", placeholder="Repair frames set will be automatically created")
                             with gr.Row(variant="panel"):
                                 with gr.Column(scale=1):
-                                    step3_enabled = gr.Checkbox(value=True, label=SimpleIcons.THREE + " Duplicate Source Frames to Restoration Set")
+                                    step3_enabled = gr.Checkbox(value=True, label=SimpleIcons.THREE + " Init Restored Set from Source")
                                 with gr.Column(scale=12):
-                                    step3_input = gr.Textbox(max_lines=1, label="Restoration Set Path", placeholder="Path on this server to the set of restoration set frames")
+                                    step3_input = gr.Textbox(max_lines=1, interactive=False, label="n/a", placeholder="Restored frames set will be automatically created")
                             with gr.Row(variant="panel"):
                                 with gr.Column(scale=1):
-                                    step4_enabled = gr.Checkbox(value=True, label=SimpleIcons.FOUR + " Remove Frame #0 from Souce and Restoration Sets")
+                                    step4_enabled = gr.Checkbox(value=True, label=SimpleIcons.FOUR + " Sync Frame Numbers Across Sets")
                                 with gr.Column(scale=12):
                                     gr.Textbox(visible=False)
                     gr.Markdown("*Progress can be tracked in the console*")
@@ -274,6 +274,16 @@ class VideoBlender(TabBase):
             outputs=[tabs_video_blender, fixed_path_ff])
         render_video_vb.click(self.video_blender_render_preview,
             inputs=[preview_path_vb, input_frame_rate_vb], outputs=[video_preview_vb])
+
+        step1_enabled.change(self.video_blender_new_project_ui_switch,
+            inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
+            outputs=[step1_input, step2_input, step3_input], show_progress=False)
+        step2_enabled.change(self.video_blender_new_project_ui_switch,
+            inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
+            outputs=[step1_input, step2_input, step3_input], show_progress=False)
+        step3_enabled.change(self.video_blender_new_project_ui_switch,
+            inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
+            outputs=[step1_input, step2_input, step3_input], show_progress=False)
 
     def video_blender_load(self, project_path, frames_path1, frames_path2):
         """Open Project button handler"""
@@ -433,3 +443,26 @@ class VideoBlender(TabBase):
             PNGtoMP4(input_path, "auto", int(frame_rate), output_filepath,
                 crf=QUALITY_SMALLER_SIZE)
             return output_filepath
+
+    def video_blender_new_project_ui_switch(self, step1_enabled, step2_enabled, step3_enabled, step4_enabled):
+        step1_path_enabled_mp4 = step1_enabled
+        step1_path_enabled_png = not step1_enabled
+        step2_path_enabled = not step2_enabled
+        step3_path_enabled = not step3_enabled
+        _ = step4_enabled
+
+        step1_path_label = "MP4 Path" if step1_path_enabled_mp4 else "Source Frames Path"
+        step1_path_placeholder = "Path on this server to the source MP4 file" if step1_path_enabled_mp4 else "Path on this server to the source PNG frame files"
+
+        step2_path_label = "Repair Frames Path" if step2_path_enabled else "n/a"
+        step2_path_placeholder = "Path on this server to the repair frames" if step2_path_enabled else "Repair frames set will be automatically created"
+
+        step3_path_label = "Project Frames Path" if step3_path_enabled else "n/a"
+        step3_path_placeholder = "Path on this server to the project restored frames" if step3_path_enabled else "Restored frames set will be automatically created"
+
+        return gr.update(interactive=step1_path_enabled_mp4 or step1_path_enabled_png,
+                         label=step1_path_label, placeholder=step1_path_placeholder),\
+            gr.update(interactive=step2_path_enabled, label=step2_path_label,
+                      placeholder=step2_path_placeholder),\
+            gr.update(interactive=step3_path_enabled, label=step3_path_label,
+                      placeholder=step3_path_placeholder)
