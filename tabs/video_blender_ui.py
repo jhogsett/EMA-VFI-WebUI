@@ -171,13 +171,16 @@ class VideoBlender(TabBase):
                 ### NEW PROJECT
                 with gr.Tab(SimpleIcons.SEEDLING + "New Project", id=4):
                     with gr.Row():
-                        with gr.Column(scale=1):
-                            new_project_name = gr.Textbox(max_lines=1, label="New Project Name", placeholder="Name for the new project")
-                        with gr.Column(scale=12):
-                            new_project_path = gr.Textbox(max_lines=1, label="New Project Path", placeholder="Path on this server for the new project")
+                        with gr.Column(variant="compact"):
+                            gr.HTML("Define New Project")
+                            with gr.Row(variant="panel"):
+                                with gr.Column(scale=1):
+                                    new_project_name = gr.Textbox(max_lines=1, label="New Project Name", placeholder="Name for the new project")
+                                with gr.Column(scale=12):
+                                    new_project_path = gr.Textbox(max_lines=1, label="New Project Path", placeholder="Path on this server for the new project")
                     with gr.Row():
-                        with gr.Column():
-                            gr.HTML("Project Setup Steps:")
+                        with gr.Column(variant="compact"):
+                            gr.HTML("Check Applicable Setup Steps")
                             with gr.Row(variant="panel"):
                                 with gr.Column(scale=1):
                                     step1_enabled = gr.Checkbox(value=True, label=SimpleIcons.ONE + " Split MP4 to PNG Frames")
@@ -198,6 +201,7 @@ class VideoBlender(TabBase):
                                     step4_enabled = gr.Checkbox(value=True, label=SimpleIcons.FOUR + " Remove Frame #0 from Souce and Restoration Sets")
                                 with gr.Column(scale=12):
                                     gr.Textbox(visible=False)
+                    gr.Markdown("*Progress can be tracked in the console*")
                     new_project_button = gr.Button("Create New Project " + SimpleIcons.SLOW_SYMBOL, variant="primary")
 
         load_project_button_vb.click(self.video_blender_choose_project,
