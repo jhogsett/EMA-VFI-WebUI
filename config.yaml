@@ -35,7 +35,7 @@ restoration_settings:
 blender_settings:
   projects_file: "video_blender_projects.csv"
   skip_frames: 100
-  frame_fixer_depth: 31
+  frame_fixer_depth: 10
   gif_duration: 1000
 mp4_to_png_settings:
   frame_rate: 30
