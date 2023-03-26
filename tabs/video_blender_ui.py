@@ -237,13 +237,13 @@ class VideoBlender(TabBase):
         fix_frames_button_vb.click(self.video_blender_fix_frames,
             inputs=[input_project_path_vb, fix_frames_last_before, fix_frames_first_after],
             outputs=[tabs_video_blender, project_path_ff, input_clean_before_ff,
-                input_clean_after_ff])
+                input_clean_after_ff, fixed_path_ff])
         preview_button_ff.click(self.video_blender_preview_fixed,
             inputs=[project_path_ff, input_clean_before_ff, input_clean_after_ff],
             outputs=[preview_image_ff, fixed_path_ff])
         use_fixed_button_ff.click(self.video_blender_used_fixed,
             inputs=[project_path_ff, fixed_path_ff, input_clean_before_ff],
-            outputs=tabs_video_blender)
+            outputs=[tabs_video_blender, fixed_path_ff])
         render_video_vb.click(self.video_blender_render_preview,
             inputs=[preview_path_vb, input_frame_rate_vb], outputs=[video_preview_vb])
 
@@ -343,7 +343,7 @@ class VideoBlender(TabBase):
     def video_blender_fix_frames(self, project_path : str, last_frame_before : float,
                                  first_frame_after : float):
         """Fix Frames button handler"""
-        return gr.update(selected=2), project_path, last_frame_before, first_frame_after
+        return gr.update(selected=2), project_path, last_frame_before, first_frame_after, None
 
     def video_blender_preview_fixed(self,
                                     project_path : str,
@@ -384,14 +384,16 @@ class VideoBlender(TabBase):
                                 fixed_frames_path : str,
                                 before_frame : int):
         """Apply Fixed Frames button handler"""
-        fixed_frames = sorted(get_files(fixed_frames_path, "png"))
-        frame = before_frame + 1
-        for file in fixed_frames:
-            project_file = locate_frame_file(project_path, frame)
-            self.log(f"copying {file} to {project_file}")
-            shutil.copy(file, project_file)
-            frame += 1
-        return gr.update(selected=1)
+        if fixed_frames_path:
+            fixed_frames = sorted(get_files(fixed_frames_path, "png"))
+            frame = before_frame + 1
+            for file in fixed_frames:
+                project_file = locate_frame_file(project_path, frame)
+                self.log(f"copying {file} to {project_file}")
+                shutil.copy(file, project_file)
+                frame += 1
+            return gr.update(selected=1), None
+        return gr.update(selected=2), None
 
     def video_blender_preview_video(self, input_path : str):
         """Preview Video button handler"""
