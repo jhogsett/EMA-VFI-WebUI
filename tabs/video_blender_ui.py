@@ -274,7 +274,6 @@ class VideoBlender(TabBase):
             outputs=[tabs_video_blender, fixed_path_ff])
         render_video_vb.click(self.video_blender_render_preview,
             inputs=[preview_path_vb, input_frame_rate_vb], outputs=[video_preview_vb])
-
         step1_enabled.change(self.video_blender_new_project_ui_switch,
             inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
             outputs=[step1_input, step2_input, step3_input], show_progress=False)
@@ -284,6 +283,11 @@ class VideoBlender(TabBase):
         step3_enabled.change(self.video_blender_new_project_ui_switch,
             inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
             outputs=[step1_input, step2_input, step3_input], show_progress=False)
+        new_project_button.click(self.video_blender_new_project,
+            inputs=[new_project_name, new_project_path, step1_enabled, step2_enabled, step3_enabled,
+                step4_enabled, step1_input, step2_input, step3_input],
+            show_progress=False)
+
 
     def video_blender_load(self, project_path, frames_path1, frames_path2):
         """Open Project button handler"""
@@ -444,7 +448,11 @@ class VideoBlender(TabBase):
                 crf=QUALITY_SMALLER_SIZE)
             return output_filepath
 
-    def video_blender_new_project_ui_switch(self, step1_enabled, step2_enabled, step3_enabled, step4_enabled):
+    def video_blender_new_project_ui_switch(self,
+                                            step1_enabled,
+                                            step2_enabled,
+                                            step3_enabled,
+                                            step4_enabled):
         step1_path_enabled_mp4 = step1_enabled
         step1_path_enabled_png = not step1_enabled
         step2_path_enabled = not step2_enabled
@@ -452,13 +460,16 @@ class VideoBlender(TabBase):
         _ = step4_enabled
 
         step1_path_label = "MP4 Path" if step1_path_enabled_mp4 else "Source Frames Path"
-        step1_path_placeholder = "Path on this server to the source MP4 file" if step1_path_enabled_mp4 else "Path on this server to the source PNG frame files"
+        step1_path_placeholder = "Path on this server to the source MP4 file"\
+            if step1_path_enabled_mp4 else "Path on this server to the source PNG frame files"
 
         step2_path_label = "Repair Frames Path" if step2_path_enabled else "n/a"
-        step2_path_placeholder = "Path on this server to the repair frames" if step2_path_enabled else "Repair frames set will be automatically created"
+        step2_path_placeholder = "Path on this server to the repair frames"\
+            if step2_path_enabled else "Repair frames set will be automatically created"
 
         step3_path_label = "Project Frames Path" if step3_path_enabled else "n/a"
-        step3_path_placeholder = "Path on this server to the project restored frames" if step3_path_enabled else "Restored frames set will be automatically created"
+        step3_path_placeholder = "Path on this server to the project restored frames"\
+            if step3_path_enabled else "Restored frames set will be automatically created"
 
         return gr.update(interactive=step1_path_enabled_mp4 or step1_path_enabled_png,
                          label=step1_path_label, placeholder=step1_path_placeholder),\
@@ -466,3 +477,76 @@ class VideoBlender(TabBase):
                       placeholder=step2_path_placeholder),\
             gr.update(interactive=step3_path_enabled, label=step3_path_label,
                       placeholder=step3_path_placeholder)
+
+    def video_blender_new_project_can_proceed(self,
+                                              new_project_name,
+                                              new_project_path,
+                                              step1_enabled,
+                                              step2_enabled,
+                                              step3_enabled,
+                                              step4_enabled,
+                                              step1_path,
+                                              step2_path,
+                                              step3_path):
+        basic_can_proceed = new_project_name and new_project_path
+        step1_can_proceed = True if step1_path else False
+        step2_can_proceed = step2_enabled or step2_path
+        step3_can_proceed = step3_enabled or step3_path
+        step4_can_proceed = True
+        can_proceed = [basic_can_proceed, step1_can_proceed, step2_can_proceed, step3_can_proceed,
+                       step4_can_proceed]
+        return any(can_proceed) and all(can_proceed)
+
+    def video_blender_new_project(self,
+                                  new_project_name,
+                                  new_project_path,
+                                  step1_enabled,
+                                  step2_enabled,
+                                  step3_enabled,
+                                  step4_enabled,
+                                  step1_path,
+                                  step2_path,
+                                  step3_path):
+        if self.video_blender_new_project_can_proceed(new_project_name, new_project_path,
+                step1_enabled, step2_enabled, step3_enabled, step4_enabled, step1_path, step2_path,
+                step3_path):
+            pass
+
+            # create project path directory
+
+            # if step 1 enabled,
+                # compute source frames path
+                # prepare to do MP4toPNG
+            # else
+                # use entered source frames path
+
+            # if step 2 enabled,
+                # compute repair frames path
+                # prepare to do Resynthesize from source frames
+            # else
+                # use entered resynthesized frames path
+
+            # if step 3 enabled,
+                # compute restored frames path
+                # prepare to copy source frames to restored frames path
+            # else
+                # use entered restored frames path
+
+            # if step 4 enabled,
+                # assume source and restored sets have a frame #0 not in resynthesized set
+                # prepare to delete frame #0 from source and restored sets
+                # prepare to resequence source and restored sets
+
+            # add new project entry to csv
+
+            # if needed, do MP4toPNG action
+
+            # if needed, do Resynthesize action
+
+            # if needed, do initialize restored set action
+
+            # if needed
+                # delete first file in source set
+                # delete first file in restored set
+                # resequence source set
+                # resequence restored set
