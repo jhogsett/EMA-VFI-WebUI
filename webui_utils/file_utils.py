@@ -1,5 +1,6 @@
 """Functions for dealing with files"""
 import os
+import shutil
 import glob
 from zipfile import ZipFile
 
@@ -28,6 +29,18 @@ def create_directories(dirs : dict):
     """Create directories stored as dict values"""
     for key in dirs.keys():
         create_directory(dirs[key])
+
+def duplicate_directory(source_dir, dest_dir):
+    if source_dir == dest_dir:
+        raise ValueError("'source_dir' and 'dest_dir' must be different")
+    if not is_safe_path(source_dir):
+        raise ValueError("'source_dir' must be a legal path")
+    if not is_safe_path(dest_dir):
+        raise ValueError("'dest_dir' must be a legal path")
+    if not os.path.exists(source_dir):
+        raise ValueError("'source_dir' was not found")
+    create_directory(dest_dir)
+    shutil.copytree(source_dir, dest_dir, dirs_exist_ok=True)
 
 def _get_files(path : str):
     entries = glob.glob(path)

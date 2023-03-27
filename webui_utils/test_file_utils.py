@@ -1,4 +1,5 @@
 import os
+import shutil
 import pytest # pylint: disable=import-error
 from .file_utils import *
 from .test_shared import *
@@ -375,8 +376,7 @@ GOOD_BUILD_SERIES_FILENAME_ARGS = [
     ((None, None, 0, 1, None), ""),
     (("somefile", None, 0, 1, ".ext"), "somefile0"),
     (("somefile", None, 0, 1, "other.ext"), "somefile0.ext"),
-    ((None, None, 0, 0, None), ""),
-]
+    ((None, None, 0, 0, None), "")]
 
 BAD_BUILD_SERIES_FILENAME_ARGS = [
     (("pngsequence", None, 0, 0, None), "'max_index' value must be >= 1"),
@@ -394,8 +394,7 @@ BAD_BUILD_SERIES_FILENAME_ARGS = [
     (("", "", 0, 0, 1), "'base_file_ext' must be a string or None"),
     (("", "", 0, 0, 2.0), "'base_file_ext' must be a string or None"),
     (("", "", 0, 0, {3:3}), "'base_file_ext' must be a string or None"),
-    (("", "", 0, 0, [4]), "'base_file_ext' must be a string or None"),
-]
+    (("", "", 0, 0, [4]), "'base_file_ext' must be a string or None")]
 
 def test_build_series_filename():
     for good_args, result in GOOD_BUILD_SERIES_FILENAME_ARGS:
@@ -404,3 +403,42 @@ def test_build_series_filename():
     for bad_args, match_text in BAD_BUILD_SERIES_FILENAME_ARGS:
         with pytest.raises(ValueError, match=match_text):
             build_series_filename(*bad_args)
+
+GOOD_DUPLICATE_DIRECTORY_ARGS = [
+    ((os.path.join(FIXTURE_PATH_ALT, "source"), os.path.join(FIXTURE_PATH_ALT, "duplicate")), True, True, len(FIXTURE_FILES)),
+    ((os.path.join(FIXTURE_PATH_ALT, "source"), os.path.join(FIXTURE_PATH_ALT, "duplicate")), False, True, 0),
+    ((os.path.join(FIXTURE_PATH_ALT, "source"), os.path.join(FIXTURE_PATH_ALT, "duplicate")), True, False, len(FIXTURE_FILES)),
+    ((os.path.join(FIXTURE_PATH_ALT, "source"), os.path.join(FIXTURE_PATH_ALT, "duplicate")), False, False, 0),
+]
+
+BAD_DUPLICATE_DIRECTORY_ARGS = [
+    ((None, FIXTURE_PATH), "'source_dir' must be a legal path"),
+    ((FIXTURE_PATH, None), "'dest_dir' must be a legal path"),
+    ((FIXTURE_PATH, FIXTURE_PATH), "'source_dir' and 'dest_dir' must be different")
+]
+
+def test_duplicate_directory():
+    for good_args, preload_source_dir, pre_create_dest_dir, result in GOOD_DUPLICATE_DIRECTORY_ARGS:
+        create_directory(FIXTURE_PATH_ALT)
+        source_path = good_args[0]
+        duplicate_path = good_args[1]
+        create_directory(source_path)
+
+        if preload_source_dir:
+            for file in FIXTURE_FILES:
+                _, filename = os.path.split(file)
+                dest_file = os.path.join(source_path, filename)
+                shutil.copy(file, dest_file)
+        if pre_create_dest_dir:
+            create_directory(duplicate_path)
+
+        duplicate_directory(source_path, duplicate_path)
+        result1 = os.path.exists(duplicate_path)
+        result2 = len(get_files(duplicate_path)) == result
+        clean_fixture_path(FIXTURE_PATH_ALT)
+        assert result1
+        assert result2
+
+    for bad_args, match_text in BAD_DUPLICATE_DIRECTORY_ARGS:
+        with pytest.raises(ValueError, match=match_text):
+            duplicate_directory(*bad_args)

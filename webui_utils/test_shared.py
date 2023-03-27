@@ -10,7 +10,7 @@ FIXTURE_EXTENSION = "png"
 FIXTURE_PNG_LIST = [os.path.join(FIXTURE_PATH, file)
                     for file in ["image0.png", "image1.png", "image2.png"]]
 FIXTURE_GIF_LIST = [os.path.join(FIXTURE_PATH, "example.gif")]
-FIXTURE_FILES = FIXTURE_PNG_LIST + ["example.gif"]
+FIXTURE_FILES = FIXTURE_PNG_LIST + FIXTURE_GIF_LIST
 
 def clean_fixture_path(path : str | None):
     """Remove directories created under FIXTURE_PATH"""
