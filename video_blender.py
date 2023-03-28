@@ -24,7 +24,7 @@ class VideoBlenderPath:
 
 class VideoBlenderProjects:
     """Manages a set of projects"""
-    FIELDS = ["project_name", "project_path", "frames1_path", "frames2_path"]
+    FIELDS = ["project_name", "project_path", "frames1_path", "frames2_path", "main_path", "fps"]
 
     def __init__(self, csvfile_path):
         self.csvfile_path = csvfile_path
@@ -57,16 +57,21 @@ class VideoBlenderProjects:
         """Load project info by project name"""
         return self.projects[project_name]
 
-    def save_project(self, project_name : str,
-                    project_path : str,
-                    frames1_path : str,
-                    frames2_path : str):
-        """Add a new saved project"""
+    def save_project(self,
+                     project_name : str,
+                     project_path : str,
+                     frames1_path : str,
+                     frames2_path : str,
+                     main_path : str | None=None,
+                     fps : str | None=None):
+        """Add a new saved / overwrite an existing project"""
         self.projects[project_name] = {
-            "project_name" : project_name,
-            "project_path" : project_path,
-            "frames1_path" : frames1_path,
-            "frames2_path" : frames2_path
+            self.FIELDS[0] : project_name,
+            self.FIELDS[1] : project_path,
+            self.FIELDS[2] : frames1_path,
+            self.FIELDS[3] : frames2_path,
+            self.FIELDS[4] : main_path,
+            self.FIELDS[5] : fps
         }
         self.write_projects()
 
