@@ -6,13 +6,16 @@ import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.image_utils import create_gif
-from webui_utils.file_utils import get_files, create_directory, locate_frame_file
+from webui_utils.file_utils import get_files, create_directory, locate_frame_file, duplicate_directory
 from webui_utils.auto_increment import AutoIncrementDirectory, AutoIncrementFilename
-from webui_utils.video_utils import PNGtoMP4, QUALITY_SMALLER_SIZE
+from webui_utils.video_utils import PNGtoMP4, QUALITY_SMALLER_SIZE, MP4toPNG
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
 from interpolation_target import TargetInterpolate
+from deep_interpolate import DeepInterpolate
+from interpolate_series import InterpolateSeries
+from resequence_files import ResequenceFiles
 from restore_frames import RestoreFrames
 from video_blender import VideoBlenderState, VideoBlenderProjects
 from tabs.tab_base import TabBase
@@ -33,24 +36,19 @@ class VideoBlender(TabBase):
         skip_frames = self.config.blender_settings["skip_frames"]
         frame_rate = self.config.png_to_mp4_settings["frame_rate"]
         with gr.Tab("Video Blender"):
-            # gr.HTML(SimpleIcons.MICROSCOPE +
-            #     "Combine original and replacement frames to manually restore a video",
-            #     elem_id="tabheading")
             with gr.Tabs() as tabs_video_blender:
 
                 ### PROJECT SETTINGS
                 with gr.Tab(SimpleIcons.NOTEBOOK + "Project Settings", id=0):
                     with gr.Row():
-                        with gr.Column(scale=2, variant="compact"):
+                        with gr.Column(scale=3, variant="compact"):
                             with gr.Row():
                                 input_project_name_vb = gr.Textbox(label="Project Name")
                         with gr.Column(scale=3, variant="compact", elem_id="mainhighlightdim"):
                             with gr.Row():
+                                choices = self.video_blender_projects.get_project_names()
                                 projects_dropdown_vb = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
-                                    " Saved Projects", choices=self.video_blender_projects
-                                    .get_project_names())
-                                load_project_button_vb = gr.Button(SimpleIcons.PROP_SYMBOL +
-                                    " Load").style(full_width=False)
+                                    " Saved Projects", choices=choices, value=choices[0])
                                 save_project_button_vb = gr.Button(SimpleIcons.PROP_SYMBOL +
                                     " Save").style(full_width=False)
                     with gr.Row():
@@ -171,13 +169,72 @@ class VideoBlender(TabBase):
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                         WebuiTips.video_blender_video_preview.render()
 
-        load_project_button_vb.click(self.video_blender_choose_project,
+                ### NEW PROJECT
+                with gr.Tab(SimpleIcons.SEEDLING + "New Project", id=4):
+                    with gr.Row():
+                        with gr.Column(variant="compact"):
+                            gr.HTML("Define New Project")
+                            with gr.Row(variant="panel"):
+                                with gr.Column(scale=1):
+                                    new_project_name = gr.Textbox(max_lines=1,
+                                        label="New Project Name",
+                                        placeholder="Name for the new project")
+                                with gr.Column(scale=12):
+                                    new_project_path = gr.Textbox(max_lines=1,
+                                        label="New Project Path",
+                                        placeholder="Path on this server for the new project")
+                                with gr.Column(scale=1):
+                                    new_project_frame_rate = gr.Slider(minimum=1, maximum=60,
+                                                                 value=frame_rate, step=1,
+                                                                 label="Frame Rate")
+
+                    with gr.Row():
+                        with gr.Column(variant="compact"):
+                            gr.HTML("Check Applicable Setup Steps")
+                            with gr.Row(variant="panel"):
+                                with gr.Column(scale=1):
+                                    step1_enabled = gr.Checkbox(value=True, label=SimpleIcons.ONE +
+                                                                " Split MP4 to PNG Frames Set")
+                                with gr.Column(scale=12):
+                                    with gr.Row():
+                                        step1_input = gr.Textbox(max_lines=1, interactive=True,
+                                            label="MP4 Path",
+                                            placeholder="Path on this server to the source MP4 file")
+                            with gr.Row(variant="panel"):
+                                with gr.Column(scale=1):
+                                    step2_enabled = gr.Checkbox(value=True, label=SimpleIcons.TWO +
+                                                                " Resynthesize Repair Frames Set")
+                                with gr.Column(scale=12):
+                                    step2_input = gr.Textbox(max_lines=1, interactive=False,
+                                        label="n/a",
+                                    placeholder="Repair frames set will be automatically created")
+                            with gr.Row(variant="panel"):
+                                with gr.Column(scale=1):
+                                    step3_enabled = gr.Checkbox(value=True, label=SimpleIcons.THREE
+                                                                + " Init Restored Set from Source")
+                                with gr.Column(scale=12):
+                                    step3_input = gr.Textbox(max_lines=1, interactive=False,
+                                        label="n/a",
+                                    placeholder="Restored frames set will be automatically created")
+                            with gr.Row(variant="panel"):
+                                with gr.Column(scale=1):
+                                    step4_enabled = gr.Checkbox(value=True, label=SimpleIcons.FOUR +
+                                                                " Sync Frame Numbers Across Sets")
+                                with gr.Column(scale=12):
+                                    gr.Textbox(visible=False)
+                    gr.Markdown("*Progress can be tracked in the console*")
+                    new_project_button = gr.Button("Create New Project " + SimpleIcons.SLOW_SYMBOL,
+                                                   variant="primary")
+
+        projects_dropdown_vb.change(self.video_blender_choose_project,
             inputs=[projects_dropdown_vb],
             outputs=[input_project_name_vb, input_project_path_vb, input_path1_vb,
-                input_path2_vb], show_progress=False)
+                input_path2_vb],
+            show_progress=False)
         save_project_button_vb.click(self.video_blender_save_project,
             inputs=[input_project_name_vb, input_project_path_vb, input_path1_vb, input_path2_vb],
-                show_progress=False)
+            outputs=[projects_dropdown_vb],
+            show_progress=False)
         load_button_vb.click(self.video_blender_load,
             inputs=[input_project_path_vb, input_path1_vb, input_path2_vb],
             outputs=[tabs_video_blender, input_text_frame_vb, output_img_path1_vb,
@@ -193,11 +250,6 @@ class VideoBlender(TabBase):
             outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
                 output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb],
                 show_progress=False)
-        # go_button_vb.click(self.video_blender_goto_frame,
-        #     inputs=[input_text_frame_vb],
-        #     outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-        #         output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb],
-        #         show_progress=False)
         input_text_frame_vb.submit(self.video_blender_goto_frame,
             inputs=[input_text_frame_vb],
             outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
@@ -246,6 +298,19 @@ class VideoBlender(TabBase):
             outputs=[tabs_video_blender, fixed_path_ff])
         render_video_vb.click(self.video_blender_render_preview,
             inputs=[preview_path_vb, input_frame_rate_vb], outputs=[video_preview_vb])
+        step1_enabled.change(self.video_blender_new_project_ui_switch,
+            inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
+            outputs=[step1_input, step2_input, step3_input], show_progress=False)
+        step2_enabled.change(self.video_blender_new_project_ui_switch,
+            inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
+            outputs=[step1_input, step2_input, step3_input], show_progress=False)
+        step3_enabled.change(self.video_blender_new_project_ui_switch,
+            inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
+            outputs=[step1_input, step2_input, step3_input], show_progress=False)
+        new_project_button.click(self.video_blender_new_project,
+            inputs=[new_project_name, new_project_path, step1_enabled, step2_enabled, step3_enabled,
+                step4_enabled, step1_input, step2_input, step3_input, new_project_frame_rate],
+            outputs=projects_dropdown_vb, show_progress=False)
 
     def video_blender_load(self, project_path, frames_path1, frames_path2):
         """Open Project button handler"""
@@ -260,6 +325,8 @@ class VideoBlender(TabBase):
         """Save Project button handler"""
         self.video_blender_projects.save_project(project_name, project_path, frames1_path,
             frames2_path)
+        return gr.update(choices=self.video_blender_projects.get_project_names(),
+                         value=project_name)
 
     def video_blender_choose_project(self, project_name):
         """Load Project button handler"""
@@ -292,8 +359,6 @@ class VideoBlender(TabBase):
         """Frame count change handler"""
         frame = int(frame)
         frame = 0 if frame < 0 else frame
-        # frames = self.video_blender_state.goto_frame(frame)
-        # return frames[0], frames[1], frames[2], frames[3], frames[4]
         return tuple(self.video_blender_state.goto_frame(frame))
 
     def video_blender_skip_next(self, frame : str):
@@ -407,3 +472,157 @@ class VideoBlender(TabBase):
             PNGtoMP4(input_path, "auto", int(frame_rate), output_filepath,
                 crf=QUALITY_SMALLER_SIZE)
             return output_filepath
+
+    def video_blender_new_project_ui_switch(self,
+                                            step1_enabled,
+                                            step2_enabled,
+                                            step3_enabled,
+                                            step4_enabled):
+        step1_path_enabled_mp4 = step1_enabled
+        step1_path_enabled_png = not step1_enabled
+        step2_path_enabled = not step2_enabled
+        step3_path_enabled = not step3_enabled
+        _ = step4_enabled
+
+        step1_path_label = "MP4 Path" if step1_path_enabled_mp4 else "Source Frames Path"
+        step1_path_placeholder = "Path on this server to the source MP4 file"\
+            if step1_path_enabled_mp4 else "Path on this server to the source PNG frame files"
+
+        step2_path_label = "Repair Frames Path" if step2_path_enabled else "n/a"
+        step2_path_placeholder = "Path on this server to the repair frames"\
+            if step2_path_enabled else "Repair frames set will be automatically created"
+
+        step3_path_label = "Project Frames Path" if step3_path_enabled else "n/a"
+        step3_path_placeholder = "Path on this server to the project restored frames"\
+            if step3_path_enabled else "Restored frames set will be automatically created"
+
+        return gr.update(interactive=step1_path_enabled_mp4 or step1_path_enabled_png,
+                         label=step1_path_label, placeholder=step1_path_placeholder),\
+            gr.update(interactive=step2_path_enabled, label=step2_path_label,
+                      placeholder=step2_path_placeholder),\
+            gr.update(interactive=step3_path_enabled, label=step3_path_label,
+                      placeholder=step3_path_placeholder)
+
+    def video_blender_new_project_can_proceed(self,
+                                              new_project_name,
+                                              new_project_path,
+                                              step1_enabled,
+                                              step2_enabled,
+                                              step3_enabled,
+                                              step4_enabled,
+                                              step1_path,
+                                              step2_path,
+                                              step3_path):
+        basic_can_proceed = new_project_name and new_project_path
+        step1_can_proceed = True if step1_path else False
+        step2_can_proceed = step2_enabled or step2_path
+        step3_can_proceed = step3_enabled or step3_path
+        step4_can_proceed = True
+        can_proceed = [basic_can_proceed, step1_can_proceed, step2_can_proceed, step3_can_proceed,
+                       step4_can_proceed]
+        return any(can_proceed) and all(can_proceed)
+
+    def video_blender_new_project(self,
+                                  new_project_name,
+                                  new_project_path,
+                                  step1_enabled,
+                                  step2_enabled,
+                                  step3_enabled,
+                                  step4_enabled,
+                                  step1_path,
+                                  step2_path,
+                                  step3_path,
+                                  step1_frame_rate):
+        if self.video_blender_new_project_can_proceed(new_project_name, new_project_path,
+                step1_enabled, step2_enabled, step3_enabled, step4_enabled, step1_path, step2_path,
+                step3_path):
+
+            self.log(f"creating project base directory {new_project_path}")
+            create_directory(new_project_path)
+
+            if step1_enabled:
+                source_frames_path = os.path.join(new_project_path, "SOURCE")
+                self.log(f"creating source frames directory {source_frames_path}")
+                create_directory(source_frames_path)
+            else:
+                source_frames_path = step1_path
+                self.log(f"using custom source frames directory {source_frames_path}")
+
+            if step2_enabled:
+                resynth_frames_path = os.path.join(new_project_path, "RESYNTH")
+                self.log(f"creating repair frames directory {resynth_frames_path}")
+                create_directory(resynth_frames_path)
+            else:
+                resynth_frames_path = step2_path
+                self.log(f"using custom repair frames directory {resynth_frames_path}")
+
+            if step3_enabled:
+                restored_frames_path = os.path.join(new_project_path, "RESTORED")
+                self.log(f"creating restored frames directory {restored_frames_path}")
+                create_directory(restored_frames_path)
+            else:
+                restored_frames_path = step3_path
+                self.log(f"using custom restored frames directory {restored_frames_path}")
+
+            if step1_enabled:
+                output_pattern = "source_frame%09d.png"
+                self.log(f"using FFmpeg to create PNG frames from input video {step1_path}")
+                ffmpeg_cmd = MP4toPNG(step1_path, output_pattern, int(step1_frame_rate),
+                                      source_frames_path)
+                self.log(ffmpeg_cmd)
+            else:
+                self.log(f"skipping creating PNG frames, using frames from {source_frames_path}")
+
+            if step2_enabled:
+                interpolater = Interpolate(self.engine.model, self.log)
+                use_time_step = self.config.use_time_step
+                deep_interpolater = DeepInterpolate(interpolater, use_time_step, self.log)
+                series_interpolater = InterpolateSeries(deep_interpolater, self.log)
+                output_basename = "repair_frame"
+                file_list = get_files(source_frames_path, extension="png")
+                self.log(f"beginning series of frame recreations at {resynth_frames_path}")
+                series_interpolater.interpolate_series(file_list, resynth_frames_path, 1,
+                                                       output_basename, offset=2)
+                self.log(f"auto-resequencing recreated frames at {resynth_frames_path}")
+                ResequenceFiles(resynth_frames_path, "png", "repair_frame", 1, 1, -1, True,
+                    self.log).resequence()
+            else:
+                self.log(
+                    f"skipping creating repair frames, using frames from {resynth_frames_path}")
+
+            if step3_enabled:
+                self.log(
+                f"duplicating source frames from {source_frames_path} to {restored_frames_path}")
+                duplicate_directory(source_frames_path, restored_frames_path)
+            else:
+                self.log(
+                f"skipping creation of restored frames, using frames from {restored_frames_path}")
+
+            if step4_enabled:
+                self.log("synchronizing frame sets")
+
+                source_files = sorted(get_files(source_frames_path, "png"))
+                frame0_file = source_files[0]
+                self.log(f"deleting file {frame0_file}")
+                os.remove(frame0_file)
+
+                restored_files = sorted(get_files(restored_frames_path, "png"))
+                frame0_file = restored_files[0]
+                self.log(f"deleting file {frame0_file}")
+                os.remove(frame0_file)
+
+                self.log(f"resequencing source files in {source_frames_path}")
+                ResequenceFiles(source_frames_path, "png", "source_frame", 1, 1, -1, True,
+                    self.log).resequence()
+
+                self.log(f"resequencing restored files in {restored_frames_path}")
+                ResequenceFiles(restored_frames_path, "png", "source_frame", 1, 1, -1, True,
+                    self.log).resequence()
+            else:
+                self.log("skipping synchronization of frame sets")
+
+            self.log(f"saving new project {new_project_name}")
+            self.video_blender_projects.save_project(new_project_name, restored_frames_path,
+                                                     source_frames_path, resynth_frames_path)
+
+            return gr.update(choices=self.video_blender_projects.get_project_names())

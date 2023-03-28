@@ -38,6 +38,7 @@ def PNGtoMP4(input_path : str, # pylint: disable=invalid-name
     return cmd
 
 # ffmpeg -y -i frames.mp4 -filter:v fps=25 -pix_fmt rgba -start_number 0 output_%09d.png
+# ffmpeg -y -i frames.mp4 -filter:v fps=25 -start_number 0 output_%09d.png
 def MP4toPNG(input_path : str,  # pylint: disable=invalid-name
             filename_pattern : str,
             frame_rate : int,
@@ -46,7 +47,7 @@ def MP4toPNG(input_path : str,  # pylint: disable=invalid-name
     """Encapsulate logic for the MP4 to PNG Sequence feature"""
     ffcmd = FFmpeg(inputs= {input_path : None},
         outputs={os.path.join(output_path, filename_pattern) :
-            f"-filter:v fps={frame_rate} -pix_fmt rgba -start_number {start_number}"},
+            f"-filter:v fps={frame_rate} -start_number {start_number}"},
         global_options="-y")
     cmd = ffcmd.cmd
     ffcmd.run()
@@ -101,9 +102,9 @@ def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
     # ffmpeg -y -i images\example.gif -start_number 0 gifframes_%09d.png
     _, base_filename, extension = split_filepath(input_path)
 
-    if extension.lower() is ".gif":
+    if extension.lower() == ".gif":
         frame_count = gif_frame_count(input_path)
-    elif extension.lower() is ".mp4":
+    elif extension.lower() == ".mp4":
         frame_count = mp4_frame_count(input_path)
     else:
         # assume an arbitrarily high frame count to ensure a wide index

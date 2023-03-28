@@ -10,6 +10,7 @@ class SimpleIcons:
     OPEN_FOLDER = "📂"
 
     DIVIDE = "➗"
+    FOUR = "4️⃣"
     GEAR = "⚙️"
     INFO = "ℹ️"
     LEFTRIGHT_ARROW = "↔️"
@@ -27,6 +28,7 @@ class SimpleIcons:
     BELL = "🔔"
     NO_BELL = "🔕"
     BULB = "💡"
+    BUILDING = "🏗️"
     CONSTRUCTION = "🚧"
     CONTROLS = "🎛️"
     DATE = "📅"
@@ -78,6 +80,7 @@ class SimpleIcons:
     ROBOT = "🤖"
     ROCKET = "🚀"
     SCROLL = "📜"
+    SEEDLING = "🌱"
     SOAP = "🧼"
     STILL = "⚗️"
     SWEAT = "💦"
@@ -104,6 +107,7 @@ class SimpleIcons:
         DIVIDE,
         FILM,
         FOLDER,
+        FOUR,
         GEAR,
         GEMSTONE,
         GLOBE,
@@ -120,6 +124,7 @@ class SimpleIcons:
         PROPERTIES,
         ROCKET,
         SCROLL,
+        SEEDLING,
         STILL,
         TELEVISION,
         THREE,

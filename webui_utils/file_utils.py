@@ -1,7 +1,9 @@
 """Functions for dealing with files"""
 import os
+import shutil
 import glob
 from zipfile import ZipFile
+from tqdm import tqdm
 
 def is_safe_path(path : str | None):
     if isinstance(path, (str, type(None))):
@@ -28,6 +30,31 @@ def create_directories(dirs : dict):
     """Create directories stored as dict values"""
     for key in dirs.keys():
         create_directory(dirs[key])
+
+_duplicate_directory_progress = None
+def _copy(source_path, dest_path):
+    global _duplicate_directory_progress
+    retval = shutil.copy(source_path, dest_path)
+    _duplicate_directory_progress.update()
+    _duplicate_directory_progress.refresh()
+    return retval
+
+def duplicate_directory(source_dir, dest_dir):
+    global _duplicate_directory_progress
+    if source_dir == dest_dir:
+        raise ValueError("'source_dir' and 'dest_dir' must be different")
+    if not is_safe_path(source_dir):
+        raise ValueError("'source_dir' must be a legal path")
+    if not is_safe_path(dest_dir):
+        raise ValueError("'dest_dir' must be a legal path")
+    if not os.path.exists(source_dir):
+        raise ValueError("'source_dir' was not found")
+    create_directory(dest_dir)
+
+    count = len(get_files(source_dir))
+    _duplicate_directory_progress = tqdm(range(count), desc="Files Copied")
+    shutil.copytree(source_dir, dest_dir, copy_function=_copy, dirs_exist_ok=True)
+    _duplicate_directory_progress.close()
 
 def _get_files(path : str):
     entries = glob.glob(path)
