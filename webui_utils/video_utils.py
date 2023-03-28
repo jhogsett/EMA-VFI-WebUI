@@ -102,9 +102,9 @@ def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
     # ffmpeg -y -i images\example.gif -start_number 0 gifframes_%09d.png
     _, base_filename, extension = split_filepath(input_path)
 
-    if extension.lower() is ".gif":
+    if extension.lower() == ".gif":
         frame_count = gif_frame_count(input_path)
-    elif extension.lower() is ".mp4":
+    elif extension.lower() == ".mp4":
         frame_count = mp4_frame_count(input_path)
     else:
         # assume an arbitrarily high frame count to ensure a wide index
