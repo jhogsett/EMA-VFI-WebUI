@@ -52,6 +52,11 @@ class VideoBlender(TabBase):
                                 save_project_button_vb = gr.Button(SimpleIcons.PROP_SYMBOL +
                                     " Save").style(full_width=False)
                     with gr.Row():
+                        input_main_path = gr.Textbox(label="Project Main Path",
+                                                     placeholder="Root path for the project")
+                        input_project_frame_rate = gr.Slider(minimum=1, maximum=60,
+                                                    value=frame_rate, step=1, label="Frame Rate")
+                    with gr.Row():
                         input_project_path_vb = gr.Textbox(label="Project Frames Path",
                             placeholder="Path to frame PNG files for video being restored")
                     with gr.Row():
@@ -229,10 +234,11 @@ class VideoBlender(TabBase):
         projects_dropdown_vb.change(self.video_blender_choose_project,
             inputs=[projects_dropdown_vb],
             outputs=[input_project_name_vb, input_project_path_vb, input_path1_vb,
-                input_path2_vb],
+                input_path2_vb, input_main_path, input_project_frame_rate],
             show_progress=False)
         save_project_button_vb.click(self.video_blender_save_project,
-            inputs=[input_project_name_vb, input_project_path_vb, input_path1_vb, input_path2_vb],
+            inputs=[input_project_name_vb, input_project_path_vb, input_path1_vb, input_path2_vb,
+                    input_main_path, input_project_frame_rate],
             outputs=[projects_dropdown_vb],
             show_progress=False)
         load_button_vb.click(self.video_blender_load,
@@ -321,10 +327,12 @@ class VideoBlender(TabBase):
                                     project_name : str,
                                     project_path : str,
                                     frames1_path : str,
-                                    frames2_path : str):
+                                    frames2_path : str,
+                                    main_path : str,
+                                    fps : str):
         """Save Project button handler"""
         self.video_blender_projects.save_project(project_name, project_path, frames1_path,
-            frames2_path)
+            frames2_path, main_path, fps)
         return gr.update(choices=self.video_blender_projects.get_project_names(),
                          value=project_name)
 
@@ -333,8 +341,20 @@ class VideoBlender(TabBase):
         if project_name:
             dictobj = self.video_blender_projects.load_project(project_name)
             if dictobj:
-                return dictobj["project_name"], dictobj["project_path"], \
-                    dictobj["frames1_path"], dictobj["frames2_path"]
+                if "main_path" in dictobj and dictobj["main_path"]:
+                    main_path = dictobj["main_path"]
+                else:
+                    main_path, _ = os.path.split(dictobj["project_path"])
+                if "fps" in dictobj and dictobj["fps"]:
+                    fps = dictobj["fps"]
+                else:
+                    fps = 30
+                return dictobj["project_name"], \
+                    dictobj["project_path"], \
+                    dictobj["frames1_path"], \
+                    dictobj["frames2_path"], \
+                    main_path, \
+                    fps
         return
 
     def video_blender_prev_frame(self, frame : str):
