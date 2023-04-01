@@ -119,3 +119,27 @@ class VideoBlenderState:
         """Set the current frame and get a set of frame files for Frame Chooser UI"""
         self.current_frame = frame
         return self.get_frame_files(frame)
+
+    EVENT_FIELD_NAMES = ["event_type", "first_frame", "last_frame", "data"]
+    EVENT_TYPE_USE_PATH1_FRAME = "use_path1_frame"
+    EVENT_TYPE_USE_PATH2_FRAME = "use_path2_frame"
+    EVENT_TYPE_APPLY_FIXED_FRAMES = "apply_fixed_frames"
+
+    def record_event(self,
+                     event_type : str,
+                     first_affected_frame : int,
+                     last_affected_frame : int,
+                     data : str):
+        self.append_edit_record([event_type, first_affected_frame, last_affected_frame, data])
+
+    def append_edit_record(self, row : list):
+        edits_file = os.path.join(self.main_path, "edits.csv")
+        if os.path.exists(edits_file):
+            with open(edits_file, "a", encoding="utf-8", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(row)
+        else:
+            with open(edits_file, "w", encoding="utf-8", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(self.EVENT_FIELD_NAMES)
+                writer.writerow(row)

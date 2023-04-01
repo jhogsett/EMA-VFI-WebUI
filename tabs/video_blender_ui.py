@@ -403,6 +403,9 @@ class VideoBlender(TabBase):
             frame)
         self.log(f"copying {from_filepath} to {to_filepath}")
         shutil.copy(from_filepath, to_filepath)
+        description = f"source_file: {from_filepath}"
+        self.video_blender_state.record_event(VideoBlenderState.EVENT_TYPE_USE_PATH1_FRAME, frame,
+                                              frame, description)
         frame += 1
         return frame, *self.video_blender_state.goto_frame(frame)
 
@@ -415,6 +418,9 @@ class VideoBlender(TabBase):
             frame)
         self.log(f"copying {from_filepath} to {to_filepath}")
         shutil.copy(from_filepath, to_filepath)
+        description = f"source_file: {from_filepath}"
+        self.video_blender_state.record_event(VideoBlenderState.EVENT_TYPE_USE_PATH2_FRAME, frame,
+                                              frame, description)
         frame += 1
         return frame, *self.video_blender_state.goto_frame(frame)
 
@@ -443,7 +449,8 @@ class VideoBlender(TabBase):
             use_time_step = self.config.use_time_step
             frame_restorer = RestoreFrames(interpolater, target_interpolater, use_time_step,
                                            self.log)
-            base_output_path = self.config.directories["output_blender"]
+
+            base_output_path = os.path.join(self.video_blender_state.main_path, "frame_fixer")
             create_directory(base_output_path)
             output_path, run_index = AutoIncrementDirectory(base_output_path).next_directory("run")
             output_basename = "fixed_frames"
@@ -479,6 +486,12 @@ class VideoBlender(TabBase):
                 self.log(f"copying {file} to {project_file}")
                 shutil.copy(file, project_file)
                 frame += 1
+            first_frame = before_frame + 1
+            last_frame = before_frame + len(fixed_frames)
+            description = f"source_path: {fixed_frames_path}"
+            self.video_blender_state.record_event(VideoBlenderState.EVENT_TYPE_APPLY_FIXED_FRAMES,
+                                                  first_frame, last_frame, description)
+
             return gr.update(selected=1), None
         return gr.update(selected=2), None
 
