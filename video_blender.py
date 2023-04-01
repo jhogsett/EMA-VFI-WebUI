@@ -83,7 +83,12 @@ class VideoBlenderState:
     FRAMES1_PATH = 1
     FRAMES2_PATH = 2
 
-    def __init__(self, project_path : str, frames_path1 : str, frames_path2 : str):
+    def __init__(self,
+                 project_path : str,
+                 frames_path1 : str,
+                 frames_path2 : str,
+                 main_path : str,
+                 fps : str):
         self.project_path = project_path
         self.frames_path1 = frames_path1
         self.frames_path2 = frames_path2
@@ -93,6 +98,8 @@ class VideoBlenderState:
             VideoBlenderPath(frames_path1),
             VideoBlenderPath(frames_path2)
             ]
+        self.main_path = main_path
+        self.fps = int(fps)
 
     def get_frame_file(self, which_path : int, frame : int):
         """Get a frame file given a frame number and project path type"""

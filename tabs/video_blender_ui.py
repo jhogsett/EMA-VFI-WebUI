@@ -242,7 +242,8 @@ class VideoBlender(TabBase):
             outputs=[projects_dropdown_vb],
             show_progress=False)
         load_button_vb.click(self.video_blender_load,
-            inputs=[input_project_path_vb, input_path1_vb, input_path2_vb],
+            inputs=[input_project_path_vb, input_path1_vb, input_path2_vb, input_main_path,
+                    input_project_frame_rate],
             outputs=[tabs_video_blender, input_text_frame_vb, output_img_path1_vb,
                 output_prev_frame_vb, output_curr_frame_vb, output_next_frame_vb,
                 output_img_path2_vb], show_progress=False)
@@ -318,9 +319,10 @@ class VideoBlender(TabBase):
                 step4_enabled, step1_input, step2_input, step3_input, new_project_frame_rate],
             outputs=projects_dropdown_vb, show_progress=False)
 
-    def video_blender_load(self, project_path, frames_path1, frames_path2):
+    def video_blender_load(self, project_path, frames_path1, frames_path2, main_path, fps):
         """Open Project button handler"""
-        self.video_blender_state = VideoBlenderState(project_path, frames_path1, frames_path2)
+        self.video_blender_state = VideoBlenderState(project_path, frames_path1, frames_path2,
+                                                     main_path, fps)
         return gr.update(selected=1), 0, *self.video_blender_state.goto_frame(0)
 
     def video_blender_save_project(self,
