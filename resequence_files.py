@@ -1,4 +1,4 @@
-"""Resequence Files Featuer Core Code"""
+"""Resequence Files Feature Core Code"""
 import os
 import shutil
 import glob
