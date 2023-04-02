@@ -302,7 +302,9 @@ class VideoBlender(TabBase):
             outputs=[preview_image_ff, fixed_path_ff])
         use_fixed_button_ff.click(self.video_blender_used_fixed,
             inputs=[project_path_ff, fixed_path_ff, input_clean_before_ff],
-            outputs=[tabs_video_blender, fixed_path_ff])
+            outputs=[tabs_video_blender, fixed_path_ff, input_text_frame_vb, output_img_path1_vb,
+                output_prev_frame_vb,output_curr_frame_vb, output_next_frame_vb,
+                output_img_path2_vb])
         render_video_vb.click(self.video_blender_render_preview,
             inputs=[preview_path_vb, input_frame_rate_vb], outputs=[video_preview_vb])
         step1_enabled.change(self.video_blender_new_project_ui_switch,
@@ -491,9 +493,10 @@ class VideoBlender(TabBase):
             description = f"source_path: {fixed_frames_path}"
             self.video_blender_state.record_event(VideoBlenderState.EVENT_TYPE_APPLY_FIXED_FRAMES,
                                                   first_frame, last_frame, description)
-
-            return gr.update(selected=1), None
-        return gr.update(selected=2), None
+            return gr.update(selected=1), None, before_frame + 1, \
+                *self.video_blender_state.goto_frame(before_frame + 1)
+        return gr.update(selected=2), None, before_frame + 1, \
+            *self.video_blender_state.goto_frame(before_frame + 1)
 
     def video_blender_preview_video(self, input_path : str):
         """Preview Video button handler"""
