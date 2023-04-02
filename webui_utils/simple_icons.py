@@ -83,6 +83,7 @@ class SimpleIcons:
     SCROLL = "📜"
     SEEDLING = "🌱"
     SOAP = "🧼"
+    SPONGE = "🧽"
     STILL = "⚗️"
     SWEAT = "💦"
     TWO_HEARTS = "💕"
@@ -127,6 +128,7 @@ class SimpleIcons:
         ROCKET,
         SCROLL,
         SEEDLING,
+        SPONGE,
         STILL,
         TELEVISION,
         THREE,
