@@ -18,6 +18,7 @@ class SimpleIcons:
     NUMBERS = "🔢"
     ONE = "1️⃣"
     QUESTION = "❓"
+    RECYCLE = "♻️"
     RIGHT_ARROW = "➡️"
     SCISSORS = "✂️"
     THREE = "3️⃣"
@@ -122,6 +123,7 @@ class SimpleIcons:
         NUMBERS,
         ONE,
         PROPERTIES,
+        RECYCLE,
         ROCKET,
         SCROLL,
         SEEDLING,

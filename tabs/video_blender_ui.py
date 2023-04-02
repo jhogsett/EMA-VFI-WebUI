@@ -231,6 +231,15 @@ class VideoBlender(TabBase):
                     new_project_button = gr.Button("Create New Project " + SimpleIcons.SLOW_SYMBOL,
                                                    variant="primary")
 
+                ### RESET PROJECT
+                with gr.Tab(SimpleIcons.RECYCLE + "Reset Project", id=5):
+                    with gr.Row():
+                        choices = self.video_blender_projects.get_project_names()
+                        reset_project_dropdown = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
+                            " Projects", choices=choices, value=choices[0])
+                    with gr.Row():
+                        reset_project_button = gr.Button("Reset Project", variant="primary")
+
         projects_dropdown_vb.change(self.video_blender_choose_project,
             inputs=[projects_dropdown_vb],
             outputs=[input_project_name_vb, input_project_path_vb, input_path1_vb,
@@ -320,6 +329,12 @@ class VideoBlender(TabBase):
             inputs=[new_project_name, new_project_path, step1_enabled, step2_enabled, step3_enabled,
                 step4_enabled, step1_input, step2_input, step3_input, new_project_frame_rate],
             outputs=projects_dropdown_vb, show_progress=False)
+        reset_project_button.click(self.video_blender_reset_project,
+            inputs=reset_project_dropdown,
+            outputs=[tabs_video_blender, new_project_name, new_project_path, step1_enabled,
+                step1_input, step2_enabled, step2_input, step3_enabled, step3_input, step4_enabled,
+                new_project_frame_rate],
+            show_progress=False)
 
     def video_blender_load(self, project_path, frames_path1, frames_path2, main_path, fps):
         """Open Project button handler"""
@@ -345,20 +360,12 @@ class VideoBlender(TabBase):
         if project_name:
             dictobj = self.video_blender_projects.load_project(project_name)
             if dictobj:
-                if "main_path" in dictobj and dictobj["main_path"]:
-                    main_path = dictobj["main_path"]
-                else:
-                    main_path, _ = os.path.split(dictobj["project_path"])
-                if "fps" in dictobj and dictobj["fps"]:
-                    fps = dictobj["fps"]
-                else:
-                    fps = 30
                 return dictobj["project_name"], \
                     dictobj["project_path"], \
                     dictobj["frames1_path"], \
                     dictobj["frames2_path"], \
-                    main_path, \
-                    fps
+                    dictobj["main_path"], \
+                    dictobj["fps"]
         return
 
     def video_blender_prev_frame(self, frame : str):
@@ -628,6 +635,17 @@ class VideoBlender(TabBase):
                 self.log(
                     f"skipping creating repair frames, using frames from {resynth_frames_path}")
 
+            if step1_enabled and step2_enabled:
+                # If PNG frames were extracted from a video, and repair frames were synthesized,
+                # there are now two extra frames in the source set not present in the repair set:
+                # the outermost frames. Remove frame #0 from the source set so the sets can
+                # remain in sync
+                source_files = sorted(get_files(source_frames_path, "png"))
+                frame0_file = source_files[0]
+                self.log(
+                    f"deleting soure file {frame0_file} that cannot be sync with the repair set")
+                os.remove(frame0_file)
+
             if step3_enabled:
                 self.log(
                 f"duplicating source frames from {source_frames_path} to {restored_frames_path}")
@@ -639,28 +657,39 @@ class VideoBlender(TabBase):
             if step4_enabled:
                 self.log("synchronizing frame sets")
 
-                source_files = sorted(get_files(source_frames_path, "png"))
-                frame0_file = source_files[0]
-                self.log(f"deleting file {frame0_file}")
-                os.remove(frame0_file)
-
-                restored_files = sorted(get_files(restored_frames_path, "png"))
-                frame0_file = restored_files[0]
-                self.log(f"deleting file {frame0_file}")
-                os.remove(frame0_file)
-
                 self.log(f"resequencing source files in {source_frames_path}")
-                ResequenceFiles(source_frames_path, "png", "source_frame", 1, 1, -1, True,
+                ResequenceFiles(source_frames_path, "png", "source_frame", 0, 1, -1, True,
                     self.log).resequence()
 
                 self.log(f"resequencing restored files in {restored_frames_path}")
-                ResequenceFiles(restored_frames_path, "png", "source_frame", 1, 1, -1, True,
+                ResequenceFiles(restored_frames_path, "png", "source_frame", 0, 1, -1, True,
+                    self.log).resequence()
+
+                self.log(f"resequencing resynthesized files in {resynth_frames_path}")
+                ResequenceFiles(resynth_frames_path, "png", "repair_frame", 0, 1, -1, True,
                     self.log).resequence()
             else:
                 self.log("skipping synchronization of frame sets")
 
             self.log(f"saving new project {new_project_name}")
             self.video_blender_projects.save_project(new_project_name, restored_frames_path,
-                                                     source_frames_path, resynth_frames_path)
+                                                     source_frames_path, resynth_frames_path,
+                                                     new_project_path, step1_frame_rate)
 
             return gr.update(choices=self.video_blender_projects.get_project_names())
+
+    def video_blender_reset_project(self, project_name : str):
+        if project_name:
+            dictobj = self.video_blender_projects.load_project(project_name)
+            if dictobj:
+                return gr.update(selected=4), \
+                    dictobj["project_name"], \
+                    dictobj["main_path"], \
+                    False, \
+                    dictobj["frames1_path"], \
+                    False, \
+                    dictobj["frames2_path"], \
+                    True, \
+                    dictobj["project_path"], \
+                    True, \
+                    dictobj["fps"]

@@ -38,6 +38,11 @@ class VideoBlenderProjects:
             entries = list(reader)
             for entry in entries:
                 project_name = entry["project_name"]
+                # new fields added after first version:
+                if "main_path" not in entry or not entry["main_path"]:
+                    entry["main_path"], _ = os.path.split(entry["project_path"])
+                if "fps" not in entry or not entry["fps"]:
+                    entry["fps"] = "30"
                 self.projects[project_name] = entry
 
     def write_projects(self):
