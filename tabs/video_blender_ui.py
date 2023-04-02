@@ -19,6 +19,7 @@ from resequence_files import ResequenceFiles
 from restore_frames import RestoreFrames
 from video_blender import VideoBlenderState, VideoBlenderProjects
 from tabs.tab_base import TabBase
+from simplify_png_files import SimplifyPngFiles
 
 class VideoBlender(TabBase):
     """Encapsulates UI elements and events for the Video Blender eature"""
@@ -670,6 +671,16 @@ class VideoBlender(TabBase):
                     self.log).resequence()
             else:
                 self.log("skipping synchronization of frame sets")
+
+            if self.config.blender_settings["clean_frames"]:
+                self.log(f"cleaning source files in {source_frames_path}")
+                SimplifyPngFiles(source_frames_path, self.log).simplify()
+
+                self.log(f"cleaning restored files in {restored_frames_path}")
+                SimplifyPngFiles(restored_frames_path, self.log).simplify()
+
+                self.log(f"cleaning resynthesized files in {resynth_frames_path}")
+                SimplifyPngFiles(resynth_frames_path, self.log).simplify()
 
             self.log(f"saving new project {new_project_name}")
             self.video_blender_projects.save_project(new_project_name, restored_frames_path,
