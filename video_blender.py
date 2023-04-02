@@ -24,7 +24,7 @@ class VideoBlenderPath:
 
 class VideoBlenderProjects:
     """Manages a set of projects"""
-    FIELDS = ["project_name", "project_path", "frames1_path", "frames2_path"]
+    FIELDS = ["project_name", "project_path", "frames1_path", "frames2_path", "main_path", "fps"]
 
     def __init__(self, csvfile_path):
         self.csvfile_path = csvfile_path
@@ -57,16 +57,21 @@ class VideoBlenderProjects:
         """Load project info by project name"""
         return self.projects[project_name]
 
-    def save_project(self, project_name : str,
-                    project_path : str,
-                    frames1_path : str,
-                    frames2_path : str):
-        """Add a new saved project"""
+    def save_project(self,
+                     project_name : str,
+                     project_path : str,
+                     frames1_path : str,
+                     frames2_path : str,
+                     main_path : str | None=None,
+                     fps : str | None=None):
+        """Add a new saved / overwrite an existing project"""
         self.projects[project_name] = {
-            "project_name" : project_name,
-            "project_path" : project_path,
-            "frames1_path" : frames1_path,
-            "frames2_path" : frames2_path
+            self.FIELDS[0] : project_name,
+            self.FIELDS[1] : project_path,
+            self.FIELDS[2] : frames1_path,
+            self.FIELDS[3] : frames2_path,
+            self.FIELDS[4] : main_path,
+            self.FIELDS[5] : fps
         }
         self.write_projects()
 
@@ -78,7 +83,12 @@ class VideoBlenderState:
     FRAMES1_PATH = 1
     FRAMES2_PATH = 2
 
-    def __init__(self, project_path : str, frames_path1 : str, frames_path2 : str):
+    def __init__(self,
+                 project_path : str,
+                 frames_path1 : str,
+                 frames_path2 : str,
+                 main_path : str,
+                 fps : str):
         self.project_path = project_path
         self.frames_path1 = frames_path1
         self.frames_path2 = frames_path2
@@ -88,6 +98,8 @@ class VideoBlenderState:
             VideoBlenderPath(frames_path1),
             VideoBlenderPath(frames_path2)
             ]
+        self.main_path = main_path
+        self.fps = int(fps)
 
     def get_frame_file(self, which_path : int, frame : int):
         """Get a frame file given a frame number and project path type"""
@@ -107,3 +119,27 @@ class VideoBlenderState:
         """Set the current frame and get a set of frame files for Frame Chooser UI"""
         self.current_frame = frame
         return self.get_frame_files(frame)
+
+    EVENT_FIELD_NAMES = ["event_type", "first_frame", "last_frame", "data"]
+    EVENT_TYPE_USE_PATH1_FRAME = "use_path1_frame"
+    EVENT_TYPE_USE_PATH2_FRAME = "use_path2_frame"
+    EVENT_TYPE_APPLY_FIXED_FRAMES = "apply_fixed_frames"
+
+    def record_event(self,
+                     event_type : str,
+                     first_affected_frame : int,
+                     last_affected_frame : int,
+                     data : str):
+        self.append_edit_record([event_type, first_affected_frame, last_affected_frame, data])
+
+    def append_edit_record(self, row : list):
+        edits_file = os.path.join(self.main_path, "edits.csv")
+        if os.path.exists(edits_file):
+            with open(edits_file, "a", encoding="utf-8", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(row)
+        else:
+            with open(edits_file, "w", encoding="utf-8", newline="") as csvfile:
+                writer = csv.writer(csvfile)
+                writer.writerow(self.EVENT_FIELD_NAMES)
+                writer.writerow(row)
