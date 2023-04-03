@@ -19,6 +19,7 @@ from resequence_files import ResequenceFiles
 from restore_frames import RestoreFrames
 from video_blender import VideoBlenderState, VideoBlenderProjects
 from tabs.tab_base import TabBase
+from simplify_png_files import SimplifyPngFiles
 
 class VideoBlender(TabBase):
     """Encapsulates UI elements and events for the Video Blender eature"""
@@ -248,7 +249,7 @@ class VideoBlender(TabBase):
         save_project_button_vb.click(self.video_blender_save_project,
             inputs=[input_project_name_vb, input_project_path_vb, input_path1_vb, input_path2_vb,
                     input_main_path, input_project_frame_rate],
-            outputs=[projects_dropdown_vb],
+            outputs=[projects_dropdown_vb, reset_project_dropdown],
             show_progress=False)
         load_button_vb.click(self.video_blender_load,
             inputs=[input_project_path_vb, input_path1_vb, input_path2_vb, input_main_path,
@@ -328,7 +329,7 @@ class VideoBlender(TabBase):
         new_project_button.click(self.video_blender_new_project,
             inputs=[new_project_name, new_project_path, step1_enabled, step2_enabled, step3_enabled,
                 step4_enabled, step1_input, step2_input, step3_input, new_project_frame_rate],
-            outputs=projects_dropdown_vb, show_progress=False)
+            outputs=[projects_dropdown_vb, reset_project_dropdown], show_progress=False)
         reset_project_button.click(self.video_blender_reset_project,
             inputs=reset_project_dropdown,
             outputs=[tabs_video_blender, new_project_name, new_project_path, step1_enabled,
@@ -353,7 +354,8 @@ class VideoBlender(TabBase):
         self.video_blender_projects.save_project(project_name, project_path, frames1_path,
             frames2_path, main_path, fps)
         return gr.update(choices=self.video_blender_projects.get_project_names(),
-                         value=project_name)
+                         value=project_name), \
+                gr.update(choices=self.video_blender_projects.get_project_names())
 
     def video_blender_choose_project(self, project_name):
         """Load Project button handler"""
@@ -671,12 +673,23 @@ class VideoBlender(TabBase):
             else:
                 self.log("skipping synchronization of frame sets")
 
+            if self.config.blender_settings["clean_frames"]:
+                self.log(f"cleaning source files in {source_frames_path}")
+                SimplifyPngFiles(source_frames_path, self.log).simplify()
+
+                self.log(f"cleaning restored files in {restored_frames_path}")
+                SimplifyPngFiles(restored_frames_path, self.log).simplify()
+
+                self.log(f"cleaning resynthesized files in {resynth_frames_path}")
+                SimplifyPngFiles(resynth_frames_path, self.log).simplify()
+
             self.log(f"saving new project {new_project_name}")
             self.video_blender_projects.save_project(new_project_name, restored_frames_path,
                                                      source_frames_path, resynth_frames_path,
                                                      new_project_path, step1_frame_rate)
 
-            return gr.update(choices=self.video_blender_projects.get_project_names())
+            return gr.update(choices=self.video_blender_projects.get_project_names()), \
+                gr.update(choices=self.video_blender_projects.get_project_names())
 
     def video_blender_reset_project(self, project_name : str):
         if project_name:

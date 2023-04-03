@@ -22,6 +22,7 @@ from tabs.resources_ui import Resources
 from tabs.upscale_frames_ui import UpscaleFrames
 from tabs.gif_to_mp4_ui import GIFtoMP4
 from tabs.log_viewer import LogViewer
+from tabs.simplify_png_files_ui import SimplifyPngFiles
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
@@ -51,6 +52,7 @@ def create_ui(config : SimpleConfig,
                 GIFtoPNG(config, engine, log.log).render_tab()
                 PNGtoGIF(config, engine, log.log).render_tab()
             ResequenceFiles(config, engine, log.log).render_tab()
+            SimplifyPngFiles(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             UpscaleFrames(config, engine, log.log).render_tab()
             Resources(config, engine, log.log).render_tab()
