@@ -83,3 +83,4 @@ user_interface:
   theme: "default"
   css_file: "webui.css"
   log_file: None
+  show_header: True

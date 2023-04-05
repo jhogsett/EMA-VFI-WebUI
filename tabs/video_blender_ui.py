@@ -129,8 +129,9 @@ class VideoBlender(TabBase):
                             input_text_frame_vb = gr.Number(value=0, precision=0,
                                 label="Frame Number")
 
-                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-                        WebuiTips.video_blender_frame_chooser.render()
+                    if self.config.user_interface["show_header"]:
+                        with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                            WebuiTips.video_blender_frame_chooser.render()
 
                 ### FRAME FIXER
                 with gr.Tab(SimpleIcons.HAMMER + "Frame Fixer", id=2):

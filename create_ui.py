@@ -30,11 +30,25 @@ def create_ui(config : SimpleConfig,
               restart_fn : Callable):
     """Construct the Gradio Blocks UI"""
 
+    app_header = gr.HTML(SimpleIcons.CLAPPER + "EMA-VFI Web UI", elem_id="appheading")
+    sep = '  •  '
+    _js = ('<a href="/" ' +
+        'onclick="javascript:gradioApp()' +
+        '.getElementById(\'settings_restart_gradio\').click();' +
+        'return false">Reload UI</a>')
+    footer = (SimpleIcons.COPYRIGHT + ' 2023 J. Hogsett' +
+        sep + '<a href="https://github.com/jhogsett/EMA-VFI-WebUI">Github</a>' +
+        sep + '<a href="https://github.com/MCG-NJU/EMA-VFI">EMA-VFI</a>' +
+        sep + '<a href="https://gradio.app">Gradio</a>' +
+        sep + _js)
+    app_footer = gr.HTML(footer, elem_id="footer")
+
     with gr.Blocks(analytics_enabled=False,
                     title="EMA-VFI Web UI",
                     theme=config.user_interface["theme"],
                     css=config.user_interface["css_file"]) as app:
-        gr.HTML(SimpleIcons.CLAPPER + "EMA-VFI Web UI", elem_id="appheading")
+        if config.user_interface["show_header"]:
+            app_header.render()
         FrameInterpolation(config, engine, log.log).render_tab()
         FrameSearch(config, engine, log.log).render_tab()
         VideoInflation(config, engine, log.log).render_tab()
@@ -58,15 +72,6 @@ def create_ui(config : SimpleConfig,
             Resources(config, engine, log.log).render_tab()
             Options(config, engine, log.log, restart_fn).render_tab()
             LogViewer(config, engine, log.log, log).render_tab()
-        sep = '  •  '
-        _js = ('<a href="/" ' +
-            'onclick="javascript:gradioApp()' +
-            '.getElementById(\'settings_restart_gradio\').click();' +
-            'return false">Reload UI</a>')
-        footer = (SimpleIcons.COPYRIGHT + ' 2023 J. Hogsett' +
-            sep + '<a href="https://github.com/jhogsett/EMA-VFI-WebUI">Github</a>' +
-            sep + '<a href="https://github.com/MCG-NJU/EMA-VFI">EMA-VFI</a>' +
-            sep + '<a href="https://gradio.app">Gradio</a>' +
-            sep + _js)
-        gr.HTML(footer, elem_id="footer")
+        if config.user_interface["show_header"]:
+            app_footer.render()
     return app
