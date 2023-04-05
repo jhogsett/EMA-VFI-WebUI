@@ -94,9 +94,11 @@ class VideoBlender(TabBase):
                                     precision=0)
                                 with gr.Row():
                                     fix_frames_last_before = gr.Number(
-                                        label="Last Frame Before Damage", value=0, precision=0)
+                                        label="Last Frame Before Damage", value=0, precision=0,
+                                        interactive=False)
                                     fix_frames_first_after = gr.Number(
-                                        label="First Frame After Damage", value=0, precision=0)
+                                        label="First Frame After Damage", value=0, precision=0,
+                                        interactive=False)
                                 fix_frames_button_vb = gr.Button("Go To " + SimpleIcons.HAMMER
                                                                  + " Frame Fixer")
                             with gr.Row():
@@ -317,7 +319,7 @@ class VideoBlender(TabBase):
             inputs=[project_path_ff, fixed_path_ff, input_clean_before_ff],
             outputs=[tabs_video_blender, fixed_path_ff, input_text_frame_vb, output_img_path1_vb,
                 output_prev_frame_vb,output_curr_frame_vb, output_next_frame_vb,
-                output_img_path2_vb, fix_frames_count])
+                output_img_path2_vb, fix_frames_count, preview_image_ff, fixed_path_ff])
         render_video_vb.click(self.video_blender_render_preview,
             inputs=[preview_path_vb, input_frame_rate_vb], outputs=[video_preview_vb])
         step1_enabled.change(self.video_blender_new_project_ui_switch,
@@ -506,9 +508,9 @@ class VideoBlender(TabBase):
             self.video_blender_state.record_event(VideoBlenderState.EVENT_TYPE_APPLY_FIXED_FRAMES,
                                                   first_frame, last_frame, description)
             return gr.update(selected=1), None, before_frame + 1, \
-                *self.video_blender_state.goto_frame(before_frame + 1), 0
+                *self.video_blender_state.goto_frame(before_frame + 1), 0, None, None
         return gr.update(selected=2), None, before_frame + 1, \
-            *self.video_blender_state.goto_frame(before_frame + 1), 0
+            *self.video_blender_state.goto_frame(before_frame + 1), 0, None, None
 
     def video_blender_preview_video(self, input_path : str):
         """Preview Video button handler"""
