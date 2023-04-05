@@ -149,3 +149,6 @@ temp/
 notes.txt
 test_assets/
 models!/
+ui.bat
+config-local.yaml
+my_video_blender_projects.csv
