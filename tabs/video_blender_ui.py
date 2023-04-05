@@ -254,49 +254,51 @@ class VideoBlender(TabBase):
             show_progress=False)
         load_button_vb.click(self.video_blender_load,
             inputs=[input_project_path_vb, input_path1_vb, input_path2_vb, input_main_path,
-                    input_project_frame_rate],
+                input_project_frame_rate],
             outputs=[tabs_video_blender, input_text_frame_vb, output_img_path1_vb,
                 output_prev_frame_vb, output_curr_frame_vb, output_next_frame_vb,
-                output_img_path2_vb], show_progress=False)
+                output_img_path2_vb, fix_frames_count],
+            show_progress=False)
         prev_frame_button_vb.click(self.video_blender_prev_frame,
             inputs=[input_text_frame_vb],
             outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb],
-                show_progress=False)
+                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+            show_progress=False)
         next_frame_button_vb.click(self.video_blender_next_frame,
             inputs=[input_text_frame_vb],
             outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb],
-                show_progress=False)
+                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+            show_progress=False)
         input_text_frame_vb.submit(self.video_blender_goto_frame,
             inputs=[input_text_frame_vb],
             outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb],
-                show_progress=False)
+                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+            show_progress=False)
         input_text_frame_vb.change(self.video_blender_goto_frame2,
             inputs=[input_text_frame_vb],
             outputs=[output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb],
-                show_progress=False)
+                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+            show_progress=False)
         use_path_1_button_vb.click(self.video_blender_use_path1,
             inputs=[input_text_frame_vb],
             outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb],
-                show_progress=False)
+                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+            show_progress=False)
         use_path_2_button_vb.click(self.video_blender_use_path2,
             inputs=[input_text_frame_vb],
             outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb],
-                show_progress=False)
+                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+            show_progress=False)
         prev_xframes_button_vb.click(self.video_blender_skip_prev,
             inputs=[input_text_frame_vb],
             outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb],
-                show_progress=False)
+                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+            show_progress=False)
         next_xframes_button_vb.click(self.video_blender_skip_next,
             inputs=[input_text_frame_vb],
             outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-            output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb], show_progress=False)
+                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+            show_progress=False)
         preview_video_vb.click(self.video_blender_preview_video,
             inputs=input_project_path_vb, outputs=[tabs_video_blender, preview_path_vb])
         fix_frames_count.change(self.video_blender_compute_fix_frames,
@@ -311,11 +313,11 @@ class VideoBlender(TabBase):
         preview_button_ff.click(self.video_blender_preview_fixed,
             inputs=[project_path_ff, input_clean_before_ff, input_clean_after_ff],
             outputs=[preview_image_ff, fixed_path_ff])
-        use_fixed_button_ff.click(self.video_blender_used_fixed,
+        use_fixed_button_ff.click(self.video_blender_use_fixed,
             inputs=[project_path_ff, fixed_path_ff, input_clean_before_ff],
             outputs=[tabs_video_blender, fixed_path_ff, input_text_frame_vb, output_img_path1_vb,
                 output_prev_frame_vb,output_curr_frame_vb, output_next_frame_vb,
-                output_img_path2_vb])
+                output_img_path2_vb, fix_frames_count])
         render_video_vb.click(self.video_blender_render_preview,
             inputs=[preview_path_vb, input_frame_rate_vb], outputs=[video_preview_vb])
         step1_enabled.change(self.video_blender_new_project_ui_switch,
@@ -342,7 +344,7 @@ class VideoBlender(TabBase):
         """Open Project button handler"""
         self.video_blender_state = VideoBlenderState(project_path, frames_path1, frames_path2,
                                                      main_path, fps)
-        return gr.update(selected=1), 0, *self.video_blender_state.goto_frame(0)
+        return gr.update(selected=1), 0, *self.video_blender_state.goto_frame(0), 0
 
     def video_blender_save_project(self,
                                     project_name : str,
@@ -375,36 +377,36 @@ class VideoBlender(TabBase):
         "Previous Frame button handler"
         frame = int(frame)
         frame -= 1
-        return frame, *self.video_blender_state.goto_frame(frame)
+        return frame, *self.video_blender_state.goto_frame(frame), 0
 
     def video_blender_next_frame(self, frame : str):
         """Next Frame button handler"""
         frame = int(frame)
         frame += 1
-        return frame, *self.video_blender_state.goto_frame(frame)
+        return frame, *self.video_blender_state.goto_frame(frame), 0
 
     def video_blender_goto_frame(self, frame : str):
         """Go button handler"""
         frame = int(frame)
         frame = 0 if frame < 0 else frame
-        return frame, *self.video_blender_state.goto_frame(frame)
+        return frame, *self.video_blender_state.goto_frame(frame), 0
 
     def video_blender_goto_frame2(self, frame : str):
         """Frame count change handler"""
         frame = int(frame)
         frame = 0 if frame < 0 else frame
-        return tuple(self.video_blender_state.goto_frame(frame))
+        return *self.video_blender_state.goto_frame(frame), 0
 
     def video_blender_skip_next(self, frame : str):
         """Skip Next button handler"""
         frame = int(frame) + int(self.config.blender_settings["skip_frames"])
-        return frame, *self.video_blender_state.goto_frame(frame)
+        return frame, *self.video_blender_state.goto_frame(frame), 0
 
     def video_blender_skip_prev(self, frame : str):
         """Skip Previous button handler"""
         frame = int(frame) - int(self.config.blender_settings["skip_frames"])
         frame = 0 if frame < 0 else frame
-        return frame, *self.video_blender_state.goto_frame(frame)
+        return frame, *self.video_blender_state.goto_frame(frame), 0
 
     def video_blender_use_path1(self, frame : str):
         """Use Path 1 Frame button handler"""
@@ -419,7 +421,7 @@ class VideoBlender(TabBase):
         self.video_blender_state.record_event(VideoBlenderState.EVENT_TYPE_USE_PATH1_FRAME, frame,
                                               frame, description)
         frame += 1
-        return frame, *self.video_blender_state.goto_frame(frame)
+        return frame, *self.video_blender_state.goto_frame(frame), 0
 
     def video_blender_use_path2(self, frame : str):
         """Use Path 2 Frame button handler"""
@@ -434,7 +436,7 @@ class VideoBlender(TabBase):
         self.video_blender_state.record_event(VideoBlenderState.EVENT_TYPE_USE_PATH2_FRAME, frame,
                                               frame, description)
         frame += 1
-        return frame, *self.video_blender_state.goto_frame(frame)
+        return frame, *self.video_blender_state.goto_frame(frame), 0
 
     def video_blender_compute_fix_frames(self, frame : str, damage_count : str):
         if damage_count > 0:
@@ -485,7 +487,7 @@ class VideoBlender(TabBase):
             return gr.Image.update(value=preview_gif), gr.Text.update(value=output_path,
                 visible=True)
 
-    def video_blender_used_fixed(self,
+    def video_blender_use_fixed(self,
                                 project_path : str,
                                 fixed_frames_path : str,
                                 before_frame : int):
@@ -504,9 +506,9 @@ class VideoBlender(TabBase):
             self.video_blender_state.record_event(VideoBlenderState.EVENT_TYPE_APPLY_FIXED_FRAMES,
                                                   first_frame, last_frame, description)
             return gr.update(selected=1), None, before_frame + 1, \
-                *self.video_blender_state.goto_frame(before_frame + 1)
+                *self.video_blender_state.goto_frame(before_frame + 1), 0
         return gr.update(selected=2), None, before_frame + 1, \
-            *self.video_blender_state.goto_frame(before_frame + 1)
+            *self.video_blender_state.goto_frame(before_frame + 1), 0
 
     def video_blender_preview_video(self, input_path : str):
         """Preview Video button handler"""
