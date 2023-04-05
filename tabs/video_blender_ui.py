@@ -561,6 +561,7 @@ class VideoBlender(TabBase):
                                               step1_path,
                                               step2_path,
                                               step3_path):
+
         basic_can_proceed = new_project_name and new_project_path
         step1_can_proceed = True if step1_path else False
         step2_can_proceed = step2_enabled or step2_path
@@ -689,8 +690,8 @@ class VideoBlender(TabBase):
                                                      source_frames_path, resynth_frames_path,
                                                      new_project_path, step1_frame_rate)
 
-            return gr.update(choices=self.video_blender_projects.get_project_names()), \
-                gr.update(choices=self.video_blender_projects.get_project_names())
+        return gr.update(choices=self.video_blender_projects.get_project_names()), \
+            gr.update(choices=self.video_blender_projects.get_project_names())
 
     def video_blender_reset_project(self, project_name : str):
         if project_name:
