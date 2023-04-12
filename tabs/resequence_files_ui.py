@@ -65,4 +65,4 @@ class ResequenceFiles(TabBase):
         if input_path and input_filetype and input_newname and input_start and input_step \
                 and input_zerofill:
             _ResequenceFiles(input_path, input_filetype, input_newname, int(input_start),
-                int(input_step), int(input_zerofill), input_rename_check, self.log).resequence()
+                int(input_step), 0, 1, int(input_zerofill), input_rename_check, self.log).resequence()

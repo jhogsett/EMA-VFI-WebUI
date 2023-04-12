@@ -229,7 +229,7 @@ class GIFtoMP4(TabBase):
             self.inflate_using_resampling(input_path, output_path, inflate_factor, precision)
 
         self.log(f"auto-resequencing sampled frames at {output_path}")
-        _ResequenceFiles(output_path, "png", f"resampledX{inflate_factor}", 0, 1, -1, True,
+        _ResequenceFiles(output_path, "png", f"resampledX{inflate_factor}", 0, 1, 0, 1, -1, True,
                 self.log).resequence()
 
     def convert_png_frames_to_mp4(self, input_path, output_filepath, frame_rate, quality):

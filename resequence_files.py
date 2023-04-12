@@ -6,6 +6,7 @@ import argparse
 from typing import Callable
 from tqdm import tqdm
 from webui_utils.simple_log import SimpleLog
+from webui_utils.simple_utils import create_sample_set
 
 def main():
     """Use the Resequence Files feature from the command line"""
@@ -20,6 +21,10 @@ def main():
         help="Starting index, default 0")
     parser.add_argument("--step", default=1, type=int,
         help="Index step, default is 1")
+    parser.add_argument("--stride", default=1, type=int,
+        help="Sampling stride, default 1 (sample each 1 file(s))")
+    parser.add_argument("--offset", default=0, type=int,
+        help="Sampling offset, default 0 (sample starting with 0th file)")
     parser.add_argument("--zero_fill", default=-1, type=int,
         help="Zero-filled width of new frame IDs, -1 = auto")
     parser.add_argument("--rename", dest="rename", default=False, action="store_true",
@@ -30,7 +35,7 @@ def main():
 
     log = SimpleLog(args.verbose)
     ResequenceFiles(args.path, args.file_type, args.new_name, args.start, args.step,
-        args.zero_fill, args.rename, log.log).resequence()
+        args.stride, args.offset, args.zero_fill, args.rename, log.log).resequence()
 
 class ResequenceFiles:
     """Encapsulate logic for Resequence Files feature"""
@@ -40,6 +45,8 @@ class ResequenceFiles:
                 new_base_filename : str,
                 start_index : int,
                 index_step : int,
+                sample_stride: int,
+                sample_offset: int,
                 zero_fill : int,
                 rename : bool ,
                 log_fn : Callable | None):
@@ -48,6 +55,8 @@ class ResequenceFiles:
         self.new_base_filename = new_base_filename
         self.start_index = start_index
         self.index_step = index_step
+        self.sample_stride = sample_stride if sample_stride > 0 else 1
+        self.sample_offset = sample_offset if sample_offset >= 0 else 0
         self.zero_fill = zero_fill
         self.rename = rename
         self.log_fn = log_fn
@@ -63,7 +72,8 @@ class ResequenceFiles:
         index = self.start_index
         pbar_title = "Renaming" if self.rename else "Copying"
 
-        for file in tqdm(files, desc=pbar_title):
+        sample_set = create_sample_set(files, self.sample_offset, self.sample_stride)
+        for file in tqdm(sample_set, desc=pbar_title):
             new_filename = self.new_base_filename + str(index).zfill(num_width) + "." +\
                 self.file_type
             old_filepath = file
