@@ -637,7 +637,7 @@ class VideoBlender(TabBase):
                 series_interpolater.interpolate_series(file_list, resynth_frames_path, 1,
                                                        output_basename, offset=2)
                 self.log(f"auto-resequencing recreated frames at {resynth_frames_path}")
-                ResequenceFiles(resynth_frames_path, "png", "repair_frame", 1, 1, 0, 1, -1, True,
+                ResequenceFiles(resynth_frames_path, "png", "repair_frame", 1, 1, 1, 0, -1, True,
                     self.log).resequence()
             else:
                 self.log(
@@ -666,15 +666,15 @@ class VideoBlender(TabBase):
                 self.log("synchronizing frame sets")
 
                 self.log(f"resequencing source files in {source_frames_path}")
-                ResequenceFiles(source_frames_path, "png", "source_frame", 0, 1, 0, 1, -1, True,
+                ResequenceFiles(source_frames_path, "png", "source_frame", 0, 1, 1, 0, -1, True,
                     self.log).resequence()
 
                 self.log(f"resequencing restored files in {restored_frames_path}")
-                ResequenceFiles(restored_frames_path, "png", "source_frame", 0, 1, 0, 1, -1, True,
+                ResequenceFiles(restored_frames_path, "png", "source_frame", 0, 1, 1, 0, -1, True,
                     self.log).resequence()
 
                 self.log(f"resequencing resynthesized files in {resynth_frames_path}")
-                ResequenceFiles(resynth_frames_path, "png", "repair_frame", 0, 1, 0, 1, -1, True,
+                ResequenceFiles(resynth_frames_path, "png", "repair_frame", 0, 1, 1, 0, -1, True,
                     self.log).resequence()
             else:
                 self.log("skipping synchronization of frame sets")

@@ -63,5 +63,5 @@ class ResynthesizeVideo(TabBase):
             series_interpolater.interpolate_series(file_list, output_path, 1, output_basename,
                 offset=2)
             self.log(f"auto-resequencing recreated frames at {output_path}")
-            ResequenceFiles(output_path, "png", "resynthesized_frame", 1, 1, 0, 1, -1, True,
+            ResequenceFiles(output_path, "png", "resynthesized_frame", 1, 1, 1, 0, -1, True,
                 self.log).resequence()

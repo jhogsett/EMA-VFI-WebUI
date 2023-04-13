@@ -113,5 +113,5 @@ class ChangeFPS(TabBase):
                 ending_fps, precision, f"resampled@{starting_fps}")
 
             self.log(f"auto-resequencing sampled frames at {output_path}")
-            _ResequenceFiles(base_output_path, "png", f"resampled@{ending_fps}fps", 0, 1, 0, 1, -1,
+            _ResequenceFiles(base_output_path, "png", f"resampled@{ending_fps}fps", 0, 1, 1, 0, -1,
                              True, self.log).resequence()
