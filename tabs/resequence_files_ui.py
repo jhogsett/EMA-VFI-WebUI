@@ -34,14 +34,16 @@ class ResequenceFiles(TabBase):
                             label="Base Filename")
                     with gr.Row():
                         input_start_text = gr.Text(value="0", max_lines=1,
-                            placeholder="Starting integer for the sequence",
-                            label="Starting Sequence Number")
+                            label="Starting Frame Number (usually 0)")
                         input_step_text = gr.Text(value="1", max_lines=1,
-                            placeholder="Integer step for the sequentially numbered files",
-                            label="Integer Step")
+                            label="Frame Number Step (usually 1)")
                         input_zerofill_text = gr.Text(value="-1", max_lines=1,
-                            placeholder="Padding with for sequential numbers, -1=auto",
-                            label="Number Padding")
+                            label="Frame Number Padding (-1 for auto detect)")
+                    with gr.Row():
+                        input_stride = gr.Text(value="1", max_lines=1,
+                            label="Sampling Stride (usually 1)")
+                        input_offset = gr.Text(value="0", max_lines=1,
+                            label="Sampling Offset (usually 0)")
                     with gr.Row():
                         input_rename_check = gr.Checkbox(value=False,
                             label="Rename instead of duplicate files")
@@ -50,7 +52,7 @@ class ResequenceFiles(TabBase):
                 WebuiTips.resequence_files.render()
         resequence_button.click(self.resequence_files,
             inputs=[input_path_text2, input_filetype_text, input_newname_text,
-                input_start_text, input_step_text, input_zerofill_text,
+                input_start_text, input_step_text, input_stride, input_offset, input_zerofill_text,
                 input_rename_check])
 
     def resequence_files(self,
@@ -59,10 +61,13 @@ class ResequenceFiles(TabBase):
                         input_newname : str,
                         input_start : str,
                         input_step : str,
+                        input_stride : str,
+                        input_offset : str,
                         input_zerofill : str,
                         input_rename_check : bool):
         """Resequence Button handler"""
         if input_path and input_filetype and input_newname and input_start and input_step \
                 and input_zerofill:
             _ResequenceFiles(input_path, input_filetype, input_newname, int(input_start),
-                int(input_step), 1, 0, int(input_zerofill), input_rename_check, self.log).resequence()
+                int(input_step), int(input_stride), int(input_offset), int(input_zerofill),
+                input_rename_check, self.log).resequence()
