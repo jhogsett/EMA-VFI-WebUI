@@ -111,3 +111,29 @@ def power_of_two_precision(var):
         return int(math.log2(var))
     else:
         raise ValueError(f"{var} is not a power of 2")
+
+def _should_sample(index : int, offset : int, stride : int):
+    if index < offset:
+        return False
+    # (index - offset) ensures 1: first sample gets taken,
+    # 2: sampling is synchronized to frame #0 regardless of offset
+    return (index - offset) % stride == 0
+
+def create_sample_indices(set_size : int, offset : int, stride : int):
+    if set_size < 0:
+        raise ValueError("'set_size' must be zero or positive")
+    if offset < 0:
+        raise ValueError("'offset' must be zero or positive")
+    if stride < 1:
+        raise ValueError("'stride' must be >= 1")
+    sample_indices = []
+    for index in range(set_size):
+        if _should_sample(index, offset, stride):
+            sample_indices.append(index)
+    return sample_indices
+
+def create_sample_set(samples : list, offset : int, stride : int):
+    if not isinstance(samples, list):
+        raise ValueError("'samples' must be a list")
+    sample_set = create_sample_indices(len(samples), offset, stride)
+    return [samples[index] for index in sample_set]
