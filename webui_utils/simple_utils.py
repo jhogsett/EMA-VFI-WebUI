@@ -115,6 +115,8 @@ def power_of_two_precision(var):
 def _should_sample(index : int, offset : int, stride : int):
     if index < offset:
         return False
+    # (index - offset) ensures 1: first sample gets taken,
+    # 2: sampling is synchronized to frame #0 regardless of offset
     return (index - offset) % stride == 0
 
 def create_sample_indices(set_size : int, offset : int, stride : int):
