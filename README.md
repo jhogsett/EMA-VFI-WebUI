@@ -19,6 +19,12 @@
 |:--:|:--:|
 | https://user-images.githubusercontent.com/825994/224548062-4cad649c-5cdb-4f66-936d-e2296eb0fbc8.mp4 | ![http_t0 tagstat com_image03_0_21c475648484948484881505552](https://user-images.githubusercontent.com/825994/224527434-85668d32-a363-4c9a-85c0-535341c598de.gif) |
 
+| Example - Resyntheszed Video (YouTube) |
+|:--|
+| [https://youtube.com/shorts/lKtY2CHqA98?feature=share](https://youtube.com/shorts/lKtY2CHqA98?feature=share) |
+| Upper: 8MM footage with heavy dirt and noise |
+| Lower: Same footage after using _Resynthesize Video_ |
+
 | 🎬 EMA-VFI-WebUI Features | &nbsp; |
 |:--|:--|
 | **➗ [Frame Interpolation](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Frame-Interpolation)** | _Restore Missing Frames, Reveal Hidden Motion_ |
