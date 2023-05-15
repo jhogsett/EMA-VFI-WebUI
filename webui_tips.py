@@ -45,3 +45,4 @@ class WebuiTips:
     change_fps = gr.Markdown(load_markdown(tips_path, "change_fps"))
     gif_to_mp4 = gr.Markdown(load_markdown(tips_path, "gif_to_mp4"))
     upscale_frames = gr.Markdown(load_markdown(tips_path, "upscale_frames"))
+    simplify_png_files = gr.Markdown(load_markdown(tips_path, "simplify_png_files"))
