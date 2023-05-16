@@ -24,8 +24,12 @@ Real-ESRGAN must be installed locally to use
     - Real-ESRGAN will perform upscaling when _factor_ is > 1.0
         - _Tip: It will remove dirt and noise even when not upscaling_
 1. Choose whether or not to use _Tiling_
+    - select _Auto_ to ensure all files are processed
+        - Files will be processed first for the best possible quality
+        - Files that fail to process will be redone using _tiling_ (see _Yes_ option below)
     - Select _No_ for the best quality.
         - Entire images will be upscaled at once
+        - Files that cannot be processed due to VRAM limitations will be skipped
     - Select _Yes_ if upscaling large images, or running into low VRAM conditions
         - Images will be upscaled in blocks then stiched together
         - Tiling _Size_ and _Padding_ (in pixels) are set using the config settings:
