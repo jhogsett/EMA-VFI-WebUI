@@ -77,11 +77,12 @@ class UpscaleSeries():
                         output_path : str | None,
                         outscale : float,
                         base_filename : str | None,
-                        output_type : str | None):
+                        output_type : str | None) -> dict:
         """Invoke the Upscale Frames feature"""
         file_list = sorted(file_list)
         file_count = len(file_list)
         pbar_desc = "Frame"
+        output_dict = {}
 
         for index, filepath in enumerate(tqdm(file_list, desc=pbar_desc, position=0)):
             input_path, input_filename, input_type = split_filepath(filepath)
@@ -93,18 +94,27 @@ class UpscaleSeries():
             output_path = output_path or input_path
             output_filepath = os.path.join(output_path, output_filename)
             self.log(f"upscaling by {outscale} {filepath} to {output_filepath}")
-            self.upscale_image(filepath, output_filepath, outscale)
+
+            if self.upscale_image(filepath, output_filepath, outscale):
+                output_dict[filepath] = output_filepath
+            else:
+                output_dict[filepath] = None
+
+        self.log(f"input and output paths:\n{output_dict}")
+        return output_dict
 
     def upscale_image(self,
                         input_filepath : str,
                         output_filepath : str,
-                        outscale : float):
+                        outscale : float) -> bool:
         img = cv2.imread(input_filepath, cv2.IMREAD_UNCHANGED)
         try:
             output, _ = self.upscaler.enhance(img, outscale=outscale)
             cv2.imwrite(output_filepath, output)
+            return True
         except RuntimeError as error:
             print('Real-ESRGAN Error', error)
+            return False
 
     def load_upscaler(self,
                       model_name : str,

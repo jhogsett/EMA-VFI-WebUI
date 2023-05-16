@@ -34,7 +34,7 @@ class UpscaleFrames(TabBase):
                     with gr.Row():
                         scale_input = gr.Slider(value=4.0, minimum=1.0, maximum=8.0, step=0.05,
                             label="Frame Upscale Factor")
-                        use_tiling = gr.Radio(label="Use Tiling", choices=["No (Best Quality)", "Yes (If Low VRAM)"], value="No (Best Quality)")
+                        use_tiling = gr.Radio(label="Use Tiling", choices=["Auto (Tile If Needed)", "No (Best Quality)", "Yes (For Low VRAM)"], value="Auto (Tile If Needed)")
             upscale_button = gr.Button("Upscale Frames", variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.upscale_frames.render()
@@ -47,7 +47,7 @@ class UpscaleFrames(TabBase):
             model_name = self.config.realesrgan_settings["model_name"]
             gpu_ips = self.config.gpu_ids
             fp32 = self.config.realesrgan_settings["fp32"]
-            if use_tiling[0] == "Y":
+            if use_tiling.startswith("Yes"):
                 tiling = self.config.realesrgan_settings["tiling"]
                 tile_pad = self.config.realesrgan_settings["tile_pad"]
             else:
@@ -67,5 +67,19 @@ class UpscaleFrames(TabBase):
             image_extensions = self.config.upscale_settings["file_types"]
             file_list = get_files(input_path, image_extensions)
             self.log(f"beginning series of upscaling of {image_extensions} files at {output_path}")
-            upscaler.upscale_series(file_list, output_path, upscale_factor, output_basename,
-                                    output_type)
+            output_dict = upscaler.upscale_series(file_list, output_path, upscale_factor,
+                                                  output_basename, output_type)
+            if use_tiling.startswith("Auto"):
+                file_list = [key for key in output_dict.keys() if output_dict[key] == None]
+                if file_list:
+                    self.log(
+                f"redoing upscaling with tiling for {len(file_list)} failed files at {output_path}")
+                    tiling = self.config.realesrgan_settings["tiling"]
+                    tile_pad = self.config.realesrgan_settings["tile_pad"]
+                    upscaler = UpscaleSeries(model_name, gpu_ips, fp32, tiling, tile_pad, self.log)
+                    output_dict = upscaler.upscale_series(file_list, output_path, upscale_factor,
+                                                        output_basename, output_type)
+                    file_list = [key for key in output_dict.keys() if output_dict[key] == None]
+                    if file_list:
+                        self.log(f"unable to upscale files:\n{file_list}")
+
