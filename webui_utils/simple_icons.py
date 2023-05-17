@@ -63,6 +63,7 @@ class SimpleIcons:
     WARNING = "⚠️"
 
     BALLOON = "🎈"
+    BABY = "👶"
     BOMB = "💣"
     CHERRY_BLOSSOM = "🌸"
     COOL = "🆒"

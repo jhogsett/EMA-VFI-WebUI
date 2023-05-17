@@ -1,5 +1,7 @@
 """Resynthesize Video feature UI and event handlers"""
+import os
 from typing import Callable
+import csv
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
@@ -13,38 +15,45 @@ class Resources(TabBase):
                     engine : InterpolateEngine,
                     log_fn : Callable):
         TabBase.__init__(self, config, engine, log_fn)
+        self.resources_path = self.config.user_interface["resources_path"]
 
     def render_tab(self):
         """Render page into UI"""
         with gr.Tab(SimpleIcons.GLOBE + "Resources"):
-            self.link_item("linkcontainer", "FFmpeg (Free Download)", "Download FFmpeg",
-                "https://ffmpeg.org/download.html")
-            self.link_item("linkcontainer2", "Real-ESRGAN Image/Video Restoration (Github)",
-                "Practical Algorithms for General Image/Video Restoration",
-                "https://github.com/xinntao/Real-ESRGAN")
-            self.link_item("linkcontainer", "Adobe AI-Based Speech Enhancement (Free)",
-                "Adobe Podcast (Beta) Enhance Speech", "https://podcast.adobe.com/enhance")
-            self.link_item("linkcontainer2", "Coqui TTS (Python)",
-                "Advanced Text-to-Speech generation", "https://pypi.org/project/TTS/")
-            self.link_item("linkcontainer", "Motion Array (Royalty-Free Content)",
-                "The All-in-One Video &amp; Filmmakers Platform", "https://motionarray.com/")
-            self.link_item("linkcontainer2", "",
-                "",
-                "")
-            self.link_item("linkcontainer", "",
-                "",
-                "")
-            self.link_item("linkcontainer2", "",
-                "",
-                "")
+            resources = self.load_resources()
+            if resources:
+                row_alternation = False
+                for entry in resources:
+                    icon = self.get_icon(entry["icon"])
+                    title = entry["title"]
+                    desc = entry["link_description"]
+                    url = entry["url"]
+                    css = "linkcontainer2" if row_alternation else "linkcontainer"
+                    row_alternation = not row_alternation
+                    self.link_item(css, icon, title, desc, url)
+            gr.Markdown(f"*From* `{os.path.abspath(self.resources_path)}`")
 
-    def link_item(self, container_id : str, title : str, label : str, url : str):
+    def load_resources(self) -> dict:
+       if os.path.isfile(self.resources_path):
+            reader = csv.DictReader(open(self.resources_path, encoding="utf-8"))
+            return list(reader)
+       else:
+           return None
+
+    def get_icon(self, icon : str) -> str:
+        try:
+            icon = getattr(SimpleIcons, icon.upper())
+        except:
+            icon = SimpleIcons.GLOBE
+        return icon
+
+    def link_item(self, container_id : str, icon : str, title : str, label : str, url : str):
         """Construct a resource entry row"""
         with gr.Row(variant="panel", elem_id=container_id) as row:
             gr.HTML(f"""
 <div id="{container_id}">
     <p id="linkitem">
-        {SimpleIcons.GLOBE}{title} -
+        {icon}{title}
         <a href="{url}" target="_blank">{label}</a>
     </p>
 </div>""")
