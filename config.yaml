@@ -84,3 +84,4 @@ user_interface:
   css_file: "webui.css"
   log_file: None
   show_header: True
+  resources_path: "resources.csv"
