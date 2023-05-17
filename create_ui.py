@@ -1,9 +1,9 @@
 """Create the Gradio UI elements"""
 from typing import Callable
 import gradio as gr
-from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_config import SimpleConfig
-from webui_utils.simple_log import SimpleLog
+from webui_core.simple_icons import SimpleIcons
+from webui_core.simple_config import SimpleConfig
+from webui_core.simple_log import SimpleLog
 from webui_core.interpolate_engine import InterpolateEngine
 from tabs.frame_interpolation_ui import FrameInterpolation
 from tabs.frame_search_ui import FrameSearch

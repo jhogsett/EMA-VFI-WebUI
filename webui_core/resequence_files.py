@@ -5,8 +5,8 @@ import glob
 import argparse
 from typing import Callable
 from tqdm import tqdm
-from webui_utils.simple_log import SimpleLog
-from webui_utils.simple_utils import create_sample_set
+from simple_log import SimpleLog
+from simple_utils import create_sample_set
 
 def main():
     """Use the Resequence Files feature from the command line"""

@@ -1,7 +1,7 @@
 # import os
 # import pytest # pylint: disable=import-error
-from .test_shared import *
-from .simple_icons import *
+from test_shared import *
+from simple_icons import *
 
 GOOD_EXAMPLES = [
     (SimpleIcons.SYMBOLS, 4, 6),

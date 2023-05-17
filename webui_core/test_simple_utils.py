@@ -1,5 +1,5 @@
 import pytest # pylint: disable=import-error
-from .simple_utils import *
+from simple_utils import *
 
 GOOD_CREATE_SAMPLE_INDICES_ARGS = [
     ((10, 0, 1), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]),

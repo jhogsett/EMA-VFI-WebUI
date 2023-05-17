@@ -1,5 +1,5 @@
 """UI Functions"""
-from .simple_utils import max_steps, restored_frame_fractions, restored_frame_predictions, \
+from simple_utils import max_steps, restored_frame_fractions, restored_frame_predictions, \
     fps_change_details
 
 def update_splits_info(num_splits : float):

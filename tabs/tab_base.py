@@ -1,6 +1,6 @@
 """Base class for UI tabs"""
 from typing import Callable
-from webui_utils.simple_config import SimpleConfig
+from webui_core.simple_config import SimpleConfig
 from webui_core.interpolate_engine import InterpolateEngine
 
 class TabBase():

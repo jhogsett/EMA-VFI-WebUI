@@ -4,7 +4,7 @@ import glob
 import argparse
 from typing import Callable
 from tqdm import tqdm
-from webui_utils.simple_log import SimpleLog
+from simple_log import SimpleLog
 from PIL import Image
 
 def main():

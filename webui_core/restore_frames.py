@@ -4,12 +4,12 @@ import sys
 import argparse
 from typing import Callable
 from tqdm import tqdm
-from webui_core.interpolate_engine import InterpolateEngine
-from webui_core.interpolate import Interpolate
-from webui_core.interpolation_target import TargetInterpolate
-from webui_utils.simple_log import SimpleLog
-from webui_utils.file_utils import create_directory
-from webui_utils.simple_utils import restored_frame_searches
+from interpolate_engine import InterpolateEngine
+from interpolate import Interpolate
+from interpolation_target import TargetInterpolate
+from simple_log import SimpleLog
+from file_utils import create_directory
+from simple_utils import restored_frame_searches
 
 def main():
     """Use the Frame Restoration feature from the command line"""

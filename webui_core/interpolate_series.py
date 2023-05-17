@@ -2,11 +2,11 @@
 import argparse
 from typing import Callable
 from tqdm import tqdm
-from webui_core.interpolate_engine import InterpolateEngine
-from webui_core.interpolate import Interpolate
-from webui_core.deep_interpolate import DeepInterpolate
-from webui_utils.simple_log import SimpleLog
-from webui_utils.file_utils import create_directory, get_files
+from interpolate_engine import InterpolateEngine
+from interpolate import Interpolate
+from deep_interpolate import DeepInterpolate
+from simple_log import SimpleLog
+from file_utils import create_directory, get_files
 
 def main():
     """Use Video Inflation from the command line"""

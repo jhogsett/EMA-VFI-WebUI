@@ -6,11 +6,11 @@ from typing import Callable
 import re
 import cv2
 from tqdm import tqdm
-from webui_core.interpolate_engine import InterpolateEngine
-from webui_core.interpolate import Interpolate
-from webui_utils.simple_log import SimpleLog
-from webui_utils.simple_utils import float_range_in_range, sortable_float_index
-from webui_utils.file_utils import create_directory
+from interpolate_engine import InterpolateEngine
+from interpolate import Interpolate
+from simple_log import SimpleLog
+from simple_utils import float_range_in_range, sortable_float_index
+from file_utils import create_directory
 
 def main():
     """Use the Frame Search feature from the command line"""

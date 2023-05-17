@@ -1,10 +1,10 @@
 """PNG Sequence to GIF feature UI and event handlers"""
 from typing import Callable
 import gradio as gr
-from webui_utils.simple_config import SimpleConfig
-from webui_utils.simple_icons import SimpleIcons
-from webui_utils.file_utils import create_directory, split_filepath
-from webui_utils.video_utils import PNGtoGIF as _PNGtoGIF
+from webui_core.simple_config import SimpleConfig
+from webui_core.simple_icons import SimpleIcons
+from webui_core.file_utils import create_directory, split_filepath
+from webui_core.video_utils import PNGtoGIF as _PNGtoGIF
 from webui_tips import WebuiTips
 from webui_core.interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase

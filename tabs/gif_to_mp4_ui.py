@@ -4,12 +4,12 @@ import math
 import shutil
 from typing import Callable
 import gradio as gr
-from webui_utils.simple_config import SimpleConfig
-from webui_utils.simple_icons import SimpleIcons
-from webui_utils.file_utils import create_directory, get_files, split_filepath
-from webui_utils.auto_increment import AutoIncrementDirectory
-from webui_utils.video_utils import GIFtoPNG, PNGtoMP4
-from webui_utils.simple_utils import is_power_of_two
+from webui_core.simple_config import SimpleConfig
+from webui_core.simple_icons import SimpleIcons
+from webui_core.file_utils import create_directory, get_files, split_filepath
+from webui_core.auto_increment import AutoIncrementDirectory
+from webui_core.video_utils import GIFtoPNG, PNGtoMP4
+from webui_core.simple_utils import is_power_of_two
 from webui_tips import WebuiTips
 from webui_core.interpolate_engine import InterpolateEngine
 from webui_core.interpolate import Interpolate

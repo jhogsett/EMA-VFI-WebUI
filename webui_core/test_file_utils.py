@@ -1,8 +1,8 @@
 import os
 import shutil
 import pytest # pylint: disable=import-error
-from .file_utils import *
-from .test_shared import *
+from file_utils import *
+from test_shared import *
 
 GOOD_IS_SAFE_PATH_ARGS = [
     (FIXTURE_PATH, True),

@@ -1,7 +1,7 @@
 import os
 import pytest # pylint: disable=import-error
-from .test_shared import *
-from .image_utils import *
+from test_shared import *
+from image_utils import *
 
 GOOD_GIF_FRAME_COUNT_ARGS = [
     (FIXTURE_GIF_LIST[0], 17),

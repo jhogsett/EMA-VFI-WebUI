@@ -9,8 +9,8 @@ from basicsr.utils.download_util import load_file_from_url# pylint: disable=impo
 from realesrgan import RealESRGANer # pylint: disable=import-error
 from realesrgan.archs.srvgg_arch import SRVGGNetCompact # pylint: disable=import-error
 from tqdm import tqdm
-from webui_utils.simple_log import SimpleLog
-from webui_utils.file_utils import create_directory, get_files, build_filename,\
+from simple_log import SimpleLog
+from file_utils import create_directory, get_files, build_filename,\
     build_indexed_filename, build_series_filename, split_filepath
 
 def main():

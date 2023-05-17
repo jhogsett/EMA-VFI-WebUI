@@ -2,8 +2,8 @@
 import os
 import glob
 from ffmpy import FFmpeg, FFprobe
-from .image_utils import gif_frame_count
-from .file_utils import split_filepath
+from image_utils import gif_frame_count
+from file_utils import split_filepath
 
 QUALITY_NEAR_LOSSLESS = 17
 QUALITY_SMALLER_SIZE = 28

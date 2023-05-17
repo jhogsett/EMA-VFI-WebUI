@@ -1,6 +1,6 @@
 """Functions for dealing with images"""
 import os
-from .file_utils import is_safe_path
+from file_utils import is_safe_path
 from PIL import Image
 
 def create_gif(images : list, filepath : str, duration : int | float= 1000):

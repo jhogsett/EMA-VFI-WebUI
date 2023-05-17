@@ -5,12 +5,12 @@ import shutil
 import math
 from typing import Callable
 from tqdm import tqdm
-from webui_core.interpolate_engine import InterpolateEngine
-from webui_core.interpolate import Interpolate
-from webui_core.interpolation_target import TargetInterpolate
-from webui_utils.simple_log import SimpleLog
-from webui_utils.file_utils import create_directory, get_files
-from webui_utils.simple_utils import restored_frame_searches, sortable_float_index
+from interpolate_engine import InterpolateEngine
+from interpolate import Interpolate
+from interpolation_target import TargetInterpolate
+from simple_log import SimpleLog
+from file_utils import create_directory, get_files
+from simple_utils import restored_frame_searches, sortable_float_index
 
 def main():
     """Use the Change FPS feature from the command line"""

@@ -3,7 +3,7 @@ import sys
 import math
 from collections import namedtuple
 from fractions import Fraction
-from .simple_icons import SimpleIcons
+from simple_icons import SimpleIcons
 
 def max_steps(num_splits : int) -> int:
     """Computing the count of work steps needed based on the number of splits"""

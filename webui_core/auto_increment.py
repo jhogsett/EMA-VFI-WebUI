@@ -1,6 +1,6 @@
 """Classes for managing auto-incrementing files and directories"""
 import os
-from .file_utils import get_files, get_directories, is_safe_path
+from file_utils import get_files, get_directories, is_safe_path
 
 class AutoIncrementFilename():
     """Encapsulates logic to create new unique sequentially-numbered filenames"""

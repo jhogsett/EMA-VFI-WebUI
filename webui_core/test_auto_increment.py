@@ -1,7 +1,7 @@
 import pytest # pylint: disable=import-error
-from .test_shared import *
-from .file_utils import get_files, get_directories, create_directory
-from .auto_increment import *
+from test_shared import *
+from file_utils import get_files, get_directories, create_directory
+from auto_increment import *
 
 GOOD_AIF_EXAMPLES = [
     ((FIXTURE_PATH, "*"), ("file", "txt"), (os.path.join(FIXTURE_PATH, "file4.txt"), 4)),

@@ -1,7 +1,7 @@
 import os
 import shutil
 import pytest # pylint: disable=import-error
-from .file_utils import is_safe_path
+from file_utils import is_safe_path
 
 FIXTURE_PATH = os.path.join(os.path.abspath("test_fixtures"))
 FIXTURE_PATH_BAD = os.path.join(FIXTURE_PATH, "bad")

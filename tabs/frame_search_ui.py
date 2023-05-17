@@ -2,10 +2,10 @@
 import os
 from typing import Callable
 import gradio as gr
-from webui_utils.simple_config import SimpleConfig
-from webui_utils.simple_icons import SimpleIcons
-from webui_utils.file_utils import create_directory
-from webui_utils.auto_increment import AutoIncrementDirectory
+from webui_core.simple_config import SimpleConfig
+from webui_core.simple_icons import SimpleIcons
+from webui_core.file_utils import create_directory
+from webui_core.auto_increment import AutoIncrementDirectory
 from webui_tips import WebuiTips
 from webui_core.interpolate_engine import InterpolateEngine
 from webui_core.interpolate import Interpolate
