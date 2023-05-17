@@ -4,7 +4,7 @@ import gradio as gr
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_log import SimpleLog
-from interpolate_engine import InterpolateEngine
+from webui_core.interpolate_engine import InterpolateEngine
 from tabs.frame_interpolation_ui import FrameInterpolation
 from tabs.frame_search_ui import FrameSearch
 from tabs.video_inflation_ui import VideoInflation

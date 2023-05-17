@@ -10,16 +10,16 @@ from webui_utils.file_utils import get_files, create_directory, locate_frame_fil
 from webui_utils.auto_increment import AutoIncrementDirectory, AutoIncrementFilename
 from webui_utils.video_utils import PNGtoMP4, QUALITY_SMALLER_SIZE, MP4toPNG
 from webui_tips import WebuiTips
-from interpolate_engine import InterpolateEngine
-from interpolate import Interpolate
-from interpolation_target import TargetInterpolate
-from deep_interpolate import DeepInterpolate
-from interpolate_series import InterpolateSeries
-from resequence_files import ResequenceFiles
-from restore_frames import RestoreFrames
+from webui_core.interpolate_engine import InterpolateEngine
+from webui_core.interpolate import Interpolate
+from webui_core.interpolation_target import TargetInterpolate
+from webui_core.deep_interpolate import DeepInterpolate
+from webui_core.interpolate_series import InterpolateSeries
+from webui_core.resequence_files import ResequenceFiles
+from webui_core.restore_frames import RestoreFrames
 from video_blender import VideoBlenderState, VideoBlenderProjects
 from tabs.tab_base import TabBase
-from simplify_png_files import SimplifyPngFiles
+from webui_core.simplify_png_files import SimplifyPngFiles
 
 class VideoBlender(TabBase):
     """Encapsulates UI elements and events for the Video Blender eature"""

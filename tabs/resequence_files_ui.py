@@ -4,8 +4,8 @@ import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_tips import WebuiTips
-from interpolate_engine import InterpolateEngine
-from resequence_files import ResequenceFiles as _ResequenceFiles
+from webui_core.interpolate_engine import InterpolateEngine
+from webui_core.resequence_files import ResequenceFiles as _ResequenceFiles
 from tabs.tab_base import TabBase
 
 class ResequenceFiles(TabBase):

@@ -7,7 +7,7 @@ from webui_utils.file_utils import create_directory, get_files
 from webui_utils.auto_increment import AutoIncrementDirectory
 from webui_utils.ui_utils import update_splits_info
 from webui_tips import WebuiTips
-from upscale_series import UpscaleSeries
+from webui_core.upscale_series import UpscaleSeries
 from tabs.tab_base import TabBase
 
 class UpscaleFrames(TabBase):

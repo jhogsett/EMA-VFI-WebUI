@@ -11,10 +11,10 @@ from webui_utils.auto_increment import AutoIncrementDirectory
 from webui_utils.simple_utils import restored_frame_fractions, restored_frame_predictions
 from webui_utils.ui_utils import update_info_fr
 from webui_tips import WebuiTips
-from interpolate_engine import InterpolateEngine
-from interpolate import Interpolate
-from interpolation_target import TargetInterpolate
-from restore_frames import RestoreFrames
+from webui_core.interpolate_engine import InterpolateEngine
+from webui_core.interpolate import Interpolate
+from webui_core.interpolation_target import TargetInterpolate
+from webui_core.restore_frames import RestoreFrames
 from tabs.tab_base import TabBase
 
 class FrameRestoration(TabBase):

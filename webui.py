@@ -4,7 +4,7 @@ import time
 import signal
 import argparse
 from typing import Callable
-from interpolate_engine import InterpolateEngine
+from webui_core.interpolate_engine import InterpolateEngine
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.file_utils import create_directories

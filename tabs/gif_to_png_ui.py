@@ -6,7 +6,7 @@ from webui_utils.simple_icons import SimpleIcons
 from webui_utils.file_utils import create_directory
 from webui_utils.video_utils import GIFtoPNG as _GIFtoPNG
 from webui_tips import WebuiTips
-from interpolate_engine import InterpolateEngine
+from webui_core.interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
 
 class GIFtoPNG(TabBase):

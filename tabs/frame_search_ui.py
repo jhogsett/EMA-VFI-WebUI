@@ -7,9 +7,9 @@ from webui_utils.simple_icons import SimpleIcons
 from webui_utils.file_utils import create_directory
 from webui_utils.auto_increment import AutoIncrementDirectory
 from webui_tips import WebuiTips
-from interpolate_engine import InterpolateEngine
-from interpolate import Interpolate
-from interpolation_target import TargetInterpolate
+from webui_core.interpolate_engine import InterpolateEngine
+from webui_core.interpolate import Interpolate
+from webui_core.interpolation_target import TargetInterpolate
 from tabs.tab_base import TabBase
 
 class FrameSearch(TabBase):

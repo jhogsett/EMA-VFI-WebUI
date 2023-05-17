@@ -8,11 +8,11 @@ from webui_utils.auto_increment import AutoIncrementDirectory
 from webui_utils.simple_utils import fps_change_details, is_power_of_two, power_of_two_precision
 from webui_utils.ui_utils import update_info_fc
 from webui_tips import WebuiTips
-from interpolate_engine import InterpolateEngine
-from interpolate import Interpolate
-from interpolation_target import TargetInterpolate
-from resample_series import ResampleSeries
-from resequence_files import ResequenceFiles as _ResequenceFiles
+from webui_core.interpolate_engine import InterpolateEngine
+from webui_core.interpolate import Interpolate
+from webui_core.interpolation_target import TargetInterpolate
+from webui_core.resample_series import ResampleSeries
+from webui_core.resequence_files import ResequenceFiles as _ResequenceFiles
 from tabs.tab_base import TabBase
 
 class ChangeFPS(TabBase):

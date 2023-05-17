@@ -1,7 +1,7 @@
 """Base class for UI tabs"""
 from typing import Callable
 from webui_utils.simple_config import SimpleConfig
-from interpolate_engine import InterpolateEngine
+from webui_core.interpolate_engine import InterpolateEngine
 
 class TabBase():
     """Shared UI tab methods"""

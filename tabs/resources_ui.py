@@ -5,7 +5,7 @@ import csv
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from interpolate_engine import InterpolateEngine
+from webui_core.interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
 
 class Resources(TabBase):

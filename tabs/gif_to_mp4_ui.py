@@ -11,14 +11,14 @@ from webui_utils.auto_increment import AutoIncrementDirectory
 from webui_utils.video_utils import GIFtoPNG, PNGtoMP4
 from webui_utils.simple_utils import is_power_of_two
 from webui_tips import WebuiTips
-from interpolate_engine import InterpolateEngine
-from interpolate import Interpolate
-from interpolation_target import TargetInterpolate
-from deep_interpolate import DeepInterpolate
-from interpolate_series import InterpolateSeries
-from resample_series import ResampleSeries
-from resequence_files import ResequenceFiles as _ResequenceFiles
-from upscale_series import UpscaleSeries
+from webui_core.interpolate_engine import InterpolateEngine
+from webui_core.interpolate import Interpolate
+from webui_core.interpolation_target import TargetInterpolate
+from webui_core.deep_interpolate import DeepInterpolate
+from webui_core.interpolate_series import InterpolateSeries
+from webui_core.resample_series import ResampleSeries
+from webui_core.resequence_files import ResequenceFiles as _ResequenceFiles
+from webui_core.upscale_series import UpscaleSeries
 from tabs.tab_base import TabBase
 
 class GIFtoMP4(TabBase):

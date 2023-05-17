@@ -7,10 +7,10 @@ from webui_utils.file_utils import create_directory, get_files
 from webui_utils.auto_increment import AutoIncrementDirectory
 from webui_utils.ui_utils import update_splits_info
 from webui_tips import WebuiTips
-from interpolate_engine import InterpolateEngine
-from interpolate import Interpolate
-from deep_interpolate import DeepInterpolate
-from interpolate_series import InterpolateSeries
+from webui_core.interpolate_engine import InterpolateEngine
+from webui_core.interpolate import Interpolate
+from webui_core.deep_interpolate import DeepInterpolate
+from webui_core.interpolate_series import InterpolateSeries
 from tabs.tab_base import TabBase
 
 class VideoInflation(TabBase):

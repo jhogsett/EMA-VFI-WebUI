@@ -12,7 +12,7 @@ from typing import Callable
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_utils import sortable_float_index
 from webui_utils.file_utils import split_filepath
-from interpolate_engine import InterpolateEngine
+from webui_core.interpolate_engine import InterpolateEngine
 
 '''==========import from our code=========='''
 sys.path.append('.')

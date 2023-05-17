@@ -4,8 +4,8 @@ import argparse
 from typing import Callable
 import cv2
 from tqdm import tqdm
-from interpolate_engine import InterpolateEngine
-from interpolate import Interpolate
+from webui_core.interpolate import Interpolate
+from webui_core.interpolate_engine import InterpolateEngine
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_utils import max_steps, sortable_float_index
 from webui_utils.file_utils import create_directory

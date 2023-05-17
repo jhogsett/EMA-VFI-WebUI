@@ -4,9 +4,9 @@ import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_tips import WebuiTips
-from interpolate_engine import InterpolateEngine
+from webui_core.interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
-from simplify_png_files import SimplifyPngFiles as _SimplifyPngFiles
+from webui_core.simplify_png_files import SimplifyPngFiles as _SimplifyPngFiles
 
 class SimplifyPngFiles(TabBase):
     """Encapsulates UI elements and events for the Simplify PNG files feature"""
