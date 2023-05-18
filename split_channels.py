@@ -7,7 +7,6 @@ from typing import Callable
 from tqdm import tqdm
 from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import split_filepath, create_directory
-from PIL import Image
 
 def main():
     """Use the Split Channels feature from the command line"""
