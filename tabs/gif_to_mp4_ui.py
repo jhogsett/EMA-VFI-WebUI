@@ -193,7 +193,7 @@ class GIFtoMP4(TabBase):
         series_resampler = ResampleSeries(interpolater, target_interpolater, use_time_step,
                                           self.log)
         series_resampler.resample_series(input_path, output_path, 1, inflate_factor, precision,
-            f"resampledX{inflate_factor}")
+            f"resampledX{inflate_factor}", False)
 
     def inflate_using_series_interpolation(self,
                                 input_path : str,
