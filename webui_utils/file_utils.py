@@ -149,7 +149,7 @@ def locate_frame_file(png_files_path : str, frame_number : int | float) -> str |
     return None
 
 def split_filepath(filepath : str):
-    """Split a filepath into path, filename, extension"""
+    """Split a filepath into path, filename, .extension"""
     if isinstance(filepath, str):
         path, filename = os.path.split(filepath)
         filename, ext = os.path.splitext(filename)

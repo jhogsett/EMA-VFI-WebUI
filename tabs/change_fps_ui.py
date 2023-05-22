@@ -62,6 +62,9 @@ class ChangeFPS(TabBase):
                             max_lines=8, interactive=False)
                         predictions_output_fc = gr.Textbox(value=predictions,
                             label="Predicted Matches", max_lines=8, interactive=False)
+                    with gr.Row():
+                        fill_with_dupes = gr.Checkbox(value=False,
+                            label="Duplicate frames to fill (no frame interpolation")
             gr.Markdown("*Progress can be tracked in the console*")
             convert_button_fc = gr.Button("Convert " + SimpleIcons.SLOW_SYMBOL, variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -77,14 +80,17 @@ class ChangeFPS(TabBase):
             outputs=[output_lcm_text_fc, output_filler_text_fc, output_sampled_text_fc,
                 times_output_fc, predictions_output_fc], show_progress=False)
         convert_button_fc.click(self.convert_fc, inputs=[input_path_text_fc, output_path_text_fc,
-            starting_fps_fc, ending_fps_fc, precision_fc])
+            starting_fps_fc, ending_fps_fc, precision_fc, fill_with_dupes])
+        fill_with_dupes.change(self.update_fill_type, inputs=fill_with_dupes,
+                               outputs=precision_fc, show_progress=False)
 
     def convert_fc(self,
                     input_path : str,
                     output_path : str,
                     starting_fps : int,
                     ending_fps : int,
-                    precision : int):
+                    precision : int,
+                    fill_with_dupes : bool):
         """Change FPS convert button handler"""
         if input_path:
             interpolater = Interpolate(self.engine.model, self.log)
@@ -110,8 +116,14 @@ class ChangeFPS(TabBase):
                 precision = new_precision
 
             series_resampler.resample_series(input_path, base_output_path, starting_fps,
-                ending_fps, precision, f"resampled@{starting_fps}")
+                ending_fps, precision, f"resampled@{starting_fps}", fill_with_dupes)
 
             self.log(f"auto-resequencing sampled frames at {output_path}")
             _ResequenceFiles(base_output_path, "png", f"resampled@{ending_fps}fps", 0, 1, 1, 0, -1,
                              True, self.log).resequence()
+
+    def update_fill_type(self, fill_with_dupes : bool):
+        if fill_with_dupes:
+            return gr.update(interactive=False)
+        else:
+            return gr.update(interactive=True)
