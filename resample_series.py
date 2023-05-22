@@ -31,6 +31,8 @@ def main():
         help="Output path for interpolated PNGs")
     parser.add_argument("--base_filename", default="upsampled_frames", type=str,
         help="Base filename for interpolated PNGs")
+    parser.add_argument("--use_dupes", dest="use_dupes", default=False, action="store_true",
+        help="Duplicate frames to fill instead of using interpolation (Default: False)")
     parser.add_argument("--time_step", dest="time_step", default=False, action="store_true",
         help="Use Time Step instead of Binary Search interpolation (Default: False)")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
@@ -45,7 +47,7 @@ def main():
     series_resampler = ResampleSeries(interpolater, target_interpolater, args.time_step, log.log)
 
     series_resampler.resample_series(args.input_path, args.output_path, args.original_fps,
-        args.resampled_fps, args.depth, args.base_filename)
+        args.resampled_fps, args.depth, args.base_filename, args.use_dupes)
 
 class ResampleSeries():
     """Enscapsulate logic for the Change FPS feature"""
@@ -66,7 +68,8 @@ class ResampleSeries():
                         original_fps : int,
                         resampled_fps : int,
                         depth : int,
-                        base_filename : str):
+                        base_filename : str,
+                        use_dupes : bool):
         "Invoke the Change FPS feature"
         lowest_common_rate = math.lcm(original_fps, resampled_fps)
         expanded_frames = int(lowest_common_rate / original_fps)
@@ -94,7 +97,8 @@ class ResampleSeries():
         # sample the super set at the new frame rate
         sample_rate = int(lowest_common_rate / resampled_fps)
         sample_set = superset[::sample_rate]
-        num_width = len(str(len(sample_set)))
+        # num_width = len(str(len(sample_set)))
+        num_width = len(str(len(superset)))
 
         pbar_desc = "Resamples"
         for sample in tqdm(sample_set, desc=pbar_desc, position=0):
@@ -104,9 +108,12 @@ class ResampleSeries():
             search = sample["search"]
             frame_number = str(frame).zfill(num_width)
 
-            if search == 0.0:
-                filename = f"{base_filename}[{frame_number}]@0.0.png"
-                output_filepath = os.path.join(output_path, filename)
+            if search == 0.0 or use_dupes:
+                # filename = f"{base_filename}[{frame_number}]@0.0.png"
+                # output_filepath = os.path.join(output_path, filename)
+                filename = f"{base_filename}[{frame_number}]"
+                time = sortable_float_index(search)
+                output_filepath = os.path.join(output_path, f"{filename}@{time}.png")
                 self.log(f"copying keyframe {before_file} to {output_filepath}")
                 shutil.copy(before_file, output_filepath)
                 self.output_paths.append(output_filepath)
