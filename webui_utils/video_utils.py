@@ -121,6 +121,25 @@ def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
     ffcmd.run()
     return cmd
 
+def deduplicate_frames(input_path : str,
+                      output_path : str,
+                      threshold : int):
+    """Encapsulate logic for detecting and removing duplicate frames"""
+    # ffmpeg -i "C:\CONTENT\ODDS\odds%04d.png"
+    # -vf mpdecimate=hi=2047:lo=2047:frac=1:max=0,setpts=N/FRAME_RATE/TB
+    # -start_number 0 "C:\CONTENT\TEST\odds%04d.png"
+    filename_pattern = determine_pattern(input_path)
+    input_sequence = os.path.join(input_path, filename_pattern)
+    output_sequence = os.path.join(output_path, filename_pattern)
+    filter = f"mpdecimate=hi={threshold}:lo={threshold}:frac=1:max=0,setpts=N/FRAME_RATE/TB"
+
+    ffcmd = FFmpeg(inputs= {input_sequence : None},
+        outputs={output_sequence : f"-vf {filter} -start_number 0"},
+        global_options="-y")
+    cmd = ffcmd.cmd
+    ffcmd.run()
+    return cmd
+
 def mp4_frame_count(input_path : str) -> int:
     """Using FFprobe to determine MP4 frame count"""
     # ffprobe.exe -v quiet -count_frames -show_entries stream=nb_read_frames -print_format default=nokey=1:noprint_wrappers=1 file.mp4
