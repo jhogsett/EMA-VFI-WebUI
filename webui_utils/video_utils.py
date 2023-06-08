@@ -1,6 +1,8 @@
 """Functions for dealing with video using FFmpeg"""
 import os
 import glob
+import subprocess
+from fractions import Fraction
 from ffmpy import FFmpeg, FFprobe
 from .image_utils import gif_frame_count
 from .file_utils import split_filepath
@@ -122,5 +124,18 @@ def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
 def mp4_frame_count(input_path : str) -> int:
     """Using FFprobe to determine MP4 frame count"""
     # ffprobe -v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames -print_format default=nokey=1:noprint_wrappers=1 Big_Buck_Bunny_1080_10s_20MB.mp4
-    ff = FFprobe(inputs= {input_path : "-count_frames -show_entries stream=nb_read_frames -print_format default=nokey=1:noprint_wrappers=1"})
-    return ff.run()
+    ffcmd = FFprobe(inputs= {input_path : "-count_frames -show_entries stream=nb_read_frames -print_format default=nokey=1:noprint_wrappers=1"},
+                    global_options="-v error")
+    result = ffcmd.run(stdout=subprocess.PIPE)
+    stdout = result[0].decode("UTF-8").strip()
+    return int(stdout)
+
+def mp4_frame_rate(input_path : str) -> float:
+    """Using FFprobe to determine MP4 frame rate"""
+    # ffprobe.exe -v quiet -show_entries stream=r_frame_rate -print_format default=nokey=1:noprint_wrappers=1 file.mp4
+    # 25/1
+    ffcmd = FFprobe(inputs= {input_path : "-show_entries stream=r_frame_rate -print_format default=nokey=1:noprint_wrappers=1"})
+    result = ffcmd.run(stdout=subprocess.PIPE)
+    stdout = result[0].decode("UTF-8").strip()
+    fraction = Fraction(stdout)
+    return float(fraction)
