@@ -1,4 +1,4 @@
-**PNG Sequence to MP4** - Use FFMpeg to convert a video PNG sequence to MP4
+**PNG Sequence to MP4** - Use FFmpeg to convert a video PNG sequence to MP4
 
 ## How It Works
 1. Set _PNG Files Path_ to a path on this server to the PNG files being converted
