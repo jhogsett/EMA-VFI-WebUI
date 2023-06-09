@@ -1,4 +1,4 @@
-**GIF to PNG Sequence** - Use FFMpeg to convert a GIF to set of PNG frame files
+**GIF to PNG Sequence** - Use FFmpeg to convert a GIF to set of PNG frame files
 
 ## How It Works
 1. Set _GIF File_ to the path and filename of a GIF file on this server for conversion

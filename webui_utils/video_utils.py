@@ -1,6 +1,9 @@
 """Functions for dealing with video using FFmpeg"""
 import os
 import glob
+import subprocess
+import json
+from fractions import Fraction
 from ffmpy import FFmpeg, FFprobe
 from .image_utils import gif_frame_count
 from .file_utils import split_filepath
@@ -105,7 +108,7 @@ def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
     if extension.lower() == ".gif":
         frame_count = gif_frame_count(input_path)
     elif extension.lower() == ".mp4":
-        frame_count = mp4_frame_count(input_path)
+        frame_count = get_frame_count(input_path)
     else:
         # assume an arbitrarily high frame count to ensure a wide index
         frame_count = 1_000_000
@@ -119,8 +122,54 @@ def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
     ffcmd.run()
     return cmd
 
-def mp4_frame_count(input_path : str) -> int:
-    """Using FFprobe to determine MP4 frame count"""
-    # ffprobe -v error -select_streams v:0 -count_frames -show_entries stream=nb_read_frames -print_format default=nokey=1:noprint_wrappers=1 Big_Buck_Bunny_1080_10s_20MB.mp4
-    ff = FFprobe(inputs= {input_path : "-count_frames -show_entries stream=nb_read_frames -print_format default=nokey=1:noprint_wrappers=1"})
-    return ff.run()
+def deduplicate_frames(input_path : str,
+                      output_path : str,
+                      threshold : int):
+    """Encapsulate logic for detecting and removing duplicate frames"""
+    # ffmpeg -i "C:\CONTENT\ODDS\odds%04d.png"
+    # -vf mpdecimate=hi=2047:lo=2047:frac=1:max=0,setpts=N/FRAME_RATE/TB
+    # -start_number 0 "C:\CONTENT\TEST\odds%04d.png"
+    filename_pattern = determine_pattern(input_path)
+    input_sequence = os.path.join(input_path, filename_pattern)
+    output_sequence = os.path.join(output_path, filename_pattern)
+    filter = f"mpdecimate=hi={threshold}:lo={threshold}:frac=1:max=0,setpts=N/FRAME_RATE/TB"
+
+    ffcmd = FFmpeg(inputs= {input_sequence : None},
+        outputs={output_sequence : f"-vf {filter} -start_number 0"},
+        global_options="-y")
+    cmd = ffcmd.cmd
+    ffcmd.run()
+    return cmd
+
+def get_frame_count(input_path : str) -> int:
+    """Use FFprobe to determine MP4 frame count"""
+    # ffprobe.exe -v quiet -count_frames -show_entries stream=nb_read_frames -print_format default=nokey=1:noprint_wrappers=1 file.mp4
+    # 1763
+    ffcmd = FFprobe(inputs= {input_path :
+        "-count_frames -show_entries stream=nb_read_frames" +
+        " -print_format default=nokey=1:noprint_wrappers=1"},
+                    global_options="-v quiet")
+    result = ffcmd.run(stdout=subprocess.PIPE)
+    stdout = result[0].decode("UTF-8").strip()
+    return int(stdout)
+
+def get_frame_rate(input_path : str) -> float:
+    """Use FFprobe to determine MP4 frame rate"""
+    # ffprobe.exe -v quiet -show_entries stream=r_frame_rate -print_format default=nokey=1:noprint_wrappers=1 file.mp4
+    # 25/1
+    ffcmd = FFprobe(inputs= {input_path :
+        "-show_entries stream=r_frame_rate -print_format default=nokey=1:noprint_wrappers=1"},
+                    global_options="-v quiet")
+    result = ffcmd.run(stdout=subprocess.PIPE)
+    stdout = result[0].decode("UTF-8").strip()
+    fraction = Fraction(stdout)
+    return float(fraction)
+
+def get_video_details(input_path : str) -> dict:
+    """Use FFprobe to get streams and format information for a video"""
+    # ffprobe.exe -v quiet -show_format -show_streams -count_frames -of json file.mp4
+    ffcmd = FFprobe(inputs= {input_path : "-show_format -show_streams -count_frames -of json"},
+                    global_options="-v quiet")
+    result = ffcmd.run(stdout=subprocess.PIPE)
+    stdout = result[0].decode("UTF-8").strip()
+    return json.loads(stdout)

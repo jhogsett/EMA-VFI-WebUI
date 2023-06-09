@@ -46,3 +46,4 @@ class WebuiTips:
     gif_to_mp4 = gr.Markdown(load_markdown(tips_path, "gif_to_mp4"))
     upscale_frames = gr.Markdown(load_markdown(tips_path, "upscale_frames"))
     simplify_png_files = gr.Markdown(load_markdown(tips_path, "simplify_png_files"))
+    deduplicate_frames = gr.Markdown(load_markdown(tips_path, "deduplicate_frames"))

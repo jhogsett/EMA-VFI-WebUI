@@ -1,4 +1,4 @@
-**PNG Sequence to GIF** - Use FFMpeg to convert a video PNG sequence to a GIF
+**PNG Sequence to GIF** - Use FFmpeg to convert a video PNG sequence to a GIF
 
 ## How It Works
 1. Set _PNG Files Path_ to a path on this server to the PNG files being converted
