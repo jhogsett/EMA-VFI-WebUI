@@ -37,11 +37,11 @@ class DedupeFrames(TabBase):
                 threshold = gr.Slider(value=default_threshold, minimum=min_threshold,
                     maximum=max_threshold, step=threshold_step, label="Detection Threshold")
             with gr.Row():
-                convert_button = gr.Button("Convert", variant="primary")
+                dedupe_button = gr.Button("Deduplicate", variant="primary")
                 output_info_text = gr.Textbox(label="Details", interactive=False)
-            # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-            #     WebuiTips.png_to_gif.render()
-        convert_button.click(self.dedupe_frames, inputs=[input_path_text, output_path_text,
+            with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                WebuiTips.deduplicate_frames.render()
+        dedupe_button.click(self.dedupe_frames, inputs=[input_path_text, output_path_text,
                                                          threshold], outputs=output_info_text)
 
     def dedupe_frames(self,

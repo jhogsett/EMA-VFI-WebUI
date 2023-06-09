@@ -81,7 +81,7 @@ logviewer_settings:
   max_lines: 25
 deduplicate_settings:
   min_threshold: 0
-  max_threshold: 10000
+  max_threshold: 25000
   default_threshold: 2500
   threshold_step: 100
 user_interface:
