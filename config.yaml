@@ -9,6 +9,7 @@ directories:
   output_fps_change: "output/fps_change"
   output_upscaling: "output/upscaling"
   output_gif_to_mp4: "output/gif_to_mp4"
+  output_deduplication: "output/deduplication"
 model: "ours" # "_t" auto-appended when using time step
 use_time_step: False
 gpu_ids: "0" # *future use* (cuda device:0 is presumed)
@@ -78,6 +79,11 @@ upscale_settings:
   - "bmp"
 logviewer_settings:
   max_lines: 25
+deduplicate_settings:
+  min_threshold: 0
+  max_threshold: 10000
+  default_threshold: 2500
+  threshold_step: 100
 user_interface:
   tips_path: "guide"
   theme: "default"
