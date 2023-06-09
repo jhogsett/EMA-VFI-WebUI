@@ -2,6 +2,7 @@
 import os
 import glob
 import subprocess
+import json
 from fractions import Fraction
 from ffmpy import FFmpeg, FFprobe
 from .image_utils import gif_frame_count
@@ -107,7 +108,7 @@ def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
     if extension.lower() == ".gif":
         frame_count = gif_frame_count(input_path)
     elif extension.lower() == ".mp4":
-        frame_count = mp4_frame_count(input_path)
+        frame_count = get_frame_count(input_path)
     else:
         # assume an arbitrarily high frame count to ensure a wide index
         frame_count = 1_000_000
@@ -140,8 +141,8 @@ def deduplicate_frames(input_path : str,
     ffcmd.run()
     return cmd
 
-def mp4_frame_count(input_path : str) -> int:
-    """Using FFprobe to determine MP4 frame count"""
+def get_frame_count(input_path : str) -> int:
+    """Use FFprobe to determine MP4 frame count"""
     # ffprobe.exe -v quiet -count_frames -show_entries stream=nb_read_frames -print_format default=nokey=1:noprint_wrappers=1 file.mp4
     # 1763
     ffcmd = FFprobe(inputs= {input_path :
@@ -152,8 +153,8 @@ def mp4_frame_count(input_path : str) -> int:
     stdout = result[0].decode("UTF-8").strip()
     return int(stdout)
 
-def mp4_frame_rate(input_path : str) -> float:
-    """Using FFprobe to determine MP4 frame rate"""
+def get_frame_rate(input_path : str) -> float:
+    """Use FFprobe to determine MP4 frame rate"""
     # ffprobe.exe -v quiet -show_entries stream=r_frame_rate -print_format default=nokey=1:noprint_wrappers=1 file.mp4
     # 25/1
     ffcmd = FFprobe(inputs= {input_path :
@@ -163,3 +164,12 @@ def mp4_frame_rate(input_path : str) -> float:
     stdout = result[0].decode("UTF-8").strip()
     fraction = Fraction(stdout)
     return float(fraction)
+
+def get_video_details(input_path : str) -> dict:
+    """Use FFprobe to get streams and format information for a video"""
+    # ffprobe.exe -v quiet -show_format -show_streams -count_frames -of json file.mp4
+    ffcmd = FFprobe(inputs= {input_path : "-show_format -show_streams -count_frames -of json"},
+                    global_options="-v quiet")
+    result = ffcmd.run(stdout=subprocess.PIPE)
+    stdout = result[0].decode("UTF-8").strip()
+    return json.loads(stdout)
