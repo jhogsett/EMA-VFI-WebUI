@@ -90,7 +90,7 @@ class SimpleIcons:
     TWO_HEARTS = "💕"
 
     # shared symbol definitions
-    TIPS_SYMBOL = INFO
+    TIPS_SYMBOL = QUESTION
     SLOW_SYMBOL = WATCH
     PROP_SYMBOL = PROPERTIES
     CONV_SYMBOL = STILL
