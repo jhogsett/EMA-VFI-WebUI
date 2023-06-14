@@ -33,15 +33,10 @@ def create_ui(config : SimpleConfig,
 
     app_header = gr.HTML(SimpleIcons.CLAPPER + "EMA-VFI Web UI", elem_id="appheading")
     sep = '  •  '
-    _js = ('<a href="/" ' +
-        'onclick="javascript:gradioApp()' +
-        '.getElementById(\'settings_restart_gradio\').click();' +
-        'return false">Reload UI</a>')
     footer = (SimpleIcons.COPYRIGHT + ' 2023 J. Hogsett' +
         sep + '<a href="https://github.com/jhogsett/EMA-VFI-WebUI">Github</a>' +
         sep + '<a href="https://github.com/MCG-NJU/EMA-VFI">EMA-VFI</a>' +
-        sep + '<a href="https://gradio.app">Gradio</a>' +
-        sep + _js)
+        sep + '<a href="https://gradio.app">Gradio</a>')
     app_footer = gr.HTML(footer, elem_id="footer")
 
     with gr.Blocks(analytics_enabled=False,
