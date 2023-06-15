@@ -87,18 +87,17 @@ def PNGtoGIF(input_path : str, # pylint: disable=invalid-name
             output_filepath : str,
             frame_rate : int):
     """Encapsulates logic for the PNG sequence to GIF feature"""
-    # if filename_pattern is "auto" it uses the filename of the first found file
+    # if filename_pattern is empty it uses the filename of the first found file
     # and the count of file to determine the pattern, .png as the file type
     # ffmpeg -i gifframes_%02d.png -i palette.png -lavfi paletteuse video.gif
     # ffmpeg -framerate 3 -i image%01d.png video.gif
-    if filename_pattern == "auto":
-        filename_pattern = determine_input_pattern(input_path)
+    pattern = filename_pattern or determine_input_pattern(input_path)
     output_path, base_filename, _ = split_filepath(output_filepath)
     palette_filepath = os.path.join(output_path, base_filename + "-palette.png")
-    palette_cmd = PNGtoPalette(input_path, filename_pattern, palette_filepath)
+    palette_cmd = PNGtoPalette(input_path, pattern, palette_filepath)
 
     ffcmd = FFmpeg(inputs= {
-            os.path.join(input_path, filename_pattern) : f"-framerate {frame_rate}",
+            os.path.join(input_path, pattern) : f"-framerate {frame_rate}",
             palette_filepath : None},
         outputs={output_filepath : "-lavfi paletteuse"},
         global_options="-y")
