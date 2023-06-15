@@ -25,7 +25,7 @@ def main():
     SplitChannels(args.input_path, args.output_path, args.type, log.log).split()
 
 class SplitChannels:
-    """Encapsulate logic for Resequence Files feature"""
+    """Encapsulate logic for Split Channels feature"""
     def __init__(self,
                 input_path : str,
                 output_path : str,
