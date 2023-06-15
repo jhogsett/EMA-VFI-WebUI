@@ -61,9 +61,9 @@ def create_ui(config : SimpleConfig,
                 PNGtoMP4(config, engine, log.log).render_tab()
                 GIFtoPNG(config, engine, log.log).render_tab()
                 PNGtoGIF(config, engine, log.log).render_tab()
+                SimplifyPngFiles(config, engine, log.log).render_tab()
                 DedupeFrames(config, engine, log.log).render_tab()
             ResequenceFiles(config, engine, log.log).render_tab()
-            SimplifyPngFiles(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             UpscaleFrames(config, engine, log.log).render_tab()
             with gr.Tab(SimpleIcons.APP_SYMBOL + "Application"):
