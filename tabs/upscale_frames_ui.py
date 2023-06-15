@@ -34,14 +34,25 @@ class UpscaleFrames(TabBase):
                     with gr.Row():
                         scale_input = gr.Slider(value=4.0, minimum=1.0, maximum=8.0, step=0.05,
                             label="Frame Upscale Factor")
-                        use_tiling = gr.Radio(label="Use Tiling", choices=["Auto (Tile If Needed)", "No (Best Quality)", "Yes (For Low VRAM)"], value="Auto (Tile If Needed)")
-            upscale_button = gr.Button("Upscale Frames", variant="primary")
+                        use_tiling = gr.Radio(label="Use Tiling",
+                        choices=[
+                            "Auto (Tile If Needed)",
+                            "No (Best Quality)",
+                            "Yes (For Low VRAM)"],
+                        value="Auto (Tile If Needed)")
+            gr.Markdown("*Progress can be tracked in the console*")
+            upscale_button = gr.Button("Upscale Frames " + SimpleIcons.SLOW_SYMBOL,
+                                       variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.upscale_frames.render()
         upscale_button.click(self.upscale_frames,
             inputs=[input_path_text, output_path_text, scale_input, use_tiling])
 
-    def upscale_frames(self, input_path : str, output_path : str | None, upscale_factor : float, use_tiling : str):
+    def upscale_frames(self,
+                       input_path : str,
+                       output_path : str | None,
+                       upscale_factor : float,
+                       use_tiling : str):
         """Upscale Frames button handler"""
         if input_path:
             model_name = self.config.realesrgan_settings["model_name"]
