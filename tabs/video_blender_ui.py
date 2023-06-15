@@ -241,6 +241,8 @@ class VideoBlender(TabBase):
                         choices = self.video_blender_projects.get_project_names()
                         reset_project_dropdown = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
                             " Projects", choices=choices, value=choices[0])
+                    gr.Markdown(
+                "*Reset Project uses the New Project tab to selectively revert parts of a project*")
                     with gr.Row():
                         reset_project_button = gr.Button("Reset Project", variant="primary")
 
