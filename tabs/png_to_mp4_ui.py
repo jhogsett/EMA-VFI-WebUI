@@ -30,8 +30,9 @@ class PNGtoMP4(TabBase):
             output_path_text_pm = gr.Text(max_lines=1, label="MP4 File",
                 placeholder="Path and filename on this server for the converted MP4 file")
             with gr.Row():
-                input_pattern_text_pm = gr.Text(max_lines=1, label="Input Filename Pattern",
-                    placeholder="Pattern like image%03d.png (auto=automatic pattern)")
+                input_pattern_text_pm = gr.Text(max_lines=1,
+                    label="Input Filename Pattern (leave blank for auto-detection)",
+                    placeholder="Example: 'image%09d.png'")
                 input_frame_rate_pm = gr.Slider(minimum=1, maximum=60, value=frame_rate,
                     step=1, label="Frame Rate")
                 quality_slider_pm = gr.Slider(minimum=minimum_crf, maximum=maximum_crf,
@@ -52,7 +53,7 @@ class PNGtoMP4(TabBase):
                         output_filepath: str,
                         quality : str):
         """Convert button handler"""
-        if input_path and input_pattern and output_filepath:
+        if input_path and output_filepath:
             directory, _, _ = split_filepath(output_filepath)
             create_directory(directory)
             ffmpeg_cmd = _PNGtoMP4(input_path, input_pattern, int(frame_rate), output_filepath,
