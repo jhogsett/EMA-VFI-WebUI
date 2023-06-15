@@ -196,7 +196,6 @@ class VideoBlender(TabBase):
                                     new_project_frame_rate = gr.Slider(minimum=1, maximum=60,
                                                                  value=frame_rate, step=1,
                                                                  label="Frame Rate")
-
                     with gr.Row():
                         with gr.Column(variant="compact"):
                             gr.HTML("Check Applicable Setup Steps")
@@ -234,6 +233,8 @@ class VideoBlender(TabBase):
                     gr.Markdown("*Progress can be tracked in the console*")
                     new_project_button = gr.Button("Create New Project " + SimpleIcons.SLOW_SYMBOL,
                                                    variant="primary")
+                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                        WebuiTips.video_blender_new_project.render()
 
                 ### RESET PROJECT
                 with gr.Tab(SimpleIcons.RECYCLE + "Reset Project", id=5):
