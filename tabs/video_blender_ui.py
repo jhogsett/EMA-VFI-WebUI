@@ -246,6 +246,8 @@ class VideoBlender(TabBase):
                 "*Reset Project uses the New Project tab to selectively revert parts of a project*")
                     with gr.Row():
                         reset_project_button = gr.Button("Reset Project", variant="primary")
+                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                        WebuiTips.video_blender_reset_project.render()
 
         projects_dropdown_vb.change(self.video_blender_choose_project,
             inputs=[projects_dropdown_vb],
