@@ -31,7 +31,7 @@ def create_ui(config : SimpleConfig,
               restart_fn : Callable):
     """Construct the Gradio Blocks UI"""
 
-    app_header = gr.HTML(SimpleIcons.CLAPPER + "EMA-VFI Web UI", elem_id="appheading")
+    app_header = gr.HTML(SimpleIcons.APP_SYMBOL + "EMA-VFI Web UI", elem_id="appheading")
     sep = '  •  '
     footer = (SimpleIcons.COPYRIGHT + ' 2023 J. Hogsett' +
         sep + '<a href="https://github.com/jhogsett/EMA-VFI-WebUI">Github</a>' +
@@ -66,9 +66,10 @@ def create_ui(config : SimpleConfig,
             SimplifyPngFiles(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             UpscaleFrames(config, engine, log.log).render_tab()
-            Resources(config, engine, log.log).render_tab()
-            Options(config, engine, log.log, restart_fn).render_tab()
-            LogViewer(config, engine, log.log, log).render_tab()
+            with gr.Tab(SimpleIcons.APP_SYMBOL + "Application"):
+                Options(config, engine, log.log, restart_fn).render_tab()
+                Resources(config, engine, log.log).render_tab()
+                LogViewer(config, engine, log.log, log).render_tab()
         if config.user_interface["show_header"]:
             app_footer.render()
     return app
