@@ -37,6 +37,12 @@ class WebuiTips:
     video_blender_video_preview = gr.Markdown(load_markdown(
         tips_path,
         "video_blender_video_preview"))
+    video_blender_new_project = gr.Markdown(load_markdown(
+        tips_path,
+        "video_blender_new_project"))
+    video_blender_reset_project = gr.Markdown(load_markdown(
+        tips_path,
+        "video_blender_reset_project"))
     mp4_to_png = gr.Markdown(load_markdown(tips_path, "mp4_to_png"))
     png_to_mp4 = gr.Markdown(load_markdown(tips_path, "png_to_mp4"))
     gif_to_png = gr.Markdown(load_markdown(tips_path, "gif_to_png"))

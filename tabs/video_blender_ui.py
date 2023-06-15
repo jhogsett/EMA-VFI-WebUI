@@ -196,7 +196,6 @@ class VideoBlender(TabBase):
                                     new_project_frame_rate = gr.Slider(minimum=1, maximum=60,
                                                                  value=frame_rate, step=1,
                                                                  label="Frame Rate")
-
                     with gr.Row():
                         with gr.Column(variant="compact"):
                             gr.HTML("Check Applicable Setup Steps")
@@ -234,6 +233,8 @@ class VideoBlender(TabBase):
                     gr.Markdown("*Progress can be tracked in the console*")
                     new_project_button = gr.Button("Create New Project " + SimpleIcons.SLOW_SYMBOL,
                                                    variant="primary")
+                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                        WebuiTips.video_blender_new_project.render()
 
                 ### RESET PROJECT
                 with gr.Tab(SimpleIcons.RECYCLE + "Reset Project", id=5):
@@ -241,8 +242,12 @@ class VideoBlender(TabBase):
                         choices = self.video_blender_projects.get_project_names()
                         reset_project_dropdown = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
                             " Projects", choices=choices, value=choices[0])
+                    gr.Markdown(
+                "*Reset Project uses the New Project tab to selectively revert parts of a project*")
                     with gr.Row():
                         reset_project_button = gr.Button("Reset Project", variant="primary")
+                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                        WebuiTips.video_blender_reset_project.render()
 
         projects_dropdown_vb.change(self.video_blender_choose_project,
             inputs=[projects_dropdown_vb],
@@ -309,7 +314,8 @@ class VideoBlender(TabBase):
                                          fix_frames_count],
                                 show_progress=False)
         fix_frames_button_vb.click(self.video_blender_fix_frames,
-            inputs=[input_project_path_vb, fix_frames_last_before, fix_frames_first_after],
+            inputs=[input_project_path_vb, fix_frames_count, fix_frames_last_before,
+                    fix_frames_first_after],
             outputs=[tabs_video_blender, project_path_ff, input_clean_before_ff,
                 input_clean_after_ff, fixed_path_ff])
         preview_button_ff.click(self.video_blender_preview_fixed,
@@ -449,10 +455,12 @@ class VideoBlender(TabBase):
             return last_clean_before, first_clean_after, damage_count
         return 0, 0, 0
 
-    def video_blender_fix_frames(self, project_path : str, last_frame_before : float,
-                                 first_frame_after : float):
+    def video_blender_fix_frames(self, project_path : str, damage_count: int,
+                                 last_frame_before : int, first_frame_after : int):
         """Fix Frames button handler"""
-        return gr.update(selected=2), project_path, last_frame_before, first_frame_after, None
+        if damage_count > 0:
+            return gr.update(selected=2), project_path, last_frame_before, first_frame_after, None
+        return gr.update(selected=1), None, 0, 0, None
 
     def video_blender_preview_fixed(self,
                                     project_path : str,
