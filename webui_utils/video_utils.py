@@ -182,8 +182,10 @@ def get_video_details(input_path : str) -> dict:
     stdout = result[0].decode("UTF-8").strip()
     return json.loads(stdout)
 
-def get_duplicate_frames(input_path : str, threshold : int):
-    """Use FFmpeg to get a list of duplicate frames without making changes"""
+def get_duplicate_frames(input_path : str, threshold : int) -> dict:
+    """Use FFmpeg to get a list of duplicate frames without making changes
+       returns an array of True/False values with all duplicate frame positions set True
+    """
     # ffmpeg -i file.mp4 -vf mpdecimate=hi=5000:lo=5000:frac=1 -loglevel debug -f null -
     filename_pattern = determine_input_pattern(input_path)
     input_sequence = os.path.join(input_path, filename_pattern)
@@ -199,12 +201,45 @@ def get_duplicate_frames(input_path : str, threshold : int):
     stderr_lines = stderr.splitlines()
     decimate_lines = [line for line in stderr_lines if line.startswith("[Parsed_mpdecimate")]
     keep_drop_lines = [line for line in decimate_lines if " keep " in line or " drop " in line]
-
-    filenames = sorted(glob.glob(os.path.join(input_path, "*.png")))
-    if len(filenames) != len(keep_drop_lines):
-        raise ValueError(
-            f"frame count mismatch ffmpeg={len(keep_drop_lines)} python={len(filenames)}")
-    result = {}
+    is_dupe_map = [None] * len(keep_drop_lines)
     for index, line in enumerate(keep_drop_lines):
-        result[filenames[index]] = " drop " in line
-    return result
+        is_dupe_map[index] = " drop " in line
+
+    # each False (non-dupe) preceding a True (dupe) should be marked as
+    # dulicate to mark it as part of a group of duplicate frames
+    group_map = is_dupe_map.copy()
+    for index, is_dupe in enumerate(is_dupe_map):
+        print(f"index: {index} is_dupe: {is_dupe}")
+        if index < len(is_dupe_map)-1:
+            # print(f"index {index} < {len(is_dupe_map)-1}")
+            if not is_dupe and is_dupe_map[index+1]:
+                print(f"index {index} not is_dupe ({not is_dupe}) and is_dupe_map[{index+1}] ({is_dupe_map[index+1]})")
+                group_map[index] = True
+    return group_map
+
+def get_duplicate_frames_report(input_path : str, threshold : int) -> str:
+    duplicate_frames = get_duplicate_frames(input_path, threshold)
+    filenames = sorted(glob.glob(os.path.join(input_path, "*.png")))
+    if len(duplicate_frames) != len(filenames):
+        raise ValueError(
+    f"frame count mismatch FFmpeg ({len(duplicate_frames)}) vs Python ({len(filenames)})")
+    is_inside_group = duplicate_frames[0]
+    group_number = 1 if is_inside_group else 0
+    result = []
+    separator = ""
+    for index, entry in enumerate(duplicate_frames):
+        if entry: # is duplicate
+            if is_inside_group: # continue in group
+                pass
+            else: # start duplicate group
+                is_inside_group = True
+                group_number += 1
+                result.append(f"Duplicate Frame Group #{group_number}")
+            result.append(f"Frame #{index} : {filenames[index]}")
+        else: # not duplicate
+            if is_inside_group: # leave group
+                is_inside_group = False
+                result.append(separator)
+            else: # continue not in group
+                pass
+    return "\r\n".join(result)
