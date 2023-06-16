@@ -209,11 +209,8 @@ def get_duplicate_frames(input_path : str, threshold : int) -> dict:
     # dulicate to mark it as part of a group of duplicate frames
     group_map = is_dupe_map.copy()
     for index, is_dupe in enumerate(is_dupe_map):
-        print(f"index: {index} is_dupe: {is_dupe}")
         if index < len(is_dupe_map)-1:
-            # print(f"index {index} < {len(is_dupe_map)-1}")
             if not is_dupe and is_dupe_map[index+1]:
-                print(f"index {index} not is_dupe ({not is_dupe}) and is_dupe_map[{index+1}] ({is_dupe_map[index+1]})")
                 group_map[index] = True
     return group_map
 
