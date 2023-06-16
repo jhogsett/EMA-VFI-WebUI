@@ -181,3 +181,30 @@ def get_video_details(input_path : str) -> dict:
     result = ffcmd.run(stdout=subprocess.PIPE)
     stdout = result[0].decode("UTF-8").strip()
     return json.loads(stdout)
+
+def get_duplicate_frames(input_path : str, threshold : int):
+    """Use FFmpeg to get a list of duplicate frames without making changes"""
+    # ffmpeg -i file.mp4 -vf mpdecimate=hi=5000:lo=5000:frac=1 -loglevel debug -f null -
+    filename_pattern = determine_input_pattern(input_path)
+    input_sequence = os.path.join(input_path, filename_pattern)
+    output_sequence = "-"
+    filter = f"mpdecimate=hi={threshold}:lo={threshold}:frac=1:max=0"
+
+    ffcmd = FFmpeg(inputs= {input_sequence : None},
+        outputs={output_sequence : f"-vf {filter} -f null"},
+        global_options="-loglevel debug")
+    cmd = ffcmd.cmd
+    result = ffcmd.run(stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stderr = result[1].decode("UTF-8")
+    stderr_lines = stderr.splitlines()
+    decimate_lines = [line for line in stderr_lines if line.startswith("[Parsed_mpdecimate")]
+    keep_drop_lines = [line for line in decimate_lines if " keep " in line or " drop " in line]
+
+    filenames = sorted(glob.glob(os.path.join(input_path, "*.png")))
+    if len(filenames) != len(keep_drop_lines):
+        raise ValueError(
+            f"frame count mismatch ffmpeg={len(keep_drop_lines)} python={len(filenames)}")
+    result = {}
+    for index, line in enumerate(keep_drop_lines):
+        result[filenames[index]] = " drop " in line
+    return result
