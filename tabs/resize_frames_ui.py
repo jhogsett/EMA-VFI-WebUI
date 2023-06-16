@@ -6,7 +6,7 @@ from webui_utils.simple_icons import SimpleIcons
 from webui_utils.file_utils import create_directory, get_files
 from webui_utils.auto_increment import AutoIncrementDirectory
 from webui_utils.ui_utils import update_splits_info
-# from webui_tips import WebuiTips
+from webui_tips import WebuiTips
 from resize_frames import ResizeFrames as _ResizeFrames
 from tabs.tab_base import TabBase
 
@@ -43,8 +43,8 @@ class ResizeFrames(TabBase):
             gr.Markdown("*Progress can be tracked in the console*")
             resize_button = gr.Button("Resize Frames " + SimpleIcons.SLOW_SYMBOL,
                                        variant="primary")
-            # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-            #     WebuiTips.upscale_frames.render()
+            with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                WebuiTips.resize_frames.render()
         resize_button.click(self.resize_frames,
             inputs=[input_path_text, output_path_text, new_width, new_height, scale_type])
 
