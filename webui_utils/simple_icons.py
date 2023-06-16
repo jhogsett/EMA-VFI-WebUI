@@ -24,6 +24,7 @@ class SimpleIcons:
     THREE = "3️⃣"
     TOOLBOX = "🧰"
     TWO = "2️⃣"
+    UP_DOWN_ARROW = "↕️"
     WRENCH = "🔧"
 
     BELL = "🔔"
@@ -54,6 +55,7 @@ class SimpleIcons:
     OK_HAND = "👌"
     FINGERS_CROSSED = "🤞"
     FIST = "🤜"
+    PINCHING_HAND = "🤏"
     THUMBS_DOWN = "👎"
     THUMBS_UP = "👍"
 
@@ -137,6 +139,7 @@ class SimpleIcons:
         THREE,
         TWO,
         TWO_HEARTS,
+        PINCHING_HAND,
         WARNING,
         WATCH,
         WRENCH,

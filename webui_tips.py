@@ -53,3 +53,4 @@ class WebuiTips:
     upscale_frames = gr.Markdown(load_markdown(tips_path, "upscale_frames"))
     simplify_png_files = gr.Markdown(load_markdown(tips_path, "simplify_png_files"))
     deduplicate_frames = gr.Markdown(load_markdown(tips_path, "deduplicate_frames"))
+    resize_frames = gr.Markdown(load_markdown(tips_path, "resize_frames"))
