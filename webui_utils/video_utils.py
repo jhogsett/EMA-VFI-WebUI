@@ -184,8 +184,10 @@ def get_video_details(input_path : str) -> dict:
 
 def get_duplicate_frames(input_path : str, threshold : int):
     """Use FFmpeg to get a list of duplicate frames without making changes
-       returns an array of duplicate frame groups: arrays of duplicate frame indexes
-       also an array of the found mpdecimate lines for debugging
+       returns:
+        - array of duplicate frame groups: arrays of dicts with frame index and filename
+        - array of frame filenames
+        - array of found mpdecimate lines for debugging
     """
     # ffmpeg -i file.mp4 -vf mpdecimate=hi=5000:lo=5000:frac=1 -loglevel debug -f null -
     filename_pattern = determine_input_pattern(input_path)
@@ -228,21 +230,33 @@ def get_duplicate_frames(input_path : str, threshold : int):
                 is_in_group = False
     if is_in_group:
         groups.append(group)
-    return groups, decimate_lines
+    return groups, filenames, decimate_lines
 
 def get_duplicate_frames_report(input_path : str, threshold : int) -> str:
     """Create a human-readable report of duplicate frame groups"""
-    duplicate_frames, _ = get_duplicate_frames(input_path, threshold)
+    separator = ""
+    duplicate_frame_groups, filenames, _ = get_duplicate_frames(input_path, threshold)
+    group_count = len(duplicate_frame_groups)
+    frame_count = len(filenames)
+
+    duplicate_frame_count = 0
+    for group in duplicate_frame_groups:
+        duplicate_frame_count += len(group.keys())
+    # subtract the group count, to include only the actual duplicates (frames marked 'drop')
+    duplicate_frame_count -= group_count
+
     report = []
-
-    report.append("Duplicate Frame Groups")
+    report.append("[Duplicate Frames Report]")
     report.append(f"Input Path: {input_path}")
-    report.append(f"Threshold: {threshold}")
-    report.append(f"Group Count: {len(duplicate_frames)}")
+    report.append(f"Frame Count: {frame_count}")
+    report.append(f"Detection Threshold: {threshold}")
+    report.append(f"Duplicate Frames: {duplicate_frame_count}")
+    report.append(f"Duplicate Ratio: {(duplicate_frame_count * 100.0 / frame_count):0.2f}%")
+    report.append(f"Duplicate Frame Groups: {group_count}")
 
-    for index, entry in enumerate(duplicate_frames):
+    for index, entry in enumerate(duplicate_frame_groups):
+        report.append(separator)
         report.append(f"[Group #{index+1}]")
         for key in entry.keys():
             report.append(f"Frame#{key} : {entry[key]}")
-
     return "\r\n".join(report)
