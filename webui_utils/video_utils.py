@@ -182,9 +182,10 @@ def get_video_details(input_path : str) -> dict:
     stdout = result[0].decode("UTF-8").strip()
     return json.loads(stdout)
 
-def get_duplicate_frames(input_path : str, threshold : int) -> dict:
+def get_duplicate_frames(input_path : str, threshold : int):
     """Use FFmpeg to get a list of duplicate frames without making changes
-       returns an array of True/False values with all duplicate frame positions set True
+       returns an array of duplicate frame groups: arrays of duplicate frame indexes
+       also an array of the found mpdecimate lines for debugging
     """
     # ffmpeg -i file.mp4 -vf mpdecimate=hi=5000:lo=5000:frac=1 -loglevel debug -f null -
     filename_pattern = determine_input_pattern(input_path)
@@ -205,53 +206,41 @@ def get_duplicate_frames(input_path : str, threshold : int) -> dict:
     for index, line in enumerate(keep_drop_lines):
         is_dupe_map[index] = " drop " in line
 
-    # each False (non-dupe) preceding a True (dupe) should be marked as
-    # duplicate to mark it as part of a group of duplicate frames
-    group_map = is_dupe_map.copy()
-    for index, is_dupe in enumerate(is_dupe_map):
-        if index < len(is_dupe_map)-1:
-            if not is_dupe and is_dupe_map[index+1]:
-                group_map[index] = True
-    return group_map
-
-def get_duplicate_frames_groups(input_path : str, threshold : int) -> list:
-    """Get groups of duplicate frames"""
-    duplicate_frames = get_duplicate_frames(input_path, threshold)
     filenames = sorted(glob.glob(os.path.join(input_path, "*.png")))
-    if len(duplicate_frames) != len(filenames):
+    if len(filenames) != len(keep_drop_lines):
         raise ValueError(
-    f"frame count mismatch FFmpeg ({len(duplicate_frames)}) vs found files ({len(filenames)})")
+    f"frame count mismatch FFmpeg ({len(keep_drop_lines)}) vs found files ({len(filenames)})")
 
-    is_inside_group = duplicate_frames[0]
-    group_number = 1 if is_inside_group else 0
-    result = []
+    groups = []
     group = {}
-    for index, entry in enumerate(duplicate_frames):
-        if entry: # is duplicate
-            if not is_inside_group: # start group
-                is_inside_group = True
-                group_number += 1
+    is_in_group = False
+    for index, is_dupe in enumerate(is_dupe_map):
+        if is_dupe:
+            if not is_in_group:
+                is_in_group = True
                 group = {}
+                # add the preceding frame as the first duplicate of this group
+                group[index-1] = filenames[index-1]
             group[index] = filenames[index]
-        else: # not duplicate
-            if is_inside_group: # leave group
-                is_inside_group = False
-                result.append(group)
-    if group:
-        result.append(group)
-    return result
+        else:
+            if is_in_group:
+                groups.append(group)
+                is_in_group = False
+    if is_in_group:
+        groups.append(group)
+    return groups, decimate_lines
 
 def get_duplicate_frames_report(input_path : str, threshold : int) -> str:
     """Create a human-readable report of duplicate frame groups"""
-    duplicate_frames_groups = get_duplicate_frames_groups(input_path, threshold)
+    duplicate_frames, _ = get_duplicate_frames(input_path, threshold)
     report = []
 
     report.append("Duplicate Frame Groups")
     report.append(f"Input Path: {input_path}")
     report.append(f"Threshold: {threshold}")
-    report.append(f"Group Count: {len(duplicate_frames_groups)}")
+    report.append(f"Group Count: {len(duplicate_frames)}")
 
-    for index, entry in enumerate(duplicate_frames_groups):
+    for index, entry in enumerate(duplicate_frames):
         report.append(f"[Group #{index+1}]")
         for key in entry.keys():
             report.append(f"Frame#{key} : {entry[key]}")
