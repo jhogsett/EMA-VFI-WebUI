@@ -182,14 +182,25 @@ def get_video_details(input_path : str) -> dict:
     stdout = result[0].decode("UTF-8").strip()
     return json.loads(stdout)
 
-def get_duplicate_frames(input_path : str, threshold : int):
+def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group : int):
     """Use FFmpeg to get a list of duplicate frames without making changes
-       returns:
+        - input_path: path to PNG frame files
+        - threshold: passed to FFmpeg as 'hi' and 'lo' mpdecimate value
+        - max_dupes_per_group: raises RuntimeError if more frames are added to a group
+          set to 0 to disable
+       Returns:
         - array of duplicate frame groups: arrays of dicts with frame index and filename
         - array of frame filenames
         - array of found mpdecimate lines for debugging
     """
     # ffmpeg -i file.mp4 -vf mpdecimate=hi=5000:lo=5000:frac=1 -loglevel debug -f null -
+    if not os.path.exists(input_path):
+        raise ValueError(f"path does not exist: {input_path}")
+    if threshold < 1:
+        raise ValueError(f"'threshold' must be >= 1")
+    if max_dupes_per_group < 0:
+        max_dupes_per_group = 0
+
     filename_pattern = determine_input_pattern(input_path)
     input_sequence = os.path.join(input_path, filename_pattern)
     output_sequence = "-"
@@ -218,11 +229,19 @@ def get_duplicate_frames(input_path : str, threshold : int):
     is_in_group = False
     for index, is_dupe in enumerate(is_dupe_map):
         if is_dupe:
+            if max_dupes_per_group == 1:
+                raise RuntimeError(
+                    f"max_dupes_per_group exceeded in group #{len(groups)+1} with frame #{index}")
             if not is_in_group:
                 is_in_group = True
                 group = {}
                 # add the preceding frame as the first duplicate of this group
                 group[index-1] = filenames[index-1]
+            else:
+                if max_dupes_per_group:
+                    if len(group)+1 > max_dupes_per_group:
+                        raise RuntimeError(
+                    f"max_dupes_per_group exceeded in group #{len(groups)+1} with frame #{index}")
             group[index] = filenames[index]
         else:
             if is_in_group:
@@ -232,10 +251,14 @@ def get_duplicate_frames(input_path : str, threshold : int):
         groups.append(group)
     return groups, filenames, decimate_lines
 
-def get_duplicate_frames_report(input_path : str, threshold : int) -> str:
+def get_duplicate_frames_report(input_path : str,
+                                threshold : int,
+                                max_dupes_per_group : int) -> str:
     """Create a human-readable report of duplicate frame groups"""
     separator = ""
-    duplicate_frame_groups, filenames, _ = get_duplicate_frames(input_path, threshold)
+    duplicate_frame_groups, filenames, _ = get_duplicate_frames(input_path,
+                                                                threshold,
+                                                                max_dupes_per_group)
     group_count = len(duplicate_frame_groups)
     frame_count = len(filenames)
 

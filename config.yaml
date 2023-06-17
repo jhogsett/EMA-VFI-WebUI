@@ -84,6 +84,7 @@ deduplicate_settings:
   max_threshold: 25000
   default_threshold: 2500
   threshold_step: 100
+  max_dupes_per_group: 0
 user_interface:
   tips_path: "guide"
   theme: "default"

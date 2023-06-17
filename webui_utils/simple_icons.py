@@ -94,6 +94,7 @@ class SimpleIcons:
     # shared symbol definitions
     APP_SYMBOL = CLAPPER
     CONV_SYMBOL = STILL
+    DEDUPE_SYMBOL = SCISSORS
     PROP_SYMBOL = PROPERTIES
     SLOW_SYMBOL = WATCH
     TIPS_SYMBOL = QUESTION
@@ -101,6 +102,7 @@ class SimpleIcons:
     SYMBOLS = [
         APP_SYMBOL,
         CONV_SYMBOL,
+        DEDUPE_SYMBOL,
         PROP_SYMBOL,
         SLOW_SYMBOL,
         TIPS_SYMBOL,
