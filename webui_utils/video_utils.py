@@ -196,8 +196,8 @@ def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group 
     # ffmpeg -i file.mp4 -vf mpdecimate=hi=5000:lo=5000:frac=1 -loglevel debug -f null -
     if not os.path.exists(input_path):
         raise ValueError(f"path does not exist: {input_path}")
-    if threshold < 1:
-        raise ValueError(f"'threshold' must be >= 1")
+    if threshold < 0:
+        raise ValueError(f"'threshold' must be positive")
     if max_dupes_per_group < 0:
         max_dupes_per_group = 0
 
@@ -268,6 +268,14 @@ def get_duplicate_frames_report(input_path : str,
     # subtract the group count, to include only the actual duplicates (frames marked 'drop')
     duplicate_frame_count -= group_count
 
+    # find largest and smallest group sizes
+    max_group = 0
+    min_group = frame_count + 1
+    for group in duplicate_frame_groups:
+        leng = len(group)
+        max_group = leng if leng > max_group else max_group
+        min_group = leng if leng < min_group else min_group
+
     report = []
     report.append("[Duplicate Frames Report]")
     report.append(f"Input Path: {input_path}")
@@ -276,6 +284,8 @@ def get_duplicate_frames_report(input_path : str,
     report.append(f"Duplicate Frames: {duplicate_frame_count}")
     report.append(f"Duplicate Ratio: {(duplicate_frame_count * 100.0 / frame_count):0.2f}%")
     report.append(f"Duplicate Frame Groups: {group_count}")
+    report.append(f"Smallest Group Size: {min_group}")
+    report.append(f"Largest Group Size: {max_group}")
 
     for index, entry in enumerate(duplicate_frame_groups):
         report.append(separator)
