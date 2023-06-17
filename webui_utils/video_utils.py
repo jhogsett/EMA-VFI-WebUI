@@ -231,7 +231,7 @@ def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group 
         if is_dupe:
             if max_dupes_per_group == 1:
                 raise RuntimeError(
-                    f"max_dupes_per_group exceeded in group #{len(groups)+1} with frame #{index}")
+f"max_dupes_per_group exceeded: 2 in group #{len(groups)+1}, duplicate frame #{index}")
             if not is_in_group:
                 is_in_group = True
                 group = {}
@@ -241,7 +241,7 @@ def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group 
                 if max_dupes_per_group:
                     if len(group)+1 > max_dupes_per_group:
                         raise RuntimeError(
-                    f"max_dupes_per_group exceeded in group #{len(groups)+1} with frame #{index}")
+f"max_dupes_per_group exceeded: {len(group)+1} in group #{len(groups)+1}, duplicate frame #{index}")
             group[index] = filenames[index]
         else:
             if is_in_group:
