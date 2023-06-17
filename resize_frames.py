@@ -76,7 +76,7 @@ class ResizeFrames:
             size = (self.new_width, self.new_height)
             resized_image = cv2.resize(image, size, interpolation = scale_type)
             _, filename, ext = split_filepath(file)
-            output_filepath = os.path.join(self.output_path, f"{filename}.{ext}")
+            output_filepath = os.path.join(self.output_path, f"{filename}{ext}")
             self.log(f"saving resized file {output_filepath}")
             cv2.imwrite(output_filepath, resized_image)
 
