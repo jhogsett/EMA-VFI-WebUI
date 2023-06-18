@@ -1,13 +1,13 @@
 """Deduplicate Frames Feature Core Code"""
 import os
-import glob
+import shutil
 import argparse
 from typing import Callable
 from tqdm import tqdm
 from webui_utils.simple_log import SimpleLog
 from PIL import Image
 from webui_utils.video_utils import get_duplicate_frames_report, get_duplicate_frames
-from webui_utils.file_utils import split_filepath
+from webui_utils.file_utils import split_filepath, create_directory
 def main():
     """Use the Deduplicate Frames feature from the command line"""
     parser = argparse.ArgumentParser(description='Deduplicate video frame PNG files')
@@ -49,8 +49,24 @@ class DeduplicateFrames:
         self.disposition = disposition
         self.log_fn = log_fn
 
+    valid_dispositions = ["report", "delete", "autofill"]
+
+    def valid_disposition(self, disposition):
+        return disposition in self.valid_dispositions
+
     def invoke(self):
         """Invoke the Deduplicate Frames feature"""
+        if not self.input_path:
+            raise ValueError("'input_path' must be specified")
+        if not os.path.exists(self.input_path):
+            raise ValueError("'input_path' must exist")
+        if self.threshold < 0:
+            raise ValueError("'threshold' must be positive")
+        if self.max_dupes < 0:
+            raise ValueError("'max_dupes' must be positive")
+        if not self.valid_disposition(self.disposition):
+            raise ValueError(
+                    f"'disposition' must be one of the values: {','.join(self.valid_dispositions)}")
         if self.disposition.startswith("d"):
             return self.invoke_delete()
         elif self.disposition.startswith("a"):
@@ -68,6 +84,7 @@ class DeduplicateFrames:
                 filename = _filename or "Duplicate Frames Report"
                 ext = _ext or ".txt"
                 report_path = os.path.join(_path, filename + ext)
+                self.log(f"writing report to {report_path}")
                 with open(report_path, "w", encoding="UTF-8") as file:
                     file.write(report)
                 print(f"Duplicate Frames Report written to {report_path}")
@@ -79,7 +96,41 @@ class DeduplicateFrames:
             print(f"Error generating report: {error}")
 
     def invoke_delete(self):
-        pass
+        if not self.output_path:
+            raise ValueError("'output_path' must be specified")
+        create_directory(self.output_path)
+
+        try:
+            self.log("calling 'get_duplicate_frames' with" + \
+        f" input_path: {self.input_path} threshold: {self.threshold} max_dupes: {self.max_dupes} ")
+            dupe_groups, frame_filenames, mpdecimate_log = get_duplicate_frames(self.input_path,
+                                                                                self.threshold,
+                                                                                self.max_dupes)
+            self.log("mpdecimate data received from 'get_duplicate_frames:")
+            self.log(mpdecimate_log)
+
+            # remove duplicates from full list of frame files
+            dupe_count = 0
+            self.log(f"beginning processing of {len(dupe_groups)} duplicate groups for deletion")
+            for index, group in enumerate(dupe_groups):
+                self.log(f"processing group #{index+1}")
+                dupes = list(group.values())
+                dupes = dupes[1:] # first entry is the 'keep' frame
+                for filepath in dupes:
+                    self.log(f"excluding {filepath}")
+                    frame_filenames.remove(filepath)
+                    dupe_count += 1
+
+            pbar_title = "Copying"
+            for filepath in tqdm(frame_filenames, desc=pbar_title):
+                _, filename, ext = split_filepath(filepath)
+                output_filepath = os.path.join(self.output_path, filename + ext)
+                self.log(f"copying {filepath} to {output_filepath}")
+                shutil.copy(filepath, output_filepath)
+            print(f"{len(frame_filenames)} frame files," + \
+                  f" excluding {dupe_count} duplicates, copied to: {self.output_path}")
+        except RuntimeError as error:
+            print(f"Error generating report: {error}")
 
     def invoke_autofill(self):
         pass
