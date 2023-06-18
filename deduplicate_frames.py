@@ -2,10 +2,12 @@
 import os
 import shutil
 import argparse
+import csv
 from typing import Callable
 from tqdm import tqdm
 from webui_utils.simple_log import SimpleLog
-from webui_utils.video_utils import get_duplicate_frames_report, get_duplicate_frames
+from webui_utils.video_utils import get_duplicate_frames_report, get_duplicate_frames,\
+    compute_report_stats
 from webui_utils.file_utils import split_filepath, create_directory
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
@@ -24,7 +26,7 @@ def main():
     parser.add_argument("--max_dupes", default="0", type=int,
                         help="Max duplicates per group (default:0), 0=no limit, 1=no dupes allowed")
     parser.add_argument("--disposition", default="report", type=str,
-                help="Outcome for found duplicate frames: 'report' (default), 'delete', 'autofill'")
+    help="Outcome for found duplicate frames: 'report' (default), 'delete', 'autofill', 'tuning'")
     parser.add_argument('--model', default='ours', type=str)
     parser.add_argument('--gpu_ids', type=str, default='0',
                         help='gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU (FUTURE USE)')
@@ -32,6 +34,12 @@ def main():
                     help="Use Time Step instead of Binary Search interpolation (Default: False)")
     parser.add_argument("--depth", default=10, type=int,
                         help="How deep the frame splits go to reach the target")
+    parser.add_argument("--tune_min", default=0, type=int,
+                        help="Minimum threshold for tuning (default 0)")
+    parser.add_argument("--tune_max", default=25000, type=int,
+                        help="Maximum threshold for tuning (default 25000)")
+    parser.add_argument("--tune_step", default=100, type=int,
+                        help="Threshold step for tuning (default 100)")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
                         help="Show extra details")
     args = parser.parse_args()
@@ -48,7 +56,10 @@ def main():
                       args.threshold,
                       args.max_dupes,
                       args.depth,
-                      log.log).invoke(args.disposition)
+                      log.log,
+                      tune_min=args.tune_min,
+                      tune_max=args.tune_max,
+                      tune_step=args.tune_step).invoke(args.disposition)
 
 class DeduplicateFrames:
     """Encapsulate logic for Resequence Files feature"""
@@ -59,7 +70,10 @@ class DeduplicateFrames:
                 threshold : int,
                 max_dupes : int,
                 depth : int,
-                log_fn : Callable | None):
+                log_fn : Callable | None,
+                tune_min : int=0,
+                tune_max : int=25000,
+                tune_step : int=100):
         self.frame_restorer = frame_restorer
         self.input_path = input_path
         self.output_path = output_path
@@ -67,6 +81,9 @@ class DeduplicateFrames:
         self.max_dupes = max_dupes
         self.depth = depth
         self.log_fn = log_fn
+        self.tune_min = tune_min
+        self.tune_max = tune_max
+        self.tune_step = tune_step
         if not self.input_path:
             raise ValueError("'input_path' must be specified")
         if not os.path.exists(self.input_path):
@@ -76,7 +93,7 @@ class DeduplicateFrames:
         if self.max_dupes < 0:
             raise ValueError("'max_dupes' must be positive")
 
-    valid_dispositions = ["report", "delete", "autofill"]
+    valid_dispositions = ["report", "delete", "autofill", "tuning"]
 
     def valid_disposition(self, disposition):
         return disposition in self.valid_dispositions
@@ -90,8 +107,78 @@ class DeduplicateFrames:
             return self.invoke_delete()
         elif disposition.startswith("a"):
             return self.invoke_autofill()
+        elif disposition.startswith("t"):
+            return self.invoke_tuning()
         else:
             return self.invoke_report()
+
+    def invoke_tuning(self, suppress_output=False):
+        message = f"beginning threshold tuning process for {self.input_path} with" +\
+            f" min={self.tune_min} max={self.tune_max} step={self.tune_step}"
+        self.log(message)
+
+        tuning_data = []
+        csv_path = None
+        csv_fields = [
+            "threshold", "dupe_count", "dupe_ratio", "dupe_percent", "min_group", "max_group"]
+        if self.output_path:
+            path, filename, ext = split_filepath(self.output_path)
+            csv_path = os.path.join(path, filename + ".csv")
+            with open(csv_path, 'w', encoding="utf-8", newline="") as csvfile:
+                writer = csv.DictWriter(csvfile, fieldnames = csv_fields)
+                writer.writeheader()
+
+        pbar_title = "Tuning"
+        try:
+            for threshold in tqdm(range(self.tune_min,
+                                        self.tune_max,
+                                        self.tune_step),
+                                    desc=pbar_title):
+                message = f"geting duplicates for threshold={threshold}"
+                self.log(message)
+                dupe_groups, frame_filenames, _ = get_duplicate_frames(self.input_path,
+                                                                        threshold,
+                                                                        self.max_dupes)
+                stats = compute_report_stats(dupe_groups, frame_filenames)
+                message = f"dupes={stats['dupe_count']} ratio={stats['dupe_ratio']}" +\
+            f" percent={stats['dupe_percent']} min={stats['min_group']} max={stats['max_group']}"
+                self.log(message)
+
+                data = {}
+                data["threshold"] = threshold
+                data["dupe_count"] = stats["dupe_count"]
+                data["dupe_ratio"] = stats["dupe_ratio"]
+                data["dupe_percent"] = stats["dupe_percent"]
+                data["min_group"] = stats["min_group"]
+                data["max_group"] = stats["max_group"]
+                tuning_data.append(data)
+
+            if csv_path:
+                with open(csv_path, 'a', encoding="utf-8", newline="") as csvfile:
+                    writer = csv.DictWriter(csvfile, fieldnames = csv_fields)
+                    writer.writerows(tuning_data)
+                message = f"tuning report saved to {csv_path}"
+                self.log(message)
+                if not suppress_output:
+                    print(message)
+            else:
+                if not suppress_output:
+                    print()
+                    print("Tuning Results:")
+                    for data in tuning_data:
+                        message = f"threshold={data['threshold']} dupes={data['dupe_count']}" +\
+                            f" ratio={data['dupe_ratio']} percent={data['dupe_percent']}" +\
+                            f" min={data['min_group']} max={data['max_group']}"
+                        print(message)
+                    print()
+
+        except RuntimeError as error:
+            message = f"Error generating report: {error}"
+            self.log(message)
+            if suppress_output:
+                raise error
+            else:
+                print(message)
 
     def invoke_report(self, suppress_output=False):
         try:

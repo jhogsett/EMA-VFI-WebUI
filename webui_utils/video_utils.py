@@ -251,17 +251,9 @@ f"max_dupes_per_group exceeded: {len(group)+1} in group #{len(groups)+1}, duplic
         groups.append(group)
     return groups, filenames, decimate_lines
 
-def get_duplicate_frames_report(input_path : str,
-                                threshold : int,
-                                max_dupes_per_group : int) -> str:
-    """Create a human-readable report of duplicate frame groups"""
-    separator = ""
-    duplicate_frame_groups, filenames, _ = get_duplicate_frames(input_path,
-                                                                threshold,
-                                                                max_dupes_per_group)
+def compute_report_stats(duplicate_frame_groups, filenames):
     group_count = len(duplicate_frame_groups)
     frame_count = len(filenames)
-
     duplicate_frame_count = 0
     for group in duplicate_frame_groups:
         duplicate_frame_count += len(group.keys())
@@ -270,22 +262,44 @@ def get_duplicate_frames_report(input_path : str,
 
     # find largest and smallest group sizes
     max_group = 0
-    min_group = frame_count + 1
-    for group in duplicate_frame_groups:
-        leng = len(group)
-        max_group = leng if leng > max_group else max_group
-        min_group = leng if leng < min_group else min_group
+    min_group = 0
+    if duplicate_frame_groups:
+        min_group = frame_count + 1
+        for group in duplicate_frame_groups:
+            leng = len(group)
+            max_group = leng if leng > max_group else max_group
+            min_group = leng if leng < min_group else min_group
 
+    stats = {}
+    stats["frame_count"] = frame_count
+    stats["group_count"] = group_count
+    stats["dupe_count"] = duplicate_frame_count
+    dupe_ratio = duplicate_frame_count * 1.0 / frame_count
+    stats["dupe_ratio"] = dupe_ratio
+    stats["dupe_percent"] = f"{100.0 * dupe_ratio:0.2f}%"
+    stats["min_group"] = min_group
+    stats["max_group"] = max_group
+    return stats
+
+def get_duplicate_frames_report(input_path : str,
+                                threshold : int,
+                                max_dupes_per_group : int) -> str:
+    """Create a human-readable report of duplicate frame groups"""
+    separator = ""
+    duplicate_frame_groups, filenames, _ = get_duplicate_frames(input_path,
+                                                                threshold,
+                                                                max_dupes_per_group)
+    stats = compute_report_stats(duplicate_frame_groups, filenames)
     report = []
     report.append("[Duplicate Frames Report]")
     report.append(f"Input Path: {input_path}")
-    report.append(f"Frame Count: {frame_count}")
+    report.append(f"Frame Count: {stats['frame_count']}")
     report.append(f"Detection Threshold: {threshold}")
-    report.append(f"Duplicate Frames: {duplicate_frame_count}")
-    report.append(f"Duplicate Ratio: {(duplicate_frame_count * 100.0 / frame_count):0.2f}%")
-    report.append(f"Duplicate Frame Groups: {group_count}")
-    report.append(f"Smallest Group Size: {min_group}")
-    report.append(f"Largest Group Size: {max_group}")
+    report.append(f"Duplicate Frames: {stats['dupe_count']}")
+    report.append(f"Duplicate Ratio: {stats['dupe_percent']}")
+    report.append(f"Duplicate Frame Groups: {stats['group_count']}")
+    report.append(f"Smallest Group Size: {stats['min_group']}")
+    report.append(f"Largest Group Size: {stats['max_group']}")
 
     for index, entry in enumerate(duplicate_frame_groups):
         report.append(separator)
