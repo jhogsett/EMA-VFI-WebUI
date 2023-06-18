@@ -4,12 +4,12 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-# from webui_utils.file_utils import create_directory, split_filepath
 from webui_utils.video_utils import get_duplicate_frames_report
 # from webui_tips import WebuiTips
 from webui_utils.auto_increment import AutoIncrementDirectory
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
+from deduplicate_frames import DeduplicateFrames
 
 class DuplicateFramesReport(TabBase):
     """Encapsulates UI elements and events for the Duplicate Frames Report feature"""
@@ -56,21 +56,28 @@ class DuplicateFramesReport(TabBase):
         """Create Report button handler"""
         if input_path:
             try:
-                report = get_duplicate_frames_report(input_path,
-                                                     threshold,
-                                                     max_dupes_per_group=max_dupes)
+                report = DeduplicateFrames(None,
+                                            input_path,
+                                            None,
+                                            threshold,
+                                            max_dupes,
+                                            None,
+                                            self.log).invoke_report(suppress_output=True)
+
+                base_output_path = self.config.directories["output_deduplication"]
+                output_path, run_index = AutoIncrementDirectory(base_output_path).next_directory(
+                    "run")
+                output_basename = "duplicate_frames_report"
+                self.log(f"creating duplicate frames report at {output_path}")
+
+                info_file = os.path.join(output_path, output_basename + str(run_index) + ".txt")
+                with open(info_file, "w", encoding="UTF-8") as file:
+                    file.write(report)
+                return gr.update(value=[info_file], visible=True), gr.update(value=report,
+                                                                             visible=True)
+
             except RuntimeError as error:
                 message = \
-f"""Maximum duplicates per group exceeded!
-Details: {error}"""
+f"""Error creating report:
+{error}"""
                 return gr.update(value=None, visible=False), gr.update(value=message, visible=True)
-
-            base_output_path = self.config.directories["output_deduplication"]
-            output_path, run_index = AutoIncrementDirectory(base_output_path).next_directory("run")
-            output_basename = "duplicate_frames_report"
-            self.log(f"creating duplicate frames report at {output_path}")
-
-            info_file = os.path.join(output_path, output_basename + str(run_index) + ".txt")
-            with open(info_file, "w", encoding="UTF-8") as file:
-                file.write(report)
-            return gr.update(value=[info_file], visible=True), gr.update(value=report, visible=True)

@@ -9,6 +9,7 @@ from webui_tips import WebuiTips
 from webui_utils.auto_increment import AutoIncrementDirectory
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
+from deduplicate_frames import DeduplicateFrames
 
 class DedupeFrames(TabBase):
     """Encapsulates UI elements and events for the Deduplicate Frames feature"""
@@ -24,36 +25,50 @@ class DedupeFrames(TabBase):
         max_threshold = self.config.deduplicate_settings["max_threshold"]
         default_threshold = self.config.deduplicate_settings["default_threshold"]
         threshold_step = self.config.deduplicate_settings["threshold_step"]
-        with gr.Tab("Deduplicate Frames"):
-            gr.Markdown(SimpleIcons.CONV_SYMBOL + "Detect and remove duplicate PNG frame files")
+        def_max_dupes = self.config.deduplicate_settings["max_dupes_per_group"]
+        # add max dupes; use new detect code
+        with gr.Tab("Remove Duplicate Frames"):
+            gr.Markdown(SimpleIcons.DEDUPE_SYMBOL + "Detect and remove duplicate PNG frame files")
             with gr.Row():
                 input_path_text = gr.Text(max_lines=1, label="Input PNG Files Path",
                     placeholder="Path on this server to the PNG files to be deduplicated")
             with gr.Row():
                 output_path_text = gr.Text(max_lines=1, label="Output PNG Files Path",
-                    placeholder="Path on this server for the deduplicates PNG files," +
+                    placeholder="Path on this server for the deduplicated PNG files," +
                                 " leave blank to use default path")
             with gr.Row():
                 threshold = gr.Slider(value=default_threshold, minimum=min_threshold,
                     maximum=max_threshold, step=threshold_step, label="Detection Threshold")
+                max_dupes = gr.Slider(value=def_max_dupes, minimum=0, maximum=99, step=1,
+                    label="Maximum Duplicates Per Group (0 = no limit, 1 = no duplicates allowed)")
             with gr.Row():
                 dedupe_button = gr.Button("Deduplicate", variant="primary")
-                output_info_text = gr.Textbox(label="Details", interactive=False)
+            with gr.Row():
+                output_text = gr.Textbox(label="Result", interactive=False, visible=False)
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.deduplicate_frames.render()
         dedupe_button.click(self.dedupe_frames, inputs=[input_path_text, output_path_text,
-                                                         threshold], outputs=output_info_text)
+                                                        threshold, max_dupes], outputs=output_text)
 
     def dedupe_frames(self,
                         input_path : str,
                         output_path : str,
-                        threshold : int):
-        """Convert button handler"""
-        if input_path:
-            if output_path:
-                create_directory(output_path)
-            else:
-                base_output_path = self.config.directories["output_deduplication"]
-                output_path, _ = AutoIncrementDirectory(base_output_path).next_directory("run")
-            ffmpeg_cmd = deduplicate_frames(input_path, output_path, threshold)
-            return gr.update(value=ffmpeg_cmd, visible=True)
+                        threshold : int,
+                        max_dupes : int):
+        """Create Report button handler"""
+        if input_path and output_path:
+            try:
+                message, _, _ = DeduplicateFrames(None,
+                                            input_path,
+                                            output_path,
+                                            threshold,
+                                            max_dupes,
+                                            None,
+                                            self.log).invoke_delete(suppress_output=True)
+                return gr.update(value=message, visible=True)
+
+            except RuntimeError as error:
+                message = \
+f"""Error deduplicating frames:
+{error}"""
+                return gr.update(value=message, visible=True)

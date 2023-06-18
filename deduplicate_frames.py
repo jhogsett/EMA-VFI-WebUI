@@ -47,9 +47,8 @@ def main():
                       args.output_path,
                       args.threshold,
                       args.max_dupes,
-                      args.disposition,
                       args.depth,
-                      log.log).invoke()
+                      log.log).invoke(args.disposition)
 
 class DeduplicateFrames:
     """Encapsulate logic for Resequence Files feature"""
@@ -59,7 +58,6 @@ class DeduplicateFrames:
                 output_path : str,
                 threshold : int,
                 max_dupes : int,
-                disposition : str,
                 depth : int,
                 log_fn : Callable | None):
         self.frame_restorer = frame_restorer
@@ -67,17 +65,8 @@ class DeduplicateFrames:
         self.output_path = output_path
         self.threshold = threshold
         self.max_dupes = max_dupes
-        self.disposition = disposition
         self.depth = depth
         self.log_fn = log_fn
-
-    valid_dispositions = ["report", "delete", "autofill"]
-
-    def valid_disposition(self, disposition):
-        return disposition in self.valid_dispositions
-
-    def invoke(self):
-        """Invoke the Deduplicate Frames feature"""
         if not self.input_path:
             raise ValueError("'input_path' must be specified")
         if not os.path.exists(self.input_path):
@@ -86,17 +75,25 @@ class DeduplicateFrames:
             raise ValueError("'threshold' must be positive")
         if self.max_dupes < 0:
             raise ValueError("'max_dupes' must be positive")
-        if not self.valid_disposition(self.disposition):
+
+    valid_dispositions = ["report", "delete", "autofill"]
+
+    def valid_disposition(self, disposition):
+        return disposition in self.valid_dispositions
+
+    def invoke(self, disposition : str):
+        """Invoke the Deduplicate Frames feature"""
+        if not self.valid_disposition(disposition):
             raise ValueError(
                     f"'disposition' must be one of the values: {','.join(self.valid_dispositions)}")
-        if self.disposition.startswith("d"):
+        if disposition.startswith("d"):
             return self.invoke_delete()
-        elif self.disposition.startswith("a"):
+        elif disposition.startswith("a"):
             return self.invoke_autofill()
         else:
             return self.invoke_report()
 
-    def invoke_report(self):
+    def invoke_report(self, suppress_output=False):
         try:
             self.log("calling 'get_duplicate_frames_report' with" + \
         f" input_path: {self.input_path} threshold: {self.threshold} max_dupes: {self.max_dupes} ")
@@ -109,13 +106,23 @@ class DeduplicateFrames:
                 self.log(f"writing report to {report_path}")
                 with open(report_path, "w", encoding="UTF-8") as file:
                     file.write(report)
-                print(f"Duplicate Frames Report written to {report_path}")
+                message = f"Duplicate Frames Report written to {report_path}"
+                self.log(message)
+                if not suppress_output:
+                    print(message)
             else:
-                print()
-                print(report)
-                print()
+                if not suppress_output:
+                    print()
+                    print(report)
+                    print()
+            return report
         except RuntimeError as error:
-            print(f"Error generating report: {error}")
+            message = f"Error generating report: {error}"
+            self.log(message)
+            if suppress_output:
+                raise error
+            else:
+                print(message)
 
     def invoke_delete(self, suppress_output=False):
         if not self.output_path:
@@ -151,19 +158,23 @@ class DeduplicateFrames:
                 self.log(f"copying {filepath} to {output_filepath}")
                 shutil.copy(filepath, output_filepath)
 
-            result = f"{len(frame_filenames)} frame files," +\
+            message = f"{len(frame_filenames)} frame files," +\
                   f" excluding {dupe_count} duplicates, copied to: {self.output_path}"
-            if suppress_output:
-                self.log(result)
-            else:
-                print(result)
-            return dupe_groups, all_filenames
+            self.log(message)
+            if not suppress_output:
+                print(message)
+            return message, dupe_groups, all_filenames
         except RuntimeError as error:
-            print(f"Error generating report: {error}")
+            message = f"Error generating report: {error}"
+            self.log(message)
+            if suppress_output:
+                raise error
+            else:
+                print(message)
 
     def invoke_autofill(self):
         self.log("invoke_autofill() using invoke_delete() to copy non-duplicate frames")
-        dupe_groups, frame_filenames = self.invoke_delete(True)
+        _, dupe_groups, frame_filenames = self.invoke_delete(True)
 
         pbar_title = "Auto-Filling"
         self.log(f"beginning processing of {len(dupe_groups)} duplicate frame groups")
