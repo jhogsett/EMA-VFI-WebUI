@@ -172,12 +172,13 @@ class DeduplicateFrames:
             else:
                 print(message)
 
-    def invoke_autofill(self):
+    def invoke_autofill(self, suppress_output=False):
         self.log("invoke_autofill() using invoke_delete() to copy non-duplicate frames")
         _, dupe_groups, frame_filenames = self.invoke_delete(True)
 
         pbar_title = "Auto-Filling"
         self.log(f"beginning processing of {len(dupe_groups)} duplicate frame groups")
+        restored_total = 0
         for index, group in enumerate(tqdm(dupe_groups, desc=pbar_title)):
             self.log(f"processing group #{index+1}")
             group_indexes = list(group.keys())
@@ -192,10 +193,16 @@ class DeduplicateFrames:
             # index after last index in group is the next "keep" frame
             after_index = group_indexes[-1] + 1
             if after_index >= len(frame_filenames):
-                message = "The last group has no 'after' file for interpolation, skipping."
+                message = [
+                    "The last group has no 'after' file for interpolation, skipping.",
+                    "Affected files:"]
+                message += group_files[1:]
+                message = "\r\n".join(message)
                 self.log(message)
-                print("Warning: " + message)
-                print("Affected files:\r\n" + "\r\n".join(group_files[1:]))
+                if suppress_output:
+                    raise RuntimeError(message)
+                else:
+                    print("Warning: " + message)
             else:
                 after_file = frame_filenames[after_index]
                 self.log(f"after frame file: {after_file}")
@@ -210,6 +217,7 @@ class DeduplicateFrames:
                                                    self.depth,
                                                    self.output_path,
                                                    "autofilled_frame")
+                restored_total += restore_count
                 restored_files = self.frame_restorer.output_paths
                 self.frame_restorer.output_paths = []
                 self.log(f"restored files: {','.join(restored_files)}")
@@ -221,6 +229,13 @@ class DeduplicateFrames:
                         new_filename = os.path.join(self.output_path, filename + ext)
                         self.log(f"renaming {restored_file} to {new_filename}")
                         os.replace(restored_file, new_filename)
+
+        message = f"{restored_total} duplicate frames filled with interpolated replacements at" +\
+                  f" {self.output_path}"
+        self.log(message)
+        if not suppress_output:
+            print(message)
+        return message, dupe_groups, frame_filenames
 
     def log(self, message : str) -> None:
         """Logging"""

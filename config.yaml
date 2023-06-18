@@ -85,6 +85,9 @@ deduplicate_settings:
   default_threshold: 2500
   threshold_step: 100
   max_dupes_per_group: 0
+  max_lines: 40
+  default_precision: 10
+  max_precision: 60
 user_interface:
   tips_path: "guide"
   theme: "default"
