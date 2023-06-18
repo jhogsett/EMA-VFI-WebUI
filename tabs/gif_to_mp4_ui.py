@@ -35,7 +35,7 @@ class GIFtoMP4(TabBase):
         minimum_crf = self.config.png_to_mp4_settings["minimum_crf"]
         maximum_crf = self.config.png_to_mp4_settings["maximum_crf"]
         default_crf = self.config.png_to_mp4_settings["default_crf"]
-        with gr.Tab(SimpleIcons.GEMSTONE + "GIF to MP4"):
+        with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "GIF to MP4"):
             gr.HTML(SimpleIcons.PLAY +
                 "Turn an Animated GIF Into a MP4 video (must have FFmpeg & Real-ESRGAN)",
                 elem_id="tabheading")

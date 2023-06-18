@@ -54,3 +54,5 @@ class WebuiTips:
     simplify_png_files = gr.Markdown(load_markdown(tips_path, "simplify_png_files"))
     deduplicate_frames = gr.Markdown(load_markdown(tips_path, "deduplicate_frames"))
     resize_frames = gr.Markdown(load_markdown(tips_path, "resize_frames"))
+    duplicates_report = gr.Markdown(load_markdown(tips_path, "duplicates_report"))
+    autofill_duplicates = gr.Markdown(load_markdown(tips_path, "autofill_duplicates"))

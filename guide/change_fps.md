@@ -21,7 +21,7 @@
             - The fill count shows in the `Filled Frames per Input Frame` box
         - If needed, the super-sample set is _Sampled_ to achieve the final frame rate
             - The sample rate shows in the `Output Frames Sample Rate` box
-1. Set _Precision_ to the depth of search needed for accuracy
+1. Set _Search Precision_ to the depth of search needed for accuracy
     - High precision yields precise frame timing, but takes a long time
     - Less precision is faster, with possible imprecise frame timing
     - The target search times and predicted matches are shown in the`Frame Search Times` and `Predicted Matches` box

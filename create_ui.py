@@ -25,6 +25,8 @@ from tabs.log_viewer import LogViewer
 from tabs.simplify_png_files_ui import SimplifyPngFiles
 from tabs.dedupe_frames_ui import DedupeFrames
 from tabs.resize_frames_ui import ResizeFrames
+from tabs.dedupe_report_ui import DuplicateFramesReport
+from tabs.dedupe_autofill_ui import AutofillFrames
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
@@ -63,12 +65,15 @@ def create_ui(config : SimpleConfig,
                 GIFtoPNG(config, engine, log.log).render_tab()
                 PNGtoGIF(config, engine, log.log).render_tab()
                 SimplifyPngFiles(config, engine, log.log).render_tab()
-                DedupeFrames(config, engine, log.log).render_tab()
                 ResizeFrames(config, engine, log.log).render_tab()
             ResequenceFiles(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             UpscaleFrames(config, engine, log.log).render_tab()
-            with gr.Tab(SimpleIcons.APP_SYMBOL + "Application"):
+            with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Deduplicate Frames"):
+                DuplicateFramesReport(config, engine, log.log).render_tab()
+                DedupeFrames(config, engine, log.log).render_tab()
+                AutofillFrames(config, engine, log.log).render_tab()
+            with gr.Tab(SimpleIcons.GEAR + "Application"):
                 Options(config, engine, log.log, restart_fn).render_tab()
                 Resources(config, engine, log.log).render_tab()
                 LogViewer(config, engine, log.log, log).render_tab()

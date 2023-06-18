@@ -57,7 +57,7 @@ class ChangeFPS(TabBase):
                             label="Output Frames Sample Rate", interactive=False)
                     with gr.Row():
                         precision_fc = gr.Slider(value=precision, minimum=1, maximum=max_precision,
-                            step=1, label="Precision")
+                            step=1, label="Search Precision")
                         times_output_fc = gr.Textbox(value=fractions, label="Frame Search Times",
                             max_lines=8, interactive=False)
                         predictions_output_fc = gr.Textbox(value=predictions,

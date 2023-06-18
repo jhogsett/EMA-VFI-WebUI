@@ -181,3 +181,115 @@ def get_video_details(input_path : str) -> dict:
     result = ffcmd.run(stdout=subprocess.PIPE)
     stdout = result[0].decode("UTF-8").strip()
     return json.loads(stdout)
+
+def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group : int):
+    """Use FFmpeg to get a list of duplicate frames without making changes
+        - input_path: path to PNG frame files
+        - threshold: passed to FFmpeg as 'hi' and 'lo' mpdecimate value
+        - max_dupes_per_group: raises RuntimeError if more frames are added to a group
+          set to 0 to disable
+       Returns:
+        - array of duplicate frame groups: arrays of dicts with frame index and filename
+        - array of frame filenames
+        - array of found mpdecimate lines for debugging
+    """
+    # ffmpeg -i file.mp4 -vf mpdecimate=hi=5000:lo=5000:frac=1 -loglevel debug -f null -
+    if not os.path.exists(input_path):
+        raise ValueError(f"path does not exist: {input_path}")
+    if threshold < 0:
+        raise ValueError(f"'threshold' must be positive")
+    if max_dupes_per_group < 0:
+        max_dupes_per_group = 0
+
+    filename_pattern = determine_input_pattern(input_path)
+    input_sequence = os.path.join(input_path, filename_pattern)
+    output_sequence = "-"
+    filter = f"mpdecimate=hi={threshold}:lo={threshold}:frac=1:max=0"
+
+    ffcmd = FFmpeg(inputs= {input_sequence : None},
+        outputs={output_sequence : f"-vf {filter} -f null"},
+        global_options="-loglevel debug")
+    cmd = ffcmd.cmd
+    result = ffcmd.run(stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stderr = result[1].decode("UTF-8")
+    stderr_lines = stderr.splitlines()
+    decimate_lines = [line for line in stderr_lines if line.startswith("[Parsed_mpdecimate")]
+    keep_drop_lines = [line for line in decimate_lines if " keep " in line or " drop " in line]
+    is_dupe_map = [None] * len(keep_drop_lines)
+    for index, line in enumerate(keep_drop_lines):
+        is_dupe_map[index] = " drop " in line
+
+    filenames = sorted(glob.glob(os.path.join(input_path, "*.png")))
+    if len(filenames) != len(keep_drop_lines):
+        raise ValueError(
+    f"frame count mismatch FFmpeg ({len(keep_drop_lines)}) vs found files ({len(filenames)})")
+
+    groups = []
+    group = {}
+    is_in_group = False
+    for index, is_dupe in enumerate(is_dupe_map):
+        if is_dupe:
+            if max_dupes_per_group == 1:
+                raise RuntimeError(
+f"max_dupes_per_group exceeded: 2 in group #{len(groups)+1}, duplicate frame #{index}")
+            if not is_in_group:
+                is_in_group = True
+                group = {}
+                # add the preceding frame as the first duplicate of this group
+                group[index-1] = filenames[index-1]
+            else:
+                if max_dupes_per_group:
+                    if len(group)+1 > max_dupes_per_group:
+                        raise RuntimeError(
+f"max_dupes_per_group exceeded: {len(group)+1} in group #{len(groups)+1}, duplicate frame #{index}")
+            group[index] = filenames[index]
+        else:
+            if is_in_group:
+                groups.append(group)
+                is_in_group = False
+    if is_in_group:
+        groups.append(group)
+    return groups, filenames, decimate_lines
+
+def get_duplicate_frames_report(input_path : str,
+                                threshold : int,
+                                max_dupes_per_group : int) -> str:
+    """Create a human-readable report of duplicate frame groups"""
+    separator = ""
+    duplicate_frame_groups, filenames, _ = get_duplicate_frames(input_path,
+                                                                threshold,
+                                                                max_dupes_per_group)
+    group_count = len(duplicate_frame_groups)
+    frame_count = len(filenames)
+
+    duplicate_frame_count = 0
+    for group in duplicate_frame_groups:
+        duplicate_frame_count += len(group.keys())
+    # subtract the group count, to include only the actual duplicates (frames marked 'drop')
+    duplicate_frame_count -= group_count
+
+    # find largest and smallest group sizes
+    max_group = 0
+    min_group = frame_count + 1
+    for group in duplicate_frame_groups:
+        leng = len(group)
+        max_group = leng if leng > max_group else max_group
+        min_group = leng if leng < min_group else min_group
+
+    report = []
+    report.append("[Duplicate Frames Report]")
+    report.append(f"Input Path: {input_path}")
+    report.append(f"Frame Count: {frame_count}")
+    report.append(f"Detection Threshold: {threshold}")
+    report.append(f"Duplicate Frames: {duplicate_frame_count}")
+    report.append(f"Duplicate Ratio: {(duplicate_frame_count * 100.0 / frame_count):0.2f}%")
+    report.append(f"Duplicate Frame Groups: {group_count}")
+    report.append(f"Smallest Group Size: {min_group}")
+    report.append(f"Largest Group Size: {max_group}")
+
+    for index, entry in enumerate(duplicate_frame_groups):
+        report.append(separator)
+        report.append(f"[Group #{index+1}]")
+        for key in entry.keys():
+            report.append(f"Frame#{key} : {entry[key]}")
+    return "\r\n".join(report)
