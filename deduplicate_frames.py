@@ -136,7 +136,7 @@ class DeduplicateFrames:
                                                                                 self.threshold,
                                                                                 self.max_dupes)
             self.log("mpdecimate data received from 'get_duplicate_frames:")
-            self.log(mpdecimate_log)
+            self.log("/r/n".join(mpdecimate_log))
             self.log(f"beginning processing of {len(dupe_groups)} duplicate groups for deletion")
 
             # remove duplicates from full list of frame files
