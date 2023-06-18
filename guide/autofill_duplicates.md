@@ -1,4 +1,4 @@
-**Deduplicate Frames** - Detect and remove duplicate PNG frame files
+**Auto-Fill Duplicate Frames** - Detect duplicate frames and fill with interpolated replacements
 
 ## How It Works
 1. Set _Input PNG Files Path_ to a path on this server for the PNG files being deduplicated
@@ -15,14 +15,20 @@
         - Set to `1` to prevent duplicates altogether
         - Set to any other value to limit the consecutive duplicates
     - _Tip: in most cases, actual duplicates will be limited to several frames only_
+1. Set _Search Precision_ to the depth of search needed for accuracy
+    - High precision yields precise frame timing, but takes a long time
+    - Less precision is faster, with possible imprecise frame timing
 1. Click _Deduplicate Frames_
 1. The _Details_ box shows the result of the operation, or any errors encountered
 
 ## Important
+- This process could be slow, perhaps many hours long!
+- Progress is shown in the console using a standard progress bar
+- The browser window does NOT need to be left open
 - `ffmpeg.exe` must be available on the system path
 - _Resequence Files_ can be used to renumber a PNG sequence
 - The _Video Preview_ tab on the _Video Blender_ page can be used to watch a preview video of a set of PNG files
-- The values for the _Threshold_ slider can be changed in the `config.yaml` file section `deduplicate_settings`
+- The values for the _Threshold_ and _Precision_ sliders can be changed in the `config.yaml` file section `deduplicate_settings`
 
 ## More Details ##
 - The FFmpeg _mpdecimate_ video filter is used to detect and remove duplicates

@@ -54,8 +54,8 @@ class AutofillFrames(TabBase):
                                         variant="primary")
             with gr.Row():
                 output_text = gr.Textbox(label="Result", interactive=False, visible=False)
-            # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-            #     WebuiTips.deduplicate_frames.render()
+            with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                WebuiTips.autofill_duplicates.render()
         dedupe_button.click(self.autofill_dupe_frames, inputs=[input_path_text, output_path_text,
                                                                threshold, max_dupes, precision],
                                                         outputs=output_text)

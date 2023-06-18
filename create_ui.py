@@ -69,11 +69,11 @@ def create_ui(config : SimpleConfig,
             ResequenceFiles(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             UpscaleFrames(config, engine, log.log).render_tab()
-            with gr.Tab("Deduplicate Frames"):
+            with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Deduplicate Frames"):
                 DuplicateFramesReport(config, engine, log.log).render_tab()
                 DedupeFrames(config, engine, log.log).render_tab()
                 AutofillFrames(config, engine, log.log).render_tab()
-            with gr.Tab(SimpleIcons.APP_SYMBOL + "Application"):
+            with gr.Tab(SimpleIcons.GEAR + "Application"):
                 Options(config, engine, log.log, restart_fn).render_tab()
                 Resources(config, engine, log.log).render_tab()
                 LogViewer(config, engine, log.log, log).render_tab()

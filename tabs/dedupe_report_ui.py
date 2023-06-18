@@ -5,7 +5,7 @@ import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.video_utils import get_duplicate_frames_report
-# from webui_tips import WebuiTips
+from webui_tips import WebuiTips
 from webui_utils.auto_increment import AutoIncrementDirectory
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
@@ -44,8 +44,8 @@ class DuplicateFramesReport(TabBase):
                                       visible=False)
             with gr.Row():
                 output_text = gr.Textbox(label="Report", max_lines=max_lines, interactive=False)
-            # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-            #     WebuiTips.deduplicate_frames.render()
+            with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                WebuiTips.duplicates_report.render()
         report_button.click(self.create_report, inputs=[input_path_text, threshold, max_dupes],
                             outputs=[file_output, output_text])
 

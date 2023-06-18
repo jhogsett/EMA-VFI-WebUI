@@ -1,10 +1,7 @@
-**Deduplicate Frames** - Detect and remove duplicate PNG frame files
+**Duplicate Frames Report** - Detect and report duplicate PNG frame files
 
 ## How It Works
-1. Set _Input PNG Files Path_ to a path on this server for the PNG files being deduplicated
-1. Set _Output PNG Files Path_ to a path on this server to store the deduplicated PNG files
-    - Output PNG File Path can be left blank to use the default folder
-    - _Tip: The default folder is set by the_ `config.directories.output_deduplication` _setting_
+1. Set _Input PNG Files Path_ to a path on this server for the PNG files to report on
 1. Set _Detect Threshold_ to specify the sensitivity to frame differences
     - A lower value finds fewer duplicates; a higher value finds more
     - This value requires experimentation. See _More Details_ below.
@@ -15,13 +12,12 @@
         - Set to `1` to prevent duplicates altogether
         - Set to any other value to limit the consecutive duplicates
     - _Tip: in most cases, actual duplicates will be limited to several frames only_
-1. Click _Deduplicate Frames_
-1. The _Details_ box shows the result of the operation, or any errors encountered
+1. Click _Create Report_
+1. A text file version of the report can be downloaded from the _Download_ box
+1. The report, or any errors encountered, are shown in the _Report_ box
 
 ## Important
 - `ffmpeg.exe` must be available on the system path
-- _Resequence Files_ can be used to renumber a PNG sequence
-- The _Video Preview_ tab on the _Video Blender_ page can be used to watch a preview video of a set of PNG files
 - The values for the _Threshold_ slider can be changed in the `config.yaml` file section `deduplicate_settings`
 
 ## More Details ##
