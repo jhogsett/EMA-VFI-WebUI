@@ -4,7 +4,7 @@ from .test_shared import *
 from .simple_icons import *
 
 GOOD_EXAMPLES = [
-    (SimpleIcons.SYMBOLS, 6, 8),
+    (SimpleIcons.SYMBOLS, 7, 9),
     (SimpleIcons.APP_ICONS, 36, 52)]
 
 def test_SimpleIcons():

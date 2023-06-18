@@ -97,6 +97,7 @@ class SimpleIcons:
     DEDUPE_SYMBOL = SCISSORS
     PROP_SYMBOL = PROPERTIES
     SLOW_SYMBOL = WATCH
+    SPOTLIGHT_SYMBOL = GEMSTONE
     TIPS_SYMBOL = QUESTION
 
     SYMBOLS = [
@@ -105,6 +106,7 @@ class SimpleIcons:
         DEDUPE_SYMBOL,
         PROP_SYMBOL,
         SLOW_SYMBOL,
+        SPOTLIGHT_SYMBOL,
         TIPS_SYMBOL,
     ]
 

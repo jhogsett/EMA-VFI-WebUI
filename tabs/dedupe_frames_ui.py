@@ -6,10 +6,10 @@ from webui_utils.simple_icons import SimpleIcons
 from webui_utils.file_utils import create_directory, split_filepath
 from webui_utils.video_utils import deduplicate_frames
 from webui_tips import WebuiTips
-from webui_utils.auto_increment import AutoIncrementDirectory
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
 from deduplicate_frames import DeduplicateFrames
+from webui_utils.auto_increment import AutoIncrementDirectory
 
 class DedupeFrames(TabBase):
     """Encapsulates UI elements and events for the Deduplicate Frames feature"""
@@ -42,7 +42,7 @@ class DedupeFrames(TabBase):
                 max_dupes = gr.Slider(value=def_max_dupes, minimum=0, maximum=99, step=1,
                     label="Maximum Duplicates Per Group (0 = no limit, 1 = no duplicates allowed)")
             with gr.Row():
-                dedupe_button = gr.Button("Deduplicate", variant="primary")
+                dedupe_button = gr.Button("Deduplicate Frames", variant="primary")
             with gr.Row():
                 output_text = gr.Textbox(label="Result", interactive=False, visible=False)
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -55,9 +55,12 @@ class DedupeFrames(TabBase):
                         output_path : str,
                         threshold : int,
                         max_dupes : int):
-        """Create Report button handler"""
-        if input_path and output_path:
+        """Deduplicate Frames button handler"""
+        if input_path:
             try:
+                if not output_path:
+                    base_output_path = self.config.directories["output_deduplication"]
+                    output_path, _ = AutoIncrementDirectory(base_output_path).next_directory("run")
                 message, _, _ = DeduplicateFrames(None,
                                             input_path,
                                             output_path,
