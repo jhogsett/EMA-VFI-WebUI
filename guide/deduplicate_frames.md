@@ -19,8 +19,8 @@
 1. The _Details_ box shows the result of the operation, or any errors encountered
 
 ## Important
+- **Note!** If the frames in the output path are to be fed to FFmpeg or video editing software, use _Resequence Files_ to remove gaps in the numbering sequence
 - `ffmpeg.exe` must be available on the system path
-- _Resequence Files_ can be used to renumber a PNG sequence
 - The _Video Preview_ tab on the _Video Blender_ page can be used to watch a preview video of a set of PNG files
 - The values for the _Threshold_ slider can be changed in the `config.yaml` file section `deduplicate_settings`
 
