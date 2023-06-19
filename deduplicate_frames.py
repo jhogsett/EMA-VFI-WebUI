@@ -171,6 +171,7 @@ class DeduplicateFrames:
                             f" min={data['min_group']} max={data['max_group']}"
                         print(message)
                     print()
+            return tuning_data
 
         except RuntimeError as error:
             message = f"Error generating report: {error}"

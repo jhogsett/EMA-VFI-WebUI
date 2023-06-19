@@ -27,6 +27,7 @@ from tabs.dedupe_frames_ui import DedupeFrames
 from tabs.resize_frames_ui import ResizeFrames
 from tabs.dedupe_report_ui import DuplicateFramesReport
 from tabs.dedupe_autofill_ui import AutofillFrames
+from tabs.dedupe_tuning_ui import DuplicateTuning
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
@@ -71,6 +72,7 @@ def create_ui(config : SimpleConfig,
             UpscaleFrames(config, engine, log.log).render_tab()
             with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Deduplicate Frames"):
                 DuplicateFramesReport(config, engine, log.log).render_tab()
+                DuplicateTuning(config, engine, log.log).render_tab()
                 DedupeFrames(config, engine, log.log).render_tab()
                 AutofillFrames(config, engine, log.log).render_tab()
             with gr.Tab(SimpleIcons.GEAR + "Application"):

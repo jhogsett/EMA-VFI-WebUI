@@ -88,6 +88,9 @@ deduplicate_settings:
   max_lines: 40
   default_precision: 10
   max_precision: 60
+  min_tuning_step: 1
+  max_tuning_step: 10000
+  default_tuning_step: 100
 user_interface:
   tips_path: "guide"
   theme: "default"
