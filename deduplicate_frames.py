@@ -120,7 +120,7 @@ class DeduplicateFrames:
         tuning_data = []
         csv_path = None
         csv_fields = [
-            "threshold", "dupe_count", "dupe_ratio", "dupe_percent", "min_group", "max_group"]
+            "threshold", "dupe_percent", "max_group", "dupe_count", "first_dupe"]
         if self.output_path:
             path, filename, ext = split_filepath(self.output_path)
             csv_path = os.path.join(path, filename + ".csv")
@@ -140,17 +140,16 @@ class DeduplicateFrames:
                                                                         threshold,
                                                                         self.max_dupes)
                 stats = compute_report_stats(dupe_groups, frame_filenames)
-                message = f"dupes={stats['dupe_count']} ratio={stats['dupe_ratio']}" +\
-            f" percent={stats['dupe_percent']} min={stats['min_group']} max={stats['max_group']}"
+                message = f"dupe_percent={stats['dupe_percent']} max_group={stats['max_group']}" +\
+                    f" dupe_count={stats['dupe_count']} first_dupe={stats['first_dupe']}"
                 self.log(message)
 
                 data = {}
                 data["threshold"] = threshold
-                data["dupe_count"] = stats["dupe_count"]
-                data["dupe_ratio"] = stats["dupe_ratio"]
                 data["dupe_percent"] = stats["dupe_percent"]
-                data["min_group"] = stats["min_group"]
                 data["max_group"] = stats["max_group"]
+                data["dupe_count"] = stats["dupe_count"]
+                data["first_dupe"] = stats["first_dupe"]
                 tuning_data.append(data)
 
             if csv_path:
@@ -166,9 +165,11 @@ class DeduplicateFrames:
                     print()
                     print("Tuning Results:")
                     for data in tuning_data:
-                        message = f"threshold={data['threshold']} dupes={data['dupe_count']}" +\
-                            f" ratio={data['dupe_ratio']} percent={data['dupe_percent']}" +\
-                            f" min={data['min_group']} max={data['max_group']}"
+                        message = f"threshold={data['threshold']}" +\
+                            f" dupe_percent={stats['dupe_percent']}" +\
+                            f" max_group={stats['max_group']}" +\
+                            f" dupe_count={stats['dupe_count']}" +\
+                            f" first_dupe={stats['first_dupe']}"
                         print(message)
                     print()
             return tuning_data

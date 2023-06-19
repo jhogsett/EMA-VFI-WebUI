@@ -270,15 +270,24 @@ def compute_report_stats(duplicate_frame_groups, filenames):
             max_group = leng if leng > max_group else max_group
             min_group = leng if leng < min_group else min_group
 
+    # find first duplicate frame
+    if group_count:
+        first_group = duplicate_frame_groups[0]
+        # first entry in group is a "keep" frame
+        first_drop_frame = list(first_group.keys())[1]
+    else:
+        first_drop_frame = -1
+
     stats = {}
     stats["frame_count"] = frame_count
     stats["group_count"] = group_count
     stats["dupe_count"] = duplicate_frame_count
     dupe_ratio = duplicate_frame_count * 1.0 / frame_count
     stats["dupe_ratio"] = dupe_ratio
-    stats["dupe_percent"] = f"{100.0 * dupe_ratio:0.2f}%"
+    stats["dupe_percent"] = f"{100.0 * dupe_ratio:0.2f}"
     stats["min_group"] = min_group
     stats["max_group"] = max_group
+    stats["first_dupe"] = first_drop_frame
     return stats
 
 def get_duplicate_frames_report(input_path : str,
