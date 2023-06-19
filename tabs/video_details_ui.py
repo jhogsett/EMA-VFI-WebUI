@@ -35,6 +35,13 @@ class VideoDetails(TabBase):
             #     WebuiTips.duplicates_report.render()
         report_button.click(self.create_report, inputs=input_file, outputs=output_text)
 
+    def clean_dict(self, dict):
+        cleaned = {}
+        for k, v in dict.items():
+            if v:
+                cleaned[k] = v
+        return cleaned
+
     def create_report(self, input_path : str):
         """Create Report button handler"""
         if input_path:
@@ -51,12 +58,7 @@ class VideoDetails(TabBase):
                 format["size"] = f"{int(format_data.get('size', 0)):,d}"
                 format["bit_rate"] = f"{int(format_data.get('bit_rate', 0)):,d}"
                 format["format_name"] = format_data.get("format_long_name")
-                # format["stream_count"] = format_data.get("nb_streams")
-                cleaned = {}
-                for k, v in format.items():
-                    if v:
-                        cleaned[k] = v
-                format = cleaned
+                format = self.clean_dict(format)
 
                 streams = []
                 streams_data = data["streams"]
@@ -73,35 +75,30 @@ class VideoDetails(TabBase):
                     stream["height"] = stream_data.get("height")
                     stream["frame_count"] = stream_data.get("nb_read_frames")
                     stream["bit_rate"] = f"{int(stream_data.get('bit_rate', 0)):,d}"
-
-                    # stream["index"] = stream_data.get("index")
-                    stream["codec_type"] = stream_data.get("codec_type")
                     stream["codec_name"] = stream_data.get("codec_name")
                     stream["pix_fmt"] = stream_data.get("pix_fmt")
                     stream["sample_rate"] = stream_data.get("sample_rate")
                     stream["channels"] = stream_data.get("channels")
                     stream["channel_layout"] = stream_data.get("channel_layout")
-                    cleaned = {}
-                    for k, v in stream.items():
-                        if v:
-                            cleaned[k] = v
-                    stream = cleaned
-                    streams.append(stream)
+                    stream = self.clean_dict(stream)
+
+                    index = stream_data.get("index")
+                    codec_type = stream_data.get("codec_type")
+                    stream_name = f"#{index} {codec_type}"
+                    streams.append({stream_name : stream})
 
                 separator = ""
                 report = []
-                # report.append("[Media File Details]")
-                # report.append(f"Input Path: {input_path}")
-                # report.append(separator)
-
                 report.append("[Format]")
                 for k, v in format.items():
                     report.append(f"{k}: {v}")
                 report.append(separator)
 
                 for stream in streams:
-                    report.append("[Stream]")
-                    for k, v in stream.items():
+                    stream_name = list(stream.keys())[0]
+                    stream_data = list(stream.values())[0]
+                    report.append(f"[Stream {stream_name}]")
+                    for k, v in stream_data.items():
                         report.append(f"{k}: {v}")
                     report.append(separator)
                 return gr.update(value="\r\n".join(report))
