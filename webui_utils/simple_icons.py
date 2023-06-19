@@ -70,6 +70,7 @@ class SimpleIcons:
     CHERRY_BLOSSOM = "🌸"
     COOL = "🆒"
     EGGPLANT = "🍆"
+    EYES = "👀"
     GEMSTONE = "💎"
     GHOST = "👻"
     GIFT = "🎁"
@@ -116,6 +117,7 @@ class SimpleIcons:
         CONTROLS,
         COPYRIGHT,
         DIVIDE,
+        EYES,
         FILM,
         FOLDER,
         FOUR,

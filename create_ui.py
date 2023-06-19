@@ -28,6 +28,7 @@ from tabs.resize_frames_ui import ResizeFrames
 from tabs.dedupe_report_ui import DuplicateFramesReport
 from tabs.dedupe_autofill_ui import AutofillFrames
 from tabs.dedupe_tuning_ui import DuplicateTuning
+from tabs.video_details_ui import VideoDetails
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
@@ -67,6 +68,7 @@ def create_ui(config : SimpleConfig,
                 PNGtoGIF(config, engine, log.log).render_tab()
                 SimplifyPngFiles(config, engine, log.log).render_tab()
                 ResizeFrames(config, engine, log.log).render_tab()
+                VideoDetails(config, engine, log.log).render_tab()
             ResequenceFiles(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             UpscaleFrames(config, engine, log.log).render_tab()
