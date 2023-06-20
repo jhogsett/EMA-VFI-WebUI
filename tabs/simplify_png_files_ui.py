@@ -19,7 +19,7 @@ class SimplifyPngFiles(TabBase):
     def render_tab(self):
         """Render tab into UI"""
         with gr.Tab("Clean PNG Files"):
-            gr.HTML(SimpleIcons.SPONGE + "Remove Interfering Color Calibration Data ",
+            gr.Markdown(SimpleIcons.SPONGE + "Remove Interfering Color Calibration Data ",
                 elem_id="tabheading")
             input_path_text = gr.Text(max_lines=1, label="PNG files path",
                 placeholder="Path on this server to the PNG files to be cleaned")

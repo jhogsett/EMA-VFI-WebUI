@@ -25,6 +25,7 @@ class SimpleIcons:
     TOOLBOX = "🧰"
     TWO = "2️⃣"
     UP_DOWN_ARROW = "↕️"
+    WHITE_QUESTION = "❔"
     WRENCH = "🔧"
 
     BELL = "🔔"
@@ -71,6 +72,7 @@ class SimpleIcons:
     COOL = "🆒"
     EGGPLANT = "🍆"
     EYES = "👀"
+    FLASHLIGHT ="🔦"
     GEMSTONE = "💎"
     GHOST = "👻"
     GIFT = "🎁"
@@ -117,7 +119,6 @@ class SimpleIcons:
         CONTROLS,
         COPYRIGHT,
         DIVIDE,
-        EYES,
         FILM,
         FOLDER,
         FOUR,
@@ -148,5 +149,6 @@ class SimpleIcons:
         PINCHING_HAND,
         WARNING,
         WATCH,
+        WHITE_QUESTION,
         WRENCH,
 ]
