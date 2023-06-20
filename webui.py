@@ -77,7 +77,7 @@ class WebUI:
 
 def clean_working_directory(working_directory):
     if os.path.exists(working_directory) and is_safe_path(working_directory):
-        shutil.rmtree(working_directory, ignore_errors=False)
+        shutil.rmtree(working_directory, ignore_errors=True)
 
 def sigint_handler(sig, frame):
     """Make the program just exit at ctrl+c without waiting for anything"""

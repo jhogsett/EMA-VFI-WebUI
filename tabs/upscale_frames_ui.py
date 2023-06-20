@@ -87,7 +87,7 @@ class UpscaleFrames(TabBase):
                 f"redoing upscaling with tiling for {len(file_list)} failed files at {output_path}")
                     tiling = self.config.realesrgan_settings["tiling"]
                     tile_pad = self.config.realesrgan_settings["tile_pad"]
-                    upscaler = UpscaleSeries(model_name, gpu_ips, fp32, tiling, tile_pad, self.log)
+                    upscaler = UpscaleSeries(model_name, gpu_ids, fp32, tiling, tile_pad, self.log)
                     output_dict = upscaler.upscale_series(file_list, output_path, upscale_factor,
                                                         output_basename, output_type)
                     file_list = [key for key in output_dict.keys() if output_dict[key] == None]
