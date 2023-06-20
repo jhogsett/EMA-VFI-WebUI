@@ -8,8 +8,7 @@
     - _Examples:_
         - For files named `image000.png` through `image999.png` the pattern should be `image%03d.png`
         - For files named `image00000.png` through `image99999.png` the pattern should be `image%05d.png`
-    - The special pattern "auto" can be used to detect the pattern
-        - This works if the files follow the above format
+    - _Input Name Pattern_ can be left blank for automatic detection
 1. Click _Convert_
 1. `ffmpeg.exe` is used to perform the conversion
 1. The _Details_ box shows the `ffmpeg.exe` command line used

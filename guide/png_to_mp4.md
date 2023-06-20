@@ -8,7 +8,7 @@
     - Examples:
         - For files named `image000.png` through `image999.png` the pattern should be `image%03d.png`
         - For files named `image00000.png` through `image99999.png` the pattern should be `image%05d.png`
-    - The special pattern "auto" can be used to detect the pattern if the files conform to the above format
+    - _Input Name Pattern_ can be left blank for automatic detection
 1. Set _Frame Rate_ to the required video FPS
 1. Set _Quality_ to the required video quality
     - The range is 17-28 (17 is near-lossless)
