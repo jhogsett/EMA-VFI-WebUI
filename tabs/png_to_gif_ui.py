@@ -29,7 +29,7 @@ class PNGtoGIF(TabBase):
             with gr.Row():
                 input_pattern_text_pg = gr.Text(max_lines=1,
                     label="Input Filename Pattern (leave blank for auto-detect)",
-                    placeholder="Example: 'image%09d.png'")
+                    placeholder="Example: 'pngsequence%09d.png'")
                 framerate_pg = gr.Slider(value=30, minimum=1, maximum=240, step=1,
                     label="GIF Frame Rate")
             with gr.Row():

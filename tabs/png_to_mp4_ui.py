@@ -32,7 +32,7 @@ class PNGtoMP4(TabBase):
             with gr.Row():
                 input_pattern_text_pm = gr.Text(max_lines=1,
                     label="Input Filename Pattern (leave blank for auto-detection)",
-                    placeholder="Example: 'image%09d.png'")
+                    placeholder="Example: 'pngsequence%09d.png'")
                 input_frame_rate_pm = gr.Slider(minimum=1, maximum=60, value=frame_rate,
                     step=1, label="Frame Rate")
                 quality_slider_pm = gr.Slider(minimum=minimum_crf, maximum=maximum_crf,
