@@ -156,7 +156,6 @@ def get_frame_count(input_path : str) -> int:
         " -select_streams v -count_frames -show_entries stream=nb_read_frames" +
         " -print_format default=nokey=1:noprint_wrappers=1"},
                     global_options="-v quiet")
-    print(ffcmd.cmd)
     result = ffcmd.run(stdout=subprocess.PIPE)
     stdout = result[0].decode("UTF-8").strip()
     return int(stdout)
