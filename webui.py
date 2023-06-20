@@ -1,5 +1,6 @@
 """EMA-VFI-WebUI Application"""
 import os
+import shutil
 import time
 import signal
 import argparse
@@ -7,7 +8,7 @@ from typing import Callable
 from interpolate_engine import InterpolateEngine
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_config import SimpleConfig
-from webui_utils.file_utils import create_directories
+from webui_utils.file_utils import create_directories, is_safe_path
 from webui_utils.console_colors import ColorOut
 from create_ui import create_ui
 from webui_tips import WebuiTips
@@ -23,6 +24,7 @@ def main():
     log = SimpleLog(args.verbose)
     config = SimpleConfig(args.config_path).config_obj()
     create_directories(config.directories)
+    clean_working_directory(config)
     WebUI(config, log).start()
 
 class WebUI:
@@ -72,6 +74,11 @@ class WebUI:
                 app.close()
                 time.sleep(0.5)
                 break
+
+def clean_working_directory(config):
+    working_directory = config.directories["working"]
+    if os.path.exists(working_directory) and is_safe_path(working_directory):
+        shutil.rmtree(working_directory, ignore_errors=False)
 
 def sigint_handler(sig, frame):
     """Make the program just exit at ctrl+c without waiting for anything"""
