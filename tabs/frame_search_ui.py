@@ -60,11 +60,12 @@ class FrameSearch(TabBase):
         """Search button handler"""
         if img_before_file and img_after_file and min_target and max_target:
             base_output_path = self.config.directories["output_search"]
+            use_time_step = self.config.engine_settings["use_time_step"]
             create_directory(base_output_path)
             output_path, _ = AutoIncrementDirectory(base_output_path).next_directory("run")
             output_basename = "frame"
 
-            if self.config.use_time_step:
+            if use_time_step:
                 # use the time step feature of the model to reach the midpoint of the target range
                 interpolater = Interpolate(self.engine.model, self.log)
                 midpoint = float(min_target) + (float(max_target) - float(min_target)) / 2.0

@@ -529,7 +529,7 @@ class VideoBlender(TabBase):
         if input_path:
             output_filepath, _ = AutoIncrementFilename(self.config.directories["working"],
                 "mp4").next_filename("video_preview", "mp4")
-            PNGtoMP4(input_path, "auto", int(frame_rate), output_filepath,
+            PNGtoMP4(input_path, None, int(frame_rate), output_filepath,
                 crf=QUALITY_SMALLER_SIZE)
             return output_filepath
 

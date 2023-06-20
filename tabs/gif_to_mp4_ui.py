@@ -236,4 +236,4 @@ class GIFtoMP4(TabBase):
     def convert_png_frames_to_mp4(self, input_path, output_filepath, frame_rate, quality):
         """Use PNGtoMP4 to assemble to final video"""
         self.log(f"creating {output_filepath} from frames in {input_path}")
-        PNGtoMP4(input_path, "auto", frame_rate, output_filepath, quality)
+        PNGtoMP4(input_path, None, frame_rate, output_filepath, quality)
