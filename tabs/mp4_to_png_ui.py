@@ -34,21 +34,29 @@ class MP4toPNG(TabBase):
                 input_frame_rate_mp = gr.Slider(minimum=1, maximum=max_frame_rate, value=frame_rate,
                     step=1, label="Frame Rate")
             with gr.Row():
+                deinterlace = gr.Checkbox(value=False, label="Deinterlace Frames",
+                            info="Removes the 'combing' effect present in some broadcast content")
+            with gr.Row():
                 convert_button_mp = gr.Button("Convert", variant="primary")
                 output_info_text_mp = gr.Textbox(label="Details", interactive=False)
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.mp4_to_png.render()
         convert_button_mp.click(self.convert_mp4_to_png,
             inputs=[input_path_text_mp, output_pattern_text_mp, input_frame_rate_mp,
-                output_path_text_mp], outputs=output_info_text_mp)
+                output_path_text_mp, deinterlace], outputs=output_info_text_mp)
 
     def convert_mp4_to_png(self,
                         input_filepath : str,
                         output_pattern : str,
                         frame_rate : int,
-                        output_path: str):
+                        output_path : str,
+                        deinterlace : bool):
         """Convert button handler"""
         if input_filepath and output_path:
             create_directory(output_path)
-            ffmpeg_cmd = _MP4toPNG(input_filepath, output_pattern, int(frame_rate), output_path)
+            ffmpeg_cmd = _MP4toPNG(input_filepath,
+                                   output_pattern,
+                                   int(frame_rate),
+                                   output_path,
+                                   deinterlace=deinterlace)
             return gr.update(value=ffmpeg_cmd, visible=True)
