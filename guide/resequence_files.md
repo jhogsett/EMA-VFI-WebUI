@@ -35,3 +35,4 @@
 1.  **Make a backup copy of the original files before using _Rename instead of duplicate files_ due to the danger of losing the original content**
 1. Ensure _Base Filename_ is set to a different name than the source files
 1. Ensure the only files present in the input path are the ones to be resequenced
+1. Files are taken in  Python `sorted()` order
