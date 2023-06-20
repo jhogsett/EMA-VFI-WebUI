@@ -77,6 +77,8 @@ upscale_settings:
   - "jpeg"
   - "gif"
   - "bmp"
+  - "jpe"
+  - "jfif"
 logviewer_settings:
   max_lines: 25
 deduplicate_settings:
