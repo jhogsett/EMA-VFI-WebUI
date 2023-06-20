@@ -23,8 +23,8 @@ def main():
     args = parser.parse_args()
     log = SimpleLog(args.verbose)
     config = SimpleConfig(args.config_path).config_obj()
+    clean_working_directory(config.directories["working"])
     create_directories(config.directories)
-    clean_working_directory(config)
     WebUI(config, log).start()
 
 class WebUI:
@@ -75,8 +75,7 @@ class WebUI:
                 time.sleep(0.5)
                 break
 
-def clean_working_directory(config):
-    working_directory = config.directories["working"]
+def clean_working_directory(working_directory):
     if os.path.exists(working_directory) and is_safe_path(working_directory):
         shutil.rmtree(working_directory, ignore_errors=False)
 
