@@ -9,6 +9,7 @@ from webui_utils.simple_log import SimpleLog
 from webui_utils.video_utils import get_duplicate_frames_report, get_duplicate_frames,\
     compute_report_stats
 from webui_utils.file_utils import split_filepath, create_directory
+from webui_utils.console_colors import ColorOut
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
 from interpolation_target import TargetInterpolate
@@ -180,7 +181,7 @@ class DeduplicateFrames:
             if suppress_output:
                 raise error
             else:
-                print(message)
+                ColorOut(message, "red")
 
     def invoke_report(self, suppress_output=False):
         try:
@@ -211,7 +212,7 @@ class DeduplicateFrames:
             if suppress_output:
                 raise error
             else:
-                print(message)
+                ColorOut(message, "red")
 
     def invoke_delete(self, suppress_output=False):
         if not self.output_path:
@@ -259,7 +260,7 @@ class DeduplicateFrames:
             if suppress_output:
                 raise error
             else:
-                print(message)
+                ColorOut(message, "red")
 
     def invoke_autofill(self, suppress_output=False):
         self.log("invoke_autofill() using invoke_delete() to copy non-duplicate frames")
@@ -291,7 +292,7 @@ class DeduplicateFrames:
                 if suppress_output:
                     raise RuntimeError(message)
                 else:
-                    print("Warning: " + message)
+                    ColorOut("Warning: " + message, "red")
             else:
                 after_file = frame_filenames[after_index]
                 self.log(f"after frame file: {after_file}")

@@ -8,6 +8,7 @@ from interpolate_engine import InterpolateEngine
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.file_utils import create_directories
+from webui_utils.console_colors import ColorOut
 from create_ui import create_ui
 from webui_tips import WebuiTips
 
@@ -40,8 +41,10 @@ class WebUI:
         use_time_step = self.config.use_time_step
         engine = InterpolateEngine(self.config.model, self.config.gpu_ids, use_time_step=use_time_step)
         while True:
-            print("\nStarting EMA-VFI-WebUI")
+            print()
+            ColorOut("Starting EMA-VFI-WebUI", "green")
             print("Models are loaded on the first interpolation")
+            print()
             app = create_ui(self.config, engine, self.log, self.restart_app)
             app.launch(inbrowser = self.config.auto_launch_browser and not self.prevent_inbrowser,
                         server_name = self.config.server_name,
@@ -50,7 +53,8 @@ class WebUI:
             # after initial launch, disable inbrowser for subsequent restarts
             self.prevent_inbrowser = True
             self.wait_on_server(app)
-            print("\n--- Restarting\n")
+            print()
+            ColorOut("Restarting ...", "yellow")
 
     def restart_app(self):
         """Signal to the event loop to restart the application"""
@@ -69,7 +73,7 @@ class WebUI:
 
 def sigint_handler(sig, frame):
     """Make the program just exit at ctrl+c without waiting for anything"""
-    print(f'Interrupted with signal {sig} in {frame}')
+    ColorOut(f'Interrupted with signal {sig} in {frame}', "red")
     os._exit(0) #pylint: disable=protected-access
 signal.signal(signal.SIGINT, sigint_handler)
 
