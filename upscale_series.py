@@ -81,7 +81,7 @@ class UpscaleSeries():
         """Invoke the Upscale Frames feature"""
         file_list = sorted(file_list)
         file_count = len(file_list)
-        pbar_desc = "Frame"
+        pbar_desc = "Upscaling"
         output_dict = {}
 
         for index, filepath in enumerate(tqdm(file_list, desc=pbar_desc, position=0)):
