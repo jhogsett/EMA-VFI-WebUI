@@ -7,8 +7,7 @@ from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hms
 from webui_utils.video_utils import get_video_details
-# from webui_tips import WebuiTips
-from webui_utils.auto_increment import AutoIncrementDirectory
+from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
 
@@ -25,8 +24,8 @@ class VideoDetails(TabBase):
         with gr.Tab("Video Details"):
             gr.Markdown(SimpleIcons.WHITE_QUESTION + "Show internal details for a media file")
             with gr.Row():
-                input_file = gr.Text(max_lines=1, label="Media File",
-                    placeholder="Path on this server to the media file to inspect")
+                input_file = gr.Text(max_lines=1, label="Media File Path",
+                    placeholder="Path on this server to the media file to be inspected")
             with gr.Row():
                 frame_rate = gr.Text(max_lines=1, label="Frame Rate")
                 dimensions = gr.Text(max_lines=1, label="Dimensions")
@@ -37,8 +36,8 @@ class VideoDetails(TabBase):
                 info="Scans file counting frames; required for media without frame count metadata")
             report_button = gr.Button("Get Details", variant="primary")
             output_text = gr.Textbox(label="Details", interactive=False)
-            # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-            #     WebuiTips.duplicates_report.render()
+            with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                WebuiTips.video_details.render()
         report_button.click(self.create_report, inputs=[input_file, count_frames],
                     outputs=[output_text, frame_rate, duration, dimensions, frame_count, file_size])
 
@@ -147,6 +146,7 @@ class VideoDetails(TabBase):
                     for k, v in stream_data.items():
                         report.append(f"{k}: {v}")
                     report.append(separator)
+                report.append("More media file details availale in the Log Viewer")
 
                 return gr.update(value="\r\n".join(report)),\
                                  video_summary.get("frame_rate"),\

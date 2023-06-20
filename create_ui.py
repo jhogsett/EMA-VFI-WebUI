@@ -60,7 +60,7 @@ def create_ui(config : SimpleConfig,
         with gr.Tab(SimpleIcons.WRENCH + "Tools"):
             with gr.Tab("File Conversion"):
                 gr.HTML(SimpleIcons.FOLDER +
-                    "Tools for common video file conversion tasks (ffmpeg.exe must be in path)",
+                    "Tools for common video file conversion tasks",
                     elem_id="tabheading")
                 MP4toPNG(config, engine, log.log).render_tab()
                 PNGtoMP4(config, engine, log.log).render_tab()
