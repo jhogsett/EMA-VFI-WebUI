@@ -1,102 +1,119 @@
-directories:
-  working: "temp"
-  output_interpolation: "output/interpolation"
-  output_inflation: "output/inflation"
-  output_search: "output/search"
-  output_resynthesis: "output/resynthesis"
-  output_restoration: "output/restoration"
-  output_blender: "output/blender"
-  output_fps_change: "output/fps_change"
-  output_upscaling: "output/upscaling"
-  output_gif_to_mp4: "output/gif_to_mp4"
-  output_deduplication: "output/deduplication"
-model: "ours" # "_t" auto-appended when using time step
-use_time_step: False
-gpu_ids: "0" # *future use* (cuda device:0 is presumed)
-auto_launch_browser: True
-server_port: 7862
-server_name: "0.0.0.0"
-interpolation_settings:
-  max_splits: 10
-  gif_duration: 3000
-  create_gif: True
-  create_zip: True
-  create_txt: True
-search_settings:
-  max_splits: 60
-restoration_settings:
-  default_frames: 2
-  max_frames: 10
-  default_precision: 10
-  max_precision: 60
-  gif_duration: 1000
-  create_gif: True
-  create_zip: True
-  create_txt: True
+app_settings:
+  auto_launch_browser: True
+  server_name: "0.0.0.0"
+  server_port: 7862
 blender_settings:
+  clean_frames: True
+  frame_fixer_depth: 10
+  frame_rate: 30
+  gif_duration: 1000
+  max_frame_rate: 240
   projects_file: "video_blender_projects.csv"
   skip_frames: 100
-  frame_fixer_depth: 10
-  gif_duration: 1000
-  clean_frames: True
-mp4_to_png_settings:
-  frame_rate: 30
-png_to_mp4_settings:
-  minimum_crf: 17 # near-lossless
-  maximum_crf: 28 # great quality, smaller file
-  default_crf: 23 # great quality (default)
-  frame_rate: 30
-fps_change_settings:
-  maximum_fps: 1024
-  starting_fps: 25
-  ending_fps: 30
-  default_precision: 10
-  max_precision: 60
-gif_to_mp4_settings:
-  resampling_precision: 10
-  use_tiling: False
-  file_types:
-  - "gif"
-  - "mp4"
-  - "mpg"
-  - "mpeg"
-  - "mov"
-  - "wmv"
-  - "avi"
-  - "m4v"
-  - "webm"
-realesrgan_settings:
-  model_name: "RealESRGAN_x4plus"
-  fp32: True
-  tiling: 256
-  tile_pad: 10
-upscale_settings:
-  file_types:
-  - "png"
-  - "jpg"
-  - "jpeg"
-  - "gif"
-  - "bmp"
-  - "jpe"
-  - "jfif"
-logviewer_settings:
-  max_lines: 25
+directories:
+  output_blender: "output/blender"
+  output_deduplication: "output/deduplication"
+  output_fps_change: "output/fps_change"
+  output_gif_to_mp4: "output/gif_to_mp4"
+  output_inflation: "output/inflation"
+  output_interpolation: "output/interpolation"
+  output_restoration: "output/restoration"
+  output_resynthesis: "output/resynthesis"
+  output_search: "output/search"
+  output_upscaling: "output/upscaling"
+  working: "temp"
 deduplicate_settings:
-  min_threshold: 0
-  max_threshold: 25000
+  default_precision: 10
   default_threshold: 2500
-  threshold_step: 100
+  default_tuning_step: 100
   max_dupes_per_group: 0
   max_lines: 40
-  default_precision: 10
   max_precision: 60
-  min_tuning_step: 1
+  max_threshold: 25000
   max_tuning_step: 10000
-  default_tuning_step: 100
+  min_threshold: 0
+  min_tuning_step: 1
+  threshold_step: 100
+engine_settings:
+  gpu_ids: "0"
+  model: "ours"
+  use_time_step: False
+fps_change_settings:
+  default_precision: 10
+  ending_fps: 30
+  max_precision: 60
+  maximum_fps: 1024
+  starting_fps: 25
+gif_to_mp4_settings:
+  default_crf: 23
+  frame_rate: 30
+  file_types:
+  - "avi"
+  - "flv"
+  - "gif"
+  - "m4v"
+  - "mov"
+  - "mp4"
+  - "mpeg"
+  - "mpg"
+  - "qt"
+  - "webm"
+  - "wmv"
+  maximum_crf: 28
+  max_frame_rate: 240
+  minimum_crf: 17
+  resampling_precision: 10
+  use_tiling: False
+interpolation_settings:
+  create_gif: True
+  create_zip: True
+  create_txt: True
+  gif_duration: 3000
+  max_splits: 10
+logviewer_settings:
+  max_lines: 25
+mp4_to_png_settings:
+  frame_rate: 30
+  max_frame_rate: 240
+restoration_settings:
+  create_gif: True
+  create_zip: True
+  create_txt: True
+  default_frames: 2
+  default_precision: 10
+  gif_duration: 1000
+  max_frames: 10
+  max_precision: 60
+png_to_gif_settings:
+  frame_rate: 30
+  max_frame_rate: 240
+png_to_mp4_settings:
+  default_crf: 23
+  frame_rate: 30
+  max_frame_rate: 240
+  maximum_crf: 28
+  minimum_crf: 17
+search_settings:
+  max_splits: 60
+realesrgan_settings:
+  fp32: True
+  gpu_ids: "0"
+  model_name: "RealESRGAN_x4plus"
+  tile_pad: 10
+  tiling: 256
+upscale_settings:
+  file_types:
+  - "bmp"
+  - "gif"
+  - "png"
+  - "jfif"
+  - "jpe"
+  - "jpeg"
+  - "jpg"
 user_interface:
-  tips_path: "guide"
-  theme: "default"
   css_file: "webui.css"
   log_file: None
-  show_header: True
   resources_path: "resources.csv"
+  show_header: True
+  theme: "default"
+  tips_path: "guide"

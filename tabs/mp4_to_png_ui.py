@@ -20,6 +20,7 @@ class MP4toPNG(TabBase):
     def render_tab(self):
         """Render tab into UI"""
         frame_rate = self.config.mp4_to_png_settings["frame_rate"]
+        max_frame_rate = self.config.mp4_to_png_settings["max_frame_rate"]
         with gr.Tab("MP4 to PNG Sequence"):
             gr.Markdown(SimpleIcons.CONV_SYMBOL + "Convert Video Media to a PNG sequence")
             input_path_text_mp = gr.Text(max_lines=1, label="MP4 File (MOV and others work too)",
@@ -30,7 +31,7 @@ class MP4toPNG(TabBase):
                 output_pattern_text_mp = gr.Text(max_lines=1,
                     label="Output Filename Pattern (leave blank for auto-detection)",
                     placeholder="Example: 'pngsequence%09d.png'")
-                input_frame_rate_mp = gr.Slider(minimum=1, maximum=60, value=frame_rate,
+                input_frame_rate_mp = gr.Slider(minimum=1, maximum=max_frame_rate, value=frame_rate,
                     step=1, label="Frame Rate")
             with gr.Row():
                 convert_button_mp = gr.Button("Convert", variant="primary")

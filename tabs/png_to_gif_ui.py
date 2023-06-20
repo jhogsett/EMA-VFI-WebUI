@@ -19,6 +19,8 @@ class PNGtoGIF(TabBase):
 
     def render_tab(self):
         """Render tab into UI"""
+        frame_rate = self.config.png_to_gif_settings["frame_rate"]
+        max_frame_rate = self.config.png_to_gif_settings["max_frame_rate"]
         with gr.Tab("PNG Sequence to GIF"):
             gr.Markdown(SimpleIcons.CONV_SYMBOL + "Convert a PNG sequence to a GIF")
             with gr.Row():
@@ -30,8 +32,8 @@ class PNGtoGIF(TabBase):
                 input_pattern_text_pg = gr.Text(max_lines=1,
                     label="Input Filename Pattern (leave blank for auto-detect)",
                     placeholder="Example: 'pngsequence%09d.png'")
-                framerate_pg = gr.Slider(value=30, minimum=1, maximum=240, step=1,
-                    label="GIF Frame Rate")
+                framerate_pg = gr.Slider(value=frame_rate, minimum=1, maximum=max_frame_rate,
+                                         step=1, label="GIF Frame Rate")
             with gr.Row():
                 convert_button_pg = gr.Button("Convert", variant="primary")
                 output_info_text_pg = gr.Textbox(label="Details", interactive=False)

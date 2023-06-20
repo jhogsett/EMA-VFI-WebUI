@@ -38,17 +38,19 @@ class WebUI:
     def start(self):
         """Create the UI and start the event loop"""
         WebuiTips.set_tips_path(self.config.user_interface["tips_path"])
-        use_time_step = self.config.use_time_step
-        engine = InterpolateEngine(self.config.model, self.config.gpu_ids, use_time_step=use_time_step)
+        model = self.config.engine_settings["model"]
+        gpu_ids = self.config.engine_settings["gpu_ids"]
+        use_time_step = self.config.engine_settings["use_time_step"]
+        engine = InterpolateEngine(model, gpu_ids, use_time_step=use_time_step)
         while True:
             print()
             ColorOut("Starting EMA-VFI-WebUI", "green")
             print("Models are loaded on the first interpolation")
             print()
             app = create_ui(self.config, engine, self.log, self.restart_app)
-            app.launch(inbrowser = self.config.auto_launch_browser and not self.prevent_inbrowser,
-                        server_name = self.config.server_name,
-                        server_port = self.config.server_port,
+            app.launch(inbrowser = self.config.app_settings["auto_launch_browser"] and not self.prevent_inbrowser,
+                        server_name = self.config.app_settings["server_name"],
+                        server_port = self.config.app_settings["server_port"],
                         prevent_thread_lock=True)
             # after initial launch, disable inbrowser for subsequent restarts
             self.prevent_inbrowser = True

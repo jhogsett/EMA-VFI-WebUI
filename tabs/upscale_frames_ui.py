@@ -56,7 +56,7 @@ class UpscaleFrames(TabBase):
         """Upscale Frames button handler"""
         if input_path:
             model_name = self.config.realesrgan_settings["model_name"]
-            gpu_ips = self.config.gpu_ids
+            gpu_ids = self.config.realesrgan_settings["gpu_ids"]
             fp32 = self.config.realesrgan_settings["fp32"]
             if use_tiling.startswith("Yes"):
                 tiling = self.config.realesrgan_settings["tiling"]
@@ -64,7 +64,7 @@ class UpscaleFrames(TabBase):
             else:
                 tiling = 0
                 tile_pad = 0
-            upscaler = UpscaleSeries(model_name, gpu_ips, fp32, tiling, tile_pad, self.log)
+            upscaler = UpscaleSeries(model_name, gpu_ids, fp32, tiling, tile_pad, self.log)
 
             if output_path:
                 create_directory(output_path)

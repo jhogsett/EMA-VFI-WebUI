@@ -31,10 +31,11 @@ class GIFtoMP4(TabBase):
 
     def render_tab(self):
         """Render tab into UI"""
-        frame_rate = self.config.png_to_mp4_settings["frame_rate"]
-        minimum_crf = self.config.png_to_mp4_settings["minimum_crf"]
-        maximum_crf = self.config.png_to_mp4_settings["maximum_crf"]
-        default_crf = self.config.png_to_mp4_settings["default_crf"]
+        frame_rate = self.config.gif_to_mp4_settings["frame_rate"]
+        max_frame_rate = self.config.gif_to_mp4_settings["max_frame_rate"]
+        minimum_crf = self.config.gif_to_mp4_settings["minimum_crf"]
+        maximum_crf = self.config.gif_to_mp4_settings["maximum_crf"]
+        default_crf = self.config.gif_to_mp4_settings["default_crf"]
         with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "GIF to MP4"):
             gr.HTML(SimpleIcons.PLAY +
                 "Turn an Animated GIF Into a MP4 video (must have FFmpeg & Real-ESRGAN)",
@@ -52,8 +53,8 @@ class GIFtoMP4(TabBase):
                     output_path_text = gr.Text(max_lines=1, label="MP4 File",
                         placeholder="Path on this server for the converted MP4 file, " +
                             "leave blank for an MP4 in the same location")
-                    input_frame_rate = gr.Slider(minimum=1, maximum=240, value=frame_rate,
-                        step=1, label="MP4 Frame Rate")
+                    input_frame_rate = gr.Slider(minimum=1, maximum=max_frame_rate,
+                                                 value=frame_rate, step=1, label="MP4 Frame Rate")
                     quality_slider = gr.Slider(minimum=minimum_crf, maximum=maximum_crf,
                         step=1, value=default_crf, label="Quality (lower=better)")
             with gr.Row():
@@ -160,7 +161,7 @@ class GIFtoMP4(TabBase):
         self.log(
         f"upscaling frames in {input_path} with a factor of {upscale_factor} to {output_path}")
         model_name = self.config.realesrgan_settings["model_name"]
-        gpu_ips = self.config.gpu_ids
+        gpu_ips = self.config.engine_settings["gpu_ids"]
         fp32 = self.config.realesrgan_settings["fp32"]
         if self.config.gif_to_mp4_settings["use_tiling"]:
             tiling = self.config.realesrgan_settings["tiling"]
