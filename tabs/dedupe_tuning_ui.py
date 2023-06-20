@@ -28,7 +28,8 @@ class DuplicateTuning(TabBase):
         max_tuning_step = self.config.deduplicate_settings["max_tuning_step"]
         default_tuning_step = self.config.deduplicate_settings["default_tuning_step"]
         def_max_dupes = self.config.deduplicate_settings["max_dupes_per_group"]
-        max_lines = self.config.deduplicate_settings["max_lines"]
+        max_max_dupes = self.config.deduplicate_settings["max_max_dupes"]
+        max_rows = self.config.deduplicate_settings["max_tuning_rows"]
         with gr.Tab("Duplicate Threshold Tuning"):
             gr.Markdown(SimpleIcons.DEDUPE_SYMBOL +\
                 "Detect duplicates across a series of Detection Thresholds")
@@ -36,7 +37,7 @@ class DuplicateTuning(TabBase):
                 input_path_text = gr.Text(max_lines=1, label="Input PNG Files Path",
                     placeholder="Path on this server to the PNG files to be reported on")
             with gr.Row():
-                max_dupes = gr.Slider(value=def_max_dupes, minimum=0, maximum=99, step=1,
+                max_dupes = gr.Slider(value=def_max_dupes, minimum=0, maximum=max_max_dupes, step=1,
                     label="Maximum Duplicates Per Group (0 = no limit, 1 = no duplicates allowed)")
             with gr.Row():
                 tune_min = gr.Slider(value=min_threshold, minimum=min_threshold,
@@ -55,7 +56,7 @@ class DuplicateTuning(TabBase):
                                       visible=False)
                 error_output = gr.Text(max_lines=1, label="Error", visible=False)
             with gr.Row():
-                output_frame = gr.DataFrame(value=None, max_rows=None, interactive=False,
+                output_frame = gr.DataFrame(value=None, max_rows=max_rows, interactive=False,
                                             label="Tuning Report")
             # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
             #     WebuiTips.duplicates_report.render()
