@@ -39,7 +39,8 @@ class ResizeFrames(TabBase):
                     with gr.Row():
                         scale_type = gr.Radio(value="lanczos",
                             choices=["area", "cubic", "lanczos", "linear", "nearest"],
-                            label="Scaling Type")
+                            label="Scaling Type",
+                    info = "For best quality, use 'area' for reducing and 'lanczos' for enlarging")
             gr.Markdown("*Progress can be tracked in the console*")
             resize_button = gr.Button("Resize Frames " + SimpleIcons.SLOW_SYMBOL,
                                        variant="primary")
