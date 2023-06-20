@@ -1,6 +1,5 @@
 """Upscale Frames Core Code"""
 import argparse
-import glob
 import os
 from typing import Callable
 import cv2
@@ -10,8 +9,9 @@ from realesrgan import RealESRGANer # pylint: disable=import-error
 from realesrgan.archs.srvgg_arch import SRVGGNetCompact # pylint: disable=import-error
 from tqdm import tqdm
 from webui_utils.simple_log import SimpleLog
-from webui_utils.file_utils import create_directory, get_files, build_filename,\
-    build_indexed_filename, build_series_filename, split_filepath
+from webui_utils.file_utils import create_directory, get_files, build_series_filename,\
+    split_filepath
+from webui_utils.console_colors import ColorOut
 
 def main():
     """Use Upscale Frames from the command line"""
@@ -112,8 +112,12 @@ class UpscaleSeries():
             output, _ = self.upscaler.enhance(img, outscale=outscale)
             cv2.imwrite(output_filepath, output)
             return True
-        except RuntimeError as error:
-            print('Real-ESRGAN Error', error)
+        except Exception as error:
+            print("\r\n")
+            ColorOut(f"Real-ESRGAN Error upscaling file '{input_filepath}'", "red")
+            print()
+            ColorOut(str(error), "yellow")
+            print()
             return False
 
     def load_upscaler(self,

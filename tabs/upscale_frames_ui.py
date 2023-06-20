@@ -38,7 +38,7 @@ class UpscaleFrames(TabBase):
                         choices=[
                             "Auto (Tile If Needed)",
                             "No (Best Quality)",
-                            "Yes (For Low VRAM)"],
+                            "Yes (For Large Files or Low VRAM)"],
                         value="Auto (Tile If Needed)")
             gr.Markdown("*Progress can be tracked in the console*")
             upscale_button = gr.Button("Upscale Frames " + SimpleIcons.SLOW_SYMBOL,
