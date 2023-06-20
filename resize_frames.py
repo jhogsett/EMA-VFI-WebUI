@@ -133,10 +133,10 @@ class ResizeFrames:
                     self.crop_offset_x = int((self.scale_width - self.crop_width) / 2)
                 if self.crop_offset_y < 0:
                     self.crop_offset_y = int((self.scale_height - self.crop_height) / 2)
-                min_x = self.crop_offset_x
-                min_y = self.crop_offset_y
-                max_x = min_x + self.crop_width
-                max_y = min_y + self.crop_height
+                min_x = int(self.crop_offset_x)
+                min_y = int(self.crop_offset_y)
+                max_x = int(min_x + self.crop_width)
+                max_y = int(min_y + self.crop_height)
 
                 self.log(f"cropping {file} with [{min_y}:{max_y}, {min_x}:{max_x}]")
                 image = image[min_y:max_y, min_x:max_x]
