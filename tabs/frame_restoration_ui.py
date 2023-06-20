@@ -82,7 +82,7 @@ class FrameRestoration(TabBase):
         if img_before_file and img_after_file:
             interpolater = Interpolate(self.engine.model, self.log)
             target_interpolater = TargetInterpolate(interpolater, self.log)
-            use_time_step = self.config.use_time_step
+            use_time_step = self.config.engine_settings["use_time_step"]
             frame_restorer = RestoreFrames(interpolater, target_interpolater, use_time_step,
                                            self.log)
             base_output_path = self.config.directories["output_restoration"]

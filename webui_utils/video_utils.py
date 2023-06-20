@@ -53,12 +53,18 @@ def MP4toPNG(input_path : str,  # pylint: disable=invalid-name
             filename_pattern : str,
             frame_rate : int,
             output_path : str,
-            start_number : int = 0):
+            start_number : int = 0,
+            deinterlace : bool = False):
     """Encapsulate logic for the MP4 to PNG Sequence feature"""
     pattern = filename_pattern or determine_output_pattern(input_path)
+    if deinterlace:
+        filter = f"bwdif=mode=send_field:parity=auto:deint=all,fps={frame_rate * 2}"
+    else:
+        filter = f"fps={frame_rate}"
+
     ffcmd = FFmpeg(inputs= {input_path : None},
         outputs={os.path.join(output_path, pattern) :
-            f"-filter:v fps={frame_rate} -start_number {start_number}"},
+            f"-filter:v {filter} -start_number {start_number}"},
         global_options="-y")
     cmd = ffcmd.cmd
     ffcmd.run()
