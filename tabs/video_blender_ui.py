@@ -470,7 +470,7 @@ class VideoBlender(TabBase):
         if project_path and after_frame > before_frame:
             interpolater = Interpolate(self.engine.model, self.log)
             target_interpolater = TargetInterpolate(interpolater, self.log)
-            use_time_step = self.config.use_time_step
+            use_time_step = self.config.engine_settings["use_time_step"]
             frame_restorer = RestoreFrames(interpolater, target_interpolater, use_time_step,
                                            self.log)
 
@@ -636,7 +636,7 @@ class VideoBlender(TabBase):
 
             if step2_enabled:
                 interpolater = Interpolate(self.engine.model, self.log)
-                use_time_step = self.config.use_time_step
+                use_time_step = self.config.engine_settings["use_time_step"]
                 deep_interpolater = DeepInterpolate(interpolater, use_time_step, self.log)
                 series_interpolater = InterpolateSeries(deep_interpolater, self.log)
                 output_basename = "repair_frame"
