@@ -95,9 +95,7 @@ class DuplicateTuning(TabBase):
                     gr.update(value=None, visible=False)
 
             except RuntimeError as error:
-                message = \
-f"""Error creating report:
-{error}"""
+                message = str(error)
                 return gr.update(value=None, visible=False),\
                     gr.update(value=None, visible=True), \
                     gr.update(value=message, visible=True)

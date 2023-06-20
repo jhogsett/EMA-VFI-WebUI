@@ -176,10 +176,10 @@ class DeduplicateFrames:
             return tuning_data
 
         except RuntimeError as error:
-            message = f"Error generating report: {error}"
+            message = f"Error generating report at threshold {threshold} : {error}"
             self.log(message)
             if suppress_output:
-                raise error
+                raise RuntimeError(message)
             else:
                 ColorOut(message, "red")
 
