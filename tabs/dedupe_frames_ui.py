@@ -26,6 +26,7 @@ class DedupeFrames(TabBase):
         default_threshold = self.config.deduplicate_settings["default_threshold"]
         threshold_step = self.config.deduplicate_settings["threshold_step"]
         def_max_dupes = self.config.deduplicate_settings["max_dupes_per_group"]
+        max_max_dupes = self.config.deduplicate_settings["max_max_dupes"]
         # add max dupes; use new detect code
         with gr.Tab("Remove Duplicate Frames"):
             gr.Markdown(SimpleIcons.DEDUPE_SYMBOL + "Detect and remove duplicate PNG frame files")
@@ -39,7 +40,7 @@ class DedupeFrames(TabBase):
             with gr.Row():
                 threshold = gr.Slider(value=default_threshold, minimum=min_threshold,
                     maximum=max_threshold, step=threshold_step, label="Detection Threshold")
-                max_dupes = gr.Slider(value=def_max_dupes, minimum=0, maximum=99, step=1,
+                max_dupes = gr.Slider(value=def_max_dupes, minimum=0, maximum=max_max_dupes, step=1,
                     label="Maximum Duplicates Per Group (0 = no limit, 1 = no duplicates allowed)")
             with gr.Row():
                 dedupe_button = gr.Button("Deduplicate Frames", variant="primary")

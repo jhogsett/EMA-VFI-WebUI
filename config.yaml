@@ -28,7 +28,9 @@ deduplicate_settings:
   default_tuning_step: 100
   max_dupes_per_group: 0
   max_lines: 40
+  max_max_dupes: 1000
   max_precision: 60
+  max_tuning_rows: None
   max_threshold: 25000
   max_tuning_step: 10000
   min_threshold: 0

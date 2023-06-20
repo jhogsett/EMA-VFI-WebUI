@@ -27,6 +27,7 @@ class DuplicateFramesReport(TabBase):
         threshold_step = self.config.deduplicate_settings["threshold_step"]
         def_max_dupes = self.config.deduplicate_settings["max_dupes_per_group"]
         max_lines = self.config.deduplicate_settings["max_lines"]
+        max_max_dupes = self.config.deduplicate_settings["max_max_dupes"]
         with gr.Tab("Duplicate Frames Report"):
             gr.Markdown(SimpleIcons.DEDUPE_SYMBOL + "Detect and report duplicate PNG frame files")
             with gr.Row():
@@ -35,7 +36,7 @@ class DuplicateFramesReport(TabBase):
             with gr.Row():
                 threshold = gr.Slider(value=default_threshold, minimum=min_threshold,
                     maximum=max_threshold, step=threshold_step, label="Detection Threshold")
-                max_dupes = gr.Slider(value=def_max_dupes, minimum=0, maximum=99, step=1,
+                max_dupes = gr.Slider(value=def_max_dupes, minimum=0, maximum=max_max_dupes, step=1,
                     label="Maximum Duplicates Per Group (0 = no limit, 1 = no duplicates allowed)")
             with gr.Row():
                 report_button = gr.Button("Create Report", variant="primary")
