@@ -35,7 +35,8 @@ class VideoBlender(TabBase):
     def render_tab(self):
         """Render tab into UI"""
         skip_frames = self.config.blender_settings["skip_frames"]
-        frame_rate = self.config.png_to_mp4_settings["frame_rate"]
+        frame_rate = self.config.blender_settings["frame_rate"]
+        max_frame_rate = self.config.blender_settings["max_frame_rate"]
         with gr.Tab("Video Blender"):
             with gr.Tabs() as tabs_video_blender:
 
@@ -55,8 +56,8 @@ class VideoBlender(TabBase):
                     with gr.Row():
                         input_main_path = gr.Textbox(label="Project Main Path",
                                                      placeholder="Root path for the project")
-                        input_project_frame_rate = gr.Slider(minimum=1, maximum=60,
-                                                    value=frame_rate, step=1, label="Frame Rate")
+                        input_project_frame_rate = gr.Slider(value=frame_rate, minimum=1,
+                                                maximum=max_frame_rate, step=1, label="Frame Rate")
                     with gr.Row():
                         input_project_path_vb = gr.Textbox(label="Project Frames Path",
                             placeholder="Path to frame PNG files for video being restored")
@@ -173,8 +174,8 @@ class VideoBlender(TabBase):
                         placeholder="Path on this server to the PNG files to be converted")
                     with gr.Row():
                         render_video_vb = gr.Button("Render Video", variant="primary")
-                        input_frame_rate_vb = gr.Slider(minimum=1, maximum=60, value=frame_rate,
-                            step=1, label="Frame Rate")
+                        input_frame_rate_vb = gr.Slider(value=frame_rate, minimum=1,
+                                                maximum=max_frame_rate, step=1, label="Frame Rate")
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                         WebuiTips.video_blender_video_preview.render()
 
@@ -193,9 +194,8 @@ class VideoBlender(TabBase):
                                         label="New Project Path",
                                         placeholder="Path on this server for the new project")
                                 with gr.Column(scale=1):
-                                    new_project_frame_rate = gr.Slider(minimum=1, maximum=60,
-                                                                 value=frame_rate, step=1,
-                                                                 label="Frame Rate")
+                                    new_project_frame_rate = gr.Slider(value=frame_rate, minimum=1,
+                                                maximum=max_frame_rate, step=1, label="Frame Rate")
                     with gr.Row():
                         with gr.Column(variant="compact"):
                             gr.HTML("Check Applicable Setup Steps")

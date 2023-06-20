@@ -1,5 +1,6 @@
 """EMA-VFI-WebUI Application"""
 import os
+import shutil
 import time
 import signal
 import argparse
@@ -7,7 +8,7 @@ from typing import Callable
 from interpolate_engine import InterpolateEngine
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_config import SimpleConfig
-from webui_utils.file_utils import create_directories
+from webui_utils.file_utils import create_directories, is_safe_path
 from webui_utils.console_colors import ColorOut
 from create_ui import create_ui
 from webui_tips import WebuiTips
@@ -22,6 +23,7 @@ def main():
     args = parser.parse_args()
     log = SimpleLog(args.verbose)
     config = SimpleConfig(args.config_path).config_obj()
+    clean_working_directory(config.directories["working"])
     create_directories(config.directories)
     WebUI(config, log).start()
 
@@ -38,17 +40,19 @@ class WebUI:
     def start(self):
         """Create the UI and start the event loop"""
         WebuiTips.set_tips_path(self.config.user_interface["tips_path"])
-        use_time_step = self.config.use_time_step
-        engine = InterpolateEngine(self.config.model, self.config.gpu_ids, use_time_step=use_time_step)
+        model = self.config.engine_settings["model"]
+        gpu_ids = self.config.engine_settings["gpu_ids"]
+        use_time_step = self.config.engine_settings["use_time_step"]
+        engine = InterpolateEngine(model, gpu_ids, use_time_step=use_time_step)
         while True:
             print()
             ColorOut("Starting EMA-VFI-WebUI", "green")
             print("Models are loaded on the first interpolation")
             print()
             app = create_ui(self.config, engine, self.log, self.restart_app)
-            app.launch(inbrowser = self.config.auto_launch_browser and not self.prevent_inbrowser,
-                        server_name = self.config.server_name,
-                        server_port = self.config.server_port,
+            app.launch(inbrowser = self.config.app_settings["auto_launch_browser"] and not self.prevent_inbrowser,
+                        server_name = self.config.app_settings["server_name"],
+                        server_port = self.config.app_settings["server_port"],
                         prevent_thread_lock=True)
             # after initial launch, disable inbrowser for subsequent restarts
             self.prevent_inbrowser = True
@@ -70,6 +74,10 @@ class WebUI:
                 app.close()
                 time.sleep(0.5)
                 break
+
+def clean_working_directory(working_directory):
+    if os.path.exists(working_directory) and is_safe_path(working_directory):
+        shutil.rmtree(working_directory, ignore_errors=True)
 
 def sigint_handler(sig, frame):
     """Make the program just exit at ctrl+c without waiting for anything"""
