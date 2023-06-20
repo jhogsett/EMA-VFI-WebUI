@@ -28,6 +28,7 @@ from tabs.resize_frames_ui import ResizeFrames
 from tabs.dedupe_report_ui import DuplicateFramesReport
 from tabs.dedupe_autofill_ui import AutofillFrames
 from tabs.dedupe_tuning_ui import DuplicateTuning
+from tabs.video_details_ui import VideoDetails
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
@@ -59,7 +60,7 @@ def create_ui(config : SimpleConfig,
         with gr.Tab(SimpleIcons.WRENCH + "Tools"):
             with gr.Tab("File Conversion"):
                 gr.HTML(SimpleIcons.FOLDER +
-                    "Tools for common video file conversion tasks (ffmpeg.exe must be in path)",
+                    "Tools for common video file conversion tasks",
                     elem_id="tabheading")
                 MP4toPNG(config, engine, log.log).render_tab()
                 PNGtoMP4(config, engine, log.log).render_tab()
@@ -67,6 +68,7 @@ def create_ui(config : SimpleConfig,
                 PNGtoGIF(config, engine, log.log).render_tab()
                 SimplifyPngFiles(config, engine, log.log).render_tab()
                 ResizeFrames(config, engine, log.log).render_tab()
+                VideoDetails(config, engine, log.log).render_tab()
             ResequenceFiles(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             UpscaleFrames(config, engine, log.log).render_tab()

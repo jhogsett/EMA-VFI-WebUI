@@ -1,6 +1,7 @@
 """Functions for computing various things"""
 import sys
 import math
+import datetime
 from collections import namedtuple
 from fractions import Fraction
 from .simple_icons import SimpleIcons
@@ -137,3 +138,6 @@ def create_sample_set(samples : list, offset : int, stride : int):
         raise ValueError("'samples' must be a list")
     sample_set = create_sample_indices(len(samples), offset, stride)
     return [samples[index] for index in sample_set]
+
+def seconds_to_hms(_seconds):
+    return str(datetime.timedelta(seconds = _seconds))

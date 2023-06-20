@@ -21,7 +21,7 @@ class ResizeFrames(TabBase):
     def render_tab(self):
         """Render tab into UI"""
         with gr.Tab("Resize Frames"):
-            gr.HTML(SimpleIcons.PINCHING_HAND + " Use OpenCV 'Resize' to Enlarge or Reduce Frames",
+            gr.Markdown(SimpleIcons.PINCHING_HAND + " Use OpenCV 'Resize' to Enlarge or Reduce Frames",
                 elem_id="tabheading")
             with gr.Row():
                 with gr.Column():

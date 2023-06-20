@@ -4,7 +4,7 @@ import glob
 import subprocess
 import json
 from fractions import Fraction
-from ffmpy import FFmpeg, FFprobe
+from ffmpy import FFmpeg, FFprobe, FFRuntimeError
 from .image_utils import gif_frame_count
 from .file_utils import split_filepath
 
@@ -173,14 +173,24 @@ def get_frame_rate(input_path : str) -> float:
     fraction = Fraction(stdout)
     return float(fraction)
 
-def get_video_details(input_path : str) -> dict:
+def get_video_details(input_path : str, count_frames = True) -> dict:
     """Use FFprobe to get streams and format information for a video"""
     # ffprobe.exe -v quiet -show_format -show_streams -count_frames -of json file.mp4
-    ffcmd = FFprobe(inputs= {input_path : "-show_format -show_streams -count_frames -of json"},
-                    global_options="-v quiet")
-    result = ffcmd.run(stdout=subprocess.PIPE)
-    stdout = result[0].decode("UTF-8").strip()
-    return json.loads(stdout)
+    if count_frames:
+        ffcmd = FFprobe(inputs= {input_path : "-show_format -show_streams -count_frames -of json"})
+    else:
+        ffcmd = FFprobe(inputs= {input_path : "-show_format -show_streams -of json"})
+
+    try:
+        result = ffcmd.run(stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout = result[0].decode("UTF-8").strip()
+        return json.loads(stdout)
+    except FFRuntimeError as error:
+        return {
+            "error" : {
+                "ffprobe_cmd" : error.cmd,
+                "exit_code" : error.exit_code,
+                "console_output" : str(error.stderr.decode("UTF-8"))}}
 
 def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group : int):
     """Use FFmpeg to get a list of duplicate frames without making changes
