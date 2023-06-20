@@ -53,6 +53,7 @@ class DuplicateTuning(TabBase):
             with gr.Row():
                 file_output = gr.File(type="file", file_count="multiple", label="Download",
                                       visible=False)
+                error_output = gr.Text(max_lines=1, label="Error", visible=False)
             with gr.Row():
                 output_frame = gr.DataFrame(value=None, max_rows=None, interactive=False,
                                             label="Tuning Report")
@@ -60,7 +61,7 @@ class DuplicateTuning(TabBase):
             #     WebuiTips.duplicates_report.render()
         report_button.click(self.create_report,
                 inputs=[input_path_text, max_dupes, tune_min, tune_max, tune_step],
-                outputs=[file_output, output_frame])
+                outputs=[file_output, output_frame, error_output])
 
     def create_report(self,
                         input_path : str,
@@ -90,10 +91,11 @@ class DuplicateTuning(TabBase):
                     suppress_output=True)
                 report = str(tuning_data)
                 return gr.update(value=[output_filepath], visible=True), \
-                    gr.update(value=output_filepath, visible=True)
+                    gr.update(value=output_filepath, visible=True), \
+                    gr.update(value=None, visible=False)
 
             except RuntimeError as error:
-                message = \
-f"""Error creating report:
-{error}"""
-                return gr.update(value=None, visible=False), gr.update(value=message, visible=True)
+                message = str(error)
+                return gr.update(value=None, visible=False),\
+                    gr.update(value=None, visible=True), \
+                    gr.update(value=message, visible=True)
