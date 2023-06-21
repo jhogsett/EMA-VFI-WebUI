@@ -33,7 +33,7 @@ class AutofillFrames(TabBase):
         default_precision = self.config.deduplicate_settings["default_precision"]
         max_max_dupes = self.config.deduplicate_settings["max_max_dupes"]
         with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Auto-Fill Duplicate Frames"):
-            gr.Markdown(SimpleIcons.DEDUPE_SYMBOL +\
+            gr.Markdown(SimpleIcons.BANDAGE +\
                         "Detect and fill duplicate frames with interpolated replacements")
             with gr.Row():
                 input_path_text = gr.Text(max_lines=1, label="Input PNG Files Path",

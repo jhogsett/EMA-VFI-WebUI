@@ -31,7 +31,7 @@ class DuplicateTuning(TabBase):
         max_max_dupes = self.config.deduplicate_settings["max_max_dupes"]
         max_rows = self.config.deduplicate_settings["max_tuning_rows"]
         with gr.Tab("Duplicate Threshold Tuning"):
-            gr.Markdown(SimpleIcons.DEDUPE_SYMBOL +\
+            gr.Markdown(SimpleIcons.STETHOSCOPE +\
                 "Detect duplicates across a series of Detection Thresholds")
             with gr.Row():
                 input_path_text = gr.Text(max_lines=1, label="Input PNG Files Path",

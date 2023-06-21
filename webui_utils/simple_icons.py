@@ -4,6 +4,7 @@ class SimpleIcons:
     """Icons for use in web output from https://emojiguide.org/"""
     # some of these are composite characters
     NOTEBOOK = "📒"
+    NOTEPAD = "🗒️"
     DOCUMENT = "📄"
     PROPERTIES = "📝"
     FOLDER = "📁"
@@ -28,6 +29,7 @@ class SimpleIcons:
     WHITE_QUESTION = "❔"
     WRENCH = "🔧"
 
+    BAR_CHART = "📊"
     BELL = "🔔"
     NO_BELL = "🔕"
     BULB = "💡"
@@ -67,6 +69,7 @@ class SimpleIcons:
 
     BALLOON = "🎈"
     BABY = "👶"
+    BANDAGE = "🩹"
     BOMB = "💣"
     CHERRY_BLOSSOM = "🌸"
     COOL = "🆒"
@@ -90,6 +93,7 @@ class SimpleIcons:
     SEEDLING = "🌱"
     SOAP = "🧼"
     SPONGE = "🧽"
+    STETHOSCOPE ="🩺"
     STILL = "⚗️"
     SWEAT = "💦"
     TWO_HEARTS = "💕"
@@ -115,10 +119,13 @@ class SimpleIcons:
 
     APP_ICONS = [
         BALLOON,
+        BANDAGE,
+        BAR_CHART,
         CLAPPER,
         CONTROLS,
         COPYRIGHT,
         DIVIDE,
+        DOCUMENT,
         FILM,
         FOLDER,
         FOUR,
@@ -141,6 +148,7 @@ class SimpleIcons:
         SCROLL,
         SEEDLING,
         SPONGE,
+        STETHOSCOPE,
         STILL,
         TELEVISION,
         THREE,
@@ -149,6 +157,5 @@ class SimpleIcons:
         PINCHING_HAND,
         WARNING,
         WATCH,
-        WHITE_QUESTION,
         WRENCH,
 ]
