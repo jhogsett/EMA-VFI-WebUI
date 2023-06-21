@@ -46,7 +46,7 @@ class AutofillFrames(TabBase):
                 threshold = gr.Slider(value=default_threshold, minimum=min_threshold,
                     maximum=max_threshold, step=threshold_step, label="Detection Threshold")
                 max_dupes = gr.Slider(value=def_max_dupes, minimum=0, maximum=max_max_dupes, step=1,
-                    label="Maximum Duplicates Per Group (0 = no limit, 1 = no duplicates allowed)")
+                        label="Maximum Group Size to Auto-Fill (0 = no limit, 1 = no auto-fill)")
             with gr.Row():
                 precision = gr.Slider(value=default_precision, minimum=1, maximum=max_precision,
                     step=1, label="Search Precision")

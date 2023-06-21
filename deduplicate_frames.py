@@ -264,7 +264,13 @@ class DeduplicateFrames:
 
     def invoke_autofill(self, suppress_output=False):
         self.log("invoke_autofill() using invoke_delete() to copy non-duplicate frames")
+
+        # repurpose max_dupes for auto-fill to mean:
+        # skip auto-fill on groups larger than this size
+        original_max_dupes = self.max_dupes
+        self.max_dupes = 0
         _, dupe_groups, frame_filenames = self.invoke_delete(True)
+        self.max_dupes = original_max_dupes
 
         pbar_title = "Auto-Filling"
         self.log(f"beginning processing of {len(dupe_groups)} duplicate frame groups")
@@ -275,6 +281,11 @@ class DeduplicateFrames:
             group_files = list(group.values())
             restore_count = len(group) - 1
             self.log(f"restore count: {restore_count}")
+
+            if self.max_dupes and len(group) > self.max_dupes:
+                self.log(
+        f"skipping group #{index} - restore count {len(group)} exceeds max dupes {self.max_dupes}")
+                continue
 
             # first file in group is a "keep" frame
             before_file = group_files[0]
