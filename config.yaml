@@ -34,8 +34,9 @@ deduplicate_settings:
   max_threshold: 25000
   max_tuning_step: 10000
   min_threshold: 0
-  min_tuning_step: 1
+  min_tuning_step: 0
   threshold_step: 100
+  tuning_step_step: 10
 engine_settings:
   gpu_ids: "0"
   model: "ours"

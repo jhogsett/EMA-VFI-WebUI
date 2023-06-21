@@ -214,7 +214,7 @@ class DeduplicateFrames:
             else:
                 ColorOut(message, "red")
 
-    def invoke_delete(self, suppress_output=False):
+    def invoke_delete(self, suppress_output=False, max_size_for_delete=0):
         if not self.output_path:
             raise ValueError("'output_path' must be specified")
         create_directory(self.output_path)
@@ -234,6 +234,12 @@ class DeduplicateFrames:
             dupe_count = 0
             for index, group in enumerate(dupe_groups):
                 self.log(f"processing group #{index+1}")
+
+                if len(group) > max_size_for_delete:
+                    self.log(f"skipping deleting group #{index}, group size {len(group)}" +\
+                             f" exceeds max size for deletion {max_size_for_delete}")
+                    continue
+
                 dupes = list(group.values())
                 dupes = dupes[1:] # first entry is the 'keep' frame
                 for filepath in dupes:
@@ -267,10 +273,11 @@ class DeduplicateFrames:
 
         # repurpose max_dupes for auto-fill to mean:
         # skip auto-fill on groups larger than this size
-        original_max_dupes = self.max_dupes
+        ignore_over_size = self.max_dupes
         self.max_dupes = 0
-        _, dupe_groups, frame_filenames = self.invoke_delete(True)
-        self.max_dupes = original_max_dupes
+        _, dupe_groups, frame_filenames = self.invoke_delete(True,
+                                                             max_size_for_delete=ignore_over_size)
+        # self.max_dupes = original_max_dupes
 
         pbar_title = "Auto-Filling"
         self.log(f"beginning processing of {len(dupe_groups)} duplicate frame groups")
@@ -282,9 +289,9 @@ class DeduplicateFrames:
             restore_count = len(group) - 1
             self.log(f"restore count: {restore_count}")
 
-            if self.max_dupes and len(group) > self.max_dupes:
-                self.log(
-        f"skipping group #{index} - restore count {len(group)} exceeds max dupes {self.max_dupes}")
+            if ignore_over_size and len(group) > ignore_over_size:
+                self.log(f"skipping restoring group #{index}, restore count {len(group)}" +\
+                         f" exceeds max size {ignore_over_size}")
                 continue
 
             # first file in group is a "keep" frame

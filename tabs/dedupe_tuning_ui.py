@@ -26,6 +26,7 @@ class DuplicateTuning(TabBase):
         threshold_step = self.config.deduplicate_settings["threshold_step"]
         min_tuning_step = self.config.deduplicate_settings["min_tuning_step"]
         max_tuning_step = self.config.deduplicate_settings["max_tuning_step"]
+        tuning_step_step = self.config.deduplicate_settings["tuning_step_step"]
         default_tuning_step = self.config.deduplicate_settings["default_tuning_step"]
         def_max_dupes = self.config.deduplicate_settings["max_dupes_per_group"]
         max_max_dupes = self.config.deduplicate_settings["max_max_dupes"]
@@ -37,9 +38,6 @@ class DuplicateTuning(TabBase):
                 input_path_text = gr.Text(max_lines=1, label="Input PNG Files Path",
                     placeholder="Path on this server to the PNG files to be reported on")
             with gr.Row():
-                max_dupes = gr.Slider(value=def_max_dupes, minimum=0, maximum=max_max_dupes, step=1,
-                    label="Maximum Duplicates Per Group (0 = no limit, 1 = no duplicates allowed)")
-            with gr.Row():
                 tune_min = gr.Slider(value=min_threshold, minimum=min_threshold,
                     maximum=max_threshold, step=threshold_step,
                     label="Starting Detection Threshold")
@@ -47,8 +45,11 @@ class DuplicateTuning(TabBase):
                     maximum=max_threshold, step=threshold_step,
                     label="Ending Detection Threshold")
                 tune_step = gr.Slider(value=default_tuning_step, minimum=min_tuning_step,
-                    maximum=max_tuning_step, step=1,
+                    maximum=max_tuning_step, step=tuning_step_step,
                     label="Detection Threshold Increase Step")
+            with gr.Row():
+                max_dupes = gr.Slider(value=def_max_dupes, minimum=0, maximum=max_max_dupes, step=1,
+                    label="Maximum Duplicates Per Group (0 = no limit, 1 = no duplicates allowed)")
             with gr.Row():
                 report_button = gr.Button("Create Report", variant="primary")
             with gr.Row():
@@ -71,7 +72,7 @@ class DuplicateTuning(TabBase):
                         max_threshold : int,
                         threshold_step : int):
         """Create Report button handler"""
-        if input_path and max_threshold > min_threshold:
+        if input_path and max_threshold > min_threshold and threshold_step:
             base_output_path = self.config.directories["output_deduplication"]
             output_path, run_index = AutoIncrementDirectory(base_output_path).next_directory(
                 "run")
@@ -98,5 +99,11 @@ class DuplicateTuning(TabBase):
             except RuntimeError as error:
                 message = str(error)
                 return gr.update(value=None, visible=False),\
-                    gr.update(value=None, visible=True), \
+                    gr.update(value=None, visible=False), \
                     gr.update(value=message, visible=True)
+        else:
+            message =\
+            "To proceed, ensure: an input path was entered, threshold max > min, threshold step > 0"
+            return gr.update(value=None, visible=False),\
+                gr.update(value=None, visible=False), \
+                gr.update(value=message, visible=True)
