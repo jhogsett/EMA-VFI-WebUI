@@ -73,6 +73,9 @@ def create_ui(config : SimpleConfig,
             UpscaleFrames(config, engine, log.log).render_tab()
             VideoDetails(config, engine, log.log).render_tab()
             with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Deduplicate Frames"):
+                gr.HTML(SimpleIcons.SCISSORS +
+                    "Tools for duplicate frame detection and repair",
+                    elem_id="tabheading")
                 DuplicateFramesReport(config, engine, log.log).render_tab()
                 DuplicateTuning(config, engine, log.log).render_tab()
                 DedupeFrames(config, engine, log.log).render_tab()

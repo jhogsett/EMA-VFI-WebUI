@@ -29,7 +29,7 @@ class DuplicateFramesReport(TabBase):
         max_lines = self.config.deduplicate_settings["max_lines"]
         max_max_dupes = self.config.deduplicate_settings["max_max_dupes"]
         with gr.Tab("Duplicate Frames Report"):
-            gr.Markdown(SimpleIcons.DEDUPE_SYMBOL + "Detect and report duplicate PNG frame files")
+            gr.Markdown(SimpleIcons.DOCUMENT + "Detect and report duplicate PNG frame files")
             with gr.Row():
                 input_path_text = gr.Text(max_lines=1, label="Input PNG Files Path",
                     placeholder="Path on this server to the PNG files to be reported on")

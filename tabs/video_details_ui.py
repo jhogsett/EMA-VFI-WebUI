@@ -22,7 +22,8 @@ class VideoDetails(TabBase):
     def render_tab(self):
         """Render tab into UI"""
         with gr.Tab("Video Details"):
-            gr.Markdown(SimpleIcons.WHITE_QUESTION + "Show internal details for a media file")
+            gr.HTML(SimpleIcons.BAR_CHART + "Show internal details for a media file",
+                elem_id="tabheading")
             with gr.Row():
                 input_file = gr.Text(max_lines=1, label="Media File Path",
                     placeholder="Path on this server to the media file to be inspected")
