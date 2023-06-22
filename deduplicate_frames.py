@@ -291,6 +291,7 @@ class DeduplicateFrames:
                 if ignore_over_size and len(group) > ignore_over_size:
                     self.log(f"skipping restoring group #{index}, restore count {len(group)}" +\
                             f" exceeds max size {ignore_over_size}")
+                    Mtqdm().update_bar(bar)
                     continue
 
                 # first file in group is a "keep" frame
