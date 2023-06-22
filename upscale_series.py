@@ -7,11 +7,11 @@ from basicsr.archs.rrdbnet_arch import RRDBNet# pylint: disable=import-error
 from basicsr.utils.download_util import load_file_from_url# pylint: disable=import-error
 from realesrgan import RealESRGANer # pylint: disable=import-error
 from realesrgan.archs.srvgg_arch import SRVGGNetCompact # pylint: disable=import-error
-from tqdm import tqdm
 from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import create_directory, get_files, build_series_filename,\
     split_filepath
 from webui_utils.console_colors import ColorOut
+from webui_utils.mtqdm import Mtqdm
 
 def main():
     """Use Upscale Frames from the command line"""
@@ -81,24 +81,25 @@ class UpscaleSeries():
         """Invoke the Upscale Frames feature"""
         file_list = sorted(file_list)
         file_count = len(file_list)
-        pbar_desc = "Upscaling"
         output_dict = {}
 
-        for index, filepath in enumerate(tqdm(file_list, desc=pbar_desc, position=0)):
-            input_path, input_filename, input_type = split_filepath(filepath)
-            outscale_str = str(outscale).replace(".", "-")
-            tiling_str = f"T{self.tiling}" if self.tiling > 0 else ""
-            input_filename = f"{input_filename}[X{outscale_str}{tiling_str}]{input_type}"
-            output_filename = build_series_filename(base_filename, output_type, index, file_count,
-                                                    input_filename)
-            output_path = output_path or input_path
-            output_filepath = os.path.join(output_path, output_filename)
-            self.log(f"upscaling by {outscale} {filepath} to {output_filepath}")
+        with Mtqdm().open_bar(len(file_list), desc="Upscaling") as bar:
+            for index, filepath in enumerate(file_list):
+                input_path, input_filename, input_type = split_filepath(filepath)
+                outscale_str = str(outscale).replace(".", "-")
+                tiling_str = f"T{self.tiling}" if self.tiling > 0 else ""
+                input_filename = f"{input_filename}[X{outscale_str}{tiling_str}]{input_type}"
+                output_filename = build_series_filename(base_filename, output_type, index, file_count,
+                                                        input_filename)
+                output_path = output_path or input_path
+                output_filepath = os.path.join(output_path, output_filename)
+                self.log(f"upscaling by {outscale} {filepath} to {output_filepath}")
 
-            if self.upscale_image(filepath, output_filepath, outscale):
-                output_dict[filepath] = output_filepath
-            else:
-                output_dict[filepath] = None
+                if self.upscale_image(filepath, output_filepath, outscale):
+                    output_dict[filepath] = output_filepath
+                else:
+                    output_dict[filepath] = None
+                Mtqdm().update_bar(bar)
 
         self.log(f"input and output paths:\n{output_dict}")
         return output_dict

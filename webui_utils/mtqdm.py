@@ -1,5 +1,6 @@
 """Multiple TQDM progress bar manager singleton class"""
 from tqdm import tqdm
+from contextlib import contextmanager
 
 class Mtqdm:
     """Manage N nested tqdm progress bars with auto-coloring"""
@@ -93,11 +94,11 @@ class Mtqdm:
         except ValueError:
             return None
 
-    def enter_bar(self, total=100, description="Please Wait"):
+    def enter_bar(self, total=100, desc="Please Wait"):
         position = self.enter_position()
         leave = self.enter_leave()
         color = self.enter_color()
-        bar = tqdm(total=total, desc=description, position=position, leave=leave, colour=color)
+        bar = tqdm(total=total, desc=desc, position=position, leave=leave, colour=color)
         self.entered_bars[position] = bar
         self.bar_totals[position] = total
         return bar
@@ -122,6 +123,14 @@ class Mtqdm:
             # now_current_bar = entered_bars[now_current_position]
             # now_current_bar.update()
 
+    @contextmanager
+    def open_bar(self, total=100, desc="Please Wait"):
+        try:
+            bar = self.enter_bar(total=total, desc=desc)
+            yield bar
+        finally:
+            self.leave_bar(bar)
+
     def update_bar(self, bar, steps=1):
         bar.update(n=steps)
 
@@ -132,15 +141,17 @@ class Mtqdm:
         return self.bar_totals[index]
 
 import time
+import random
+
 class MtqdmTester():
-    mtqdm = Mtqdm()
+    # mtqdm = Mtqdm()
     indexes = []
     bars = []
 
     def make_bar(self, bar_num, max):
-        return MtqdmTester.mtqdm.enter_bar(total=max, description=f"Bar{bar_num}")
+        return MtqdmTester.mtqdm.enter_bar(total=max, desc=f"Bar{bar_num}")
 
-    def test_bars(self, number_of_bars, number_of_steps, delay):
+    def test_bars_1(self, number_of_bars, number_of_steps, delay):
         MtqdmTester.indexes = [0 for n in range(number_of_bars)]
         MtqdmTester.bars = [self.make_bar(n, number_of_steps) for n in range(number_of_bars)]
 
@@ -152,13 +163,48 @@ class MtqdmTester():
             else:
                 break
 
-        for bar in reversed(bars):
+        for bar in reversed(MtqdmTester.bars):
             MtqdmTester.mtqdm.leave_bar(bar)
+
+    def optional_process(self, min, max, delay):
+        count = random.randint(min, max)
+        with Mtqdm().open_bar(desc="Optional Process", total=count) as bar:
+            for n in range(count):
+                time.sleep(delay)
+                Mtqdm().update_bar(bar)
+
+    def deep_process(self, min, max, delay):
+        count = random.randint(min, max)
+        with Mtqdm().open_bar(desc="Deep Process", total=count) as bar:
+            for n in range(count):
+                if count % min == 0:
+                    self.optional_process(min, max, delay)
+                time.sleep(delay)
+                Mtqdm().update_bar(bar)
+
+    def shallow_process(self, min, max, delay):
+        count = random.randint(min, max)
+        with Mtqdm().open_bar(desc="Shallow Process", total=count) as bar:
+            for n in range(count):
+                time.sleep(delay)
+                self.deep_process(min, max, delay)
+                Mtqdm().update_bar(bar)
+
+    def main_process(self, min, max, delay):
+        count = random.randint(min, max)
+        with Mtqdm().open_bar(desc="Main Process", total=count) as bar:
+            for n in range(count):
+                time.sleep(delay)
+                self.shallow_process(min, max, delay)
+                Mtqdm().update_bar(bar)
+
+    def test_bars_2(self, min, max, delay):
+        self.main_process(min, max, delay)
 
     def advance_index(self, index):
         global indexes, bars
         value = MtqdmTester.indexes[index]
-        max = MtqdmTester.mtqdm.get_bar_max(index)
+        max = Mtqdm().get_bar_max(index)
         if index == 0 and value == max-1:
             MtqdmTester.bars[index].update()
             return False
@@ -179,7 +225,8 @@ class MtqdmTester():
         return self.advance_index(last_index)
 
 def main():
-    MtqdmTester().test_bars(5, 10, 0.000000001)
+    #MtqdmTester().test_bars_1(5, 10, 0.000000001)
+    MtqdmTester().test_bars_2(5, 15, 0.1)
 
 if __name__ == '__main__':
     main()

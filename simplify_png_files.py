@@ -3,8 +3,8 @@ import os
 import glob
 import argparse
 from typing import Callable
-from tqdm import tqdm
 from webui_utils.simple_log import SimpleLog
+from webui_utils.mtqdm import Mtqdm
 from PIL import Image
 
 def main():
@@ -33,13 +33,14 @@ class SimplifyPngFiles:
         num_files = len(files)
         self.log(f"Found {num_files} files")
 
-        pbar_title = "Simplifying"
-        for file in tqdm(files, desc=pbar_title):
-            self.log(f"removing image info from {file}")
-            img = Image.open(file)
-            if img.info:
-                self.log(f"removing: {img.info}")
-            img.save(file)
+        with Mtqdm().open_bar(len(files), desc="Simplifying") as bar:
+            for file in files:
+                self.log(f"removing image info from {file}")
+                img = Image.open(file)
+                if img.info:
+                    self.log(f"removing: {img.info}")
+                img.save(file)
+                Mtqdm().update_bar()
 
     def log(self, message : str) -> None:
         """Logging"""

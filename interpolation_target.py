@@ -5,12 +5,12 @@ import argparse
 from typing import Callable
 import re
 import cv2
-from tqdm import tqdm
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_utils import float_range_in_range, sortable_float_index
 from webui_utils.file_utils import create_directory
+from webui_utils.mtqdm import Mtqdm
 
 def main():
     """Use the Frame Search feature from the command line"""
@@ -220,18 +220,17 @@ class TargetInterpolate():
         if num_splits < 2:
             self.progress = None
         else:
-            self.progress = tqdm(range(_max), desc=description)
+            self.progress = Mtqdm().enter_bar(total=_max, desc=description)
 
     def step_progress(self):
         """Advance the progress bar"""
         if self.progress:
-            self.progress.update()
-            self.progress.refresh()
+            Mtqdm().update_bar(self.progress)
 
     def close_progress(self):
         """Done with the progress bar"""
         if self.progress:
-            self.progress.close()
+            Mtqdm().leave_bar(self.progress)
 
     def indexed_filepath(self, filepath_prefix, index):
         """Filepath prefix representing the split position while splitting"""
