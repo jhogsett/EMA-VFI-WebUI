@@ -1,117 +1,169 @@
+"""Multiple TQDM progress bar manager singleton class"""
+
 import time
 from tqdm import tqdm
 
-red = "#FF0000"
-orange = "#FF7F00"
-yellow = "#FFFF00"
-green = "#00FF00"
-blue = "#0000FF"
-purple = "#7F00FF"
-cyan = "#00FFFF"
-magenta = "#FF00FF"
-white = "#FFFFFF"
-default_palette = [green, yellow, orange, red, blue, purple, magenta, cyan, white]
-rainbow_palette = [red, orange, yellow, green, blue, purple, magenta, cyan, white]
-max_bars = 9
-current_palette = default_palette
-entered_bars = [None for n in range(max_bars)]
-bar_totals = [0 for n in range(max_bars)]
+class Mtqdm:
+    """Manage N nested tqdm progress bars with auto-coloring"""
+    def __new__(cls, palette : str="default"):
+        if not hasattr(cls, 'instance'):
+            cls.instance = super(Mtqdm, cls).__new__(cls)
+            cls.instance.init(palette)
+        return cls.instance
 
-position = -1
-def get_position():
-   global position
-   return position
+    MAX_BARS = 9
 
-def enter_position():
-    global position
-    position += 1
-    return get_position()
+    def init(self, palette : str="default"):
+        self.current_palette = Mtqdm.palettes[palette]
+        self.entered_bars = [None for n in range(Mtqdm.MAX_BARS)]
+        self.bar_totals = [0 for n in range(Mtqdm.MAX_BARS)]
+        self.position = -1
+        self.color = -1
+        self.leave = -1
 
-def leave_position():
-    global position
-    position -= 1
+    colors = {
+        "red" : "#FF0000",
+        "orange" : "#FF7F00",
+        "yellow" : "#FFFF00",
+        "green" : "#00FF00",
+        "blue" : "#0000FF",
+        "purple" : "#7F00FF",
+        "cyan" : "#00FFFF",
+        "magenta" : "#FF00FF",
+        "white" : "#FFFFFF"}
 
-color = -1
-def get_color():
-    global current_palette, color
-    return current_palette[color]
+    default_palette = [
+        colors["green"],
+        colors["yellow"],
+        colors["orange"],
+        colors["red"],
+        colors["blue"],
+        colors["purple"],
+        colors["magenta"],
+        colors["cyan"],
+        colors["white"]]
 
-def enter_color():
-    global color
-    color += 1
-    return get_color()
+    rainbow_palette = [
+        colors["red"],
+        colors["orange"],
+        colors["yellow"],
+        colors["green"],
+        colors["blue"],
+        colors["purple"],
+        colors["magenta"],
+        colors["cyan"],
+        colors["white"]]
 
-def leave_color():
-    global color
-    color -= 1
+    palettes = {
+        "default" : default_palette,
+        "rainbow" : rainbow_palette
+    }
 
-leave = -1
-def get_leave():
-    global leave
-    return leave == 0
+    def get_position(self):
+        return self.position
 
-def enter_leave():
-    global leave
-    leave += 1
-    return get_leave()
+    def enter_position(self):
+        self.position += 1
+        return self.get_position()
 
-def leave_leave():
-    global leave
-    leave -= 1
+    def leave_position(self):
+        self.position -= 1
 
-def find_bar_position(bar):
-    try:
-        return entered_bars.index(bar)
-    except ValueError:
-        return None
+    def get_color(self):
+        return self.current_palette[self.color]
 
-def enter_bar(total=100, description="wait"):
-    position = enter_position()
-    leave = enter_leave()
-    color = enter_color()
-    bar = tqdm(total=total, desc=description, position=position, leave=leave, colour=color)
-    entered_bars[position] = bar
-    bar_totals[position] = total
-    return bar
+    def enter_color(self):
+        self.color += 1
+        return self.get_color()
 
-def leave_bar(bar):
-    global current_position, entered_bars
+    def leave_color(self):
+        self.color -= 1
 
-    position = find_bar_position(bar)
-    if position != None:
+    def get_leave(self):
+        return self.leave == 0
 
-        # current_position = get_position()
-        # if position < current_position:
-        #     deeper_bar = entered_bars(position+1)
-        #     leave_bar(deeper_bar)
-        #     return
+    def enter_leave(self):
+        self.leave += 1
+        return self.get_leave()
 
-        leave_color()
-        leave_leave()
-        leave_position()
-        bar.close()
-        entered_bars[position] = None
+    def leave_leave(self):
+        self.leave -= 1
 
-        # now_current_position = get_position()
-        # now_current_bar = entered_bars[now_current_position]
-        # now_current_bar.update()
+    def find_bar_position(self, bar):
+        try:
+            return self.entered_bars.index(bar)
+        except ValueError:
+            return None
 
-def update_bar(bar, steps=1):
-    bar.update(n=steps)
+    def enter_bar(self, total=100, description="Please Wait"):
+        position = self.enter_position()
+        leave = self.enter_leave()
+        color = self.enter_color()
+        bar = tqdm(total=total, desc=description, position=position, leave=leave, colour=color)
+        self.entered_bars[position] = bar
+        self.bar_totals[position] = total
+        return bar
 
-def get_bar(index):
-    return entered_bars[index]
+    def leave_bar(self, bar):
+        position = self.find_bar_position(bar)
+        if position != None:
 
-def get_bar_max(index):
-    return bar_totals[index]
+            # current_position = get_position()
+            # if position < current_position:
+            #     deeper_bar = entered_bars(position+1)
+            #     leave_bar(deeper_bar)
+            #     return
+
+            self.leave_color()
+            self.leave_leave()
+            self.leave_position()
+            bar.close()
+            self.entered_bars[position] = None
+
+            # now_current_position = get_position()
+            # now_current_bar = entered_bars[now_current_position]
+            # now_current_bar.update()
+
+    def update_bar(self, bar, steps=1):
+        bar.update(n=steps)
+
+    def get_bar(self, index):
+        return self.entered_bars[index]
+
+    def get_bar_max(self, index):
+        return self.bar_totals[index]
+
+
+
+
+mtqdm = Mtqdm(palette="rainbow")
 
 indexes = []
 bars = []
 
+def make_bar(bar_num, max):
+    return mtqdm.enter_bar(total=max, description=f"Bar{bar_num}")
+
+def test_bars(number_of_bars, number_of_steps, delay):
+    global indexes, bars
+    indexes = [0 for n in range(number_of_bars)]
+    bars = [make_bar(n, number_of_steps ** n) for n in range(number_of_bars)]
+
+    for n in range(1, 10000):
+        keep_going = advance_indexes()
+        if keep_going:
+            time.sleep(delay)
+            continue
+        else:
+            break
+
+    for bar in reversed(bars):
+        mtqdm.leave_bar(bar)
+
 def advance_index(index):
     global indexes, bars
     value = indexes[index]
-    max = get_bar_max(index)
+    max = mtqdm.get_bar_max(index)
     if index == 0 and value == max-1:
         bars[index].update()
         return False
@@ -131,52 +183,4 @@ def advance_indexes():
     last_index = len(indexes)-1
     return advance_index(last_index)
 
-def make_bar(bar_num, max):
-    return enter_bar(total=max, description=f"Bar{bar_num}")
-
-#############
-
-def test_bars(number_of_bars, number_of_steps, delay):
-    global indexes, bars
-    indexes = [0 for n in range(number_of_bars)]
-    bars = [make_bar(n, number_of_steps) for n in range(number_of_bars)]
-
-    for n in range(1, 10000):
-        keep_going = advance_indexes()
-        if keep_going:
-            time.sleep(delay)
-            continue
-        else:
-            break
-
-    for bar in reversed(bars):
-        leave_bar(bar)
-
-    assert(n == number_of_steps ** number_of_bars)
-
-# cache bars for reuse with a unique name
-# - so they can be reentered repeatedly by a separate process run
-
-# request to enter a bar with a unique name
-# - does so if not in use, otherwise error
-# maybe specify parent bar
-
-# in the case of auto-fill there are three vars:
-# 0: auto-fill
-# 1: frame restore
-# 2: frame search
-
-# frame search could run on it's own, or as part of frame restore, or auto-fill via frame restore
-# it won't know it's parent
-# parents will know children bars
-
-
-
-test_bars(9, 2, 0.000000001)
-
-# bar1 = enter_bar()
-# bar2 = enter_bar()
-# bar3 = enter_bar()
-# for n in range (100):
-#     bar3.update()
-#     time.sleep(0.1)
+test_bars(5, 2, 0.000000001)
