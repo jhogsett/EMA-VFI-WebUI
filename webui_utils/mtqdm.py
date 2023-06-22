@@ -1,6 +1,4 @@
 """Multiple TQDM progress bar manager singleton class"""
-
-import time
 from tqdm import tqdm
 
 class Mtqdm:
@@ -133,7 +131,7 @@ class Mtqdm:
     def get_bar_max(self, index):
         return self.bar_totals[index]
 
-
+import time
 class MtqdmTester():
     mtqdm = Mtqdm()
     indexes = []
