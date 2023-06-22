@@ -130,9 +130,9 @@ class DeduplicateFrames:
                 writer.writeheader()
 
         try:
-            with Mtqdm().open_bar(total=len(range(self.tune_min, self.tune_max, self.tune_step)),
+            with Mtqdm().open_bar(total=len(range(self.tune_min, self.tune_max+1, self.tune_step)),
                                   desc="Tuning") as bar:
-                for threshold in range(self.tune_min, self.tune_max, self.tune_step):
+                for threshold in range(self.tune_min, self.tune_max+1, self.tune_step):
                     message = f"geting duplicates for threshold={threshold}"
                     self.log(message)
                     dupe_groups, frame_filenames, _ = get_duplicate_frames(self.input_path,
