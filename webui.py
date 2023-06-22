@@ -10,6 +10,7 @@ from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.file_utils import create_directories, is_safe_path
 from webui_utils.console_colors import ColorOut
+from webui_utils.mtqdm import Mtqdm
 from create_ui import create_ui
 from webui_tips import WebuiTips
 
@@ -39,6 +40,8 @@ class WebUI:
 
     def start(self):
         """Create the UI and start the event loop"""
+        Mtqdm().set_use_color(self.config.user_interface["mtqdm_use_color"])
+        Mtqdm().set_palette(self.config.user_interface["mtqdm_palette"])
         WebuiTips.set_tips_path(self.config.user_interface["tips_path"])
         model = self.config.engine_settings["model"]
         gpu_ids = self.config.engine_settings["gpu_ids"]

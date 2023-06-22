@@ -4,15 +4,16 @@ from contextlib import contextmanager
 
 class Mtqdm:
     """Manage N nested tqdm progress bars with auto-coloring"""
-    def __new__(cls, palette : str="default"):
+    def __new__(cls, use_color : bool=True, palette : str="default"):
         if not hasattr(cls, 'instance'):
             cls.instance = super(Mtqdm, cls).__new__(cls)
-            cls.instance.init(palette)
+            cls.instance.init(use_color, palette)
         return cls.instance
 
     MAX_BARS = 9
 
-    def init(self, palette : str="default"):
+    def init(self, use_color : bool=True, palette : str="default"):
+        self.use_color = use_color
         self.current_palette = palette
         self.entered_bars = [None for n in range(Mtqdm.MAX_BARS)]
         self.bar_totals = [0 for n in range(Mtqdm.MAX_BARS)]
@@ -98,6 +99,9 @@ class Mtqdm:
         "rainbow" : rainbow_palette_alt
     }
 
+    def set_use_color(self, use_color):
+        self.use_color = use_color
+
     def set_palette(self, name : str):
         self.current_palette = name
 
@@ -155,7 +159,10 @@ class Mtqdm:
         position = self.enter_position()
         leave = self.enter_leave()
         color = self.enter_color()
-        bar = tqdm(total=total, desc=desc, position=position, leave=leave, colour=color)
+        if self.use_color:
+            bar = tqdm(total=total, desc=desc, position=position, leave=leave, colour=color)
+        else:
+            bar = tqdm(total=total, desc=desc, position=position, leave=leave)
         self.entered_bars[position] = bar
         self.entered_count += 1
         self.bar_totals[position] = total
@@ -305,11 +312,17 @@ class MtqdmTester():
             for n in range(count-1, -1, -1):
                 Mtqdm().leave_bar(bars[n])
 
+    def test_bars_5(self, min, max, delay):
+        Mtqdm().use_color = False
+        self.test_bars_2(min, max, delay)
+        Mtqdm().use_color = True
+
 def main():
     # MtqdmTester().test_bars_1(9, 3, 0.01)
-    # MtqdmTester().test_bars_2(5, 15, 0.1)
+    MtqdmTester().test_bars_2(5, 15, 0.1)
     # MtqdmTester().test_bars_3(10, 10, .001)
-    MtqdmTester().test_bars_4("rainbow", 5, Mtqdm.MAX_BARS, 10, 1.0)
+    # MtqdmTester().test_bars_4("rainbow", 5, Mtqdm.MAX_BARS, 10, 1.0)
+    # MtqdmTester().test_bars_5(5, 15, 0.1)
 
 if __name__ == '__main__':
     main()
