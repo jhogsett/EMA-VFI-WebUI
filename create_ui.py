@@ -59,7 +59,7 @@ def create_ui(config : SimpleConfig,
         GIFtoMP4(config, engine, log.log).render_tab()
         with gr.Tab(SimpleIcons.WRENCH + "Tools"):
             with gr.Tab("File Conversion"):
-                gr.HTML(SimpleIcons.FOLDER +
+                gr.HTML(SimpleIcons.HAMMER_WRENCH +
                     "Tools for common video file conversion tasks",
                     elem_id="tabheading")
                 MP4toPNG(config, engine, log.log).render_tab()

@@ -81,6 +81,7 @@ class SimpleIcons:
     GIFT = "🎁"
     GLOBE = "🌎"
     HAMMER = "🔨"
+    HAMMER_WRENCH = "🛠️"
     HEART = "❤️"
     INCREASING = "📈"
     LABCOAT = "🥼"
@@ -127,12 +128,12 @@ class SimpleIcons:
         DIVIDE,
         DOCUMENT,
         FILM,
-        FOLDER,
         FOUR,
         GEAR,
         GEMSTONE,
         GLOBE,
         HAMMER,
+        HAMMER_WRENCH,
         INCREASING,
         INFO,
         MAGIC_WAND,

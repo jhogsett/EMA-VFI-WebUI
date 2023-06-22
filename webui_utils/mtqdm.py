@@ -4,18 +4,20 @@ from contextlib import contextmanager
 
 class Mtqdm:
     """Manage N nested tqdm progress bars with auto-coloring"""
-    def __new__(cls, palette : str="default"):
+    def __new__(cls, use_color : bool=True, palette : str="default"):
         if not hasattr(cls, 'instance'):
             cls.instance = super(Mtqdm, cls).__new__(cls)
-            cls.instance.init(palette)
+            cls.instance.init(use_color, palette)
         return cls.instance
 
     MAX_BARS = 9
 
-    def init(self, palette : str="default"):
+    def init(self, use_color : bool=True, palette : str="default"):
+        self.use_color = use_color
         self.current_palette = palette
         self.entered_bars = [None for n in range(Mtqdm.MAX_BARS)]
         self.bar_totals = [0 for n in range(Mtqdm.MAX_BARS)]
+        self.entered_count = 0
         self.position = -1
         self.color = -1
         self.leave = -1
@@ -97,6 +99,12 @@ class Mtqdm:
         "rainbow" : rainbow_palette_alt
     }
 
+    def set_use_color(self, use_color):
+        self.use_color = use_color
+
+    def set_palette(self, name : str):
+        self.current_palette = name
+
     def get_palette(self, name : str):
         return self.alt_palettes[name] if self.alternation else self.palettes[name]
 
@@ -146,11 +154,17 @@ class Mtqdm:
             return None
 
     def enter_bar(self, total=100, desc="Please Wait"):
+        if self.entered_count >= self.MAX_BARS:
+            raise ValueError(f"The maximum number of bars {self.MAX_BARS} has been reached")
         position = self.enter_position()
         leave = self.enter_leave()
         color = self.enter_color()
-        bar = tqdm(total=total, desc=desc, position=position, leave=leave, colour=color)
+        if self.use_color:
+            bar = tqdm(total=total, desc=desc, position=position, leave=leave, colour=color)
+        else:
+            bar = tqdm(total=total, desc=desc, position=position, leave=leave)
         self.entered_bars[position] = bar
+        self.entered_count += 1
         self.bar_totals[position] = total
         return bar
 
@@ -169,6 +183,7 @@ class Mtqdm:
             self.leave_position()
             bar.close()
             self.entered_bars[position] = None
+            self.entered_count -= 1
 
             # now_current_position = get_position()
             # now_current_bar = entered_bars[now_current_position]
@@ -284,10 +299,30 @@ class MtqdmTester():
                             time.sleep(delay)
                     bar.update()
 
+    def test_bars_4(self, palette, times, count, total, delay):
+        Mtqdm(palette=palette)
+        for m in range(times):
+            bars = [None for n in range(count)]
+            for n in range(count):
+                bars[n] = Mtqdm().enter_bar(total=total, desc=f"Bar{n}")
+            for n in range(total):
+                for bar in bars:
+                    Mtqdm().update_bar(bar)
+                time.sleep(delay)
+            for n in range(count-1, -1, -1):
+                Mtqdm().leave_bar(bars[n])
+
+    def test_bars_5(self, min, max, delay):
+        Mtqdm().use_color = False
+        self.test_bars_2(min, max, delay)
+        Mtqdm().use_color = True
+
 def main():
     # MtqdmTester().test_bars_1(9, 3, 0.01)
-    # MtqdmTester().test_bars_2(5, 15, 0.1)
-    MtqdmTester().test_bars_3(10, 10, .001)
+    MtqdmTester().test_bars_2(5, 15, 0.1)
+    # MtqdmTester().test_bars_3(10, 10, .001)
+    # MtqdmTester().test_bars_4("rainbow", 5, Mtqdm.MAX_BARS, 10, 1.0)
+    # MtqdmTester().test_bars_5(5, 15, 0.1)
 
 if __name__ == '__main__':
     main()

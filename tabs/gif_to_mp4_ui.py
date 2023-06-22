@@ -38,7 +38,7 @@ class GIFtoMP4(TabBase):
         default_crf = self.config.gif_to_mp4_settings["default_crf"]
         with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "GIF to MP4"):
             gr.HTML(SimpleIcons.PLAY +
-                "Turn an Animated GIF Into a MP4 video (must have FFmpeg & Real-ESRGAN)",
+                "Turn an Animated GIF Into a MP4 video",
                 elem_id="tabheading")
             with gr.Row():
                 with gr.Column():
