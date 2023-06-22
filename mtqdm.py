@@ -134,53 +134,54 @@ class Mtqdm:
         return self.bar_totals[index]
 
 
+class MtqdmTester():
+    mtqdm = Mtqdm()
+    indexes = []
+    bars = []
 
+    def make_bar(self, bar_num, max):
+        return MtqdmTester.mtqdm.enter_bar(total=max, description=f"Bar{bar_num}")
 
-mtqdm = Mtqdm(palette="rainbow")
+    def test_bars(self, number_of_bars, number_of_steps, delay):
+        MtqdmTester.indexes = [0 for n in range(number_of_bars)]
+        MtqdmTester.bars = [self.make_bar(n, number_of_steps) for n in range(number_of_bars)]
 
-indexes = []
-bars = []
+        for n in range(1, 10000):
+            keep_going = self.advance_indexes()
+            if keep_going:
+                time.sleep(delay)
+                continue
+            else:
+                break
 
-def make_bar(bar_num, max):
-    return mtqdm.enter_bar(total=max, description=f"Bar{bar_num}")
+        for bar in reversed(bars):
+            MtqdmTester.mtqdm.leave_bar(bar)
 
-def test_bars(number_of_bars, number_of_steps, delay):
-    global indexes, bars
-    indexes = [0 for n in range(number_of_bars)]
-    bars = [make_bar(n, number_of_steps ** n) for n in range(number_of_bars)]
+    def advance_index(self, index):
+        global indexes, bars
+        value = MtqdmTester.indexes[index]
+        max = MtqdmTester.mtqdm.get_bar_max(index)
+        if index == 0 and value == max-1:
+            MtqdmTester.bars[index].update()
+            return False
 
-    for n in range(1, 10000):
-        keep_going = advance_indexes()
-        if keep_going:
-            time.sleep(delay)
-            continue
+        if value == max-1:
+            MtqdmTester.indexes[index] = 0
+            MtqdmTester.bars[index].reset()
+            MtqdmTester.bars[index].refresh()
+            return self.advance_index(index-1)
         else:
-            break
+            MtqdmTester.indexes[index] = value + 1
+            MtqdmTester.bars[index].update()
+            return True
 
-    for bar in reversed(bars):
-        mtqdm.leave_bar(bar)
+    def advance_indexes(self):
+        global indexes
+        last_index = len(MtqdmTester.indexes)-1
+        return self.advance_index(last_index)
 
-def advance_index(index):
-    global indexes, bars
-    value = indexes[index]
-    max = mtqdm.get_bar_max(index)
-    if index == 0 and value == max-1:
-        bars[index].update()
-        return False
+def main():
+    MtqdmTester().test_bars(5, 10, 0.000000001)
 
-    if value == max-1:
-        indexes[index] = 0
-        bars[index].reset()
-        bars[index].refresh()
-        return advance_index(index-1)
-    else:
-        indexes[index] = value + 1
-        bars[index].update()
-        return True
-
-def advance_indexes():
-    global indexes
-    last_index = len(indexes)-1
-    return advance_index(last_index)
-
-test_bars(5, 2, 0.000000001)
+if __name__ == '__main__':
+    main()
