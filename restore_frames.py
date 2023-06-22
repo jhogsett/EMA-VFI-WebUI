@@ -3,13 +3,13 @@ import os
 import sys
 import argparse
 from typing import Callable
-from tqdm import tqdm
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
 from interpolation_target import TargetInterpolate
 from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import create_directory
 from webui_utils.simple_utils import restored_frame_searches
+from webui_utils.mtqdm import Mtqdm
 
 def main():
     """Use the Frame Restoration feature from the command line"""
@@ -76,16 +76,18 @@ class RestoreFrames():
             self.output_paths.extend(self.interpolater.output_paths)
             self.interpolater.output_paths = []
         else:
-            for search in tqdm(searches, desc=progress_label):
-                self.log(f"searching for frame {search}")
-                self.target_interpolater.split_frames(img_before,
-                                                    img_after,
-                                                    depth,
-                                                    min_target=search,
-                                                    max_target=search + sys.float_info.epsilon,
-                                                    output_path=output_path,
-                                                    base_filename=base_filename,
-                                                    progress_label="Search")
+            with Mtqdm().open_bar(len(searches), desc=progress_label) as bar:
+                for search in searches:
+                    self.log(f"searching for frame {search}")
+                    self.target_interpolater.split_frames(img_before,
+                                                        img_after,
+                                                        depth,
+                                                        min_target=search,
+                                                        max_target=search + sys.float_info.epsilon,
+                                                        output_path=output_path,
+                                                        base_filename=base_filename,
+                                                        progress_label="Search")
+                    Mtqdm().update_bar(bar)
             self.output_paths.extend(self.target_interpolater.output_paths)
             self.target_interpolater.output_paths = []
 

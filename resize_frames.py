@@ -4,9 +4,9 @@ import glob
 import argparse
 import cv2
 from typing import Callable
-from tqdm import tqdm
 from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import split_filepath, create_directory
+from webui_utils.mtqdm import Mtqdm
 
 def main():
     """Use the Resize Frames feature from the command line"""
@@ -114,37 +114,38 @@ class ResizeFrames:
         scale_type = self.get_scale_type(self.scale_type)
         crop_type = self.get_crop_type(self.crop_type)
 
-        pbar_title = "Resizing"
-        for file in tqdm(files, desc=pbar_title):
-            self.log(f"processing {file}")
-            image = cv2.imread(file)
+        with Mtqdm().open_bar(len(files), desc="Resizing") as bar:
+            for file in files:
+                self.log(f"processing {file}")
+                image = cv2.imread(file)
 
-            if scale_type:
-                size = (self.scale_width, self.scale_height)
-                self.log(f"resizing {file} to {self.scale_width}x{self.scale_height}")
-                image = cv2.resize(image, size, interpolation = scale_type)
+                if scale_type:
+                    size = (self.scale_width, self.scale_height)
+                    self.log(f"resizing {file} to {self.scale_width}x{self.scale_height}")
+                    image = cv2.resize(image, size, interpolation = scale_type)
 
-            if crop_type:
-                if self.crop_width < 0:
-                    self.crop_width = self.scale_width
-                if self.crop_height < 0:
-                    self.crop_height = self.scale_height
-                if self.crop_offset_x < 0:
-                    self.crop_offset_x = int((self.scale_width - self.crop_width) / 2)
-                if self.crop_offset_y < 0:
-                    self.crop_offset_y = int((self.scale_height - self.crop_height) / 2)
-                min_x = int(self.crop_offset_x)
-                min_y = int(self.crop_offset_y)
-                max_x = int(min_x + self.crop_width)
-                max_y = int(min_y + self.crop_height)
+                if crop_type:
+                    if self.crop_width < 0:
+                        self.crop_width = self.scale_width
+                    if self.crop_height < 0:
+                        self.crop_height = self.scale_height
+                    if self.crop_offset_x < 0:
+                        self.crop_offset_x = int((self.scale_width - self.crop_width) / 2)
+                    if self.crop_offset_y < 0:
+                        self.crop_offset_y = int((self.scale_height - self.crop_height) / 2)
+                    min_x = int(self.crop_offset_x)
+                    min_y = int(self.crop_offset_y)
+                    max_x = int(min_x + self.crop_width)
+                    max_y = int(min_y + self.crop_height)
 
-                self.log(f"cropping {file} with [{min_y}:{max_y}, {min_x}:{max_x}]")
-                image = image[min_y:max_y, min_x:max_x]
+                    self.log(f"cropping {file} with [{min_y}:{max_y}, {min_x}:{max_x}]")
+                    image = image[min_y:max_y, min_x:max_x]
 
-            _, filename, ext = split_filepath(file)
-            output_filepath = os.path.join(self.output_path, f"{filename}{ext}")
-            self.log(f"saving resized file {output_filepath}")
-            cv2.imwrite(output_filepath, image)
+                _, filename, ext = split_filepath(file)
+                output_filepath = os.path.join(self.output_path, f"{filename}{ext}")
+                self.log(f"saving resized file {output_filepath}")
+                cv2.imwrite(output_filepath, image)
+                Mtqdm().update_bar(bar)
 
     def log(self, message : str) -> None:
         """Logging"""

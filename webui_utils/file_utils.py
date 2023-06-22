@@ -3,7 +3,7 @@ import os
 import shutil
 import glob
 from zipfile import ZipFile
-from tqdm import tqdm
+from .mtqdm import Mtqdm
 
 def is_safe_path(path : str | None):
     if isinstance(path, (str, type(None))):
@@ -35,8 +35,7 @@ _duplicate_directory_progress = None
 def _copy(source_path, dest_path):
     global _duplicate_directory_progress
     retval = shutil.copy(source_path, dest_path)
-    _duplicate_directory_progress.update()
-    _duplicate_directory_progress.refresh()
+    Mtqdm().update_bar(_duplicate_directory_progress)
     return retval
 
 def duplicate_directory(source_dir, dest_dir):
@@ -52,9 +51,9 @@ def duplicate_directory(source_dir, dest_dir):
     create_directory(dest_dir)
 
     count = len(get_files(source_dir))
-    _duplicate_directory_progress = tqdm(range(count), desc="Files Copied")
+    _duplicate_directory_progress = Mtqdm().enter_bar(total=count, desc="Files Copied")
     shutil.copytree(source_dir, dest_dir, copy_function=_copy, dirs_exist_ok=True)
-    _duplicate_directory_progress.close()
+    Mtqdm().leave_bar(_duplicate_directory_progress)
 
 def _get_files(path : str):
     entries = glob.glob(path)

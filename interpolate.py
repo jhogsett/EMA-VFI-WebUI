@@ -5,13 +5,13 @@ import sys
 import torch
 import numpy as np
 import argparse
-from tqdm import tqdm
 from imageio import imsave
 import argparse
 from typing import Callable
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_utils import sortable_float_index
 from webui_utils.file_utils import split_filepath
+from webui_utils.mtqdm import Mtqdm
 from interpolate_engine import InterpolateEngine
 
 '''==========import from our code=========='''
@@ -121,14 +121,15 @@ class Interpolate:
             images.append((padder.unpad(pred).detach().cpu().numpy().transpose(1, 2, 0) * 255.0).astype(np.uint8)[:, :, ::-1])
         images.append(I2[:, :, ::-1])
 
-        pbar_desc = "Writing frames"
-        for index, image in enumerate(tqdm(images, desc=pbar_desc)):
-            if 0 < index < len(images) - 1:
-                time = sortable_float_index(index / set_count)
-                output_filepath = os.path.join(output_path, f"{filename}@{time}.png")
-                imsave(output_filepath, image)
-                self.output_paths.append(output_filepath)
-                self.log("create_between_frames() saved " + output_filepath)
+        with Mtqdm().open_bar(total=len(images), desc="Saving") as bar:
+            for index, image in enumerate(images):
+                if 0 < index < len(images) - 1:
+                    time = sortable_float_index(index / set_count)
+                    output_filepath = os.path.join(output_path, f"{filename}@{time}.png")
+                    imsave(output_filepath, image)
+                    self.output_paths.append(output_filepath)
+                    self.log("create_between_frames() saved " + output_filepath)
+                Mtqdm().update_bar(bar)
 
         output_filepath = os.path.join(output_path, f"{filename}@1.0.png")
         imsave(output_filepath, images[-1])

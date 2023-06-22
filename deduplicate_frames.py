@@ -4,12 +4,12 @@ import shutil
 import argparse
 import csv
 from typing import Callable
-from tqdm import tqdm
 from webui_utils.simple_log import SimpleLog
 from webui_utils.video_utils import get_duplicate_frames_report, get_duplicate_frames,\
     compute_report_stats
 from webui_utils.file_utils import split_filepath, create_directory
 from webui_utils.console_colors import ColorOut
+from webui_utils.mtqdm import Mtqdm
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
 from interpolation_target import TargetInterpolate
@@ -129,29 +129,28 @@ class DeduplicateFrames:
                 writer = csv.DictWriter(csvfile, fieldnames = csv_fields)
                 writer.writeheader()
 
-        pbar_title = "Tuning"
         try:
-            for threshold in tqdm(range(self.tune_min,
-                                        self.tune_max,
-                                        self.tune_step),
-                                    desc=pbar_title):
-                message = f"geting duplicates for threshold={threshold}"
-                self.log(message)
-                dupe_groups, frame_filenames, _ = get_duplicate_frames(self.input_path,
-                                                                        threshold,
-                                                                        self.max_dupes)
-                stats = compute_report_stats(dupe_groups, frame_filenames)
-                message = f"dupe_percent={stats['dupe_percent']} max_group={stats['max_group']}" +\
-                    f" dupe_count={stats['dupe_count']} first_dupe={stats['first_dupe']}"
-                self.log(message)
+            with Mtqdm().open_bar(total=len(range(self.tune_min, self.tune_max, self.tune_step)),
+                                  desc="Tuning") as bar:
+                for threshold in range(self.tune_min, self.tune_max, self.tune_step):
+                    message = f"geting duplicates for threshold={threshold}"
+                    self.log(message)
+                    dupe_groups, frame_filenames, _ = get_duplicate_frames(self.input_path,
+                                                                            threshold,
+                                                                            self.max_dupes)
+                    stats = compute_report_stats(dupe_groups, frame_filenames)
+                    message = f"dupe_percent={stats['dupe_percent']} max_group={stats['max_group']}" +\
+                        f" dupe_count={stats['dupe_count']} first_dupe={stats['first_dupe']}"
+                    self.log(message)
 
-                data = {}
-                data["threshold"] = threshold
-                data["dupe_percent"] = stats["dupe_percent"]
-                data["max_group"] = stats["max_group"]
-                data["dupe_count"] = stats["dupe_count"]
-                data["first_dupe"] = stats["first_dupe"]
-                tuning_data.append(data)
+                    data = {}
+                    data["threshold"] = threshold
+                    data["dupe_percent"] = stats["dupe_percent"]
+                    data["max_group"] = stats["max_group"]
+                    data["dupe_count"] = stats["dupe_count"]
+                    data["first_dupe"] = stats["first_dupe"]
+                    tuning_data.append(data)
+                    Mtqdm().update_bar(bar)
 
             if csv_path:
                 with open(csv_path, 'a', encoding="utf-8", newline="") as csvfile:
@@ -235,7 +234,7 @@ class DeduplicateFrames:
             for index, group in enumerate(dupe_groups):
                 self.log(f"processing group #{index+1}")
 
-                if len(group) > max_size_for_delete:
+                if max_size_for_delete and len(group) > max_size_for_delete:
                     self.log(f"skipping deleting group #{index}, group size {len(group)}" +\
                              f" exceeds max size for deletion {max_size_for_delete}")
                     continue
@@ -247,12 +246,13 @@ class DeduplicateFrames:
                     frame_filenames.remove(filepath)
                     dupe_count += 1
 
-            pbar_title = "Copying"
-            for filepath in tqdm(frame_filenames, desc=pbar_title):
-                _, filename, ext = split_filepath(filepath)
-                output_filepath = os.path.join(self.output_path, filename + ext)
-                self.log(f"copying {filepath} to {output_filepath}")
-                shutil.copy(filepath, output_filepath)
+            with Mtqdm().open_bar(total=len(frame_filenames), desc="Copying") as bar:
+                for filepath in frame_filenames:
+                    _, filename, ext = split_filepath(filepath)
+                    output_filepath = os.path.join(self.output_path, filename + ext)
+                    self.log(f"copying {filepath} to {output_filepath}")
+                    shutil.copy(filepath, output_filepath)
+                    Mtqdm().update_bar(bar)
 
             message = f"{len(frame_filenames)} frame files," +\
                   f" excluding {dupe_count} duplicates, copied to: {self.output_path}"
@@ -277,66 +277,66 @@ class DeduplicateFrames:
         self.max_dupes = 0
         _, dupe_groups, frame_filenames = self.invoke_delete(True,
                                                              max_size_for_delete=ignore_over_size)
-        # self.max_dupes = original_max_dupes
 
-        pbar_title = "Auto-Filling"
         self.log(f"beginning processing of {len(dupe_groups)} duplicate frame groups")
         restored_total = 0
-        for index, group in enumerate(tqdm(dupe_groups, desc=pbar_title)):
-            self.log(f"processing group #{index+1}")
-            group_indexes = list(group.keys())
-            group_files = list(group.values())
-            restore_count = len(group) - 1
-            self.log(f"restore count: {restore_count}")
+        with Mtqdm().open_bar(total=len(dupe_groups), desc="Auto-Filling") as bar:
+            for index, group in enumerate(dupe_groups):
+                self.log(f"processing group #{index+1}")
+                group_indexes = list(group.keys())
+                group_files = list(group.values())
+                restore_count = len(group) - 1
+                self.log(f"restore count: {restore_count}")
 
-            if ignore_over_size and len(group) > ignore_over_size:
-                self.log(f"skipping restoring group #{index}, restore count {len(group)}" +\
-                         f" exceeds max size {ignore_over_size}")
-                continue
+                if ignore_over_size and len(group) > ignore_over_size:
+                    self.log(f"skipping restoring group #{index}, restore count {len(group)}" +\
+                            f" exceeds max size {ignore_over_size}")
+                    continue
 
-            # first file in group is a "keep" frame
-            before_file = group_files[0]
-            self.log(f"before frame file: {before_file}")
+                # first file in group is a "keep" frame
+                before_file = group_files[0]
+                self.log(f"before frame file: {before_file}")
 
-            # index after last index in group is the next "keep" frame
-            after_index = group_indexes[-1] + 1
-            if after_index >= len(frame_filenames):
-                message = [
-                    "The last group has no 'after' file for interpolation, skipping.",
-                    "Affected files:"]
-                message += group_files[1:]
-                message = "\r\n".join(message)
-                self.log(message)
-                if suppress_output:
-                    raise RuntimeError(message)
+                # index after last index in group is the next "keep" frame
+                after_index = group_indexes[-1] + 1
+                if after_index >= len(frame_filenames):
+                    message = [
+                        "The last group has no 'after' file for interpolation, skipping.",
+                        "Affected files:"]
+                    message += group_files[1:]
+                    message = "\r\n".join(message)
+                    self.log(message)
+                    if suppress_output:
+                        raise RuntimeError(message)
+                    else:
+                        ColorOut("Warning: " + message, "red")
                 else:
-                    ColorOut("Warning: " + message, "red")
-            else:
-                after_file = frame_filenames[after_index]
-                self.log(f"after frame file: {after_file}")
+                    after_file = frame_filenames[after_index]
+                    self.log(f"after frame file: {after_file}")
 
-                # use frame restorer
-                self.log(f"using frame restorer with: img_before={before_file}" +\
-                         f" img_after={after_file} num_frames={restore_count} depth={self.depth}")
+                    # use frame restorer
+                    self.log(f"using frame restorer with: img_before={before_file}" +\
+                            f" img_after={after_file} num_frames={restore_count} depth={self.depth}")
 
-                self.frame_restorer.restore_frames(before_file,
-                                                   after_file,
-                                                   restore_count,
-                                                   self.depth,
-                                                   self.output_path,
-                                                   "autofilled_frame")
-                restored_total += restore_count
-                restored_files = self.frame_restorer.output_paths
-                self.frame_restorer.output_paths = []
-                self.log(f"restored files: {','.join(restored_files)}")
+                    self.frame_restorer.restore_frames(before_file,
+                                                    after_file,
+                                                    restore_count,
+                                                    self.depth,
+                                                    self.output_path,
+                                                    "autofilled_frame")
+                    restored_total += restore_count
+                    restored_files = self.frame_restorer.output_paths
+                    self.frame_restorer.output_paths = []
+                    self.log(f"restored files: {','.join(restored_files)}")
 
-                for index, file in enumerate(group_files):
-                    if index: # skip the first ("keep") file
-                        _, filename, ext = split_filepath(file)
-                        restored_file = restored_files[index-1]
-                        new_filename = os.path.join(self.output_path, filename + ext)
-                        self.log(f"renaming {restored_file} to {new_filename}")
-                        os.replace(restored_file, new_filename)
+                    for index, file in enumerate(group_files):
+                        if index: # skip the first ("keep") file
+                            _, filename, ext = split_filepath(file)
+                            restored_file = restored_files[index-1]
+                            new_filename = os.path.join(self.output_path, filename + ext)
+                            self.log(f"renaming {restored_file} to {new_filename}")
+                            os.replace(restored_file, new_filename)
+                Mtqdm().update_bar(bar)
 
         message = f"{restored_total} duplicate frames filled with interpolated replacements at" +\
                   f" {self.output_path}"

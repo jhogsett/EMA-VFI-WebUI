@@ -1,12 +1,12 @@
 """Video Inflation Core Code"""
 import argparse
 from typing import Callable
-from tqdm import tqdm
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
 from deep_interpolate import DeepInterpolate
 from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import create_directory, get_files
+from webui_utils.mtqdm import Mtqdm
 
 def main():
     """Use Video Inflation from the command line"""
@@ -60,30 +60,32 @@ class InterpolateSeries():
         file_list = sorted(file_list)
         count = len(file_list)
         num_width = len(str(count))
+
         pbar_desc = "Frames" if num_splits < 2 else "Total"
+        with Mtqdm().open_bar(total=count - offset, desc=pbar_desc) as bar:
+            for frame in range(count - offset):
+                # for other than the first around, the duplicated real "before" frame is deleted for
+                # continuity, since it's identical to the "after" from the previous round
+                continued = frame > 0
 
-        for frame in tqdm(range(count - offset), desc=pbar_desc, position=0):
-            # for other than the first around, the duplicated real "before" frame is deleted for
-            # continuity, since it's identical to the "after" from the previous round
-            continued = frame > 0
+                # if the offset is > 1 treat this as a resynthesis of frames
+                # and inform the deep interpolator to not keep the real frames
+                resynthesis = offset > 1
 
-            # if the offset is > 1 treat this as a resynthesis of frames
-            # and inform the deep interpolator to not keep the real frames
-            resynthesis = offset > 1
+                before_file = file_list[frame]
+                after_file = file_list[frame + offset]
 
-            before_file = file_list[frame]
-            after_file = file_list[frame + offset]
+                # if a resynthesis, start the file numbering at 1 to match the restored frame
+                # if an offset other than 2 is used, the frame numbers won't generally match
+                base_index = frame + (1 if resynthesis else 0)
+                filename = base_filename + "[" + str(base_index).zfill(num_width) + "]"
 
-            # if a resynthesis, start the file numbering at 1 to match the restored frame
-            # if an offset other than 2 is used, the frame numbers won't generally match
-            base_index = frame + (1 if resynthesis else 0)
-            filename = base_filename + "[" + str(base_index).zfill(num_width) + "]"
-
-            inner_bar_desc = f"Frame #{frame}"
-            self.log(f"creating inflated frames for frame files {before_file} - {after_file}")
-            self.deep_interpolater.split_frames(before_file, after_file, num_splits, output_path,
-                filename, progress_label=inner_bar_desc, continued=continued,
-                resynthesis=resynthesis)
+                inner_bar_desc = f"Frame #{frame}"
+                self.log(f"creating inflated frames for frame files {before_file} - {after_file}")
+                self.deep_interpolater.split_frames(before_file, after_file, num_splits, output_path,
+                    filename, progress_label=inner_bar_desc, continued=continued,
+                    resynthesis=resynthesis)
+                Mtqdm().update_bar(bar)
 
     def log(self, message):
         """Logging"""

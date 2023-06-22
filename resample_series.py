@@ -4,13 +4,13 @@ import argparse
 import shutil
 import math
 from typing import Callable
-from tqdm import tqdm
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
 from interpolation_target import TargetInterpolate
 from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import create_directory, get_files
 from webui_utils.simple_utils import restored_frame_searches, sortable_float_index
+from webui_utils.mtqdm import Mtqdm
 
 def main():
     """Use the Change FPS feature from the command line"""
@@ -97,51 +97,50 @@ class ResampleSeries():
         # sample the super set at the new frame rate
         sample_rate = int(lowest_common_rate / resampled_fps)
         sample_set = superset[::sample_rate]
-        # num_width = len(str(len(sample_set)))
         num_width = len(str(len(superset)))
 
-        pbar_desc = "Resamples"
-        for sample in tqdm(sample_set, desc=pbar_desc, position=0):
-            frame = sample["frame"]
-            before_file = sample["before_file"]
-            after_file = sample["after_file"]
-            search = sample["search"]
-            frame_number = str(frame).zfill(num_width)
+        with Mtqdm().open_bar(total=len(sample_set), desc="Resamples") as bar:
+            for sample in sample_set:
+                frame = sample["frame"]
+                before_file = sample["before_file"]
+                after_file = sample["after_file"]
+                search = sample["search"]
+                frame_number = str(frame).zfill(num_width)
 
-            if search == 0.0 or use_dupes:
-                # filename = f"{base_filename}[{frame_number}]@0.0.png"
-                # output_filepath = os.path.join(output_path, filename)
-                filename = f"{base_filename}[{frame_number}]"
-                time = sortable_float_index(search)
-                output_filepath = os.path.join(output_path, f"{filename}@{time}.png")
-                self.log(f"copying keyframe {before_file} to {output_filepath}")
-                shutil.copy(before_file, output_filepath)
-                self.output_paths.append(output_filepath)
-            else:
-                if self.time_step:
+                if search == 0.0 or use_dupes:
                     filename = f"{base_filename}[{frame_number}]"
                     time = sortable_float_index(search)
                     output_filepath = os.path.join(output_path, f"{filename}@{time}.png")
-                    self.log(f"rendering {output_filepath} from {before_file}")
-                    self.interpolater.create_between_frame(before_file, after_file, output_filepath,
-                                                           time_step=search)
+                    self.log(f"copying keyframe {before_file} to {output_filepath}")
+                    shutil.copy(before_file, output_filepath)
+                    self.output_paths.append(output_filepath)
                 else:
-                    self.log(f"searching {before_file} for frame time {search}")
-                    filename = f"{base_filename}[{frame_number}]"
-                    self.target_interpolater.split_frames(before_file,
-                                                            after_file,
-                                                            depth,
-                                                            min_target=search,
-                                                            max_target=search,
-                                                            output_path=output_path,
-                                                            base_filename=filename,
-                                                            progress_label="Search")
-        if self.time_step:
-            self.output_paths.extend(self.interpolater.output_paths)
-            self.interpolater.output_paths = []
-        else:
-            self.output_paths.extend(self.target_interpolater.output_paths)
-            self.target_interpolater.output_paths = []
+                    if self.time_step:
+                        filename = f"{base_filename}[{frame_number}]"
+                        time = sortable_float_index(search)
+                        output_filepath = os.path.join(output_path, f"{filename}@{time}.png")
+                        self.log(f"rendering {output_filepath} from {before_file}")
+                        self.interpolater.create_between_frame(before_file, after_file, output_filepath,
+                                                            time_step=search)
+                    else:
+                        self.log(f"searching {before_file} for frame time {search}")
+                        filename = f"{base_filename}[{frame_number}]"
+                        self.target_interpolater.split_frames(before_file,
+                                                                after_file,
+                                                                depth,
+                                                                min_target=search,
+                                                                max_target=search,
+                                                                output_path=output_path,
+                                                                base_filename=filename,
+                                                                progress_label="Search")
+                Mtqdm().update_bar(bar)
+
+            if self.time_step:
+                self.output_paths.extend(self.interpolater.output_paths)
+                self.interpolater.output_paths = []
+            else:
+                self.output_paths.extend(self.target_interpolater.output_paths)
+                self.target_interpolater.output_paths = []
 
     def log(self, message):
         """Logging"""

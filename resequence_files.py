@@ -4,9 +4,9 @@ import shutil
 import glob
 import argparse
 from typing import Callable
-from tqdm import tqdm
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_utils import create_sample_set
+from webui_utils.mtqdm import Mtqdm
 
 def main():
     """Use the Resequence Files feature from the command line"""
@@ -70,23 +70,25 @@ class ResequenceFiles:
         max_file_num = num_files * self.index_step
         num_width = len(str(max_file_num)) if self.zero_fill < 0 else self.zero_fill
         index = self.start_index
-        pbar_title = "Renaming" if self.rename else "Copying"
 
         sample_set = create_sample_set(files, self.sample_offset, self.sample_stride)
-        for file in tqdm(sample_set, desc=pbar_title):
-            new_filename = self.new_base_filename + str(index).zfill(num_width) + "." +\
-                self.file_type
-            old_filepath = file
-            new_filepath = os.path.join(self.path, new_filename)
+        pbar_title = "Renaming" if self.rename else "Copying"
+        with Mtqdm().open_bar(total=len(sample_set), desc=pbar_title) as bar:
+            for file in sample_set:
+                new_filename = self.new_base_filename + str(index).zfill(num_width) + "." +\
+                    self.file_type
+                old_filepath = file
+                new_filepath = os.path.join(self.path, new_filename)
 
-            if self.rename:
-                os.replace(old_filepath, new_filepath)
-                self.log(f"File {file} renamed to {new_filename}")
-            else:
-                shutil.copy(old_filepath, new_filepath)
-                self.log(f"File {file} copied to {new_filename}")
+                if self.rename:
+                    os.replace(old_filepath, new_filepath)
+                    self.log(f"File {file} renamed to {new_filename}")
+                else:
+                    shutil.copy(old_filepath, new_filepath)
+                    self.log(f"File {file} copied to {new_filename}")
 
-            index += self.index_step
+                index += self.index_step
+                Mtqdm().update_bar(bar)
 
     def log(self, message : str) -> None:
         """Logging"""

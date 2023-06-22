@@ -23,6 +23,7 @@ class FrameSearch(TabBase):
     def render_tab(self):
         """Render tab into UI"""
         max_splits = self.config.search_settings["max_splits"]
+        default_splits = self.config.search_settings["default_splits"]
         with gr.Tab("Frame Search"):
             gr.HTML(SimpleIcons.MAGNIFIER +
                 "Search for an arbitrarily precise timed frame and return the closest match",
@@ -32,8 +33,8 @@ class FrameSearch(TabBase):
                     img1_input_fs = gr.Image(type="filepath", label="Before Frame", tool=None)
                     img2_input_fs = gr.Image(type="filepath", label="After Frame", tool=None)
                     with gr.Row():
-                        splits_input_fs = gr.Slider(value=1, minimum=1, maximum=max_splits,
-                            step=1, label="Search Precision")
+                        splits_input_fs = gr.Slider(value=default_splits, minimum=1,
+                                            maximum=max_splits, step=1, label="Search Precision")
                         min_input_text_fs = gr.Text(placeholder="0.0-1.0",
                             label="Lower Bound")
                         max_input_text_fs = gr.Text(placeholder="0.0-1.0",
