@@ -21,15 +21,15 @@ class Mtqdm:
         self.leave = -1
 
     colors = {
-        "red" : "#FF0000",
-        "orange" : "#FF7F00",
-        "yellow" : "#FFFF00",
-        "green" : "#00FF00",
-        "blue" : "#0000FF",
-        "purple" : "#7F00FF",
-        "cyan" : "#00FFFF",
-        "magenta" : "#FF00FF",
-        "white" : "#FFFFFF"}
+        "red" : "#BF0000",
+        "orange" : "#BF5F00",
+        "yellow" : "#BFBF00",
+        "green" : "#00BF00",
+        "blue" : "#0000BF",
+        "purple" : "#5F00BF",
+        "cyan" : "#00BFBF",
+        "magenta" : "#BF00BF",
+        "white" : "#BFBFBF"}
 
     default_palette = [
         colors["green"],
@@ -149,7 +149,7 @@ class MtqdmTester():
     bars = []
 
     def make_bar(self, bar_num, max):
-        return MtqdmTester.mtqdm.enter_bar(total=max, desc=f"Bar{bar_num}")
+        return Mtqdm().enter_bar(total=max, desc=f"Bar{bar_num}")
 
     def test_bars_1(self, number_of_bars, number_of_steps, delay):
         MtqdmTester.indexes = [0 for n in range(number_of_bars)]
@@ -164,7 +164,7 @@ class MtqdmTester():
                 break
 
         for bar in reversed(MtqdmTester.bars):
-            MtqdmTester.mtqdm.leave_bar(bar)
+            Mtqdm().leave_bar(bar)
 
     def optional_process(self, min, max, delay):
         count = random.randint(min, max)
@@ -225,7 +225,7 @@ class MtqdmTester():
         return self.advance_index(last_index)
 
 def main():
-    #MtqdmTester().test_bars_1(5, 10, 0.000000001)
+    MtqdmTester().test_bars_1(9, 3, 0.01)
     MtqdmTester().test_bars_2(5, 15, 0.1)
 
 if __name__ == '__main__':

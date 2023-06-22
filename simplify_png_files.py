@@ -40,7 +40,7 @@ class SimplifyPngFiles:
                 if img.info:
                     self.log(f"removing: {img.info}")
                 img.save(file)
-                Mtqdm().update_bar()
+                Mtqdm().update_bar(bar)
 
     def log(self, message : str) -> None:
         """Logging"""

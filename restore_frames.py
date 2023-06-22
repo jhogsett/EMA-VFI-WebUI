@@ -76,7 +76,7 @@ class RestoreFrames():
             self.output_paths.extend(self.interpolater.output_paths)
             self.interpolater.output_paths = []
         else:
-            with Mtqdm().open_bar(len(searches, desc=progress_label)) as bar:
+            with Mtqdm().open_bar(len(searches), desc=progress_label) as bar:
                 for search in searches:
                     self.log(f"searching for frame {search}")
                     self.target_interpolater.split_frames(img_before,
@@ -87,7 +87,7 @@ class RestoreFrames():
                                                         output_path=output_path,
                                                         base_filename=base_filename,
                                                         progress_label="Search")
-                Mtqdm().update_bar(bar)
+                    Mtqdm().update_bar(bar)
             self.output_paths.extend(self.target_interpolater.output_paths)
             self.target_interpolater.output_paths = []
 

@@ -145,7 +145,7 @@ class ResizeFrames:
                 output_filepath = os.path.join(self.output_path, f"{filename}{ext}")
                 self.log(f"saving resized file {output_filepath}")
                 cv2.imwrite(output_filepath, image)
-            Mtqdm().update_bar(bar)
+                Mtqdm().update_bar(bar)
 
     def log(self, message : str) -> None:
         """Logging"""

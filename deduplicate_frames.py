@@ -234,7 +234,7 @@ class DeduplicateFrames:
             for index, group in enumerate(dupe_groups):
                 self.log(f"processing group #{index+1}")
 
-                if len(group) > max_size_for_delete:
+                if max_size_for_delete and len(group) > max_size_for_delete:
                     self.log(f"skipping deleting group #{index}, group size {len(group)}" +\
                              f" exceeds max size for deletion {max_size_for_delete}")
                     continue
@@ -246,7 +246,7 @@ class DeduplicateFrames:
                     frame_filenames.remove(filepath)
                     dupe_count += 1
 
-            with Mtqdm().open_bar(total=len(frame_filenames), desc="Copyibg") as bar:
+            with Mtqdm().open_bar(total=len(frame_filenames), desc="Copying") as bar:
                 for filepath in frame_filenames:
                     _, filename, ext = split_filepath(filepath)
                     output_filepath = os.path.join(self.output_path, filename + ext)

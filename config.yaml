@@ -97,6 +97,7 @@ png_to_mp4_settings:
   maximum_crf: 28
   minimum_crf: 17
 search_settings:
+  default_splits: 10
   max_splits: 60
 realesrgan_settings:
   fp32: True
