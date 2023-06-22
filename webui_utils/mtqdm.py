@@ -13,23 +13,35 @@ class Mtqdm:
     MAX_BARS = 9
 
     def init(self, palette : str="default"):
-        self.current_palette = Mtqdm.palettes[palette]
+        self.current_palette = palette
         self.entered_bars = [None for n in range(Mtqdm.MAX_BARS)]
         self.bar_totals = [0 for n in range(Mtqdm.MAX_BARS)]
         self.position = -1
         self.color = -1
         self.leave = -1
+        self.alternation = True
 
     colors = {
-        "red" : "#BF0000",
-        "orange" : "#BF5F00",
-        "yellow" : "#BFBF00",
-        "green" : "#00BF00",
-        "blue" : "#0000BF",
-        "purple" : "#5F00BF",
-        "cyan" : "#00BFBF",
-        "magenta" : "#BF00BF",
-        "white" : "#BFBFBF"}
+        "red" : "#AF0000",
+        "orange" : "#AF5F00",
+        "yellow" : "#AFAF00",
+        "green" : "#00AF00",
+        "blue" : "#0000AF",
+        "purple" : "#5F00AF",
+        "cyan" : "#00AFAF",
+        "magenta" : "#AF00AF",
+        "white" : "#AFAFAF"}
+
+    alt_colors = {
+        "red" : "#9F0000",
+        "orange" : "#9F5700",
+        "yellow" : "#9FAF00",
+        "green" : "#009F00",
+        "blue" : "#0000AF",
+        "purple" : "#57009F",
+        "cyan" : "#009F9F",
+        "magenta" : "#9F009F",
+        "white" : "#9F9F9F"}
 
     default_palette = [
         colors["green"],
@@ -53,10 +65,40 @@ class Mtqdm:
         colors["cyan"],
         colors["white"]]
 
+    default_palette_alt = [
+        alt_colors["green"],
+        alt_colors["yellow"],
+        alt_colors["orange"],
+        alt_colors["red"],
+        alt_colors["blue"],
+        alt_colors["purple"],
+        alt_colors["magenta"],
+        alt_colors["cyan"],
+        alt_colors["white"]]
+
+    rainbow_palette_alt = [
+        alt_colors["red"],
+        alt_colors["orange"],
+        alt_colors["yellow"],
+        alt_colors["green"],
+        alt_colors["blue"],
+        alt_colors["purple"],
+        alt_colors["magenta"],
+        alt_colors["cyan"],
+        alt_colors["white"]]
+
     palettes = {
         "default" : default_palette,
         "rainbow" : rainbow_palette
     }
+
+    alt_palettes = {
+        "default" : default_palette_alt,
+        "rainbow" : rainbow_palette_alt
+    }
+
+    def get_palette(self, name : str):
+        return self.alt_palettes[name] if self.alternation else self.palettes[name]
 
     def get_position(self):
         return self.position
@@ -69,14 +111,23 @@ class Mtqdm:
         self.position -= 1
 
     def get_color(self):
-        return self.current_palette[self.color]
+        palette = self.get_palette(self.current_palette)
+        return palette[self.color]
 
     def enter_color(self):
+        self.manage_color_alternation()
         self.color += 1
         return self.get_color()
 
     def leave_color(self):
         self.color -= 1
+
+    def toggle_color_alternation(self):
+        self.alternation = not self.alternation
+
+    def manage_color_alternation(self):
+        if self.get_position() == 0:
+            self.toggle_color_alternation()
 
     def get_leave(self):
         return self.leave == 0
@@ -144,7 +195,6 @@ import time
 import random
 
 class MtqdmTester():
-    # mtqdm = Mtqdm()
     indexes = []
     bars = []
 
@@ -224,9 +274,20 @@ class MtqdmTester():
         last_index = len(MtqdmTester.indexes)-1
         return self.advance_index(last_index)
 
+    def test_bars_3(self, times, total, delay):
+        for n in range(times):
+            with Mtqdm().open_bar(total=total) as bar:
+                for o in range(total):
+                    with Mtqdm().open_bar(total=total, desc="Some More") as bar2:
+                        for p in range(total):
+                            bar2.update()
+                            time.sleep(delay)
+                    bar.update()
+
 def main():
-    MtqdmTester().test_bars_1(9, 3, 0.01)
-    MtqdmTester().test_bars_2(5, 15, 0.1)
+    # MtqdmTester().test_bars_1(9, 3, 0.01)
+    # MtqdmTester().test_bars_2(5, 15, 0.1)
+    MtqdmTester().test_bars_3(10, 10, .001)
 
 if __name__ == '__main__':
     main()
