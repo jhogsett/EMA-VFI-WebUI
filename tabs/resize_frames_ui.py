@@ -48,7 +48,7 @@ class ResizeFrames(TabBase):
                         crop_type = gr.Radio(value="none",
                             choices=["crop", "none"],
                             label="Cropping Type",
-                            info = "Choose 'crop' to crop the resized image, 'none' for no cropping")
+            info = "If cropping, Scale Width and Scale Height must be set to the pre-cropped size")
                     with gr.Column():
                         with gr.Row():
                             crop_width = gr.Number(value=-1, label="Crop Width",
