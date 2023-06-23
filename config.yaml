@@ -7,7 +7,7 @@ blender_settings:
   frame_fixer_depth: 10
   frame_rate: 30
   gif_duration: 1000
-  max_frame_rate: 240
+  max_frame_rate: 1000
   projects_file: "video_blender_projects.csv"
   skip_frames: 100
 directories:
@@ -63,7 +63,7 @@ gif_to_mp4_settings:
   - "webm"
   - "wmv"
   maximum_crf: 28
-  max_frame_rate: 240
+  max_frame_rate: 1000
   minimum_crf: 17
   resampling_precision: 10
   use_tiling: False
@@ -77,7 +77,7 @@ logviewer_settings:
   max_lines: 25
 mp4_to_png_settings:
   frame_rate: 30
-  max_frame_rate: 240
+  max_frame_rate: 1000
 restoration_settings:
   create_gif: True
   create_zip: True
@@ -89,11 +89,11 @@ restoration_settings:
   max_precision: 60
 png_to_gif_settings:
   frame_rate: 30
-  max_frame_rate: 240
+  max_frame_rate: 1000
 png_to_mp4_settings:
   default_crf: 23
   frame_rate: 30
-  max_frame_rate: 240
+  max_frame_rate: 1000
   maximum_crf: 28
   minimum_crf: 17
 search_settings:
