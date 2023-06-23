@@ -33,7 +33,7 @@ class VideoDetails(TabBase):
                 duration = gr.Text(max_lines=1, label="Duration")
                 frame_count = gr.Text(max_lines=1, label="Frame Count")
                 file_size = gr.Text(max_lines=1, label="File Size")
-            count_frames = gr.Checkbox(value=True, label="Count Frames (Slower)",
+            count_frames = gr.Checkbox(value=False, label="Count Frames (Slower)",
                 info="Scans file counting frames; required for media without frame count metadata")
             report_button = gr.Button("Get Details", variant="primary")
             output_text = gr.Textbox(label="Details", interactive=False)
