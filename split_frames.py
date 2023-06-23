@@ -21,7 +21,7 @@ def main():
     parser.add_argument("--type", default="precise", type=str,
         help="Split type 'precise' (default) or 'interpolation'")
     parser.add_argument("--num_groups", default=10, type=int, help="Number of new file groups")
-    parser.add_argument("--action", default="copy", type=str,
+    parser.add_argument("--action", default="dryrun", type=str,
         help="Files action 'copy' (default), 'move', 'dryrun'")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
