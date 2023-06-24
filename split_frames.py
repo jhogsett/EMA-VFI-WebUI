@@ -146,7 +146,7 @@ class SplitFrames:
                     self.log("Adding after anchor frame")
                     file_groups[group] = file_groups[group] + [next_start_file]
 
-        with Mtqdm().open_bar(total=self.num_groups, desc="Group") as group_bar:
+        with Mtqdm().open_bar(total=self.num_groups, desc="Groups") as group_bar:
             for group in range(self.num_groups):
                 group_files = file_groups[group]
                 num_group_files = len(group_files)
