@@ -30,6 +30,8 @@ def main():
         help="Show extra details")
     args = parser.parse_args()
 
+# add option to delete groups after merge
+
     log = SimpleLog(args.verbose)
     MergeFrames(args.input_path,
                 args.output_path,
@@ -87,19 +89,13 @@ class MergeFrames:
         first_group_name = group_names[0]
         first_index, last_index, num_width = self.details_from_group_name(first_group_name)
 
-        if type == "resynthesis":
+        if self.type == "resynthesis":
+
             self.merge_resynthesis(first_index, last_index, num_width, group_names)
-        elif type == "inflation":
+        elif self.type == "inflation":
             self.merge_inflation(first_index, last_index, num_width, group_names)
         else:
             self.merge_precise(num_width, group_names)
-
-    def group_path(self, group_name):
-        return os.path.join(self.input_path, group_name)
-
-    def group_files(self, group_name):
-        group_path = self.group_path(group_name)
-        return sorted(glob.glob(os.path.join(group_path, f"*.{self.file_ext}")))
 
 
     def merge_precise(self, num_width, group_names):
@@ -138,59 +134,163 @@ class MergeFrames:
                         shutil.rmtree(group_path)
                     Mtqdm().update_bar(bar)
 
-    def merge_precise_combine(self, num_width, group_names):
-        # go through each group, renumbering files
-
-        # FILE COUNT = count of files in group
-
-        # - for each group, the count of files must match EXPECTED FILES
-        # - the renumbering START INDEX is FIRST INDEX
-        # - renumber the files starting START INDEX using NUM WIDTH padding
-        # - copy all group files to the output directory
-        # - each file should not already exist at destination
-        pass
-
-
-                    # if self.dry_run:
-                    #     print(f"[Dry Run] Resequencing files in {group_path}")
-                    # else:
-                    #     self.log(f"Resequencing files in {group_path}")
-                    #     base_filename = f"{group_name}-{self.type}-split-frame"
-                    #     ResequenceFiles(group_path,
-                    #                     self.file_ext,
-                    #                     base_filename,
-                    #                     0, 1, 1, 0, num_width,
-                    #                     True,
-                    #                     self.log).resequence()
 
     def merge_resynthesis(self, first_index, last_index, num_width, group_names):
         group_size = last_index - first_index
         if self.action == "combine":
-            self.merge_resynthesis_combine(first_index, last_index, num_width, group_size)
+            self.merge_resynthesis_combine(first_index, last_index, num_width, group_size, group_names)
         else:
-            self.merge_resynthesis_revert(first_index, last_index, num_width, group_size)
+            self.merge_resynthesis_revert(first_index, last_index, num_width, group_size, group_names)
 
     def merge_resynthesis_revert(self, first_index, last_index, num_width, group_size, group_names):
-            # EXPECTED FILES = GROUP SIZE + 2
+        expected_files = group_size + 2 # outer frames added to support resynthesis
 
-        # go through each group, renumbering files
-        # FILE COUNT = count of files in group
+        with Mtqdm().open_bar(total=len(group_names), desc="Groups") as group_bar:
+            for group_index, group_name in enumerate(group_names):
+                group_expected_files = expected_files
 
-        # - for each group, the count of files must match EXPECTED FILES
-        #   - except the first group, where the count of files should be EXPECTED FILES - 1
-        #   - except the last group, where the count of files should be EXPECTED FILES - 1
+                if group_index == 0 or group_index == len(group_names)-1:
+                    group_expected_files -=1 # one fewer frame; outer frames can't have anchor frames
 
-        # - the renumbering START INDEX is FIRST INDEX + 1
-        # - renumber the files starting START INDEX using NUM WIDTH padding
+                group_files = self.group_files(group_name)
+                if len(group_files) != group_expected_files:
+                    raise RuntimeError(
+                        f"expected {expected_files} files in {group_name} but found {len(group_files)}")
 
-            # - copy all EXCEPT first and last group files to the output directory
-            #   - except first group, copy all but last file
-            #   - except last group, copy all but first file
+                # renumber all present files according to the first, last indexes
+                # including files that will not be ulitmately copied back
+                group_path = self.group_path(group_name)
+                first_index, _, _ = self.details_from_group_name(group_name)
+                if self.dry_run:
+                    print(f"[Dry Run] Resequencing files in {group_path}")
+                else:
+                    self.log(f"Resequencing files in {group_path}")
+                    base_filename = "reverted-resynthesis-split"
 
-        # - each file should not already exist at destination
-        pass
+                    ResequenceFiles(group_path,
+                                    self.file_ext,
+                                    base_filename,
+                                    first_index, 1, 1, 0, num_width,
+                                    True,
+                                    self.log).resequence()
+
+                renamed_group_files = self.group_files(group_name)
+                with Mtqdm().open_bar(total=len(renamed_group_files), desc="Copying") as file_bar:
+                    for file_index, file in enumerate(renamed_group_files):
+                        if group_index == 0:
+                            # for the first group, include the first file also
+                            # it is the outer anchor frame at beginning
+                            if file_index == len(renamed_group_files)-1:
+                                Mtqdm().update_bar(file_bar)
+                                continue
+                        elif group_index == len(group_names)-1:
+                            # for the last group, include the last file also
+                            # it is the outer ancjor frame and the end
+                            if file_index == 0:
+                                Mtqdm().update_bar(file_bar)
+                                continue
+                        else:
+                            # for all other groups copy all but the first & last files
+                            # they are duplicate anchor frames added to support resynthesis
+                            if file_index == 0 or file_index == len(renamed_group_files)-1:
+                                Mtqdm().update_bar(file_bar)
+                                continue
+
+                        _, filename, ext = split_filepath(file)
+                        to_filepath = os.path.join(self.output_path, filename + ext)
+                        if os.path.exists(to_filepath):
+                            raise RuntimeError(
+                                f"file {to_filepath} already exists in the output path")
+                        if self.dry_run:
+                            print(f"[Dry Run] copying {file} to {to_filepath}")
+                        else:
+                            self.log(f"copying {file} to {to_filepath}")
+                            shutil.copy(file, to_filepath)
+                        Mtqdm().update_bar(file_bar)
+
+                # restore the original filenames
+                self.log(f"Restoring original filenames in {group_path}")
+                with Mtqdm().open_bar(total=len(renamed_group_files),
+                                        desc="Copying") as bar:
+                    for index, file in enumerate(renamed_group_files):
+                        original_filename = group_files[index]
+                        if self.dry_run:
+                            print(
+                            f"[Dry Run] Restoring file '{file}' to '{original_filename}'")
+                        else:
+                            self.log(f"Restoring file '{file}' to '{original_filename}'")
+                            os.replace(file, original_filename)
+                        Mtqdm().update_bar(bar)
+                Mtqdm().update_bar(group_bar)
 
     def merge_resynthesis_combine(self, first_index, last_index, num_width, group_size, group_names):
+        expected_files = group_size # outer anchor frames not present resynthesis
+
+        with Mtqdm().open_bar(total=len(group_names), desc="Groups") as group_bar:
+            for group_index, group_name in enumerate(group_names):
+                group_expected_files = expected_files
+
+                if group_index == 0 or group_index == len(group_names)-1:
+                    group_expected_files -=1 # one fewer frame in the outer groups
+                                             # outer frames can't have anchor frames added
+
+                group_files = self.group_files(group_name)
+                if len(group_files) != group_expected_files:
+                    raise RuntimeError(
+                        f"expected {expected_files} files in {group_name} but found {len(group_files)}")
+
+                # renumber all present files according to the first, last indexes
+                # including files that will not be ulitmately copied back
+                group_path = self.group_path(group_name)
+                first_index, _, _ = self.details_from_group_name(group_name)
+                # add one since first index names a frame that has been removed
+                first_index += 1
+
+                if self.dry_run:
+                    print(f"[Dry Run] Resequencing files in {group_path}")
+                else:
+                    self.log(f"Resequencing files in {group_path}")
+                    base_filename = "reverted-resynthesis-split"
+
+                    ResequenceFiles(group_path,
+                                    self.file_ext,
+                                    base_filename,
+                                    first_index, 1, 1, 0, num_width,
+                                    True,
+                                    self.log).resequence()
+
+                renamed_group_files = self.group_files(group_name)
+                with Mtqdm().open_bar(total=len(renamed_group_files), desc="Copying") as file_bar:
+                    for file_index, file in enumerate(renamed_group_files):
+                        _, filename, ext = split_filepath(file)
+                        to_filepath = os.path.join(self.output_path, filename + ext)
+                        if os.path.exists(to_filepath):
+                            raise RuntimeError(
+                                f"file {to_filepath} already exists in the output path")
+                        if self.dry_run:
+                            print(f"[Dry Run] copying {file} to {to_filepath}")
+                        else:
+                            self.log(f"copying {file} to {to_filepath}")
+                            shutil.copy(file, to_filepath)
+                        Mtqdm().update_bar(file_bar)
+
+                # restore the original filenames
+                self.log(f"Restoring original filenames in {group_path}")
+                with Mtqdm().open_bar(total=len(renamed_group_files),
+                                        desc="Copying") as bar:
+                    for index, file in enumerate(renamed_group_files):
+                        original_filename = group_files[index]
+                        if self.dry_run:
+                            print(
+                            f"[Dry Run] Restoring file '{file}' to '{original_filename}'")
+                        else:
+                            self.log(f"Restoring file '{file}' to '{original_filename}'")
+                            os.replace(file, original_filename)
+                        Mtqdm().update_bar(bar)
+                Mtqdm().update_bar(group_bar)
+
+
+
             # EXPECTED FILES = GROUP SIZE - 1
 
         # go through each group, renumbering files
@@ -301,12 +401,19 @@ class MergeFrames:
         indexes = group_name.split("-")
         if len(indexes) != 2:
             raise RuntimeError(f"group name '{group_name}' cannot be parsed into indexes")
-        first_index = int(indexes[0])
-        last_index = int(indexes[1])
+        first_index = indexes[0]
+        last_index = indexes[1]
         num_width = len(str(first_index))
         if num_width < 1:
             raise RuntimeError(f"group name '{group_name}' cannot be parsed into index fill width")
-        return first_index, last_index, num_width
+        return int(first_index), int(last_index), num_width
+
+    def group_path(self, group_name):
+        return os.path.join(self.input_path, group_name)
+
+    def group_files(self, group_name):
+        group_path = self.group_path(group_name)
+        return sorted(glob.glob(os.path.join(group_path, f"*.{self.file_ext}")))
 
     def log(self, message : str) -> None:
         """Logging"""
