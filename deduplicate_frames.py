@@ -271,8 +271,7 @@ class DeduplicateFrames:
     def invoke_autofill(self, suppress_output=False):
         self.log("invoke_autofill() using invoke_delete() to copy non-duplicate frames")
 
-        # repurpose max_dupes for auto-fill to mean:
-        # skip auto-fill on groups larger than this size
+        # repurpose max_dupes for auto-fill to mean: skip auto-fill on groups larger than this size
         ignore_over_size = self.max_dupes
         self.max_dupes = 0
         _, dupe_groups, frame_filenames = self.invoke_delete(True,
@@ -281,6 +280,7 @@ class DeduplicateFrames:
         self.log(f"beginning processing of {len(dupe_groups)} duplicate frame groups")
         restored_total = 0
         with Mtqdm().open_bar(total=len(dupe_groups), desc="Auto-Filling") as bar:
+            auto_filled_files = []
             for index, group in enumerate(dupe_groups):
                 self.log(f"processing group #{index+1}")
                 group_indexes = list(group.keys())
@@ -337,14 +337,16 @@ class DeduplicateFrames:
                             new_filename = os.path.join(self.output_path, filename + ext)
                             self.log(f"renaming {restored_file} to {new_filename}")
                             os.replace(restored_file, new_filename)
+                            auto_filled_files.append(new_filename)
                 Mtqdm().update_bar(bar)
 
+        self.log(f"auto-filled files: {','.join(auto_filled_files)}")
         message = f"{restored_total} duplicate frames filled with interpolated replacements at" +\
                   f" {self.output_path}"
         self.log(message)
         if not suppress_output:
             print(message)
-        return message, dupe_groups, frame_filenames
+        return message, auto_filled_files
 
     def log(self, message : str) -> None:
         """Logging"""

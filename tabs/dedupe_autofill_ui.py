@@ -12,7 +12,7 @@ from deduplicate_frames import DeduplicateFrames
 from interpolate import Interpolate
 from interpolation_target import TargetInterpolate
 from restore_frames import RestoreFrames
-from webui_utils.auto_increment import AutoIncrementDirectory
+from webui_utils.auto_increment import AutoIncrementDirectory, AutoIncrementFilename
 
 class AutofillFrames(TabBase):
     """Encapsulates UI elements and events for the Deduplicate Frames feature"""
@@ -80,13 +80,26 @@ class AutofillFrames(TabBase):
                 frame_restorer = RestoreFrames(interpolater, target_interpolater, use_time_step,
                                                self.log)
 
-                message, _, _ = DeduplicateFrames(frame_restorer,
-                                            input_path,
-                                            output_path,
-                                            threshold,
-                                            max_dupes,
-                                            depth,
-                                            self.log).invoke_autofill(suppress_output=True)
+                message, auto_filled_files = DeduplicateFrames(frame_restorer,
+                                                               input_path,
+                                                               output_path,
+                                                               threshold,
+                                                               max_dupes,
+                                                               depth,
+                                                               self.log).invoke_autofill(
+                                                                suppress_output=True)
+                report = self.create_autofill_report(input_path,
+                                                     output_path,
+                                                     threshold,
+                                                     max_dupes,
+                                                     depth,
+                                                     message,
+                                                     auto_filled_files)
+
+                report_filepath, _ = AutoIncrementFilename(output_path, "txt").next_filename(
+                                                                        "autofill-report", "txt")
+                with open(report_filepath, "w", encoding="UTF-8") as file:
+                    file.write(report)
                 return gr.update(value=message, visible=True)
 
             except RuntimeError as error:
@@ -94,4 +107,19 @@ class AutofillFrames(TabBase):
 f"""Error deduplicating frames:
 {error}"""
                 return gr.update(value=message, visible=True)
+
+    def create_autofill_report(self, input_path : str, output_path : str, threshold : int,
+                    max_dupes : int, depth : int, message : str, auto_filled_files : list) -> str:
+        report = []
+        report.append("[Autofill Frames Report]")
+        report.append(f"input path: {input_path}")
+        report.append(f"output path: {output_path}")
+        report.append(f"threshold: {threshold}")
+        report.append(f"max group: {max_dupes}")
+        report.append(f"search precision: {depth}")
+        report.append(f"message: {message}")
+        report.append("")
+        report.append("[Auto-Filled Files]")
+        report += auto_filled_files
+        return "\r\n".join(report)
 
