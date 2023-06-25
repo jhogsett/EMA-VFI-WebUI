@@ -1,4 +1,5 @@
 """Multiple TQDM progress bar manager singleton class"""
+import random
 from tqdm import tqdm
 from contextlib import contextmanager
 
@@ -11,6 +12,7 @@ class Mtqdm:
         return cls.instance
 
     MAX_BARS = 9
+    MAX_COLORS = MAX_BARS
 
     def init(self, use_color : bool=True, palette : str="default"):
         self.use_color = use_color
@@ -91,12 +93,14 @@ class Mtqdm:
 
     palettes = {
         "default" : default_palette,
-        "rainbow" : rainbow_palette
+        "rainbow" : rainbow_palette,
+        "random" : default_palette
     }
 
     alt_palettes = {
         "default" : default_palette_alt,
-        "rainbow" : rainbow_palette_alt
+        "rainbow" : rainbow_palette_alt,
+        "random" : default_palette
     }
 
     def set_use_color(self, use_color):
@@ -123,7 +127,10 @@ class Mtqdm:
         return palette[self.color]
 
     def enter_color(self):
-        self.manage_color_alternation()
+        if self.current_palette == "random":
+            self.manage_random_palette()
+        else:
+            self.manage_color_alternation()
         self.color += 1
         return self.get_color()
 
@@ -136,6 +143,11 @@ class Mtqdm:
     def manage_color_alternation(self):
         if self.get_position() == 0:
             self.toggle_color_alternation()
+
+    def manage_random_palette(self):
+        if self.get_position() == 0:
+            random.shuffle(self.palettes["random"])
+            self.alt_palettes["random"] = self.palettes["random"]
 
     def get_leave(self):
         return self.leave == 0
@@ -317,12 +329,18 @@ class MtqdmTester():
         self.test_bars_2(min, max, delay)
         Mtqdm().use_color = True
 
+    def test_bars_6(self, min, max, delay):
+        Mtqdm().set_palette("random")
+        self.test_bars_2(min, max, delay)
+
+
 def main():
     # MtqdmTester().test_bars_1(9, 3, 0.01)
-    MtqdmTester().test_bars_2(5, 15, 0.1)
+    #MtqdmTester().test_bars_2(5, 15, 0.1)
     # MtqdmTester().test_bars_3(10, 10, .001)
     # MtqdmTester().test_bars_4("rainbow", 5, Mtqdm.MAX_BARS, 10, 1.0)
     # MtqdmTester().test_bars_5(5, 15, 0.1)
+    MtqdmTester().test_bars_6(5, 10, 0.1)
 
 if __name__ == '__main__':
     main()
