@@ -117,7 +117,7 @@ upscale_settings:
 user_interface:
   css_file: "webui.css"
   log_file: None
-  mtqdm_use_color: False
+  mtqdm_use_color: True
   mtqdm_palette: "default"
   resources_path: "resources.csv"
   show_header: True
