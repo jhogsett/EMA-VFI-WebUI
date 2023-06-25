@@ -61,6 +61,7 @@ class SimpleIcons:
     PINCHING_HAND = "🤏"
     THUMBS_DOWN = "👎"
     THUMBS_UP = "👍"
+    VULCAN_HAND = "🖖"
 
     COPYRIGHT = "©️"
     NO_ENTRY = "⛔"
@@ -105,6 +106,7 @@ class SimpleIcons:
     DEDUPE_SYMBOL = SCISSORS
     PROP_SYMBOL = PROPERTIES
     SLOW_SYMBOL = WATCH
+    SPLIT_MERGE_SYMBOL = VULCAN_HAND
     SPOTLIGHT_SYMBOL = GEMSTONE
     TIPS_SYMBOL = QUESTION
 
@@ -114,6 +116,7 @@ class SimpleIcons:
         DEDUPE_SYMBOL,
         PROP_SYMBOL,
         SLOW_SYMBOL,
+        SPLIT_MERGE_SYMBOL,
         SPOTLIGHT_SYMBOL,
         TIPS_SYMBOL,
     ]
@@ -143,6 +146,7 @@ class SimpleIcons:
         NOTEBOOK,
         NUMBERS,
         ONE,
+        PINCHING_HAND,
         PROPERTIES,
         RECYCLE,
         ROCKET,
@@ -155,7 +159,7 @@ class SimpleIcons:
         THREE,
         TWO,
         TWO_HEARTS,
-        PINCHING_HAND,
+        VULCAN_HAND,
         WARNING,
         WATCH,
         WRENCH,

@@ -20,21 +20,20 @@ class SplitFrames(TabBase):
         """Render tab into UI"""
         with gr.Tab("Split Frames"):
             gr.Markdown(
-                SimpleIcons.CONV_SYMBOL + "Split large PNG sequences into processible chunks")
+                SimpleIcons.VULCAN_HAND + "Split large PNG sequences into processable chunks")
             input_path = gr.Text(max_lines=1, label="PNG Files Path",
                 placeholder="Path on this server to the PNG files to be split")
             output_path = gr.Text(max_lines=1, label="Split Groups Base Path",
                 placeholder="Path on this server to store the split file group directories")
             with gr.Row():
-                num_groups = gr.Slider(value=10, minimum=1, maximum=1000,
+                num_groups = gr.Slider(value=10, minimum=2, maximum=1000,
                                        label="Number of Split Groups")
-                split_type = gr.Radio(value="precise", label="Split Type",
-                                      choices=["precise", "resynthesis", "inflation"],
-                        info="Choose 'precise' unless the group files will be further processed")
-                action_type = gr.Radio(value="copy", label="Disposition", choices=["copy", "move"],
-                        info="Choose 'move' to delete the source files after splitting")
-            with gr.Row():
-                split_button = gr.Button("Split Frames", variant="primary")
+                split_type = gr.Radio(value="Precise", label="Split Type",
+                                      choices=["Precise", "Resynthesis", "Inflation"],
+            info="Choose 'Resynthesis' or 'Inflation' if split groups will be processed further")
+                action_type = gr.Radio(value="Copy", label="Files Action", choices=["Copy", "Move"],
+                        info="Choose 'Move' to delete source files after successful split")
+            split_button = gr.Button("Split Frames", variant="primary")
             # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
             #     WebuiTips.mp4_to_png.render()
         split_button.click(self.split_frames,
@@ -52,7 +51,7 @@ class SplitFrames(TabBase):
                 input_path,
                 output_path,
                 "png",
-                split_type,
+                split_type.lower(),
                 num_groups,
-                action_type,
+                action_type.lower(),
                 False, self.log).split()

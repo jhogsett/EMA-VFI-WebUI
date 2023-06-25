@@ -72,7 +72,7 @@ def create_ui(config : SimpleConfig,
                 ResizeFrames(config, engine, log.log).render_tab()
             ResequenceFiles(config, engine, log.log).render_tab()
             with gr.Tab("Split & Merge Frames"):
-                gr.HTML(SimpleIcons.HAMMER_WRENCH +
+                gr.HTML(SimpleIcons.SPLIT_MERGE_SYMBOL +
                     "Split & Merge large PNG framesets and process in groups",
                     elem_id="tabheading")
                 SplitFrames(config, engine, log.log).render_tab()
