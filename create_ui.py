@@ -29,6 +29,8 @@ from tabs.dedupe_report_ui import DuplicateFramesReport
 from tabs.dedupe_autofill_ui import AutofillFrames
 from tabs.dedupe_tuning_ui import DuplicateTuning
 from tabs.video_details_ui import VideoDetails
+from tabs.split_frames_ui import SplitFrames
+from tabs.merge_frames_ui import MergeFrames
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
@@ -69,6 +71,12 @@ def create_ui(config : SimpleConfig,
                 SimplifyPngFiles(config, engine, log.log).render_tab()
                 ResizeFrames(config, engine, log.log).render_tab()
             ResequenceFiles(config, engine, log.log).render_tab()
+            with gr.Tab("Split & Merge Frames"):
+                gr.HTML(SimpleIcons.HAMMER_WRENCH +
+                    "Split & Merge large PNG framesets and process in groups",
+                    elem_id="tabheading")
+                SplitFrames(config, engine, log.log).render_tab()
+                MergeFrames(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             UpscaleFrames(config, engine, log.log).render_tab()
             VideoDetails(config, engine, log.log).render_tab()
