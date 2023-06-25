@@ -164,6 +164,8 @@ def get_frame_count(input_path : str) -> int:
                     global_options="-v quiet")
     result = ffcmd.run(stdout=subprocess.PIPE)
     stdout = result[0].decode("UTF-8").strip()
+    # sometimes it's output twice
+    stdout = stdout.splitlines()[0]
     return int(stdout)
 
 def get_frame_rate(input_path : str) -> float:
