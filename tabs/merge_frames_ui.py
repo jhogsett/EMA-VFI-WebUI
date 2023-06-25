@@ -20,7 +20,7 @@ class MergeFrames(TabBase):
         """Render tab into UI"""
         with gr.Tab("Merge Frames"):
             gr.Markdown(
-                SimpleIcons.CONV_SYMBOL + "Recombine previously split PNG sequences")
+                SimpleIcons.VULCAN_HAND + "Recombine previously split PNG sequences")
             input_path = gr.Text(max_lines=1, label="Split Groups Base Path",
                 placeholder="Path on this server to the split file group directories")
             output_path = gr.Text(max_lines=1, label="PNG Files Path",
