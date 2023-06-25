@@ -69,6 +69,12 @@ def create_ui(config : SimpleConfig,
                 SimplifyPngFiles(config, engine, log.log).render_tab()
                 ResizeFrames(config, engine, log.log).render_tab()
             ResequenceFiles(config, engine, log.log).render_tab()
+            with gr.Tab("Split & Merge Frames"):
+                gr.HTML(SimpleIcons.SPLIT_MERGE_SYMBOL +
+                    "Split & Merge large PNG framesets and process in groups",
+                    elem_id="tabheading")
+                SplitFrames(config, engine, log.log).render_tab()
+                MergeFrames(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             UpscaleFrames(config, engine, log.log).render_tab()
             VideoDetails(config, engine, log.log).render_tab()
