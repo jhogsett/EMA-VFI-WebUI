@@ -28,15 +28,14 @@ class MergeFrames(TabBase):
             with gr.Row():
                 num_groups = gr.Number(value=-1,
                                        label="Number of Split Groups (-1 for auto-detect)")
-                split_type = gr.Radio(value="precise", label="Split Type",
-                                      choices=["precise", "resynthesis", "inflation"],
-                        info="Choose 'precise' unless the group files will be further processed")
-                action_type = gr.Radio(value="combine", label="Disposition",
-                                       choices=["combine", "revert"],
-            info="Choose 'combine' to merge processed frames, 'revert' to undo a previous split")
-                delete = gr.Checkbox(value=False, label="Delete groups after successful merge")
-            with gr.Row():
-                merge_button = gr.Button("Merge Frames", variant="primary")
+                split_type = gr.Radio(value="Precise", label="Split Type",
+                                      choices=["Precise", "Resynthesis", "Inflation"],
+                        info="Choose the Split Type used when splitting the frames")
+                action_type = gr.Radio(value="Combine", label="Files Action",
+                                       choices=["Combine", "Revert"],
+            info="Choose 'Combine' if groups were processed, 'revert' to undo a previous split")
+            delete = gr.Checkbox(value=False, label="Delete groups after successful merge")
+            merge_button = gr.Button("Merge Frames", variant="primary")
             # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
             #     WebuiTips.mp4_to_png.render()
         merge_button.click(self.merge_frames,
@@ -55,8 +54,8 @@ class MergeFrames(TabBase):
                 input_path,
                 output_path,
                 "png",
-                split_type,
+                split_type.lower(),
                 num_groups,
-                action_type,
+                action_type.lower(),
                 delete,
                 False, self.log).merge()
