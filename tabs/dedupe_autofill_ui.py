@@ -111,7 +111,7 @@ f"""Error deduplicating frames:
     def create_autofill_report(self, input_path : str, output_path : str, threshold : int,
                     max_dupes : int, depth : int, message : str, auto_filled_files : list) -> str:
         report = []
-        report.append("[Autofill Frames Report]")
+        report.append("[Auto-filled Frames Report]")
         report.append(f"input path: {input_path}")
         report.append(f"output path: {output_path}")
         report.append(f"threshold: {threshold}")
