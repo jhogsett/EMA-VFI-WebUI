@@ -66,8 +66,8 @@ class SplitFrames:
             raise ValueError("'input_path' must be a legal path")
         if not is_safe_path(output_path):
             raise ValueError("'output_path' must be a legal path")
-        if num_groups < 1:
-            raise ValueError("'num_groups' must be >= 1")
+        if num_groups < 2:
+            raise ValueError("'num_groups' must be >= 2")
         if not type in valid_types:
             raise ValueError(f"'type' must be one of {', '.join([t for t in valid_types])}")
         if not action in valid_actions:

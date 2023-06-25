@@ -26,7 +26,7 @@ class SplitFrames(TabBase):
             output_path = gr.Text(max_lines=1, label="Split Groups Base Path",
                 placeholder="Path on this server to store the split file group directories")
             with gr.Row():
-                num_groups = gr.Slider(value=10, minimum=1, maximum=1000,
+                num_groups = gr.Slider(value=10, minimum=2, maximum=1000,
                                        label="Number of Split Groups")
                 split_type = gr.Radio(value="Precise", label="Split Type",
                                       choices=["Precise", "Resynthesis", "Inflation"],
