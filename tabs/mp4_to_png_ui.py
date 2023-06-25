@@ -54,6 +54,7 @@ class MP4toPNG(TabBase):
         """Convert button handler"""
         if input_filepath and output_path:
             create_directory(output_path)
+            self.log("using MP4toPNG (may cause long delay while counting frames)")
             ffmpeg_cmd = _MP4toPNG(input_filepath,
                                    output_pattern,
                                    int(frame_rate),
