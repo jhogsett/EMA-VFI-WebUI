@@ -121,6 +121,8 @@ class VideoDetails(TabBase):
                     stream["sample_rate"] = stream_data.get("sample_rate")
                     stream["channels"] = stream_data.get("channels")
                     stream["channel_layout"] = stream_data.get("channel_layout")
+                    stream["sample_aspect_ratio"] = stream_data.get("sample_aspect_ratio")
+                    stream["display_aspect_ratio"] = stream_data.get("display_aspect_ratio")
 
                     # capture video details from the first found video stream
                     if not video_summary and codec_type == "video":
