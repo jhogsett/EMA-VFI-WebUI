@@ -29,6 +29,8 @@ from tabs.dedupe_report_ui import DuplicateFramesReport
 from tabs.dedupe_autofill_ui import AutofillFrames
 from tabs.dedupe_tuning_ui import DuplicateTuning
 from tabs.video_details_ui import VideoDetails
+from tabs.split_frames_ui import SplitFrames
+from tabs.merge_frames_ui import MergeFrames
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,

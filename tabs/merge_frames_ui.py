@@ -20,7 +20,7 @@ class MergeFrames(TabBase):
         """Render tab into UI"""
         with gr.Tab("Merge Frames"):
             gr.Markdown(
-                SimpleIcons.SPLIT_MERGE_SYMBOL + "Recombine previously split PNG sequences")
+                SimpleIcons.CONV_SYMBOL + "Recombine previously split PNG sequences")
             input_path = gr.Text(max_lines=1, label="Split Groups Base Path",
                 placeholder="Path on this server to the split file group directories")
             output_path = gr.Text(max_lines=1, label="PNG Files Path",
@@ -28,14 +28,15 @@ class MergeFrames(TabBase):
             with gr.Row():
                 num_groups = gr.Number(value=-1,
                                        label="Number of Split Groups (-1 for auto-detect)")
-                split_type = gr.Radio(value="Precise", label="Split Type",
-                                      choices=["Precise", "Resynthesis", "Inflation"],
-                    info="Choose 'Resynthesis' or 'Inflation' if split groups were be processed")
-                action_type = gr.Radio(value="Combine", label="Files Action",
-                                       choices=["Combine", "Revert"],
-            info="Choose 'Combine' to merge processed frames, 'Revert' to undo a previous split")
-            delete = gr.Checkbox(value=False, label="Delete groups after successful merge")
-            merge_button = gr.Button("Merge Frames", variant="primary")
+                split_type = gr.Radio(value="precise", label="Split Type",
+                                      choices=["precise", "resynthesis", "inflation"],
+                        info="Choose 'precise' unless the group files will be further processed")
+                action_type = gr.Radio(value="combine", label="Disposition",
+                                       choices=["combine", "revert"],
+            info="Choose 'combine' to merge processed frames, 'revert' to undo a previous split")
+                delete = gr.Checkbox(value=False, label="Delete groups after successful merge")
+            with gr.Row():
+                merge_button = gr.Button("Merge Frames", variant="primary")
             # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
             #     WebuiTips.mp4_to_png.render()
         merge_button.click(self.merge_frames,
@@ -54,8 +55,8 @@ class MergeFrames(TabBase):
                 input_path,
                 output_path,
                 "png",
-                split_type.lower(),
+                split_type,
                 num_groups,
-                action_type.lower(),
+                action_type,
                 delete,
                 False, self.log).merge()

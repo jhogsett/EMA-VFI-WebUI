@@ -482,7 +482,7 @@ class MergeFrames:
 
         group_names = get_directories(self.input_path)
         if len(group_names) < 1:
-            raise ValueError(f"no folders found in directory {self.input_path}")
+            raise ValueError(f"no folders founder in directory {self.input_path}")
 
         if self.num_groups == -1:
             self.num_groups = len(group_names)
