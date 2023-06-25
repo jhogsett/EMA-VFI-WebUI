@@ -26,11 +26,11 @@ def main():
         help="Files action 'combine' (default), 'revert'")
     parser.add_argument("--dry_run", dest="dry_run", default=False, action="store_true",
                         help="Show changes that will be made")
+    parser.add_argument("--delete", default=False, type=bool,
+                        help="Delete source split groups after merging (default False)")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
-
-# add option to delete groups after merge
 
     log = SimpleLog(args.verbose)
     MergeFrames(args.input_path,
@@ -39,6 +39,7 @@ def main():
                 args.type,
                 args.num_groups,
                 args.action,
+                args.delete,
                 args.dry_run,
                 log.log).merge()
 
@@ -51,6 +52,7 @@ class MergeFrames:
                 type : str,
                 num_groups : int,
                 action : str,
+                delete : bool,
                 dry_run : bool,
                 log_fn : Callable | None):
         self.input_path = input_path
@@ -59,6 +61,7 @@ class MergeFrames:
         self.type = type
         self.num_groups = num_groups
         self.action = action
+        self.delete = delete
         self.dry_run = dry_run
         self.log_fn = log_fn
         valid_types = ["precise", "resynthesis", "inflation"]
@@ -96,6 +99,21 @@ class MergeFrames:
             self.merge_inflation(first_index, last_index, num_width, group_names)
         else:
             self.merge_precise(num_width, group_names)
+
+        if self.delete:
+            if self.dry_run:
+                print(f"[Dry Run] Deleting split groups in {self.input_path}")
+            else:
+                self.log(f"Deleting split groups in {self.input_path}")
+            with Mtqdm().open_bar(total=len(group_names), desc="Deleting") as bar:
+                for group_name in group_names:
+                    group_path = self.group_path(group_name)
+                    if self.dry_run:
+                        print(f"[Dry Run] Deleting group {group_path}")
+                    else:
+                        self.log(f"Deleting group {group_path}")
+                        shutil.rmtree(group_path)
+                    Mtqdm().update_bar(bar)
 
     def merge_precise(self, num_width, group_names):
         with Mtqdm().open_bar(total=len(group_names), desc="Groups") as group_bar:
@@ -248,7 +266,7 @@ class MergeFrames:
                     print(f"[Dry Run] Resequencing files in {group_path}")
                 else:
                     self.log(f"Resequencing files in {group_path}")
-                    base_filename = "reverted-resynthesis-split"
+                    base_filename = "combined-resynthesis-split"
 
                     ResequenceFiles(group_path,
                                     self.file_ext,
@@ -320,7 +338,7 @@ class MergeFrames:
                     print(f"[Dry Run] Resequencing files in {group_path}")
                 else:
                     self.log(f"Resequencing files in {group_path}")
-                    base_filename = "reverted-resynthesis-split"
+                    base_filename = "reverted-inflated-split"
 
                     ResequenceFiles(group_path,
                                     self.file_ext,
@@ -408,7 +426,7 @@ class MergeFrames:
                     print(f"[Dry Run] Resequencing files in {group_path}")
                 else:
                     self.log(f"Resequencing files in {group_path}")
-                    base_filename = "reverted-resynthesis-split"
+                    base_filename = "combined-inflation-split"
 
                     ResequenceFiles(group_path,
                                     self.file_ext,
