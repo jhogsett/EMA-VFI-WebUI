@@ -33,7 +33,7 @@ class MergeFrames(TabBase):
                         info="Choose the Split Type used when splitting the frames")
                 action_type = gr.Radio(value="Combine", label="Files Action",
                                        choices=["Combine", "Revert"],
-            info="Choose 'Combine' if groups were processed, 'revert' to undo a previous split")
+            info="Choose 'Combine' if groups were processed, 'Revert' to undo a previous split")
             delete = gr.Checkbox(value=False, label="Delete groups after successful merge")
             merge_button = gr.Button("Merge Frames", variant="primary")
             # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
