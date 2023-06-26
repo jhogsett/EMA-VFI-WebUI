@@ -58,7 +58,7 @@ def MP4toPNG(input_path : str,  # pylint: disable=invalid-name
     """Encapsulate logic for the MP4 to PNG Sequence feature"""
     pattern = filename_pattern or determine_output_pattern(input_path)
     if deinterlace:
-        filter = f"bwdif=mode=send_field:parity=auto:deint=all,fps={frame_rate * 2}"
+        filter = f"bwdif=mode=send_field:parity=auto:deint=all,fps={frame_rate}"
     else:
         filter = f"fps={frame_rate}"
 
