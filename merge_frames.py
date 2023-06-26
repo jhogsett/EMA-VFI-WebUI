@@ -67,15 +67,15 @@ class MergeFrames:
         valid_types = ["precise", "resynthesis", "inflation"]
         valid_actions = ["revert", "combine"]
 
-        if not is_safe_path(input_path):
+        if not is_safe_path(self.input_path):
             raise ValueError("'input_path' must be a legal path")
-        if not is_safe_path(output_path):
+        if not is_safe_path(self.output_path):
             raise ValueError("'output_path' must be a legal path")
-        if num_groups < -1 or num_groups == 0:
+        if self.num_groups < -1 or self.num_groups == 0:
             raise ValueError("'num_groups' must be > 0 or -1")
-        if not type in valid_types:
+        if not self.type in valid_types:
             raise ValueError(f"'type' must be one of {', '.join([t for t in valid_types])}")
-        if not action in valid_actions:
+        if not self.action in valid_actions:
             raise ValueError(f"'action' must be one of {', '.join([t for t in valid_actions])}")
 
     def merge(self) -> None:
@@ -93,7 +93,6 @@ class MergeFrames:
         first_index, last_index, num_width = self.details_from_group_name(first_group_name)
 
         if self.type == "resynthesis":
-
             self.merge_resynthesis(first_index, last_index, num_width, group_names)
         elif self.type == "inflation":
             self.merge_inflation(first_index, last_index, num_width, group_names)

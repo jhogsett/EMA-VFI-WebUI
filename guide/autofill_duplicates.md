@@ -20,6 +20,7 @@
     - Less precision is faster, with possible imprecise frame timing
 1. Click _Deduplicate Frames_
 1. The _Details_ box shows the result of the operation, or any errors encountered
+1. On completion, a report .txt file is written to the output path with details of the auto-filling
 
 ## Important
 - This process could be slow, perhaps many hours long!
