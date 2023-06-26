@@ -110,7 +110,8 @@ class Mtqdm:
         self.current_palette = name
 
     def get_palette(self, name : str):
-        return self.alt_palettes[name] if self.alternation else self.palettes[name]
+        palette_set = self.alt_palettes if self.alternation else self.palettes
+        return palette_set.get(name, palette_set.get("default"))
 
     def get_position(self):
         return self.position
@@ -333,14 +334,21 @@ class MtqdmTester():
         Mtqdm().set_palette("random")
         self.test_bars_2(min, max, delay)
 
+    def test_bars_7(self, min, max, delay):
+        Mtqdm().set_palette("doesnotexist")
+        self.test_bars_2(min, max, delay)
 
-def main():
-    # MtqdmTester().test_bars_1(9, 3, 0.01)
-    #MtqdmTester().test_bars_2(5, 15, 0.1)
-    # MtqdmTester().test_bars_3(10, 10, .001)
-    # MtqdmTester().test_bars_4("rainbow", 5, Mtqdm.MAX_BARS, 10, 1.0)
-    # MtqdmTester().test_bars_5(5, 15, 0.1)
-    MtqdmTester().test_bars_6(5, 10, 0.1)
+    def run_test(self, test : int):
+        {
+            1 : lambda : self.test_bars_1(9, 3, 0.01),
+            2 : lambda : self.test_bars_2(5, 15, 0.1),
+            3 : lambda : self.test_bars_3(10, 10, .001),
+            4 : lambda : self.test_bars_4("rainbow", 5, Mtqdm.MAX_BARS, 10, 1.0),
+            5 : lambda : self.test_bars_5(5, 15, 0.1),
+            6 : lambda : self.test_bars_6(5, 10, 0.1),
+            7 : lambda : self.test_bars_7(5, 10, 0.1),
+        }[test]()
 
 if __name__ == '__main__':
-    main()
+    while True:
+        MtqdmTester().run_test(int(input(f"Mtqdm Test (1..7)):")))

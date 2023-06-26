@@ -58,7 +58,7 @@ def MP4toPNG(input_path : str,  # pylint: disable=invalid-name
     """Encapsulate logic for the MP4 to PNG Sequence feature"""
     pattern = filename_pattern or determine_output_pattern(input_path)
     if deinterlace:
-        filter = f"bwdif=mode=send_field:parity=auto:deint=all,fps={frame_rate * 2}"
+        filter = f"bwdif=mode=send_field:parity=auto:deint=all,fps={frame_rate}"
     else:
         filter = f"fps={frame_rate}"
 
@@ -164,6 +164,8 @@ def get_frame_count(input_path : str) -> int:
                     global_options="-v quiet")
     result = ffcmd.run(stdout=subprocess.PIPE)
     stdout = result[0].decode("UTF-8").strip()
+    # sometimes it's output twice
+    stdout = stdout.splitlines()[0]
     return int(stdout)
 
 def get_frame_rate(input_path : str) -> float:
