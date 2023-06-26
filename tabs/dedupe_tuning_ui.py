@@ -4,8 +4,7 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.video_utils import get_duplicate_frames_report
-# from webui_tips import WebuiTips
+from webui_tips import WebuiTips
 from webui_utils.auto_increment import AutoIncrementDirectory
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
@@ -59,8 +58,8 @@ class DuplicateTuning(TabBase):
             with gr.Row():
                 output_frame = gr.DataFrame(value=None, max_rows=max_rows, interactive=False,
                                             label="Tuning Report")
-            # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-            #     WebuiTips.duplicates_report.render()
+            with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                WebuiTips.deduplicate_tuning.render()
         report_button.click(self.create_report,
                 inputs=[input_path_text, max_dupes, tune_min, tune_max, tune_step],
                 outputs=[file_output, output_frame, error_output])
