@@ -28,21 +28,25 @@ class SplitFrames(TabBase):
             with gr.Row():
                 num_groups = gr.Slider(value=10, minimum=2, maximum=1000,
                                        label="Number of Split Groups")
+                max_files = gr.Number(value=0, label="Maximum Files Per Group (0 = no limit)",
+                        precision=0, info="If set, group count set automatically")
+            with gr.Row():
                 split_type = gr.Radio(value="Precise", label="Split Type",
                                       choices=["Precise", "Resynthesis", "Inflation"],
             info="Choose 'Resynthesis' or 'Inflation' if split groups will be processed further")
                 action_type = gr.Radio(value="Copy", label="Files Action", choices=["Copy", "Move"],
                         info="Choose 'Move' to delete source files after successful split")
             split_button = gr.Button("Split Frames", variant="primary")
-            # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-            #     WebuiTips.mp4_to_png.render()
+            with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                WebuiTips.split_frames.render()
         split_button.click(self.split_frames,
-            inputs=[input_path, output_path, num_groups, split_type, action_type])
+            inputs=[input_path, output_path, num_groups, max_files, split_type, action_type])
 
     def split_frames(self,
                         input_path : str,
                         output_path : str,
                         num_groups : int,
+                        max_files : int,
                         split_type : str,
                         action_type : str):
         """Split button handler"""
@@ -53,5 +57,6 @@ class SplitFrames(TabBase):
                 "png",
                 split_type.lower(),
                 num_groups,
+                max_files,
                 action_type.lower(),
                 False, self.log).split()

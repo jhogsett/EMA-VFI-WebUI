@@ -57,3 +57,5 @@ class WebuiTips:
     duplicates_report = gr.Markdown(load_markdown(tips_path, "duplicates_report"))
     autofill_duplicates = gr.Markdown(load_markdown(tips_path, "autofill_duplicates"))
     video_details = gr.Markdown(load_markdown(tips_path, "video_details"))
+    split_frames = gr.Markdown(load_markdown(tips_path, "split_frames"))
+    merge_frames = gr.Markdown(load_markdown(tips_path, "merge_frames"))

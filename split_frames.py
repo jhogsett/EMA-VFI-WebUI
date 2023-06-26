@@ -22,6 +22,8 @@ def main():
     parser.add_argument("--type", default="precise", type=str,
         help="Split type 'precise' (default), 'resynthesis', 'inflation'")
     parser.add_argument("--num_groups", default=10, type=int, help="Number of new file groups")
+    parser.add_argument("--max_files_per_group", default=0, type=int,
+                        help="Maximum allowed files per group (default: 0 - no limit)")
     parser.add_argument("--action", default="copy", type=str,
         help="Files action 'copy' (default), 'move'")
     parser.add_argument("--dry_run", dest="dry_run", default=False, action="store_true",
@@ -36,6 +38,7 @@ def main():
                 args.file_ext,
                 args.type,
                 args.num_groups,
+                args.max_files_per_group,
                 args.action,
                 args.dry_run,
                 log.log).split()
@@ -48,6 +51,7 @@ class SplitFrames:
                 file_ext : str,
                 type : str,
                 num_groups : int,
+                max_files : int,
                 action : str,
                 dry_run : bool,
                 log_fn : Callable | None):
@@ -56,22 +60,25 @@ class SplitFrames:
         self.file_ext = file_ext
         self.type = type
         self.num_groups = num_groups
+        self.max_files = max_files
         self.action = action
         self.dry_run = dry_run
         self.log_fn = log_fn
         valid_types = ["precise", "resynthesis", "inflation"]
         valid_actions = ["copy", "move"]
 
-        if not is_safe_path(input_path):
+        if not is_safe_path(self.input_path):
             raise ValueError("'input_path' must be a legal path")
-        if not is_safe_path(output_path):
+        if not is_safe_path(self.output_path):
             raise ValueError("'output_path' must be a legal path")
-        if num_groups < 2:
+        if self.num_groups < 2:
             raise ValueError("'num_groups' must be >= 2")
-        if not type in valid_types:
+        if not self.type in valid_types:
             raise ValueError(f"'type' must be one of {', '.join([t for t in valid_types])}")
-        if not action in valid_actions:
+        if not self.action in valid_actions:
             raise ValueError(f"'action' must be one of {', '.join([t for t in valid_actions])}")
+        if self.max_files < 0:
+            raise ValueError("'max_files_per_group' must be >= 0")
 
     def split(self) -> None:
         """Invoke the Split Frames feature"""
@@ -80,11 +87,18 @@ class SplitFrames:
         if self.num_groups > num_files:
             raise ValueError(f"'num_groups' must be <= source file count {num_files}")
         num_width = len(str(num_files))
+
+        if self.max_files > 0:
+            files_per_group = self.max_files
+            needed_groups = int(math.ceil(num_files / self.max_files))
+            self.num_groups = needed_groups
+            self.log(f"overriding 'num_groups' with computed value {needed_groups}")
+        else:
+            files_per_group = int(math.ceil(num_files / self.num_groups))
+        self.log(f"Splitting files to {self.num_groups} groups of {files_per_group} files")
+
         add_resynthesis_frames = self.type == "resynthesis"
         add_inflation_frame = self.type == "inflation"
-
-        files_per_group = int(math.ceil(num_files / self.num_groups))
-        self.log(f"Splitting files to {self.num_groups} groups of {files_per_group} files")
 
         if self.dry_run:
             print(f"[Dry Run] Creating base output path {self.output_path}")

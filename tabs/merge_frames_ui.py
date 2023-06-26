@@ -36,8 +36,8 @@ class MergeFrames(TabBase):
             info="Choose 'Combine' if groups were processed, 'Revert' to undo a previous split")
             delete = gr.Checkbox(value=False, label="Delete groups after successful merge")
             merge_button = gr.Button("Merge Frames", variant="primary")
-            # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-            #     WebuiTips.mp4_to_png.render()
+            with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                WebuiTips.merge_frames.render()
         merge_button.click(self.merge_frames,
             inputs=[input_path, output_path, num_groups, split_type, action_type, delete])
 
