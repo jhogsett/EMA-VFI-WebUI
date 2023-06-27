@@ -7,6 +7,8 @@
 
 ![Screenshot 2023-03-11 213719](https://user-images.githubusercontent.com/825994/224527350-40808713-2f0b-4110-a544-a56b44ed18bf.png)
 
+_**💥 See more samples in the**_ [Samples Showcase](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Showcase)
+
 | Example - Interpolated Frames |
 |:--:|
 | ![example](https://user-images.githubusercontent.com/825994/224527362-90fb4b00-8433-44e9-a179-7c34dcd5f24e.gif) |
