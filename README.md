@@ -125,20 +125,6 @@ The core feature have command-line equivalents
 
 [Wiki - App Configuration](https://github.com/jhogsett/VFIformer-WebUI/wiki/App-Configuration)
 
-# Future Ideas
-
-- Use `multi_inference` instead of single inference with _Frame Search_ for time-based frame searches
-- Consolidate the applications; make the interpolation engine switchable in the application
-- add Audio tools
-
-<!--# My Public Uses of VFIformer
-
-YouTube
-- Feb 01 2023 "Fun with AI: De-Ticking a Ticking Clock" https://youtu.be/JhibFQvP7X0
-- Jan 28 2023 "Fun with AI: Infinite Slow Motion" https://youtu.be/sKQKuYU-fcQ
-- Jan 24 2023 "Fun with AI: Me as a Baby, Restoring 60 year old 8mm film" https://youtu.be/PiLv5u1PYiE
--->
-
 # Acknowledgements
 
 Thanks! to the EMA-VFI folks for their amazing AI frame interpolation tool
@@ -153,8 +139,3 @@ Thanks! to the stable-diffusion-webui folks for their great UI, amazing tool, an
 Thanks to Gradio for their easy-to-use Web UI building tool and great docs
 - https://gradio.app/
 - https://github.com/gradio-app/gradio
-
-<!-- Royalty-Free Videos used for the examples
-- "FunfaIr in Barcelona" https://motionarray.com/stock-video/funfair-in-barcelona-1163645/
-- "Batter Misses A Pitch" https://motionarray.com/stock-video/batter-misses-a-pitch-1231021/
-- "Bursting A Balloon" https://motionarray.com/stock-video/bursting-a-balloon-253645/ -->
