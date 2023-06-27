@@ -7,6 +7,7 @@ from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
 from split_frames import SplitFrames as _SplitFrames
+from webui_utils.auto_increment import AutoIncrementFilename
 
 class SplitFrames(TabBase):
     """Encapsulates UI elements and events for the Split Frames feature"""
@@ -51,7 +52,7 @@ class SplitFrames(TabBase):
                         action_type : str):
         """Split button handler"""
         if input_path and output_path:
-            _SplitFrames(
+            group_paths = _SplitFrames(
                 input_path,
                 output_path,
                 "png",
@@ -60,3 +61,37 @@ class SplitFrames(TabBase):
                 max_files,
                 action_type.lower(),
                 False, self.log).split()
+
+            report = self.create_split_report(input_path,
+                                              output_path,
+                                              split_type,
+                                              num_groups,
+                                              max_files,
+                                              action_type,
+                                              group_paths)
+
+            report_filepath, _ = AutoIncrementFilename(output_path, "txt").next_filename(
+                                                                    "split-frames-report", "txt")
+            with open(report_filepath, "w", encoding="UTF-8") as file:
+                file.write(report)
+
+    def create_split_report(self,
+                            input_path : str,
+                            output_path : str,
+                            split_type : str,
+                            num_groups : str,
+                            max_files : str,
+                            action_type,
+                            group_paths):
+        report = []
+        report.append("[Split Frames Report]")
+        report.append(f"input path: {input_path}")
+        report.append(f"output path: {output_path}")
+        report.append(f"split type: {split_type}")
+        report.append(f"num groups: {num_groups}")
+        report.append(f"max files: {max_files}")
+        report.append(f"action type: {action_type}")
+        report.append("")
+        report.append("[Split Group Directories]")
+        report += group_paths
+        return "\r\n".join(report)

@@ -80,7 +80,7 @@ class SplitFrames:
         if self.max_files < 0:
             raise ValueError("'max_files_per_group' must be >= 0")
 
-    def split(self) -> None:
+    def split(self) -> list:
         """Invoke the Split Frames feature"""
         files = sorted(glob.glob(os.path.join(self.input_path, f"*.{self.file_ext}")))
         num_files = len(files)
@@ -160,6 +160,7 @@ class SplitFrames:
                     self.log("Adding after anchor frame")
                     file_groups[group] = file_groups[group] + [next_start_file]
 
+        group_paths = []
         with Mtqdm().open_bar(total=self.num_groups, desc="Groups") as group_bar:
             for group in range(self.num_groups):
                 group_files = file_groups[group]
@@ -187,6 +188,7 @@ class SplitFrames:
                 group_name = f"{str(group_name_first_index).zfill(num_width)}" +\
                     f"-{str(group_name_last_index).zfill(num_width)}"
                 group_path = os.path.join(self.output_path, group_name)
+                group_paths.append(group_path)
 
                 if self.dry_run:
                     self.log(f"[Dry Run] Creating directory {group_path}")
@@ -231,6 +233,8 @@ class SplitFrames:
                             self.log(f"Deleting {file}")
                             os.remove(file)
                     Mtqdm().update_bar(bar)
+
+        return group_paths
 
     def log(self, message : str) -> None:
         """Logging"""
