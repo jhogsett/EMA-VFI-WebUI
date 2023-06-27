@@ -125,6 +125,10 @@ The core feature have command-line equivalents
 
 [Wiki - App Configuration](https://github.com/jhogsett/VFIformer-WebUI/wiki/App-Configuration)
 
+# Samples Showcase
+
+[Samples Showcase](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Samples-Showcase)
+
 # Acknowledgements
 
 Thanks! to the EMA-VFI folks for their amazing AI frame interpolation tool
