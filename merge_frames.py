@@ -233,7 +233,7 @@ class MergeFrames:
                 # restore the original filenames
                 self.log(f"Restoring original filenames in {group_path}")
                 with Mtqdm().open_bar(total=len(renamed_group_files),
-                                        desc="Copying") as bar:
+                                        desc="Renaming") as bar:
                     for index, file in enumerate(renamed_group_files):
                         original_filename = group_files[index]
                         if self.dry_run:
@@ -252,9 +252,15 @@ class MergeFrames:
             for group_index, group_name in enumerate(group_names):
                 group_expected_files = expected_files
 
-                if group_index == 0 or group_index == len(group_names)-1:
-                    group_expected_files -=1 # one fewer frame in the outer groups
-                                             # outer frames can't have anchor frames added
+                if group_index == 0:
+                    # one fewer frame; outer frames can't have anchor frames
+                    group_expected_files -=1
+                elif group_index == len(group_names)-1:
+                    # get this group's file count, as it may be truncated being the final group
+                    # next, have one fewer frame; outer frames can't have anchor frames
+                    first_index, last_index, _ = self.details_from_group_name(group_name)
+                    group_size = last_index - first_index
+                    group_expected_files = group_size - 1
 
                 group_files = self.group_files(group_name)
                 if len(group_files) != group_expected_files:
@@ -299,7 +305,7 @@ class MergeFrames:
                 # restore the original filenames
                 self.log(f"Restoring original filenames in {group_path}")
                 with Mtqdm().open_bar(total=len(renamed_group_files),
-                                        desc="Copying") as bar:
+                                        desc="Renaming") as bar:
                     for index, file in enumerate(renamed_group_files):
                         original_filename = group_files[index]
                         if self.dry_run:
@@ -378,7 +384,7 @@ class MergeFrames:
                 # restore the original filenames
                 self.log(f"Restoring original filenames in {group_path}")
                 with Mtqdm().open_bar(total=len(renamed_group_files),
-                                        desc="Copying") as bar:
+                                        desc="Renaming") as bar:
                     for index, file in enumerate(renamed_group_files):
                         original_filename = group_files[index]
                         if self.dry_run:
@@ -466,7 +472,7 @@ class MergeFrames:
                 # restore the original filenames
                 self.log(f"Restoring original filenames in {group_path}")
                 with Mtqdm().open_bar(total=len(renamed_group_files),
-                                        desc="Copying") as bar:
+                                        desc="Renaming") as bar:
                     for index, file in enumerate(renamed_group_files):
                         original_filename = group_files[index]
                         if self.dry_run:
