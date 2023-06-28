@@ -230,6 +230,7 @@ class DeduplicateFrames:
 
             # remove duplicates from full list of frame files
             all_filenames = frame_filenames.copy()
+            deleted_files = []
             dupe_count = 0
             for index, group in enumerate(dupe_groups):
                 self.log(f"processing group #{index+1}")
@@ -244,6 +245,7 @@ class DeduplicateFrames:
                 for filepath in dupes:
                     self.log(f"excluding {filepath}")
                     frame_filenames.remove(filepath)
+                    deleted_files.append(filepath)
                     dupe_count += 1
 
             with Mtqdm().open_bar(total=len(frame_filenames), desc="Copying") as bar:
@@ -259,7 +261,8 @@ class DeduplicateFrames:
             self.log(message)
             if not suppress_output:
                 print(message)
-            return message, dupe_groups, all_filenames
+            return message, dupe_groups, all_filenames, deleted_files
+
         except RuntimeError as error:
             message = f"Error generating report: {error}"
             self.log(message)
@@ -274,7 +277,7 @@ class DeduplicateFrames:
         # repurpose max_dupes for auto-fill to mean: skip auto-fill on groups larger than this size
         ignore_over_size = self.max_dupes
         self.max_dupes = 0
-        _, dupe_groups, frame_filenames = self.invoke_delete(True,
+        _, dupe_groups, frame_filenames, _ = self.invoke_delete(True,
                                                              max_size_for_delete=ignore_over_size)
 
         self.log(f"beginning processing of {len(dupe_groups)} duplicate frame groups")
