@@ -233,7 +233,7 @@ class MergeFrames:
                 # restore the original filenames
                 self.log(f"Restoring original filenames in {group_path}")
                 with Mtqdm().open_bar(total=len(renamed_group_files),
-                                        desc="Copying") as bar:
+                                        desc="Renaming") as bar:
                     for index, file in enumerate(renamed_group_files):
                         original_filename = group_files[index]
                         if self.dry_run:
@@ -299,7 +299,7 @@ class MergeFrames:
                 # restore the original filenames
                 self.log(f"Restoring original filenames in {group_path}")
                 with Mtqdm().open_bar(total=len(renamed_group_files),
-                                        desc="Copying") as bar:
+                                        desc="Renaming") as bar:
                     for index, file in enumerate(renamed_group_files):
                         original_filename = group_files[index]
                         if self.dry_run:
@@ -378,7 +378,7 @@ class MergeFrames:
                 # restore the original filenames
                 self.log(f"Restoring original filenames in {group_path}")
                 with Mtqdm().open_bar(total=len(renamed_group_files),
-                                        desc="Copying") as bar:
+                                        desc="Renaming") as bar:
                     for index, file in enumerate(renamed_group_files):
                         original_filename = group_files[index]
                         if self.dry_run:
@@ -466,7 +466,7 @@ class MergeFrames:
                 # restore the original filenames
                 self.log(f"Restoring original filenames in {group_path}")
                 with Mtqdm().open_bar(total=len(renamed_group_files),
-                                        desc="Copying") as bar:
+                                        desc="Renaming") as bar:
                     for index, file in enumerate(renamed_group_files):
                         original_filename = group_files[index]
                         if self.dry_run:
