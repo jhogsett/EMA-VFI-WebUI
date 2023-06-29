@@ -117,13 +117,16 @@ class MergeFrames:
     def merge_precise(self, num_width, group_names):
         with Mtqdm().open_bar(total=len(group_names), desc="Groups") as group_bar:
             for group_name in group_names:
-                first_index, last_index, _ = self.details_from_group_name(group_name)
-                group_size = last_index - first_index + 1
-                expected_files = group_size
                 group_files = self.group_files(group_name)
-                if len(group_files) != expected_files:
-                    raise RuntimeError(
-                        f"expected {expected_files} files in {group_name} but found {len(group_files)}")
+
+                if self.action == "revert":
+                    # if reverting, expect to be able to undo the split without changes
+                    first_index, last_index, _ = self.details_from_group_name(group_name)
+                    group_size = last_index - first_index + 1
+                    expected_files = group_size
+                    if len(group_files) != expected_files:
+                        raise RuntimeError(
+                    f"expected {expected_files} files in {group_name} but found {len(group_files)}")
 
                 with Mtqdm().open_bar(total=len(group_files), desc="Copying") as file_bar:
                     for file in group_files:
@@ -483,9 +486,6 @@ class MergeFrames:
                             os.replace(file, original_filename)
                         Mtqdm().update_bar(bar)
                 Mtqdm().update_bar(group_bar)
-
-
-
 
     def validate_input_path(self):
         """returns the list of group names"""

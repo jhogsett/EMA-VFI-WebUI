@@ -27,8 +27,11 @@
     - _Files Action_ is _Combine_:
         - Merges all files found in the group directories
         - Files retain their original filenames
+        - Files within groups can differ from the original group count
     - _Files Action_ is _Revert_:
-        - Same as _Combine_
+        - Merges all files found in the group directories
+        - Files retain their original filenames
+        - **Files within groups must match the original group count**
 - **Resynthesize**
     - _Files Action_ is _Combine:_
         - Merges the _resynthesized_ set of files found in the group directories
