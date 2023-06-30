@@ -5,7 +5,7 @@
 
 # EMA-VFI-WebUI - AI-Based Movie Restoration
 
-![Screenshot 2023-03-11 213719](https://user-images.githubusercontent.com/825994/224527350-40808713-2f0b-4110-a544-a56b44ed18bf.png)
+![frame-interpolation](https://github.com/jhogsett/EMA-VFI-WebUI/assets/825994/2370458c-6414-421f-8aa2-33a0db84c2cf)
 
 _**💥 See more samples in the**_ [Samples Showcase](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Samples-Showcase)
 
