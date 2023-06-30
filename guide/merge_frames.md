@@ -1,4 +1,4 @@
-**Merge Frames** - Merge a previously split set of of PNG framess
+**Merge Frames** - Merge a previously split set of of PNG frames
 
 ## Uses
 - Recombine groups after a large processing run
