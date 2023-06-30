@@ -337,7 +337,7 @@ def get_duplicate_frames_report(input_path : str,
 
 
 
-def get_detected_scenes(input_path : str, threshold : float):
+def get_detected_scenes(input_path : str, threshold : float=0.5):
     # ffmpeg -framerate 1 -i "G:\CONTENT\HH\TEST\png%05d.png" -filter_complex "select='gt(scene,0.6)',metadata=print:file=-" -f null -
     # frame:0    pts:5152    pts_time:5152
     # lavfi.scene_score=0.973331
@@ -357,67 +357,51 @@ def get_detected_scenes(input_path : str, threshold : float):
         outputs={output_sequence : f"-filter_complex {filter} -f null"},
         global_options="-loglevel quiet")
     # cmd = ffcmd.cmd
-    result = ffcmd.run(stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = ffcmd.run(stdout=subprocess.PIPE)
     stdout = result[0].decode("UTF-8")
-    # stderr = result[1].decode("UTF-8")
     stdout_lines = stdout.splitlines()
-
-    # print(stdout_lines)
-
-    scene_frames = [
+    return [
         int(line.split()[1].split(":")[1]) for line in stdout_lines if line.startswith("frame:")]
 
-    print(scene_frames)
+def get_detected_breaks(input_path : str, duration : float=1.0, ratio : float=0.98):
+    # ffmpeg -framerate 1 -i "G:\CONTENT\HH\TEST\png%05d.png" -filter_complex "blackdetect=d=0.5,metadata=print:file=bldet.txt" -f null -
+    # frame:5106 pts:5106    pts_time:5106
+    # lavfi.black_start=5106
+    # frame:5152 pts:5152    pts_time:5152
+    # lavfi.black_end=5152
+    if not os.path.exists(input_path):
+        raise ValueError(f"path does not exist: {input_path}")
+    if not isinstance(duration, float):
+        raise ValueError(f"'duration' (seconds) must be a float")
+    if duration <= 0.0:
+        raise ValueError(f"'duration' must > 0.0")
+    if not isinstance(ratio, float):
+        raise ValueError(f"'ratio' (0.0-1.0) must be a float")
+    if ratio < 0.0 or ratio > 1.0:
+        raise ValueError(f"'ratio' must between 0.0 and 1.0")
 
-#     keep_drop_lines = [line for line in decimate_lines if " keep " in line or " drop " in line]
-#     is_dupe_map = [None] * len(keep_drop_lines)
-#     for index, line in enumerate(keep_drop_lines):
-#         is_dupe_map[index] = " drop " in line
+    filename_pattern = determine_input_pattern(input_path)
+    input_sequence = os.path.join(input_path, filename_pattern)
+    output_sequence = "-"
+    filter = f"blackdetect=d={duration}:pic_th={ratio},metadata=print:file=-"
 
-#     filenames = sorted(glob.glob(os.path.join(input_path, "*.png")))
-#     if len(filenames) != len(keep_drop_lines):
-#         raise ValueError(
-#     f"frame count mismatch FFmpeg ({len(keep_drop_lines)}) vs found files ({len(filenames)})")
+    ffcmd = FFmpeg(inputs= {input_sequence : "-framerate 1"},
+        outputs={output_sequence : f"-filter_complex {filter} -f null"},
+        global_options="-loglevel quiet")
+    # cmd = ffcmd.cmd
+    result = ffcmd.run(stdout=subprocess.PIPE)
+    stdout = result[0].decode("UTF-8")
+    stdout_lines = stdout.splitlines()
+    start_frames = [int(line.split("=")[1]) for line in stdout_lines if line.startswith("lavfi.black_start")]
+    end_frames = [int(line.split("=")[1]) for line in stdout_lines if line.startswith("lavfi.black_end")]
 
-#     groups = []
-#     group = {}
-#     is_in_group = False
-#     for index, is_dupe in enumerate(is_dupe_map):
-#         if is_dupe:
-#             if max_dupes_per_group == 1:
-#                 raise RuntimeError(
-# f"max_dupes_per_group exceeded: 2 in group #{len(groups)+1}, duplicate frame #{index}")
-#             if not is_in_group:
-#                 is_in_group = True
-#                 group = {}
-#                 # add the preceding frame as the first duplicate of this group
-#                 group[index-1] = filenames[index-1]
-#             else:
-#                 if max_dupes_per_group:
-#                     if len(group)+1 > max_dupes_per_group:
-#                         raise RuntimeError(
-# f"max_dupes_per_group exceeded: {len(group)+1} in group #{len(groups)+1}, duplicate frame #{index}")
-#             group[index] = filenames[index]
-#         else:
-#             if is_in_group:
-#                 groups.append(group)
-#                 is_in_group = False
-#     if is_in_group:
-#         groups.append(group)
-#     return groups, filenames, decimate_lines
+    print(start_frames, end_frames)
 
+    if len(start_frames) != len(end_frames):
+        raise RuntimeError("unable to parse detected breaks")
 
-# ffmpeg -framerate 1 -i "G:\CONTENT\HH\TEST\png%05d.png" -filter_complex "blackdetect=d=0.5,metadata=print:file=bldet.txt" -f null -
-
-# frame:5106 pts:5106    pts_time:5106
-# lavfi.black_start=5106
-# frame:5152 pts:5152    pts_time:5152
-# lavfi.black_end=5152
-
-def get_detected_breaks(input_path : str, duration : float, ratio : float):
-    pass
-
-
-
-
-
+    breaks = []
+    for index, start in enumerate(start_frames):
+        end = end_frames[index]
+        breaks.append(int((start + end) / 2))
+    return breaks
