@@ -1,4 +1,4 @@
-**Video Blender New Project** - Automated setup of a new Video Blender project
+**Video Blender New Project** - Automated set up of a new Video Blender project
 
 ## How To Use
 

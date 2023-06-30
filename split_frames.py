@@ -167,7 +167,9 @@ class SplitFrames:
                 num_group_files = len(group_files)
                 first_index = group * files_per_group
                 last_index = ((group+1) * files_per_group) - 1
-                if last_index > num_files:
+
+                # deal with a possibly incomplete last group
+                if last_index >= num_files:
                     last_index = num_files-1
 
                 group_name_first_index = first_index
