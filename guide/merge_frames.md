@@ -27,6 +27,7 @@
     - _Files Action_ is _Combine_:
         - Merges all files found in the group directories
         - Files retain their original filenames
+            - _Note: if the group name is unchanged from the original split, the files are renamed to avoid a file naming clash_
         - Files within groups can differ from the original group count
     - _Files Action_ is _Revert_:
         - Merges all files found in the group directories

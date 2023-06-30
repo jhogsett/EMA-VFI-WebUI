@@ -81,23 +81,18 @@ class MergeFrames:
     def merge(self) -> None:
         """Invoke the Merge Frames feature"""
         group_names = self.validate_input_path()
-        self.validate_group_names(group_names)
-
         if self.dry_run:
             print(f"[Dry Run] Creating output path {self.output_path}")
         else:
             self.log(f"Creating output path {self.output_path}")
             create_directory(self.output_path)
 
-        first_group_name = group_names[0]
-        first_index, last_index, num_width = self.details_from_group_name(first_group_name)
-
         if self.type == "resynthesis":
-            self.merge_resynthesis(first_index, last_index, num_width, group_names)
+            self.merge_resynthesis(group_names)
         elif self.type == "inflation":
-            self.merge_inflation(first_index, last_index, num_width, group_names)
+            self.merge_inflation(group_names)
         else:
-            self.merge_precise(num_width, group_names)
+            self.merge_precise(group_names)
 
         if self.delete:
             if self.dry_run:
@@ -114,26 +109,58 @@ class MergeFrames:
                         shutil.rmtree(group_path)
                     Mtqdm().update_bar(bar)
 
-    def merge_precise(self, num_width, group_names):
+    def merge_precise(self, group_names):
+        if self.action == "revert":
+            # if undoing a precise split, the group names are expected to be unchanged
+            # (but whole groups can have been deleted)
+            self.validate_group_names(group_names)
+
         with Mtqdm().open_bar(total=len(group_names), desc="Groups") as group_bar:
             for group_name in group_names:
                 group_files = self.group_files(group_name)
 
                 if self.action == "revert":
-                    # if reverting, expect to be able to undo the split without changes
                     first_index, last_index, _ = self.details_from_group_name(group_name)
                     group_size = last_index - first_index + 1
                     expected_files = group_size
                     if len(group_files) != expected_files:
                         raise RuntimeError(
                     f"expected {expected_files} files in {group_name} but found {len(group_files)}")
+                else:
+                    # when combining, if the group 'first' and 'last' indexes CAN be obtained,
+                    # assume the group needs recombining after processing like 'Upscale Frames',
+                    # because the filenames may have been changed which could clash on merging
+                    try:
+                        first_index, _, num_width = self.details_from_group_name(group_name)
+                        group_path = self.group_path(group_name)
+                        self.log(
+                f"group name {group_name} is parsable, resequencing files to prevent name clash")
+
+                        if self.dry_run:
+                            print(f"[Dry Run] Resequencing files in {group_path}")
+                        else:
+                            self.log(f"Resequencing files in {group_path}")
+                            base_filename = "combined-precision-split"
+                            ResequenceFiles(group_path,
+                                            self.file_ext,
+                                            base_filename,
+                                            first_index, 1, 1, 0, num_width,
+                                            True,
+                                            self.log).resequence()
+                        group_files = self.group_files(group_name)
+                    except RuntimeError:
+                        # group name is not parsable, don't bother renaming files,
+                        # the user is responsible for ensuring the names don't clash on merging
+                        self.log(
+                            f"group name {group_name} not is parsable, skipping file resequencing")
 
                 with Mtqdm().open_bar(total=len(group_files), desc="Copying") as file_bar:
                     for file in group_files:
                         _, filename, ext = split_filepath(file)
                         to_filepath = os.path.join(self.output_path, filename + ext)
                         if os.path.exists(to_filepath):
-                            raise RuntimeError(f"file {to_filepath} already exists in the output path")
+                            raise RuntimeError(
+                                f"file {to_filepath} already exists in the output path")
                         if self.dry_run:
                             print(f"[Dry Run] copying {file} to {to_filepath}")
                         else:
@@ -153,8 +180,12 @@ class MergeFrames:
                         shutil.rmtree(group_path)
                     Mtqdm().update_bar(bar)
 
-    def merge_resynthesis(self, first_index, last_index, num_width, group_names):
+    def merge_resynthesis(self, group_names):
+        self.validate_group_names(group_names)
+        first_group_name = group_names[0]
+        first_index, last_index, num_width = self.details_from_group_name(first_group_name)
         group_size = last_index - first_index
+
         if self.action == "combine":
             self.merge_resynthesis_combine(first_index, last_index, num_width, group_size, group_names)
         else:
@@ -320,7 +351,10 @@ class MergeFrames:
                         Mtqdm().update_bar(bar)
                 Mtqdm().update_bar(group_bar)
 
-    def merge_inflation(self, first_index, last_index, num_width, group_names):
+    def merge_inflation(self, group_names):
+        self.validate_group_names(group_names)
+        first_group_name = group_names[0]
+        first_index, last_index, num_width = self.details_from_group_name(first_group_name)
         group_size = last_index - first_index
         if self.action == "combine":
             self.merge_inflation_combine(first_index, last_index, num_width, group_size, group_names)
@@ -520,7 +554,10 @@ class MergeFrames:
         num_width = len(str(first_index))
         if num_width < 1:
             raise RuntimeError(f"group name '{group_name}' cannot be parsed into index fill width")
-        return int(first_index), int(last_index), num_width
+        try:
+            return int(first_index), int(last_index), num_width
+        except ValueError:
+            raise RuntimeError(f"group name '{group_name}' cannot be parsed into frames indexes")
 
     def group_path(self, group_name):
         return os.path.join(self.input_path, group_name)
