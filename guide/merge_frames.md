@@ -1,4 +1,4 @@
-**Merge Frames** - Merge a previously split set of of PNG framess
+**Merge Frames** - Merge a previously split set of of PNG frames
 
 ## Uses
 - Recombine groups after a large processing run
@@ -26,8 +26,10 @@
 - **Precise**
     - _Files Action_ is _Combine_:
         - Merges all files found in the group directories
-        - Files retain their original filenames
-        - Files within groups can differ from the original group count
+        - **If the group names are unchanged since the original split:**
+            - The files will be **renamed** and merged, assuming they have been processed by a feature likke _Upscale Frames_ that may change filenames but not file counts
+        - **If the group names are not frame indexes (renamed):**
+            - The files will be merged _as-is_ without renaming, assuming they may have been processed by hand, for example, deleting unwanted frames or groups
     - _Files Action_ is _Revert_:
         - Merges all files found in the group directories
         - Files retain their original filenames

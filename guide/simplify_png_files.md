@@ -1,4 +1,4 @@
-**Simplify PNG Files** - Remove Interfering PNG Chunks
+**Clean PNG Files** - Remove Interfering PNG Chunks
 
 ## Why It's Needed
 

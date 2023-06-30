@@ -27,5 +27,6 @@
 1. Click _Resize Frames_
 1. When complete, the output path will contain a new set of frames
 
-## Note
+## Important
+- If cropping only, the original image dimensions must be entered into the _Scale Width_ and _Scale Height_ fields
 - Cropping is performed after resizing

@@ -11,7 +11,7 @@
 Two third-party packages are required to use this feature:
 * FFmpeg for file conversion [free download](https://ffmpeg.org/download.html)
     - `ffmpeg.exe` and `ffprobe.exe` must be available on the system path
-* Real-ESRGAN for frame restoration/upscaling [see wiki page](https://github.com/jhogsett/VFIformer-WebUI/wiki/Installing-Real-ESRGAN-Add-On)
+* Real-ESRGAN for frame restoration/upscaling [see wiki page](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Installing-Real-ESRGAN-Add-On)
     - The `realesrgan` directory must be copied to the `EMA-VFI-WebUI` directory
 
 ## How it works
