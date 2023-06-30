@@ -333,3 +333,91 @@ def get_duplicate_frames_report(input_path : str,
         for key in entry.keys():
             report.append(f"Frame#{key} : {entry[key]}")
     return "\r\n".join(report)
+
+
+
+
+def get_detected_scenes(input_path : str, threshold : float):
+    # ffmpeg -framerate 1 -i "G:\CONTENT\HH\TEST\png%05d.png" -filter_complex "select='gt(scene,0.6)',metadata=print:file=-" -f null -
+    # frame:0    pts:5152    pts_time:5152
+    # lavfi.scene_score=0.973331
+    if not os.path.exists(input_path):
+        raise ValueError(f"path does not exist: {input_path}")
+    if not isinstance(threshold, float):
+        raise ValueError(f"'threshold' must a float between 0.0 and 1.0")
+    if threshold < 0.0 or threshold > 1.0:
+        raise ValueError(f"'threshold' must between 0.0 and 1.0")
+
+    filename_pattern = determine_input_pattern(input_path)
+    input_sequence = os.path.join(input_path, filename_pattern)
+    output_sequence = "-"
+    filter = f"select='gt(scene\,{threshold})',metadata=print:file=-"
+
+    ffcmd = FFmpeg(inputs= {input_sequence : None},
+        outputs={output_sequence : f"-filter_complex {filter} -f null"},
+        global_options="-loglevel quiet")
+    # cmd = ffcmd.cmd
+    result = ffcmd.run(stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout = result[0].decode("UTF-8")
+    # stderr = result[1].decode("UTF-8")
+    stdout_lines = stdout.splitlines()
+
+    # print(stdout_lines)
+
+    scene_frames = [
+        int(line.split()[1].split(":")[1]) for line in stdout_lines if line.startswith("frame:")]
+
+    print(scene_frames)
+
+#     keep_drop_lines = [line for line in decimate_lines if " keep " in line or " drop " in line]
+#     is_dupe_map = [None] * len(keep_drop_lines)
+#     for index, line in enumerate(keep_drop_lines):
+#         is_dupe_map[index] = " drop " in line
+
+#     filenames = sorted(glob.glob(os.path.join(input_path, "*.png")))
+#     if len(filenames) != len(keep_drop_lines):
+#         raise ValueError(
+#     f"frame count mismatch FFmpeg ({len(keep_drop_lines)}) vs found files ({len(filenames)})")
+
+#     groups = []
+#     group = {}
+#     is_in_group = False
+#     for index, is_dupe in enumerate(is_dupe_map):
+#         if is_dupe:
+#             if max_dupes_per_group == 1:
+#                 raise RuntimeError(
+# f"max_dupes_per_group exceeded: 2 in group #{len(groups)+1}, duplicate frame #{index}")
+#             if not is_in_group:
+#                 is_in_group = True
+#                 group = {}
+#                 # add the preceding frame as the first duplicate of this group
+#                 group[index-1] = filenames[index-1]
+#             else:
+#                 if max_dupes_per_group:
+#                     if len(group)+1 > max_dupes_per_group:
+#                         raise RuntimeError(
+# f"max_dupes_per_group exceeded: {len(group)+1} in group #{len(groups)+1}, duplicate frame #{index}")
+#             group[index] = filenames[index]
+#         else:
+#             if is_in_group:
+#                 groups.append(group)
+#                 is_in_group = False
+#     if is_in_group:
+#         groups.append(group)
+#     return groups, filenames, decimate_lines
+
+
+# ffmpeg -framerate 1 -i "G:\CONTENT\HH\TEST\png%05d.png" -filter_complex "blackdetect=d=0.5,metadata=print:file=bldet.txt" -f null -
+
+# frame:5106 pts:5106    pts_time:5106
+# lavfi.black_start=5106
+# frame:5152 pts:5152    pts_time:5152
+# lavfi.black_end=5152
+
+def get_detected_breaks(input_path : str, duration : float, ratio : float):
+    pass
+
+
+
+
+
