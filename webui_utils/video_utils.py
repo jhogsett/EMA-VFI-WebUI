@@ -333,3 +333,88 @@ def get_duplicate_frames_report(input_path : str,
         for key in entry.keys():
             report.append(f"Frame#{key} : {entry[key]}")
     return "\r\n".join(report)
+
+def get_detected_scenes(input_path : str, threshold : float=0.5):
+    # ffmpeg -framerate 1 -i "G:\CONTENT\HH\TEST\png%05d.png" -filter_complex "select='gt(scene,0.6)',metadata=print:file=-" -f null -
+    # frame:0    pts:5152    pts_time:5152
+    # lavfi.scene_score=0.973331
+    if not os.path.exists(input_path):
+        raise ValueError(f"path does not exist: {input_path}")
+    if not isinstance(threshold, float):
+        raise ValueError(f"'threshold' must a float between 0.0 and 1.0")
+    if threshold < 0.0 or threshold > 1.0:
+        raise ValueError(f"'threshold' must between 0.0 and 1.0")
+
+    filename_pattern = determine_input_pattern(input_path)
+    input_sequence = os.path.join(input_path, filename_pattern)
+    output_sequence = "-"
+    filter = f"select='gt(scene\,{threshold})',metadata=print:file=-"
+
+    ffcmd = FFmpeg(inputs= {input_sequence : None},
+        outputs={output_sequence : f"-filter_complex {filter} -f null"},
+        global_options="-loglevel quiet")
+    # cmd = ffcmd.cmd
+    result = ffcmd.run(stdout=subprocess.PIPE)
+    stdout = result[0].decode("UTF-8")
+    stdout_lines = stdout.splitlines()
+    return [
+        int(line.split()[1].split(":")[1]) for line in stdout_lines if line.startswith("frame:")]
+
+def get_detected_breaks(input_path : str, duration : float=0.5, ratio : float=0.98):
+    # ffmpeg -framerate 1 -i "G:\CONTENT\HH\TEST\png%05d.png" -filter_complex "blackdetect=d=0.5,metadata=print:file=bldet.txt" -f null -
+    # frame:5106 pts:5106    pts_time:5106
+    # lavfi.black_start=5106
+    # frame:5152 pts:5152    pts_time:5152
+    # lavfi.black_end=5152
+    if not os.path.exists(input_path):
+        raise ValueError(f"path does not exist: {input_path}")
+    if not isinstance(duration, float):
+        raise ValueError(f"'duration' (seconds) must be a float")
+    if duration <= 0.0:
+        raise ValueError(f"'duration' must > 0.0")
+    if not isinstance(ratio, float):
+        raise ValueError(f"'ratio' (0.0-1.0) must be a float")
+    if ratio < 0.0 or ratio > 1.0:
+        raise ValueError(f"'ratio' must between 0.0 and 1.0")
+
+    filename_pattern = determine_input_pattern(input_path)
+    input_sequence = os.path.join(input_path, filename_pattern)
+    output_sequence = "-"
+    filter = f"blackdetect=d={duration}:pic_th={ratio},metadata=print:file=-"
+
+    ffcmd = FFmpeg(inputs= {input_sequence : "-framerate 1"},
+        outputs={output_sequence : f"-filter_complex {filter} -f null"},
+        global_options="-loglevel quiet")
+    # cmd = ffcmd.cmd
+    result = ffcmd.run(stdout=subprocess.PIPE)
+    stdout = result[0].decode("UTF-8")
+    stdout_lines = stdout.splitlines()
+    start_frames = [
+        int(line.split("=")[1]) for line in stdout_lines if line.startswith("lavfi.black_start")]
+    end_frames = [
+        int(line.split("=")[1]) for line in stdout_lines if line.startswith("lavfi.black_end")]
+    if len(start_frames) != len(end_frames):
+        raise RuntimeError("unable to parse detected breaks")
+
+    breaks = []
+    for index, start in enumerate(start_frames):
+        end = end_frames[index]
+        # break at the midpoint
+        breaks.append(int((start + end) / 2))
+    return breaks
+
+def scene_list_to_ranges(scene_list, num_files):
+    last_scene_index = 0
+    result = []
+    for scene_frame in scene_list:
+        first_frame = last_scene_index
+        last_frame = scene_frame - 1
+        if last_frame >= num_files:
+            last_frame = num_files - 1
+        scene_size = (last_frame - first_frame) + 1
+        result.append({
+            "first_frame" : first_frame,
+            "last_frame" : last_frame,
+            "scene_size" : scene_size})
+        last_scene_index = scene_frame
+    return result

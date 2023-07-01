@@ -18,7 +18,7 @@ def main():
     parser.add_argument("--output_path", default=None, type=str,
         help="Base path for frame group directories")
     parser.add_argument("--file_ext", default="png", type=str,
-                        help="File extension, default: 'png'; any extensiion or or '*'")
+                        help="File extension, default: 'png'; any extension or or '*'")
     parser.add_argument("--type", default="precise", type=str,
         help="Split type 'precise' (default), 'resynthesis', 'inflation'")
     parser.add_argument("--num_groups", default=10, type=int, help="Number of new file groups")
