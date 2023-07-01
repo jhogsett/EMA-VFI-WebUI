@@ -334,9 +334,6 @@ def get_duplicate_frames_report(input_path : str,
             report.append(f"Frame#{key} : {entry[key]}")
     return "\r\n".join(report)
 
-
-
-
 def get_detected_scenes(input_path : str, threshold : float=0.5):
     # ffmpeg -framerate 1 -i "G:\CONTENT\HH\TEST\png%05d.png" -filter_complex "select='gt(scene,0.6)',metadata=print:file=-" -f null -
     # frame:0    pts:5152    pts_time:5152
@@ -363,7 +360,7 @@ def get_detected_scenes(input_path : str, threshold : float=0.5):
     return [
         int(line.split()[1].split(":")[1]) for line in stdout_lines if line.startswith("frame:")]
 
-def get_detected_breaks(input_path : str, duration : float=1.0, ratio : float=0.98):
+def get_detected_breaks(input_path : str, duration : float=0.5, ratio : float=0.98):
     # ffmpeg -framerate 1 -i "G:\CONTENT\HH\TEST\png%05d.png" -filter_complex "blackdetect=d=0.5,metadata=print:file=bldet.txt" -f null -
     # frame:5106 pts:5106    pts_time:5106
     # lavfi.black_start=5106
@@ -392,16 +389,30 @@ def get_detected_breaks(input_path : str, duration : float=1.0, ratio : float=0.
     result = ffcmd.run(stdout=subprocess.PIPE)
     stdout = result[0].decode("UTF-8")
     stdout_lines = stdout.splitlines()
-    start_frames = [int(line.split("=")[1]) for line in stdout_lines if line.startswith("lavfi.black_start")]
-    end_frames = [int(line.split("=")[1]) for line in stdout_lines if line.startswith("lavfi.black_end")]
-
-    print(start_frames, end_frames)
-
+    start_frames = [
+        int(line.split("=")[1]) for line in stdout_lines if line.startswith("lavfi.black_start")]
+    end_frames = [
+        int(line.split("=")[1]) for line in stdout_lines if line.startswith("lavfi.black_end")]
     if len(start_frames) != len(end_frames):
         raise RuntimeError("unable to parse detected breaks")
 
     breaks = []
     for index, start in enumerate(start_frames):
         end = end_frames[index]
+        # break at the midpoint
         breaks.append(int((start + end) / 2))
     return breaks
+
+def scene_list_to_ranges(scene_list):
+    last_scene_index = 0
+    result = []
+    for scene_frame in scene_list:
+        first_frame = last_scene_index
+        scene_size = scene_frame - last_scene_index
+        last_frame = first_frame + scene_size - 1
+        result.append({
+            "first_frame" : first_frame,
+            "last_frame" : last_frame,
+            "scene_size" : scene_size})
+        last_scene_index = scene_frame
+    return result
