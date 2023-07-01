@@ -5,7 +5,8 @@ import glob
 import argparse
 from typing import Callable
 from webui_utils.simple_log import SimpleLog
-from webui_utils.file_utils import create_directory, is_safe_path, split_filepath, get_directories
+from webui_utils.file_utils import create_directory, is_safe_path, split_filepath, get_directories,\
+    get_files
 from webui_utils.mtqdm import Mtqdm
 from resequence_files import ResequenceFiles
 
@@ -115,10 +116,12 @@ class MergeFrames:
             # (but whole groups can have been deleted)
             self.validate_group_names(group_names)
 
+        fix_up_final_files = False
         with Mtqdm().open_bar(total=len(group_names), desc="Groups") as group_bar:
             for group_name in group_names:
                 group_files = self.group_files(group_name)
 
+                original_group_files = []
                 if self.action == "revert":
                     first_index, last_index, _ = self.details_from_group_name(group_name)
                     group_size = last_index - first_index + 1
@@ -136,11 +139,12 @@ class MergeFrames:
                         self.log(
                 f"group name {group_name} is parsable, resequencing files to prevent name clash")
 
+                        original_group_files = self.group_files(group_name)
                         if self.dry_run:
                             print(f"[Dry Run] Resequencing files in {group_path}")
                         else:
                             self.log(f"Resequencing files in {group_path}")
-                            base_filename = "combined-precision-split"
+                            base_filename = "copied-frames"
                             ResequenceFiles(group_path,
                                             self.file_ext,
                                             base_filename,
@@ -148,6 +152,7 @@ class MergeFrames:
                                             True,
                                             self.log).resequence()
                         group_files = self.group_files(group_name)
+                        fix_up_final_files = True
                     except RuntimeError:
                         # group name is not parsable, don't bother renaming files,
                         # the user is responsible for ensuring the names don't clash on merging
@@ -167,7 +172,34 @@ class MergeFrames:
                             self.log(f"copying {file} to {to_filepath}")
                             shutil.copy(file, to_filepath)
                         Mtqdm().update_bar(file_bar)
+
+                if original_group_files:
+                    self.log(f"Restoring original filenames in {group_path}")
+                    with Mtqdm().open_bar(total=len(group_files),
+                                            desc="Renaming") as bar:
+                        for index, file in enumerate(group_files):
+                            original_filename = original_group_files[index]
+                            if self.dry_run:
+                                print(
+                                f"[Dry Run] Restoring file '{file}' to '{original_filename}'")
+                            else:
+                                self.log(f"Restoring file '{file}' to '{original_filename}'")
+                                os.replace(file, original_filename)
+                            Mtqdm().update_bar(bar)
                 Mtqdm().update_bar(group_bar)
+
+        if fix_up_final_files:
+            if self.dry_run:
+                print(f"[Dry Run] Resequencing fina set of files in {self.output_path}")
+            else:
+                self.log(f"Resequencing files in {self.output_path}")
+                base_filename = "combined-precision-split"
+                ResequenceFiles(self.output_path,
+                                self.file_ext,
+                                base_filename,
+                                0, 1, 1, 0, num_width,
+                                True,
+                                self.log).resequence()
 
         if self.action == "move":
             with Mtqdm().open_bar(total=len(group_names), desc="Deleting Groups") as bar:
