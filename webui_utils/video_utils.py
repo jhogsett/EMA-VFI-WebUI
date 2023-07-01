@@ -403,13 +403,15 @@ def get_detected_breaks(input_path : str, duration : float=0.5, ratio : float=0.
         breaks.append(int((start + end) / 2))
     return breaks
 
-def scene_list_to_ranges(scene_list):
+def scene_list_to_ranges(scene_list, num_files):
     last_scene_index = 0
     result = []
     for scene_frame in scene_list:
         first_frame = last_scene_index
-        scene_size = scene_frame - last_scene_index
-        last_frame = first_frame + scene_size - 1
+        last_frame = scene_frame - 1
+        if last_frame >= num_files:
+            last_frame = num_files - 1
+        scene_size = (last_frame - first_frame) + 1
         result.append({
             "first_frame" : first_frame,
             "last_frame" : last_frame,

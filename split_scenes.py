@@ -22,8 +22,8 @@ def main():
         help="Scene detect type 'scene' (default), 'break'")
     parser.add_argument("--scene_threshold", default=0.6, type=float,
                         help="Threshold between 0.0 and 1.0 for scene detection (default 0.6)")
-    parser.add_argument("--break_duration", default=1.0, type=float,
-                        help="Duration in seconds for break to be detectable (default 1.0)")
+    parser.add_argument("--break_duration", default=2.0, type=float,
+                        help="Duration in seconds for break to be detectable (default 2.0)")
     parser.add_argument("--break_ratio", default=0.98, type=float,
             help="Percent 0.0 to 1.0 of frame that must be black to be detectable (default 0.98)")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
@@ -76,13 +76,17 @@ class SplitScenes:
         self.log(f"calling `get_detected_scenes` with input path '{self.input_path}'" +\
                  f" threshold '{self.scene_threshold}'")
         scenes = get_detected_scenes(self.input_path, self.scene_threshold)
-        ranges = scene_list_to_ranges(scenes)
+        # add one more final fake detection past the end to include frames past the last detection
+        scenes.append(num_files+1)
+        ranges = scene_list_to_ranges(scenes, num_files)
 
         group_paths = []
         with Mtqdm().open_bar(total=len(ranges), desc="Scenes") as scene_bar:
             for _range in ranges:
                 first_index = _range["first_frame"]
                 last_index = _range["last_frame"]
+                if last_index >= num_files:
+                    last_index = num_files
                 group_size = _range["scene_size"]
                 group_name = f"{str(first_index).zfill(num_width)}" +\
                             f"-{str(last_index).zfill(num_width)}"
@@ -131,13 +135,17 @@ class SplitScenes:
         self.log(f"calling `get_detected_breaks` with input path '{self.input_path}'" +\
                  f" duration '{self.break_duration}' ratio '{self.break_ratio}'")
         scenes = get_detected_breaks(self.input_path, self.break_duration, self.break_ratio)
-        ranges = scene_list_to_ranges(scenes)
+        # add one more final fake detection past the end to include frames past the last detection
+        scenes.append(num_files+1)
+        ranges = scene_list_to_ranges(scenes, num_files)
 
         group_paths = []
         with Mtqdm().open_bar(total=len(ranges), desc="Scenes") as scene_bar:
             for _range in ranges:
                 first_index = _range["first_frame"]
                 last_index = _range["last_frame"]
+                if last_index >= num_files:
+                    last_index = num_files
                 group_size = _range["scene_size"]
                 group_name = f"{str(first_index).zfill(num_width)}" +\
                             f"-{str(last_index).zfill(num_width)}"
