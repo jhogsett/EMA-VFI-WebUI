@@ -31,6 +31,7 @@ from tabs.dedupe_tuning_ui import DuplicateTuning
 from tabs.video_details_ui import VideoDetails
 from tabs.split_frames_ui import SplitFrames
 from tabs.merge_frames_ui import MergeFrames
+from tabs.split_scenes_ui import SplitScenes
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
@@ -77,6 +78,7 @@ def create_ui(config : SimpleConfig,
                     elem_id="tabheading")
                 SplitFrames(config, engine, log.log).render_tab()
                 MergeFrames(config, engine, log.log).render_tab()
+                SplitScenes(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             UpscaleFrames(config, engine, log.log).render_tab()
             VideoDetails(config, engine, log.log).render_tab()
