@@ -468,8 +468,9 @@ def group_files(input_path, file_ext, group_name):
     return sorted(glob.glob(os.path.join(_group_path, f"*.{file_ext}")))
 
 def slice_video(input_path : str,
-                output_path : str,
                 fps : int,
+                output_path : str,
+                num_width : int,
                 first_frame : int,
                 last_frame : int,
                 type : str="mp4",
@@ -480,7 +481,8 @@ def slice_video(input_path : str,
     # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.wav
     _, filename, ext = split_filepath(input_path)
     output_ext = "mp4" if type == "mp4" else "wav"
-    output_filename = f"{filename}[{first_frame}-{last_frame}].{output_ext}"
+    output_filename =\
+f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_width)}].{output_ext}"
     output_filepath = os.path.join(output_path, output_filename)
 
     start_second = first_frame / (fps * 1.0)

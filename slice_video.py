@@ -17,7 +17,7 @@ def main():
         help="Input path to PNG frame group directories")
     parser.add_argument("--type", default="mp4", type=str,
         help="Sliced output 'mp4' (default), 'wav'") # future gif, mp3
-    parser.add_argument("--output_path", default=None, type=str,
+    parser.add_argument("--output_path", default="", type=str,
         help="Output path for sliced segments files (default '' = save in group directories")
     parser.add_argument("--mp4_quality", default=23, type=int,
                         help="MP4 video quality 17 (best) to 28, default 23")
@@ -70,15 +70,17 @@ class SliceVideos:
         # compute output path based on if its blank
 
         group_names = validate_input_path(self.group_path, -1)
-        self.log(f"Creating output path {self.output_path}")
-        create_directory(self.output_path)
+        if self.output_path:
+            self.log(f"Creating output path {self.output_path}")
+            create_directory(self.output_path)
 
         with Mtqdm().open_bar(total=len(group_names), desc="Groups") as bar:
             for group_name in group_names:
-                first_index, last_index, _ = details_from_group_name(group_name)
+                first_index, last_index, num_width = details_from_group_name(group_name)
                 output_path = self.output_path or os.path.join(self.group_path, group_name)
-                slice_video(self.input_path, output_path, self.fps, first_index, last_index,
-                            self.type, self.mp4_quality)
+                slice_video(self.input_path, self.fps, output_path, num_width, first_index,
+                            last_index, self.type, self.mp4_quality)
+                Mtqdm().update_bar(bar)
 
     def log(self, message : str) -> None:
         """Logging"""
