@@ -81,6 +81,7 @@ class VideoDetails(TabBase):
                 format = {}
                 format_data = data["format"]
                 format["filename"] = format_data.get("filename")
+                format["start_time"] = seconds_to_hms(float(format_data.get("start_time", 0)))
                 format["duration"] = seconds_to_hms(float(format_data.get("duration", 0)))
                 file_size = f"{int(format_data.get('size', 0)):,d}"
                 format["size"] = file_size
@@ -106,6 +107,7 @@ class VideoDetails(TabBase):
                     frame_rate = f"{frame_rate:0.2f}" if frame_rate else warning
                     stream["frame_rate"] = frame_rate
 
+                    stream["start_time"] = seconds_to_hms(float(stream_data.get("start_time", 0)))
                     duration = seconds_to_hms(float(stream_data.get("duration", 0)))
                     stream["duration"] = duration
                     stream["width"] = stream_data.get("width")
