@@ -35,7 +35,7 @@ class PNGtoMP4(TabBase):
                     label="Input Filename Pattern (leave blank for auto-detection)",
                     placeholder="Example: 'pngsequence%09d.png'")
                 input_frame_rate_pm = gr.Slider(value=frame_rate, minimum=1, maximum=max_frame_rate,
-                    step=1, label="Frame Rate")
+                    step=0.01, label="Frame Rate")
                 quality_slider_pm = gr.Slider(minimum=minimum_crf, maximum=maximum_crf,
                     step=1, value=default_crf, label="Quality (lower=better)")
             with gr.Row():
@@ -50,13 +50,13 @@ class PNGtoMP4(TabBase):
     def convert_png_to_mp4(self,
                         input_path : str,
                         input_pattern : str,
-                        frame_rate : int,
+                        frame_rate : float,
                         output_filepath: str,
                         quality : str):
         """Convert button handler"""
         if input_path and output_filepath:
             directory, _, _ = split_filepath(output_filepath)
             create_directory(directory)
-            ffmpeg_cmd = _PNGtoMP4(input_path, input_pattern, int(frame_rate), output_filepath,
+            ffmpeg_cmd = _PNGtoMP4(input_path, input_pattern, float(frame_rate), output_filepath,
                 crf=quality)
             return gr.update(value=ffmpeg_cmd, visible=True)

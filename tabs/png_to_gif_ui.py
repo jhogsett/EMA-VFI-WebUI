@@ -33,7 +33,7 @@ class PNGtoGIF(TabBase):
                     label="Input Filename Pattern (leave blank for auto-detect)",
                     placeholder="Example: 'pngsequence%09d.png'")
                 framerate_pg = gr.Slider(value=frame_rate, minimum=1, maximum=max_frame_rate,
-                                         step=1, label="GIF Frame Rate")
+                                         step=0.01, label="GIF Frame Rate")
             with gr.Row():
                 convert_button_pg = gr.Button("Convert", variant="primary")
                 output_info_text_pg = gr.Textbox(label="Details", interactive=False)
@@ -47,7 +47,7 @@ class PNGtoGIF(TabBase):
                         input_path : str,
                         input_pattern : str,
                         output_filepath : str,
-                        frame_rate : int):
+                        frame_rate : float):
         """Convert button handler"""
         if input_path and output_filepath:
             directory, _, _ = split_filepath(output_filepath)

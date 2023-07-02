@@ -32,7 +32,7 @@ class MP4toPNG(TabBase):
                     label="Output Filename Pattern (leave blank for auto-detection)",
                     placeholder="Example: 'pngsequence%09d.png'")
                 input_frame_rate_mp = gr.Slider(minimum=1, maximum=max_frame_rate, value=frame_rate,
-                    step=1, label="Frame Rate")
+                    step=0.01, label="Frame Rate")
             with gr.Row():
                 deinterlace = gr.Checkbox(value=False, label="Deinterlace Frames",
                             info="Removes the 'combing' effect present in some broadcast content")
@@ -57,7 +57,7 @@ class MP4toPNG(TabBase):
             self.log("using MP4toPNG (may cause long delay while counting frames)")
             ffmpeg_cmd = _MP4toPNG(input_filepath,
                                    output_pattern,
-                                   int(frame_rate),
+                                   float(frame_rate),
                                    output_path,
                                    deinterlace=deinterlace)
             return gr.update(value=ffmpeg_cmd, visible=True)

@@ -31,7 +31,7 @@ def determine_output_pattern(mp4_file_path : str) -> str:
 
 def PNGtoMP4(input_path : str, # pylint: disable=invalid-name
             filename_pattern : str,
-            frame_rate : int,
+            frame_rate : float,
             output_filepath : str,
             crf : int = QUALITY_DEFAULT):
     """Encapsulate logic for the PNG Sequence to MP4 feature"""
@@ -52,7 +52,7 @@ def PNGtoMP4(input_path : str, # pylint: disable=invalid-name
 # ffmpeg -y -i frames.mp4 -filter:v fps=25 -start_number 0 output_%09d.png
 def MP4toPNG(input_path : str,  # pylint: disable=invalid-name
             filename_pattern : str,
-            frame_rate : int,
+            frame_rate : float,
             output_path : str,
             start_number : int = 0,
             deinterlace : bool = False):
@@ -92,7 +92,7 @@ def PNGtoPalette(input_path : str, # pylint: disable=invalid-name
 def PNGtoGIF(input_path : str, # pylint: disable=invalid-name
             filename_pattern : str,
             output_filepath : str,
-            frame_rate : int):
+            frame_rate : float):
     """Encapsulates logic for the PNG sequence to GIF feature"""
     # if filename_pattern is empty it uses the filename of the first found file
     # and the count of file to determine the pattern, .png as the file type
@@ -468,37 +468,53 @@ def group_files(input_path, file_ext, group_name):
     return sorted(glob.glob(os.path.join(_group_path, f"*.{file_ext}")))
 
 def slice_video(input_path : str,
-                fps : int,
+                fps : float,
                 output_path : str,
                 num_width : int,
                 first_frame : int,
                 last_frame : int,
                 type : str="mp4",
-                mp4_quality : int=23):
+                mp4_quality : int=28,
+                gif_fps : int=2,
+                scale_factor : float=0.5):
     # 153=5.1
     # 203+1=6.8
     # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.mp4
     # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.wav
     _, filename, ext = split_filepath(input_path)
-    output_ext = "mp4" if type == "mp4" else "wav"
     output_filename =\
-f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_width)}].{output_ext}"
+f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_width)}].{type}"
     output_filepath = os.path.join(output_path, output_filename)
-
-    start_second = first_frame / (fps * 1.0)
-    end_second = (last_frame + 1) / (fps * 1.0)
+    start_second = first_frame / fps
+    end_second = (last_frame + 1) / fps
     start_time = seconds_to_hms(start_second)
     end_time = seconds_to_hms(end_second)
 
     if type == "mp4":
         ffcmd = FFmpeg(inputs= {input_path : None},
                                 outputs={output_filepath :
-                f"-ss {start_time} -to {end_time} -copyts -crf {mp4_quality}"},
+                f"-ss {start_time} -to {end_time} -copyts -vf 'scale=iw*{scale_factor}:-2,fps={fps}' -crf {mp4_quality}"},
             global_options="-y")
-    else:
+
+    if type == "gif":
+        ffcmd = FFmpeg(inputs= {input_path : None},
+                                outputs={output_filepath :
+                f"-ss {start_time} -to {end_time} -vf 'scale=iw*{scale_factor}:-2,fps={gif_fps},split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -loop 0"},
+            global_options="-y")
+
+    elif type == "wav" or type == "mp3":
         ffcmd = FFmpeg(inputs= {input_path : None},
                                 outputs={output_filepath :
                 f"-ss {start_time} -to {end_time} -copyts -ac 2"},
+            global_options="-y")
+
+    elif type == "jpg":
+        mid_frame = int((last_frame + first_frame) / 2)
+        start_second = mid_frame / (fps * 1.0)
+        start_time = seconds_to_hms(start_second)
+        ffcmd = FFmpeg(inputs= {input_path : f"-ss {start_time}"},
+                                outputs={output_filepath :
+                f"-vf scale=iw*{scale_factor}:-2 -qscale:v 2 -vframes 1"},
             global_options="-y")
 
     cmd = ffcmd.cmd

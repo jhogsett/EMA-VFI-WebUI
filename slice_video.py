@@ -12,15 +12,17 @@ def main():
     parser = argparse.ArgumentParser(description='Slice a video based on split groups')
     parser.add_argument("--input_path", default=None, type=str,
         help="Input path to video file to be sliced")
-    parser.add_argument("--fps", default=30, type=int, help="Frame rate of the video to be sliced")
+    parser.add_argument("--fps", default=29.97, type=float,
+                        help="Frame rate of the video to be sliced")
     parser.add_argument("--group_path", default=None, type=str,
         help="Input path to PNG frame group directories")
     parser.add_argument("--type", default="mp4", type=str,
-        help="Sliced output 'mp4' (default), 'wav'") # future gif, mp3
+        help="Sliced output 'mp4' (default), 'gif', 'wav', 'mp3', 'jpg'")
     parser.add_argument("--output_path", default="", type=str,
         help="Output path for sliced segments files (default '' = save in group directories")
     parser.add_argument("--mp4_quality", default=23, type=int,
                         help="MP4 video quality 17 (best) to 28, default 23")
+    parser.add_argument("--gif_fps", default=2, type=int, help="GIF frame rate")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
@@ -32,17 +34,19 @@ def main():
                 args.output_path,
                 args.type,
                 args.mp4_quality,
+                args.gif_fps,
                 log.log).slice()
 
 class SliceVideos:
     """Encapsulate logic for Split Scenes feature"""
     def __init__(self,
                 input_path : str,
-                fps : int,
+                fps : float,
                 group_path : str,
                 output_path : str,
                 type : str,
                 mp4_quality : int,
+                gif_fps : int,
                 log_fn : Callable | None):
         self.input_path = input_path
         self.fps = fps
@@ -50,8 +54,9 @@ class SliceVideos:
         self.output_path = output_path
         self.type = type
         self.mp4_quality = mp4_quality
+        self.gif_fps = gif_fps
         self.log_fn = log_fn
-        valid_types = ["mp4", "wav"]
+        valid_types = ["mp4", "gif", "wav", "mp3", "jpg"]
 
         if not is_safe_path(self.input_path):
             raise ValueError("'input_path' must be a legal path")
@@ -62,6 +67,10 @@ class SliceVideos:
                 raise ValueError("'output_path' must be a legal path")
         if not self.type in valid_types:
             raise ValueError(f"'type' must be one of {', '.join([t for t in valid_types])}")
+        if self.mp4_quality < 0:
+            raise ValueError(f"'mp4_quality' must be >= 0")
+        if self.gif_fps < 1:
+            raise ValueError(f"'gif_fps' must be >= 1")
 
     def slice(self):
         # get groups
@@ -78,8 +87,9 @@ class SliceVideos:
             for group_name in group_names:
                 first_index, last_index, num_width = details_from_group_name(group_name)
                 output_path = self.output_path or os.path.join(self.group_path, group_name)
+                self.log("using slice_video (may cause long delay while processing request)")
                 slice_video(self.input_path, self.fps, output_path, num_width, first_index,
-                            last_index, self.type, self.mp4_quality)
+                            last_index, self.type, self.mp4_quality, self.gif_fps)
                 Mtqdm().update_bar(bar)
 
     def log(self, message : str) -> None:

@@ -54,7 +54,7 @@ class GIFtoMP4(TabBase):
                         placeholder="Path on this server for the converted MP4 file, " +
                             "leave blank for an MP4 in the same location")
                     input_frame_rate = gr.Slider(minimum=1, maximum=max_frame_rate,
-                                                 value=frame_rate, step=1, label="MP4 Frame Rate")
+                                            value=frame_rate, step=0.01, label="MP4 Frame Rate")
                     quality_slider = gr.Slider(minimum=minimum_crf, maximum=maximum_crf,
                         step=1, value=default_crf, label="Quality (lower=better)")
             with gr.Row():
@@ -91,7 +91,7 @@ class GIFtoMP4(TabBase):
                 upscaling : float,
                 inflation : float,
                 order : str,
-                frame_rate : int,
+                frame_rate : float,
                 quality : int):
         """Convert Batch button handler"""
 
@@ -109,7 +109,7 @@ class GIFtoMP4(TabBase):
                 upscaling : float,
                 inflation : float,
                 order : str,
-                frame_rate : int,
+                frame_rate : float,
                 quality : int):
         """Convert base handler"""
         if input_filepath:
