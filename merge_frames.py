@@ -5,8 +5,8 @@ import glob
 import argparse
 from typing import Callable
 from webui_utils.simple_log import SimpleLog
-from webui_utils.file_utils import create_directory, is_safe_path, split_filepath, get_directories,\
-    get_files
+from webui_utils.file_utils import create_directory, is_safe_path, split_filepath, get_directories
+from webui_utils.video_utils import details_from_group_name, validate_input_path, validate_group_names, group_path, group_files
 from webui_utils.mtqdm import Mtqdm
 from resequence_files import ResequenceFiles
 
@@ -81,7 +81,7 @@ class MergeFrames:
 
     def merge(self) -> None:
         """Invoke the Merge Frames feature"""
-        group_names = self.validate_input_path()
+        group_names = validate_input_path(self.input_path, self.num_groups)
         if self.dry_run:
             print(f"[Dry Run] Creating output path {self.output_path}")
         else:
@@ -102,56 +102,56 @@ class MergeFrames:
                 self.log(f"Deleting split groups in {self.input_path}")
             with Mtqdm().open_bar(total=len(group_names), desc="Deleting") as bar:
                 for group_name in group_names:
-                    group_path = self.group_path(group_name)
+                    _group_path = group_path(self.input_path, group_name)
                     if self.dry_run:
-                        print(f"[Dry Run] Deleting group {group_path}")
+                        print(f"[Dry Run] Deleting group {_group_path}")
                     else:
-                        self.log(f"Deleting group {group_path}")
-                        shutil.rmtree(group_path)
+                        self.log(f"Deleting group {_group_path}")
+                        shutil.rmtree(_group_path)
                     Mtqdm().update_bar(bar)
 
     def merge_precise(self, group_names):
         if self.action == "revert":
             # if undoing a precise split, the group names are expected to be unchanged
             # (but whole groups can have been deleted)
-            self.validate_group_names(group_names)
+            validate_group_names(group_names)
 
         fix_up_final_files = False
         with Mtqdm().open_bar(total=len(group_names), desc="Groups") as group_bar:
             for group_name in group_names:
-                group_files = self.group_files(group_name)
+                _group_files = group_files(self.input_path, self.file_ext, group_name)
 
                 original_group_files = []
                 if self.action == "revert":
-                    first_index, last_index, _ = self.details_from_group_name(group_name)
+                    first_index, last_index, _ = details_from_group_name(group_name)
                     group_size = last_index - first_index + 1
                     expected_files = group_size
-                    if len(group_files) != expected_files:
+                    if len(_group_files) != expected_files:
                         raise RuntimeError(
-                    f"expected {expected_files} files in {group_name} but found {len(group_files)}")
+                    f"expected {expected_files} files in {group_name} but found {len(_group_files)}")
                 else:
                     # when combining, if the group 'first' and 'last' indexes CAN be obtained,
                     # assume the group needs recombining after processing like 'Upscale Frames',
                     # because the filenames may have been changed which could clash on merging
                     try:
-                        first_index, _, num_width = self.details_from_group_name(group_name)
-                        group_path = self.group_path(group_name)
+                        first_index, _, num_width = details_from_group_name(group_name)
+                        _group_path = group_path(self.input_path, group_name)
                         self.log(
                 f"group name {group_name} is parsable, resequencing files to prevent name clash")
 
-                        original_group_files = self.group_files(group_name)
+                        original_group_files = group_files(self.input_path, self.file_ext, group_name)
                         if self.dry_run:
-                            print(f"[Dry Run] Resequencing files in {group_path}")
+                            print(f"[Dry Run] Resequencing files in {_group_path}")
                         else:
-                            self.log(f"Resequencing files in {group_path}")
+                            self.log(f"Resequencing files in {_group_path}")
                             base_filename = "copied-frames"
-                            ResequenceFiles(group_path,
+                            ResequenceFiles(_group_path,
                                             self.file_ext,
                                             base_filename,
                                             first_index, 1, 1, 0, num_width,
                                             True,
                                             self.log).resequence()
-                        group_files = self.group_files(group_name)
+                        _group_files = group_files(self.input_path, self.file_ext, group_name)
                         fix_up_final_files = True
                     except RuntimeError:
                         # group name is not parsable, don't bother renaming files,
@@ -159,8 +159,8 @@ class MergeFrames:
                         self.log(
                             f"group name {group_name} not is parsable, skipping file resequencing")
 
-                with Mtqdm().open_bar(total=len(group_files), desc="Copying") as file_bar:
-                    for file in group_files:
+                with Mtqdm().open_bar(total=len(_group_files), desc="Copying") as file_bar:
+                    for file in _group_files:
                         _, filename, ext = split_filepath(file)
                         to_filepath = os.path.join(self.output_path, filename + ext)
                         if os.path.exists(to_filepath):
@@ -174,10 +174,10 @@ class MergeFrames:
                         Mtqdm().update_bar(file_bar)
 
                 if original_group_files:
-                    self.log(f"Restoring original filenames in {group_path}")
-                    with Mtqdm().open_bar(total=len(group_files),
+                    self.log(f"Restoring original filenames in {_group_path}")
+                    with Mtqdm().open_bar(total=len(_group_files),
                                             desc="Renaming") as bar:
-                        for index, file in enumerate(group_files):
+                        for index, file in enumerate(_group_files):
                             original_filename = original_group_files[index]
                             if self.dry_run:
                                 print(
@@ -204,18 +204,18 @@ class MergeFrames:
         if self.action == "move":
             with Mtqdm().open_bar(total=len(group_names), desc="Deleting Groups") as bar:
                 for group_name in group_names:
-                    group_path = self.group_path(group_name)
+                    _group_path = group_path(self.input_path, group_name)
                     if self.dry_run:
-                        print(f"[Dry Run] deleting group {group_path}")
+                        print(f"[Dry Run] deleting group {_group_path}")
                     else:
-                        self.log(f"deleting group {group_path}")
-                        shutil.rmtree(group_path)
+                        self.log(f"deleting group {_group_path}")
+                        shutil.rmtree(_group_path)
                     Mtqdm().update_bar(bar)
 
     def merge_resynthesis(self, group_names):
-        self.validate_group_names(group_names)
+        validate_group_names(group_names)
         first_group_name = group_names[0]
-        first_index, last_index, num_width = self.details_from_group_name(first_group_name)
+        first_index, last_index, num_width = details_from_group_name(first_group_name)
         group_size = last_index - first_index
 
         if self.action == "combine":
@@ -236,33 +236,33 @@ class MergeFrames:
                 elif group_index == len(group_names)-1:
                     # get this group's file count, as it may be truncated being the final group
                     # next, have one fewer frame; outer frames can't have anchor frames
-                    first_index, last_index, _ = self.details_from_group_name(group_name)
+                    first_index, last_index, _ = details_from_group_name(group_name)
                     group_size = last_index - first_index
                     group_expected_files = group_size + 1
 
-                group_files = self.group_files(group_name)
-                if len(group_files) != group_expected_files:
+                _group_files = group_files(self.input_path, self.file_ext, group_name)
+                if len(_group_files) != group_expected_files:
                     raise RuntimeError(
-                        f"expected {group_expected_files} files in {group_name} but found {len(group_files)}")
+                        f"expected {group_expected_files} files in {group_name} but found {len(_group_files)}")
 
                 # renumber all present files according to the first, last indexes
                 # including files that will not be ulitmately copied back
-                group_path = self.group_path(group_name)
-                first_index, _, _ = self.details_from_group_name(group_name)
+                _group_path = group_path(self.input_path, group_name)
+                first_index, _, _ = details_from_group_name(group_name)
                 if self.dry_run:
-                    print(f"[Dry Run] Resequencing files in {group_path}")
+                    print(f"[Dry Run] Resequencing files in {_group_path}")
                 else:
-                    self.log(f"Resequencing files in {group_path}")
+                    self.log(f"Resequencing files in {_group_path}")
                     base_filename = "reverted-resynthesis-split"
 
-                    ResequenceFiles(group_path,
+                    ResequenceFiles(_group_path,
                                     self.file_ext,
                                     base_filename,
                                     first_index, 1, 1, 0, num_width,
                                     True,
                                     self.log).resequence()
 
-                renamed_group_files = self.group_files(group_name)
+                renamed_group_files = group_files(self.input_path, self.file_ext, group_name)
                 with Mtqdm().open_bar(total=len(renamed_group_files), desc="Copying") as file_bar:
                     for file_index, file in enumerate(renamed_group_files):
                         if group_index == 0:
@@ -297,11 +297,11 @@ class MergeFrames:
                         Mtqdm().update_bar(file_bar)
 
                 # restore the original filenames
-                self.log(f"Restoring original filenames in {group_path}")
+                self.log(f"Restoring original filenames in {_group_path}")
                 with Mtqdm().open_bar(total=len(renamed_group_files),
                                         desc="Renaming") as bar:
                     for index, file in enumerate(renamed_group_files):
-                        original_filename = group_files[index]
+                        original_filename = _group_files[index]
                         if self.dry_run:
                             print(
                             f"[Dry Run] Restoring file '{file}' to '{original_filename}'")
@@ -324,36 +324,36 @@ class MergeFrames:
                 elif group_index == len(group_names)-1:
                     # get this group's file count, as it may be truncated being the final group
                     # next, have one fewer frame; outer frames can't have anchor frames
-                    first_index, last_index, _ = self.details_from_group_name(group_name)
+                    first_index, last_index, _ = details_from_group_name(group_name)
                     group_size = last_index - first_index
                     group_expected_files = group_size - 1
 
-                group_files = self.group_files(group_name)
-                if len(group_files) != group_expected_files:
+                _group_files = group_files(self.input_path, self.file_ext, group_name)
+                if len(_group_files) != group_expected_files:
                     raise RuntimeError(
-                        f"expected {group_expected_files} files in {group_name} but found {len(group_files)}")
+                        f"expected {group_expected_files} files in {group_name} but found {len(_group_files)}")
 
                 # renumber all present files according to the first, last indexes
                 # including files that will not be ulitmately copied back
-                group_path = self.group_path(group_name)
-                first_index, _, _ = self.details_from_group_name(group_name)
+                _group_path = group_path(self.input_path, group_name)
+                first_index, _, _ = details_from_group_name(group_name)
                 # add one since first index names a frame that has been removed
                 first_index += 1
 
                 if self.dry_run:
-                    print(f"[Dry Run] Resequencing files in {group_path}")
+                    print(f"[Dry Run] Resequencing files in {_group_path}")
                 else:
-                    self.log(f"Resequencing files in {group_path}")
+                    self.log(f"Resequencing files in {_group_path}")
                     base_filename = "combined-resynthesis-split"
 
-                    ResequenceFiles(group_path,
+                    ResequenceFiles(_group_path,
                                     self.file_ext,
                                     base_filename,
                                     first_index, 1, 1, 0, num_width,
                                     True,
                                     self.log).resequence()
 
-                renamed_group_files = self.group_files(group_name)
+                renamed_group_files = group_files(self.input_path, self.file_ext, group_name)
                 with Mtqdm().open_bar(total=len(renamed_group_files), desc="Copying") as file_bar:
                     for file_index, file in enumerate(renamed_group_files):
                         _, filename, ext = split_filepath(file)
@@ -369,11 +369,11 @@ class MergeFrames:
                         Mtqdm().update_bar(file_bar)
 
                 # restore the original filenames
-                self.log(f"Restoring original filenames in {group_path}")
+                self.log(f"Restoring original filenames in {_group_path}")
                 with Mtqdm().open_bar(total=len(renamed_group_files),
                                         desc="Renaming") as bar:
                     for index, file in enumerate(renamed_group_files):
-                        original_filename = group_files[index]
+                        original_filename = _group_files[index]
                         if self.dry_run:
                             print(
                             f"[Dry Run] Restoring file '{file}' to '{original_filename}'")
@@ -384,9 +384,9 @@ class MergeFrames:
                 Mtqdm().update_bar(group_bar)
 
     def merge_inflation(self, group_names):
-        self.validate_group_names(group_names)
+        validate_group_names(group_names)
         first_group_name = group_names[0]
-        first_index, last_index, num_width = self.details_from_group_name(first_group_name)
+        first_index, last_index, num_width = details_from_group_name(first_group_name)
         group_size = last_index - first_index
         if self.action == "combine":
             self.merge_inflation_combine(first_index, last_index, num_width, group_size, group_names)
@@ -400,35 +400,35 @@ class MergeFrames:
             for group_index, group_name in enumerate(group_names):
                 group_expected_files = expected_files
 
-                first_index, last_index, _ = self.details_from_group_name(group_name)
+                first_index, last_index, _ = details_from_group_name(group_name)
 
                 if group_index == len(group_names)-1:
                     # last group's expected files based on its own name
                     group_expected_files = last_index - first_index + 1
 
-                group_files = self.group_files(group_name)
-                if len(group_files) != group_expected_files:
+                _group_files = group_files(self.input_path, self.file_ext, group_name)
+                if len(_group_files) != group_expected_files:
                     raise RuntimeError(
-                        f"expected {group_expected_files} files in {group_name} but found {len(group_files)}")
+                        f"expected {group_expected_files} files in {group_name} but found {len(_group_files)}")
 
                 # renumber all present files according to the first, last indexes
                 # including files that will not be ulitmately copied back
-                group_path = self.group_path(group_name)
-                first_index, last_index, _ = self.details_from_group_name(group_name)
+                _group_path = group_path(self.input_path, group_name)
+                first_index, last_index, _ = details_from_group_name(group_name)
                 if self.dry_run:
-                    print(f"[Dry Run] Resequencing files in {group_path}")
+                    print(f"[Dry Run] Resequencing files in {_group_path}")
                 else:
-                    self.log(f"Resequencing files in {group_path}")
+                    self.log(f"Resequencing files in {_group_path}")
                     base_filename = "reverted-inflated-split"
 
-                    ResequenceFiles(group_path,
+                    ResequenceFiles(_group_path,
                                     self.file_ext,
                                     base_filename,
                                     first_index, 1, 1, 0, num_width,
                                     True,
                                     self.log).resequence()
 
-                renamed_group_files = self.group_files(group_name)
+                renamed_group_files = group_files(self.input_path, self.file_ext, group_name)
                 with Mtqdm().open_bar(total=len(renamed_group_files), desc="Copying") as file_bar:
                     for file_index, file in enumerate(renamed_group_files):
                         if group_index < len(group_names)-1:
@@ -451,11 +451,11 @@ class MergeFrames:
                         Mtqdm().update_bar(file_bar)
 
                 # restore the original filenames
-                self.log(f"Restoring original filenames in {group_path}")
+                self.log(f"Restoring original filenames in {_group_path}")
                 with Mtqdm().open_bar(total=len(renamed_group_files),
                                         desc="Renaming") as bar:
                     for index, file in enumerate(renamed_group_files):
-                        original_filename = group_files[index]
+                        original_filename = _group_files[index]
                         if self.dry_run:
                             print(
                             f"[Dry Run] Restoring file '{file}' to '{original_filename}'")
@@ -466,7 +466,7 @@ class MergeFrames:
                 Mtqdm().update_bar(group_bar)
 
     def merge_inflation_combine(self, first_index, last_index, num_width, group_size, group_names):
-        first_group_files = self.group_files(group_names[0])
+        first_group_files = group.self_files(group_names[0])
         file_count = len(first_group_files)
 
         # after inflation there will be more files than accounted for in group name
@@ -484,39 +484,39 @@ class MergeFrames:
             for group_index, group_name in enumerate(group_names):
                 group_expected_files = expected_files
 
-                first_index, last_index, _ = self.details_from_group_name(group_name)
+                first_index, last_index, _ = details_from_group_name(group_name)
 
                 if group_index == len(group_names)-1:
                     # last group's expected files based on its own name
                     group_expected_files = (last_index - first_index) * detected_inflation + 1
 
-                group_files = self.group_files(group_name)
-                if len(group_files) != group_expected_files:
+                _group_files = group_files(self.input_path, self.file_ext, group_name)
+                if len(_group_files) != group_expected_files:
                     raise RuntimeError(
-            f"expected {group_expected_files} files in {group_name} but found {len(group_files)}")
+            f"expected {group_expected_files} files in {group_name} but found {len(_group_files)}")
 
                 # renumber all present files according to the first, last indexes
                 # including files that will not be ulitmately copied back
-                group_path = self.group_path(group_name)
-                first_index, last_index, _ = self.details_from_group_name(group_name)
+                _group_path = group_path(self.input_path, group_name)
+                first_index, last_index, _ = details_from_group_name(group_name)
 
                 # take inflated frame counts into consideration in index used for renumbering
                 first_index = int(first_index * detected_inflation)
 
                 if self.dry_run:
-                    print(f"[Dry Run] Resequencing files in {group_path}")
+                    print(f"[Dry Run] Resequencing files in {_group_path}")
                 else:
-                    self.log(f"Resequencing files in {group_path}")
+                    self.log(f"Resequencing files in {_group_path}")
                     base_filename = "combined-inflation-split"
 
-                    ResequenceFiles(group_path,
+                    ResequenceFiles(_group_path,
                                     self.file_ext,
                                     base_filename,
                                     first_index, 1, 1, 0, num_width,
                                     True,
                                     self.log).resequence()
 
-                renamed_group_files = self.group_files(group_name)
+                renamed_group_files = group_files(self.input_path, self.file_ext, group_name)
                 with Mtqdm().open_bar(total=len(renamed_group_files), desc="Copying") as file_bar:
                     for file_index, file in enumerate(renamed_group_files):
                         if group_index < len(group_names)-1:
@@ -539,11 +539,11 @@ class MergeFrames:
                         Mtqdm().update_bar(file_bar)
 
                 # restore the original filenames
-                self.log(f"Restoring original filenames in {group_path}")
+                self.log(f"Restoring original filenames in {_group_path}")
                 with Mtqdm().open_bar(total=len(renamed_group_files),
                                         desc="Renaming") as bar:
                     for index, file in enumerate(renamed_group_files):
-                        original_filename = group_files[index]
+                        original_filename = _group_files[index]
                         if self.dry_run:
                             print(
                             f"[Dry Run] Restoring file '{file}' to '{original_filename}'")
@@ -552,51 +552,6 @@ class MergeFrames:
                             os.replace(file, original_filename)
                         Mtqdm().update_bar(bar)
                 Mtqdm().update_bar(group_bar)
-
-    def validate_input_path(self):
-        """returns the list of group names"""
-        if not os.path.exists(self.input_path):
-            raise ValueError("'input_path' must be the path of an existing directory")
-
-        group_names = get_directories(self.input_path)
-        if len(group_names) < 1:
-            raise ValueError(f"no folders founder in directory {self.input_path}")
-
-        if self.num_groups == -1:
-            self.num_groups = len(group_names)
-        else:
-            if len(group_names) != self.num_groups:
-                raise ValueError(
-                    f"'num_groups' should match count of directories found at {self.input_path}")
-        return group_names
-
-    def validate_group_names(self, group_names):
-            try:
-                for name in group_names:
-                    _, _, _ = self.details_from_group_name(name)
-            except RuntimeError as error:
-                raise RuntimeError(f"one or more group directory namaes is not valid: {error}")
-
-    def details_from_group_name(self, group_name : str):
-        indexes = group_name.split("-")
-        if len(indexes) != 2:
-            raise RuntimeError(f"group name '{group_name}' cannot be parsed into indexes")
-        first_index = indexes[0]
-        last_index = indexes[1]
-        num_width = len(str(first_index))
-        if num_width < 1:
-            raise RuntimeError(f"group name '{group_name}' cannot be parsed into index fill width")
-        try:
-            return int(first_index), int(last_index), num_width
-        except ValueError:
-            raise RuntimeError(f"group name '{group_name}' cannot be parsed into frames indexes")
-
-    def group_path(self, group_name):
-        return os.path.join(self.input_path, group_name)
-
-    def group_files(self, group_name):
-        group_path = self.group_path(group_name)
-        return sorted(glob.glob(os.path.join(group_path, f"*.{self.file_ext}")))
 
     def log(self, message : str) -> None:
         """Logging"""

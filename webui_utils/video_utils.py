@@ -6,7 +6,7 @@ import json
 from fractions import Fraction
 from ffmpy import FFmpeg, FFprobe, FFRuntimeError
 from .image_utils import gif_frame_count
-from .file_utils import split_filepath
+from .file_utils import split_filepath, get_directories
 from .simple_utils import seconds_to_hms
 
 QUALITY_NEAR_LOSSLESS = 17
@@ -420,7 +420,60 @@ def scene_list_to_ranges(scene_list, num_files):
         last_scene_index = scene_frame
     return result
 
-def slice_video(input_path : str, output_path : str, fps : int, first_frame : int, last_frame : int, type : str="mp4", mp4_quality : int=23):
+# in: group name such as 000-123
+# out: first index, last index, num width
+def details_from_group_name(group_name : str):
+    indexes = group_name.split("-")
+    if len(indexes) != 2:
+        raise RuntimeError(f"group name '{group_name}' cannot be parsed into indexes")
+    first_index = indexes[0]
+    last_index = indexes[1]
+    num_width = len(str(first_index))
+    if num_width < 1:
+        raise RuntimeError(f"group name '{group_name}' cannot be parsed into index fill width")
+    try:
+        return int(first_index), int(last_index), num_width
+    except ValueError:
+        raise RuntimeError(f"group name '{group_name}' cannot be parsed into frames indexes")
+
+def validate_input_path(input_path, num_groups):
+    """returns the list of group names"""
+    if not os.path.exists(input_path):
+        raise ValueError("'input_path' must be the path of an existing directory")
+
+    group_names = get_directories(input_path)
+    if len(group_names) < 1:
+        raise ValueError(f"no folders found in directory {input_path}")
+
+    if num_groups == -1:
+        num_groups = len(group_names)
+    else:
+        if len(group_names) != num_groups:
+            raise ValueError(
+                f"'num_groups' should match count of directories found at {input_path}")
+    return group_names
+
+def validate_group_names(group_names):
+    try:
+        for name in group_names:
+            _, _, _ = details_from_group_name(name)
+    except RuntimeError as error:
+        raise RuntimeError(f"one or more group directory namaes is not valid: {error}")
+
+def group_path(input_path, group_name):
+    return os.path.join(input_path, group_name)
+
+def group_files(input_path, file_ext, group_name):
+    _group_path = group_path(input_path, group_name)
+    return sorted(glob.glob(os.path.join(_group_path, f"*.{file_ext}")))
+
+def slice_video(input_path : str,
+                output_path : str,
+                fps : int,
+                first_frame : int,
+                last_frame : int,
+                type : str="mp4",
+                mp4_quality : int=23):
     # 153=5.1
     # 203+1=6.8
     # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.mp4
@@ -429,8 +482,6 @@ def slice_video(input_path : str, output_path : str, fps : int, first_frame : in
     output_ext = "mp4" if type == "mp4" else "wav"
     output_filename = f"{filename}[{first_frame}-{last_frame}].{output_ext}"
     output_filepath = os.path.join(output_path, output_filename)
-
-    print(output_filepath)
 
     start_second = first_frame / (fps * 1.0)
     end_second = (last_frame + 1) / (fps * 1.0)
