@@ -8,7 +8,7 @@ from webui_utils.video_utils import validate_input_path, details_from_group_name
 from webui_utils.mtqdm import Mtqdm
 
 def main():
-    """Use the Video feature from the command line"""
+    """Use the Slice Video feature from the command line"""
     parser = argparse.ArgumentParser(description='Slice a video based on split groups')
     parser.add_argument("--input_path", default=None, type=str,
         help="Input path to video file to be sliced")
@@ -16,10 +16,12 @@ def main():
                         help="Frame rate of the video to be sliced")
     parser.add_argument("--group_path", default=None, type=str,
         help="Input path to PNG frame group directories")
-    parser.add_argument("--type", default="mp4", type=str,
-        help="Sliced output 'mp4' (default), 'gif', 'wav', 'mp3', 'jpg'")
     parser.add_argument("--output_path", default="", type=str,
         help="Output path for sliced segments files (default '' = save in group directories")
+    parser.add_argument("--output_scale", default="0.5", type=float,
+                        help="Scale factor for output 0.0 to 1.0 (default 0.5)")
+    parser.add_argument("--type", default="mp4", type=str,
+        help="Sliced output 'mp4' (default), 'gif', 'wav', 'mp3', 'jpg'")
     parser.add_argument("--mp4_quality", default=23, type=int,
                         help="MP4 video quality 17 (best) to 28, default 23")
     parser.add_argument("--gif_fps", default=2, type=int, help="GIF frame rate")
@@ -28,22 +30,24 @@ def main():
     args = parser.parse_args()
 
     log = SimpleLog(args.verbose)
-    SliceVideos(args.input_path,
+    SliceVideo(args.input_path,
                 args.fps,
                 args.group_path,
                 args.output_path,
+                args.output_scale,
                 args.type,
                 args.mp4_quality,
                 args.gif_fps,
                 log.log).slice()
 
-class SliceVideos:
+class SliceVideo:
     """Encapsulate logic for Split Scenes feature"""
     def __init__(self,
                 input_path : str,
                 fps : float,
                 group_path : str,
                 output_path : str,
+                output_scale : float,
                 type : str,
                 mp4_quality : int,
                 gif_fps : int,
@@ -52,6 +56,7 @@ class SliceVideos:
         self.fps = fps
         self.group_path = group_path
         self.output_path = output_path
+        self.output_scale = output_scale
         self.type = type
         self.mp4_quality = mp4_quality
         self.gif_fps = gif_fps
@@ -65,6 +70,8 @@ class SliceVideos:
         if self.output_path:
             if not is_safe_path(self.output_path):
                 raise ValueError("'output_path' must be a legal path")
+        if self.output_scale < 0.0 or self.output_scale > 1.0:
+            raise ValueError("'output_scale' must be between 0.0 and 1.0")
         if not self.type in valid_types:
             raise ValueError(f"'type' must be one of {', '.join([t for t in valid_types])}")
         if self.mp4_quality < 0:
@@ -73,11 +80,6 @@ class SliceVideos:
             raise ValueError(f"'gif_fps' must be >= 1")
 
     def slice(self):
-        # get groups
-        # go through groups
-        # details_from_group_name
-        # compute output path based on if its blank
-
         group_names = validate_input_path(self.group_path, -1)
         if self.output_path:
             self.log(f"Creating output path {self.output_path}")
@@ -89,7 +91,7 @@ class SliceVideos:
                 output_path = self.output_path or os.path.join(self.group_path, group_name)
                 self.log("using slice_video (may cause long delay while processing request)")
                 slice_video(self.input_path, self.fps, output_path, num_width, first_index,
-                            last_index, self.type, self.mp4_quality, self.gif_fps)
+                        last_index, self.type, self.mp4_quality, self.gif_fps, self.output_scale)
                 Mtqdm().update_bar(bar)
 
     def log(self, message : str) -> None:

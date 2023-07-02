@@ -1,7 +1,6 @@
 """Merge Frames Feature Core Code"""
 import os
 import shutil
-import glob
 import argparse
 from typing import Callable
 from webui_utils.simple_log import SimpleLog

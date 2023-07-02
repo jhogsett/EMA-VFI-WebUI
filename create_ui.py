@@ -32,6 +32,7 @@ from tabs.video_details_ui import VideoDetails
 from tabs.split_frames_ui import SplitFrames
 from tabs.merge_frames_ui import MergeFrames
 from tabs.split_scenes_ui import SplitScenes
+from tabs.slice_video_ui import SliceVideo
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
@@ -79,6 +80,7 @@ def create_ui(config : SimpleConfig,
                 SplitFrames(config, engine, log.log).render_tab()
                 MergeFrames(config, engine, log.log).render_tab()
                 SplitScenes(config, engine, log.log).render_tab()
+                SliceVideo(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             UpscaleFrames(config, engine, log.log).render_tab()
             VideoDetails(config, engine, log.log).render_tab()
