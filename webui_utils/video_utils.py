@@ -7,6 +7,7 @@ from fractions import Fraction
 from ffmpy import FFmpeg, FFprobe, FFRuntimeError
 from .image_utils import gif_frame_count
 from .file_utils import split_filepath
+from .simple_utils import seconds_to_hms
 
 QUALITY_NEAR_LOSSLESS = 17
 QUALITY_SMALLER_SIZE = 28
@@ -418,3 +419,35 @@ def scene_list_to_ranges(scene_list, num_files):
             "scene_size" : scene_size})
         last_scene_index = scene_frame
     return result
+
+def slice_video(input_path : str, output_path : str, fps : int, first_frame : int, last_frame : int, type : str="mp4", mp4_quality : int=23):
+    # 153=5.1
+    # 203+1=6.8
+    # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.mp4
+    # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.wav
+    _, filename, ext = split_filepath(input_path)
+    output_ext = "mp4" if type == "mp4" else "wav"
+    output_filename = f"{filename}[{first_frame}-{last_frame}].{output_ext}"
+    output_filepath = os.path.join(output_path, output_filename)
+
+    print(output_filepath)
+
+    start_second = first_frame / (fps * 1.0)
+    end_second = (last_frame + 1) / (fps * 1.0)
+    start_time = seconds_to_hms(start_second)
+    end_time = seconds_to_hms(end_second)
+
+    if type == "mp4":
+        ffcmd = FFmpeg(inputs= {input_path : None},
+                                outputs={output_filepath :
+                f"-ss {start_time} -to {end_time} -copyts -crf {mp4_quality}"},
+            global_options="-y")
+    else:
+        ffcmd = FFmpeg(inputs= {input_path : None},
+                                outputs={output_filepath :
+                f"-ss {start_time} -to {end_time} -copyts -ac 2"},
+            global_options="-y")
+
+    cmd = ffcmd.cmd
+    ffcmd.run()
+    return cmd
