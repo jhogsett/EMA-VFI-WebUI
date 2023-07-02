@@ -5,8 +5,9 @@ import glob
 import argparse
 from typing import Callable
 from webui_utils.simple_log import SimpleLog
-from webui_utils.file_utils import create_directory, is_safe_path, split_filepath, get_directories
-from webui_utils.video_utils import details_from_group_name, validate_input_path, validate_group_names, group_path, group_files
+from webui_utils.file_utils import create_directory, is_safe_path, split_filepath
+from webui_utils.video_utils import details_from_group_name, validate_input_path,\
+    validate_group_names, group_path, group_files
 from webui_utils.mtqdm import Mtqdm
 from resequence_files import ResequenceFiles
 
@@ -466,7 +467,7 @@ class MergeFrames:
                 Mtqdm().update_bar(group_bar)
 
     def merge_inflation_combine(self, first_index, last_index, num_width, group_size, group_names):
-        first_group_files = group.self_files(group_names[0])
+        first_group_files = group_files(self.input_path, self.file_ext, group_names[0])
         file_count = len(first_group_files)
 
         # after inflation there will be more files than accounted for in group name
