@@ -25,6 +25,8 @@ def main():
     parser.add_argument("--mp4_quality", default=23, type=int,
                         help="MP4 video quality 17 (best) to 28, default 23")
     parser.add_argument("--gif_fps", default=2, type=int, help="GIF frame rate")
+    parser.add_argument("--edge_trim", default=0, type=int,
+                        help="Extend (< 0) or shrink (> 0) end frames (default: 0)")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
@@ -38,6 +40,7 @@ def main():
                 args.type,
                 args.mp4_quality,
                 args.gif_fps,
+                args.edge_trim,
                 log.log).slice()
 
 class SliceVideo:
@@ -51,6 +54,7 @@ class SliceVideo:
                 type : str,
                 mp4_quality : int,
                 gif_fps : int,
+                edge_trim : int,
                 log_fn : Callable | None):
         self.input_path = input_path
         self.fps = fps
@@ -60,6 +64,7 @@ class SliceVideo:
         self.type = type
         self.mp4_quality = mp4_quality
         self.gif_fps = gif_fps
+        self.edge_trim = edge_trim
         self.log_fn = log_fn
         valid_types = ["mp4", "gif", "wav", "mp3", "jpg"]
 
@@ -91,6 +96,11 @@ class SliceVideo:
                 first_index, last_index, num_width = details_from_group_name(group_name)
                 output_path = self.output_path or os.path.join(self.group_path, group_name)
                 self.log("using slice_video (may cause long delay while processing request)")
+                first_index += self.edge_trim
+                if first_index < 0:
+                    first_index = 0
+                last_index -= self.edge_trim # don't have the info necessary to check this here
+                                             # it's only used to compute the end time for ffmpeg
                 slice_video(self.input_path, self.fps, output_path, num_width, first_index,
                         last_index, self.type, self.mp4_quality, self.gif_fps, self.output_scale)
                 Mtqdm().update_bar(bar)

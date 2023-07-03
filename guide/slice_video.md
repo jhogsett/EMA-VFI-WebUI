@@ -19,6 +19,8 @@
     - Leave blank to store the sliced files within the original scene directories
 1. Adjust _Output Scale Factor_ as necessary
     - _Tip: Sliced files can grow large - a small size is recommended_
+1. Leave _Edge Trim_ Unchecked
+    - If slicing based on resynthesized content, check this box to account for removed outer frames
 1. Choose a _Slice Type_
     - _See below for a table of Slice Types and descriptions_
 1. Choose a _MP4 Quality_

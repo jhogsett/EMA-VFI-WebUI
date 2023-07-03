@@ -47,6 +47,8 @@ class SliceVideo(TabBase):
                 output_scale = gr.Slider(minimum=0.0, maximum=max_scale_factor,
                     step=0.05, value=def_scale_factor, label="Output Scale Factor",
                     info="Output frames will be downscaled by this factor")
+                edge_trim = gr.Checkbox(value=False, label="Edge Trim",
+                                info="Remove outer frames for resynthesized content")
             with gr.Row():
                 slice_type = gr.Radio(value="mp4", choices=["mp4", "gif", "wav", "mp3", "jpg"],
                             label="Slice Type", info="See the guide for details about each type")
@@ -60,7 +62,7 @@ class SliceVideo(TabBase):
                 WebuiTips.slice_video.render()
 
         slice_video.click(self.slice_video, inputs=[input_path, input_frame_rate, group_path,
-                                output_path, output_scale, slice_type, mp4_quality, gif_frame_rate])
+                    output_path, output_scale, slice_type, mp4_quality, gif_frame_rate, edge_trim])
 
     def slice_video(self,
                         input_path : str,
@@ -70,9 +72,13 @@ class SliceVideo(TabBase):
                         output_scale : float,
                         slice_type : str,
                         mp4_quality : int,
-                        gif_frame_rate : int):
+                        gif_frame_rate : int,
+                        edge_trim : bool):
         """Slice Video button handler"""
         if input_path and group_path:
+            # if compensating for video resynthesis, set edge trim to "1"
+            # to leave out the (now missing) outer frames when slicing
+            trim = 1 if edge_trim else 0
             _SliceVideo(input_path,
                         input_fps,
                         group_path,
@@ -81,4 +87,5 @@ class SliceVideo(TabBase):
                         slice_type,
                         mp4_quality,
                         gif_frame_rate,
+                        trim,
                         self.log).slice()
