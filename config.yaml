@@ -78,15 +78,6 @@ logviewer_settings:
 mp4_to_png_settings:
   frame_rate: 30
   max_frame_rate: 1000
-restoration_settings:
-  create_gif: True
-  create_zip: True
-  create_txt: True
-  default_frames: 2
-  default_precision: 10
-  gif_duration: 1000
-  max_frames: 10
-  max_precision: 60
 png_to_gif_settings:
   frame_rate: 30
   max_frame_rate: 1000
@@ -96,15 +87,34 @@ png_to_mp4_settings:
   max_frame_rate: 1000
   maximum_crf: 28
   minimum_crf: 17
-search_settings:
-  default_splits: 10
-  max_splits: 60
 realesrgan_settings:
   fp32: True
   gpu_ids: "0"
   model_name: "RealESRGAN_x4plus"
   tile_pad: 10
   tiling: 256
+restoration_settings:
+  create_gif: True
+  create_zip: True
+  create_txt: True
+  default_frames: 2
+  default_precision: 10
+  gif_duration: 1000
+  max_frames: 10
+  max_precision: 60
+search_settings:
+  default_splits: 10
+  max_splits: 60
+slice_settings:
+  default_crf: 28
+  default_gif_fps: 2
+  def_scale_factor: 0.5
+  frame_rate: 30
+  max_frame_rate: 1000
+  maximum_crf: 28
+  maximum_gif_fps: 60
+  max_scale_factor: 1.0
+  minimum_crf: 17
 upscale_settings:
   file_types:
   - "bmp"

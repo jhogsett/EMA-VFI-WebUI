@@ -6,7 +6,8 @@ import json
 from fractions import Fraction
 from ffmpy import FFmpeg, FFprobe, FFRuntimeError
 from .image_utils import gif_frame_count
-from .file_utils import split_filepath
+from .file_utils import split_filepath, get_directories
+from .simple_utils import seconds_to_hms
 
 QUALITY_NEAR_LOSSLESS = 17
 QUALITY_SMALLER_SIZE = 28
@@ -30,7 +31,7 @@ def determine_output_pattern(mp4_file_path : str) -> str:
 
 def PNGtoMP4(input_path : str, # pylint: disable=invalid-name
             filename_pattern : str,
-            frame_rate : int,
+            frame_rate : float,
             output_filepath : str,
             crf : int = QUALITY_DEFAULT):
     """Encapsulate logic for the PNG Sequence to MP4 feature"""
@@ -51,7 +52,7 @@ def PNGtoMP4(input_path : str, # pylint: disable=invalid-name
 # ffmpeg -y -i frames.mp4 -filter:v fps=25 -start_number 0 output_%09d.png
 def MP4toPNG(input_path : str,  # pylint: disable=invalid-name
             filename_pattern : str,
-            frame_rate : int,
+            frame_rate : float,
             output_path : str,
             start_number : int = 0,
             deinterlace : bool = False):
@@ -91,7 +92,7 @@ def PNGtoPalette(input_path : str, # pylint: disable=invalid-name
 def PNGtoGIF(input_path : str, # pylint: disable=invalid-name
             filename_pattern : str,
             output_filepath : str,
-            frame_rate : int):
+            frame_rate : float):
     """Encapsulates logic for the PNG sequence to GIF feature"""
     # if filename_pattern is empty it uses the filename of the first found file
     # and the count of file to determine the pattern, .png as the file type
@@ -418,3 +419,111 @@ def scene_list_to_ranges(scene_list, num_files):
             "scene_size" : scene_size})
         last_scene_index = scene_frame
     return result
+
+# in: group name such as 000-123
+# out: first index, last index, num width
+def details_from_group_name(group_name : str):
+    indexes = group_name.split("-")
+    if len(indexes) != 2:
+        raise RuntimeError(f"group name '{group_name}' cannot be parsed into indexes")
+    first_index = indexes[0]
+    last_index = indexes[1]
+    num_width = len(str(first_index))
+    if num_width < 1:
+        raise RuntimeError(f"group name '{group_name}' cannot be parsed into index fill width")
+    try:
+        return int(first_index), int(last_index), num_width
+    except ValueError:
+        raise RuntimeError(f"group name '{group_name}' cannot be parsed into frames indexes")
+
+def validate_input_path(input_path, num_groups):
+    """returns the list of group names"""
+    if not os.path.exists(input_path):
+        raise ValueError("'input_path' must be the path of an existing directory")
+
+    group_names = get_directories(input_path)
+    if len(group_names) < 1:
+        raise ValueError(f"no folders found in directory {input_path}")
+
+    if num_groups == -1:
+        num_groups = len(group_names)
+    else:
+        if len(group_names) != num_groups:
+            raise ValueError(
+                f"'num_groups' should match count of directories found at {input_path}")
+    return group_names
+
+def validate_group_names(group_names):
+    try:
+        for name in group_names:
+            _, _, _ = details_from_group_name(name)
+    except RuntimeError as error:
+        raise RuntimeError(f"one or more group directory namaes is not valid: {error}")
+
+def group_path(input_path, group_name):
+    return os.path.join(input_path, group_name)
+
+def group_files(input_path, file_ext, group_name):
+    _group_path = group_path(input_path, group_name)
+    return sorted(glob.glob(os.path.join(_group_path, f"*.{file_ext}")))
+
+def slice_video(input_path : str,
+                fps : float,
+                output_path : str,
+                num_width : int,
+                first_frame : int,
+                last_frame : int,
+                type : str="mp4",
+                mp4_quality : int=28,
+                gif_fps : int=2,
+                scale_factor : float=0.5,
+                gif_high_quality : bool=False):
+    # 153=5.1
+    # 203+1=6.8
+    # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.mp4
+    # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.wav
+    _, filename, ext = split_filepath(input_path)
+    output_filename =\
+f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_width)}].{type}"
+    output_filepath = os.path.join(output_path, output_filename)
+    start_second = first_frame / fps
+    end_second = (last_frame + 1) / fps
+    start_time = seconds_to_hms(start_second)
+    end_time = seconds_to_hms(end_second)
+
+    if type == "mp4":
+        ffcmd = FFmpeg(inputs= {input_path : None},
+                                outputs={output_filepath :
+                f"-ss {start_time} -to {end_time} -copyts -vf 'scale=iw*{scale_factor}:-2,fps={fps}' -crf {mp4_quality}"},
+            global_options="-y")
+
+    if type == "gif":
+        if gif_high_quality: # extremely slow
+            ffcmd = FFmpeg(inputs= {input_path : None},
+                                    outputs={output_filepath :
+                    f"-ss {start_time} -to {end_time} -vf 'scale=iw*{scale_factor}:-2,fps={gif_fps},split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -loop 0"},
+                global_options="-y")
+        else:
+            ffcmd = FFmpeg(inputs= {input_path : None},
+                                    outputs={output_filepath :
+                    f"-ss {start_time} -to {end_time} -vf 'scale=iw*{scale_factor}:-2,fps={gif_fps}' -loop 0"},
+                global_options="-y")
+
+    elif type == "wav" or type == "mp3":
+        ffcmd = FFmpeg(inputs= {input_path : None},
+                                outputs={output_filepath :
+                f"-ss {start_time} -to {end_time} -copyts -ac 2"},
+            global_options="-y")
+
+    elif type == "jpg":
+        mid_frame = int((last_frame + first_frame) / 2)
+        start_second = mid_frame / (fps * 1.0)
+        start_time = seconds_to_hms(start_second)
+        ffcmd = FFmpeg(inputs= {input_path : f"-ss {start_time}"},
+                                outputs={output_filepath :
+                f"-vf scale=iw*{scale_factor}:-2 -qscale:v 2 -vframes 1"},
+            global_options="-y")
+
+    cmd = ffcmd.cmd
+    ffcmd.run()
+    return cmd

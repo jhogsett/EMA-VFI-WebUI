@@ -104,7 +104,7 @@ class VideoBlenderState:
             VideoBlenderPath(frames_path2)
             ]
         self.main_path = main_path
-        self.fps = int(fps)
+        self.fps = float(fps)
 
     def get_frame_file(self, which_path : int, frame : int):
         """Get a frame file given a frame number and project path type"""

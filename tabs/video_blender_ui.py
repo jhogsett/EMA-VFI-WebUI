@@ -57,7 +57,7 @@ class VideoBlender(TabBase):
                         input_main_path = gr.Textbox(label="Project Main Path",
                                                      placeholder="Root path for the project")
                         input_project_frame_rate = gr.Slider(value=frame_rate, minimum=1,
-                                                maximum=max_frame_rate, step=1, label="Frame Rate")
+                                            maximum=max_frame_rate, step=0.01, label="Frame Rate")
                     with gr.Row():
                         input_project_path_vb = gr.Textbox(label="Project Frames Path",
                             placeholder="Path to frame PNG files for video being restored")
@@ -175,7 +175,7 @@ class VideoBlender(TabBase):
                     with gr.Row():
                         render_video_vb = gr.Button("Render Video", variant="primary")
                         input_frame_rate_vb = gr.Slider(value=frame_rate, minimum=1,
-                                                maximum=max_frame_rate, step=1, label="Frame Rate")
+                                            maximum=max_frame_rate, step=0.01, label="Frame Rate")
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                         WebuiTips.video_blender_video_preview.render()
 
@@ -195,7 +195,7 @@ class VideoBlender(TabBase):
                                         placeholder="Path on this server for the new project")
                                 with gr.Column(scale=1):
                                     new_project_frame_rate = gr.Slider(value=frame_rate, minimum=1,
-                                                maximum=max_frame_rate, step=1, label="Frame Rate")
+                                            maximum=max_frame_rate, step=0.01, label="Frame Rate")
                     with gr.Row():
                         with gr.Column(variant="compact"):
                             gr.HTML("Check Applicable Setup Steps")
@@ -529,7 +529,7 @@ class VideoBlender(TabBase):
         if input_path:
             output_filepath, _ = AutoIncrementFilename(self.config.directories["working"],
                 "mp4").next_filename("video_preview", "mp4")
-            PNGtoMP4(input_path, None, int(frame_rate), output_filepath,
+            PNGtoMP4(input_path, None, float(frame_rate), output_filepath,
                 crf=QUALITY_SMALLER_SIZE)
             return output_filepath
 
@@ -628,7 +628,7 @@ class VideoBlender(TabBase):
             if step1_enabled:
                 output_pattern = "source_frame%09d.png"
                 self.log(f"using FFmpeg to create PNG frames from input video {step1_path}")
-                ffmpeg_cmd = MP4toPNG(step1_path, output_pattern, int(step1_frame_rate),
+                ffmpeg_cmd = MP4toPNG(step1_path, output_pattern, float(step1_frame_rate),
                                       source_frames_path)
                 self.log(ffmpeg_cmd)
             else:
