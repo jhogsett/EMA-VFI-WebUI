@@ -13,12 +13,6 @@ Real-ESRGAN must be installed locally to use
 * The _Real-ESRGAN 4x+_ model (65MB) will automatically download on first use
 
 ## How It Works
-1. Set _Input Path_ to a directory on this server to the PNG files to be upscaled
-    - JPG, GIF and BMP files will also be upscaled if found in the path
-    - _Tip: the config setting_ `upscale_settings:file_types` _specifies the searched types_
-1. Set _Output Path_ to a directory on this server for the upscaled PNG files
-    - If Output Path is set, upscaled files are saved as sequentially indexed PNG files with a fixed filename
-    - When Output Path is left empty, upscaled files are saved to the input path using the original filename and format, and marked with the outscale amount.
 1. Set _Frame Upscale Factor_ for the desired amount of frame enlargement
     - The factor can be set between 1.0 and 8.0 in 0.05 steps
     - Real-ESRGAN will perform upscaling when _factor_ is > 1.0
@@ -34,7 +28,21 @@ Real-ESRGAN must be installed locally to use
         - Images will be upscaled in blocks then stiched together
         - Tiling _Size_ and _Padding_ (in pixels) are set using the config settings:
             - `realesrgan_settings:tiling` and `realesrgan_settings:tile_pad`
-1. Click _Upscale Frames_
+1. Choose _Individual Path_ or _Batch Processing_
+    - If **Individual Path**
+        - Set _Input Path_ to a directory on this server to the PNG files to be upscaled
+            - JPG, GIF and BMP files will also be upscaled if found in the path
+            - _Tip: the config setting_ `upscale_settings:file_types` _specifies the searched types_
+        - Set _Output Path_ to a directory on this server for the upscaled PNG files
+            - If Output Path is set, upscaled files are saved as sequentially indexed PNG files with a fixed filename
+            - When Output Path is left empty, upscaled files are saved to the input path using the original filename and format, and marked with the outscale amount.
+    - If **Batch Processing**
+        - Set _Input Path_ to a directory on this server containing PNG frame groups to be upscaled
+        - Set _Output Path_ to a directory on this server for the upscaled PNG frame groups
+
+1. Click _Upscale Frames_ or _Upscale Batch_
+- Progress can be checked in the console
+
 1. _Real-ESRGAN_ is used on each frame in the input path
     - Frames are cleaned up, and enlarged if necessary
     - The new frames are copied to the output path

@@ -1,11 +1,13 @@
 """Upscale Frames feature UI and event handlers"""
+import os
 from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.file_utils import create_directory, get_files
-from webui_utils.auto_increment import AutoIncrementDirectory
+from webui_utils.file_utils import create_directory, get_files, get_directories
+# from webui_utils.auto_increment import AutoIncrementDirectory
 from webui_utils.ui_utils import update_splits_info
+from webui_utils.mtqdm import Mtqdm
 from webui_tips import WebuiTips
 from upscale_series import UpscaleSeries
 from tabs.tab_base import TabBase
@@ -24,29 +26,70 @@ class UpscaleFrames(TabBase):
             gr.HTML(SimpleIcons.INCREASING + "Use Real-ESRGAN to Enlarge and Denoise Frames",
                 elem_id="tabheading")
             with gr.Row():
-                with gr.Column():
-                    input_path_text = gr.Text(max_lines=1,
-    placeholder="Path on this server to the frame PNG files (also upscales JPG, GIF, BMP files)",
-                        label="Input Path")
-                    output_path_text = gr.Text(max_lines=1,
-                placeholder="Where to place the upscaled frames, leave blank save to input path",
-                        label="Output Path")
-                    with gr.Row():
-                        scale_input = gr.Slider(value=4.0, minimum=1.0, maximum=8.0, step=0.05,
-                            label="Frame Upscale Factor")
-                        use_tiling = gr.Radio(label="Use Tiling",
-                        choices=[
-                            "Auto (Tile If Needed)",
-                            "No (Best Quality)",
-                            "Yes (For Large Files or Low VRAM)"],
-                        value="Auto (Tile If Needed)")
-            gr.Markdown("*Progress can be tracked in the console*")
-            upscale_button = gr.Button("Upscale Frames " + SimpleIcons.SLOW_SYMBOL,
-                                       variant="primary")
+                # with gr.Column():
+                with gr.Row():
+                    scale_input = gr.Slider(value=4.0, minimum=1.0, maximum=8.0, step=0.05,
+                        label="Frame Upscale Factor")
+                    use_tiling = gr.Radio(label="Use Tiling",
+                    choices=[
+                        "Auto (Tile If Needed)",
+                        "No (Best Quality)",
+                        "Yes (For Large Files or Low VRAM)"],
+                    value="Auto (Tile If Needed)")
+
+            with gr.Tabs():
+                with gr.Tab(label="Individual Path"):
+                    input_path_text = gr.Text(max_lines=1, label="Input Path",
+                                        placeholder="Path on this server to the frame PNG files",
+                                        info="Also works with other formats like JPG, GIF, BMP")
+                    output_path_text = gr.Text(max_lines=1, label="Output Path",
+                                        placeholder="Where to place the upscaled frames",
+                                        info="Leave blank save to Input Path")
+                    gr.Markdown("*Progress can be tracked in the console*")
+                    upscale_button = gr.Button("Upscale Frames " + SimpleIcons.SLOW_SYMBOL,
+                                            variant="primary")
+                with gr.Tab(label="Batch Processing"):
+                    input_path_batch = gr.Text(max_lines=1, label="Input Path",
+                                        placeholder="Path on this server to the PNG frame groups")
+                    output_path_batch = gr.Text(max_lines=1, label="Output Path",
+                                        placeholder="Where to place the upscaled frame groups")
+                    gr.Markdown("*Progress can be tracked in the console*")
+                    upscale_batch = gr.Button("Upscale Batch " + SimpleIcons.SLOW_SYMBOL,
+                                            variant="primary")
+
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.upscale_frames.render()
         upscale_button.click(self.upscale_frames,
             inputs=[input_path_text, output_path_text, scale_input, use_tiling])
+        upscale_batch.click(self.upscale_batch,
+            inputs=[input_path_batch, output_path_batch, scale_input, use_tiling])
+
+    def upscale_batch(self,
+                       input_path : str,
+                       output_path : str | None,
+                       upscale_factor : float,
+                       use_tiling : str):
+        """Upscale Frames button handler"""
+        if input_path and output_path:
+            self.log(f"beginning batch UpscaleFrames processing with input_path={input_path}" +\
+                     f" output_path={output_path}")
+            group_names = get_directories(input_path)
+            self.log(f"found {len(group_names)} groups to process")
+
+            if group_names:
+                self.log(f"creating group output path {output_path}")
+                create_directory(output_path)
+
+                with Mtqdm().open_bar(total=len(group_names), desc="Upscale Group") as bar:
+                    for group_name in group_names:
+                        group_input_path = os.path.join(input_path, group_name)
+                        group_output_path = os.path.join(output_path, group_name)
+
+                        self.upscale_frames(group_input_path,
+                                            group_output_path,
+                                            upscale_factor,
+                                            use_tiling)
+                        Mtqdm().update_bar(bar)
 
     def upscale_frames(self,
                        input_path : str,
