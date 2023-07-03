@@ -476,7 +476,8 @@ def slice_video(input_path : str,
                 type : str="mp4",
                 mp4_quality : int=28,
                 gif_fps : int=2,
-                scale_factor : float=0.5):
+                scale_factor : float=0.5,
+                gif_high_quality : bool=False):
     # 153=5.1
     # 203+1=6.8
     # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.mp4
@@ -497,10 +498,16 @@ f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_widt
             global_options="-y")
 
     if type == "gif":
-        ffcmd = FFmpeg(inputs= {input_path : None},
-                                outputs={output_filepath :
-                f"-ss {start_time} -to {end_time} -vf 'scale=iw*{scale_factor}:-2,fps={gif_fps},split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -loop 0"},
-            global_options="-y")
+        if gif_high_quality: # extremely slow
+            ffcmd = FFmpeg(inputs= {input_path : None},
+                                    outputs={output_filepath :
+                    f"-ss {start_time} -to {end_time} -vf 'scale=iw*{scale_factor}:-2,fps={gif_fps},split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -loop 0"},
+                global_options="-y")
+        else:
+            ffcmd = FFmpeg(inputs= {input_path : None},
+                                    outputs={output_filepath :
+                    f"-ss {start_time} -to {end_time} -vf 'scale=iw*{scale_factor}:-2,fps={gif_fps}' -loop 0"},
+                global_options="-y")
 
     elif type == "wav" or type == "mp3":
         ffcmd = FFmpeg(inputs= {input_path : None},

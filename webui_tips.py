@@ -61,3 +61,4 @@ class WebuiTips:
     merge_frames = gr.Markdown(load_markdown(tips_path, "merge_frames"))
     deduplicate_tuning = gr.Markdown(load_markdown(tips_path, "deduplicate_tuning"))
     split_scenes = gr.Markdown(load_markdown(tips_path, "split_scenes"))
+    slice_video = gr.Markdown(load_markdown(tips_path, "slice_video"))

@@ -70,6 +70,7 @@ class SliceVideo:
         if self.output_path:
             if not is_safe_path(self.output_path):
                 raise ValueError("'output_path' must be a legal path")
+        self.output_scale = float(self.output_scale)
         if self.output_scale < 0.0 or self.output_scale > 1.0:
             raise ValueError("'output_scale' must be between 0.0 and 1.0")
         if not self.type in valid_types:
