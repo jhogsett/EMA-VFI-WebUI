@@ -63,7 +63,7 @@ class SplitScenes(TabBase):
                 output_path,
                 "png",
                 "scene",
-                scene_threshold,
+                float(scene_threshold),
                 0.0,
                 0.0,
                 self.log).split()
@@ -81,6 +81,6 @@ class SplitScenes(TabBase):
                 "png",
                 "break",
                 0.0,
-                break_duration,
-                break_ratio,
+                float(break_duration),
+                float(break_ratio),
                 self.log).split()
