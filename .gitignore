@@ -147,7 +147,7 @@ weights/
 go.bat
 temp/
 notes.txt
-test_assets/
+QA_fixtures/
 models!/
 ui.bat
 config-local.yaml
