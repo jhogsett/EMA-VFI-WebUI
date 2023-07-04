@@ -72,7 +72,7 @@ class ResizeFrames(TabBase):
                 with gr.Tab(label="Batch Processing"):
                     with gr.Row():
                         input_path_batch = gr.Text(max_lines=1,
-                            placeholder="Path on this server to the groups of frame PNG files",
+                            placeholder="Path on this server to the frame groups to resize",
                             label="Input Path")
                         output_path_batch = gr.Text(max_lines=1,
                             placeholder="Where to place the resized frame groups",
