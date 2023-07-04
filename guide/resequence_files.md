@@ -3,9 +3,9 @@
 ## Uses
 - Prepare a PNG sequence for import into video editing software
 - Rearrange a set of PNG frames for insertion into another set
+- Split a set of deinterlaced frames into _Even_ and _Odd_ sets
 
 ## How It Works
-1. Set _Input Path_ to a path on this server to the PNG files being resequenced
 1. Set _File Type_ to `png` or another necessary value
     - This used to locate the original set of files, and name the new files
     - A wildcard such as `*` will not work here
@@ -29,7 +29,14 @@
         - _Tip: selecting_ even _or_ odd _frames can be useful if using de-interlaced content_
 1. Leave _Rename instead of duplicate files_ unchecked to keep a copy of the original files
     - The original files can be handy for tracking down a source frame
-1. Click _Resequence Files_
+1. Choose _Individual Path_ or _Batch Processing_
+    - If **Individual Path**
+        - Set _Input Path_ to a path on this server to the PNG files being resequenced
+    - If **Batch Processing**
+        - Set _Input Path_ to a directory on this server containing PNG frame groups to be resequenced
+        - Check _Use contiguous frame indexes across groups_ to use a single increasing frame index across all groups
+1. Click _Resequence Files_ or _Resequence Batch_
+- Progress can be checked in the console
 
 ## ⚠️ Important
 1.  **Make a backup copy of the original files before using _Rename instead of duplicate files_ due to the danger of losing the original content**
