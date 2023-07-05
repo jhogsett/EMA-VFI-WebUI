@@ -88,7 +88,7 @@ class ResequenceFiles(TabBase):
             self.log(f"found {len(group_names)} groups to process")
 
             if group_names:
-                with Mtqdm().open_bar(total=len(group_names), desc="File Group") as bar:
+                with Mtqdm().open_bar(total=len(group_names), desc="Frame Group") as bar:
                     running_start = int(input_start)
                     for group_name in group_names:
                         group_input_path = os.path.join(input_path, group_name)
