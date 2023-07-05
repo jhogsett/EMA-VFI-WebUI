@@ -6,14 +6,20 @@
 - _Video Blender_ can be used to selectively replace frames from a restoration set
 
 ## How It Works
-1. Set _Input Path_ to a directory on this server to the PNG files to be resynthesized
-1. Set _Output Path_ to a directory on this server for the resynthesized PNG files
-    - Output Path can be left blank to use the default folder
-    - The default folder is set by the `config.directories.output_resynthesis` setting
-1. Click _Resynthesize Video_
+1. Choose _Individual Path_ or _Batch Processing_
+    - If **Individual Path**
+        - Set _Input Path_ to a directory on this server to the PNG files to be resynthesized
+        - Set _Output Path_ to a directory on this server for the resynthesized PNG files
+            - Output Path can be left blank to use the default folder
+            - The default folder is set by the `config.directories.output_resynthesis` setting
+    - If **Batch Processing**
+        - Set _Input Path_ to a directory on this server containing PNG frame groups to be resynthesized
+        - Set _Output Path_ to a directory on this server for the resynthesized PNG frame groups
+1. Click _Resynthesize Video_ or _Resynthesize Batch_
 1. _Frame Interpolation_ is done using frames adjacent to each frame to interpolate replacements
     - The first and last frame cannot be replaced
 1. When complete, the output path will contain a new set of frames
+- Progress can be tracked in the console
 
 ## How To Use Replacement Frames
 1. Replacement frames can be used with _Video Blender_ to restore a movie

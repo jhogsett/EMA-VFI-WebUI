@@ -80,7 +80,7 @@ class UpscaleFrames(TabBase):
                 self.log(f"creating group output path {output_path}")
                 create_directory(output_path)
 
-                with Mtqdm().open_bar(total=len(group_names), desc="Upscale Group") as bar:
+                with Mtqdm().open_bar(total=len(group_names), desc="Frame Group") as bar:
                     for group_name in group_names:
                         group_input_path = os.path.join(input_path, group_name)
                         group_output_path = os.path.join(output_path, group_name)
