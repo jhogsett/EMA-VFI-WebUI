@@ -6,11 +6,6 @@
 - Create time-lapse video at any speed-up rate
 
 ## How it works
-
-1. Set _Input Path_ to a directory on this server containing video frame PNG files for conversion
-2. Set _Output Path_ to a directory on this server for the converted PNG files
-    - Output Path can be left blank to use the default folder
-    - The default folder is set by the `config.directories.output_fps_change` setting
 1. Set _Starting FPS_ to the frame rate of the video being converted
 1. Set _Ending FPS_ to the frame rate for the converted video frames
     - The lowest-common-multiple _Super-Sampling_ frame rate is computed
@@ -28,12 +23,20 @@
 1. Leave _Duplicate frames to fill_ unchecked except in special cases
     - If checked, the _before_ frame of the Frame Search pair of frames will be duplicated instead of using interpolation to find frame at a precise frame
     - _Tip: This will add filler frames very quickly, but very imprecisely_
-1. Click _Convert_
+1. Choose _Individual Path_ or _Batch Processing_
+    - If **Individual Path**
+        - Set _Input Path_ to a directory on this server containing video frame PNG files for conversion
+        - Set _Output Path_ to a directory on this server for the converted PNG files
+            - Output Path can be left blank to use the default folder
+            - The default folder is set by the `config.directories.output_fps_change` setting
+    - If **Batch Processing**
+        - Set _Input Path_ to a directory on this server containing PNG frame groups to be converted
+        - Set _Output Path_ to a directory on this server for the converted PNG frame groups
+1. Click _Convert_ or _Convert Batch_
 1. When complete, files are resequenced to have a fixed-width frame index
     - Filenames include a reference to their new resampled FPS
 
 ## Important
-
 - This process could be slow, perhaps many hours long!
 - Progress is shown in the console using a standard progress bar
 - The browser window does NOT need to be left open
