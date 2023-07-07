@@ -55,7 +55,7 @@ class SliceVideo(TabBase):
                 mp4_quality = gr.Slider(minimum=minimum_crf, maximum=maximum_crf,
                     step=1, value=default_crf, label="MP4 Quality (lower=better)")
                 gif_frame_rate = gr.Slider(minimum=1, maximum=maximum_gif_fps,
-                                    value=default_gif_fps, step=0.01, label="Output GIF Frame Rate")
+                                    value=default_gif_fps, step=1, label="Output GIF Frame Rate")
             gr.Markdown("*Progress can be tracked in the console*")
             slice_video = gr.Button("Slice Video " + SimpleIcons.SLOW_SYMBOL, variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -76,9 +76,13 @@ class SliceVideo(TabBase):
                         edge_trim : bool):
         """Slice Video button handler"""
         if input_path and group_path:
+            gif_factor = self.config.slice_settings["gif_factor"]
+            gif_high_quality = self.config.slice_settings["gif_high_quality"]
+
             # if compensating for video resynthesis, set edge trim to "1"
             # to leave out the (now missing) outer frames when slicing
             trim = 1 if edge_trim else 0
+
             _SliceVideo(input_path,
                         input_fps,
                         group_path,
@@ -86,6 +90,8 @@ class SliceVideo(TabBase):
                         output_scale,
                         slice_type,
                         mp4_quality,
-                        gif_frame_rate,
+                        gif_factor,
                         trim,
+                        gif_high_quality,
+                        gif_frame_rate,
                         self.log).slice()

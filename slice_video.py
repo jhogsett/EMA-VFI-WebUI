@@ -24,7 +24,7 @@ def main():
         help="Sliced output 'mp4' (default), 'gif', 'wav', 'mp3', 'jpg'")
     parser.add_argument("--mp4_quality", default=23, type=int,
                         help="MP4 video quality 17 (best) to 28, default 23")
-    parser.add_argument("--gif_speed", default=1, type=int,
+    parser.add_argument("--gif_factor", default=1, type=int,
                         help="GIF speed-up factor (default: 1 = real-time)")
     parser.add_argument("--edge_trim", default=0, type=int,
                         help="Extend (< 0) or shrink (> 0) end frames (default: 0)")
@@ -44,7 +44,7 @@ def main():
                 args.output_scale,
                 args.type,
                 args.mp4_quality,
-                args.gif_speed,
+                args.gif_factor,
                 args.edge_trim,
                 args.gif_high_quality,
                 args.gif_fps,
@@ -60,7 +60,7 @@ class SliceVideo:
                 output_scale : float,
                 type : str,
                 mp4_quality : int,
-                gif_speed : int,
+                gif_factor : int,
                 edge_trim : int,
                 gif_high_quality : bool,
                 gif_fps : float,
@@ -72,7 +72,7 @@ class SliceVideo:
         self.output_scale = output_scale
         self.type = type
         self.mp4_quality = mp4_quality
-        self.gif_speed = gif_speed
+        self.gif_factor = gif_factor
         self.edge_trim = edge_trim
         self.gif_high_quality = gif_high_quality
         self.gif_fps = gif_fps
@@ -93,8 +93,8 @@ class SliceVideo:
             raise ValueError(f"'type' must be one of {', '.join([t for t in valid_types])}")
         if self.mp4_quality < 0:
             raise ValueError(f"'mp4_quality' must be >= 0")
-        if self.gif_speed < 1:
-            raise ValueError(f"'gif_speed' must be >= 1")
+        if self.gif_factor < 1:
+            raise ValueError(f"'gif_factor' must be >= 1")
 
     def slice(self):
         group_names = validate_input_path(self.group_path, -1)
@@ -120,7 +120,7 @@ class SliceVideo:
                             last_index,
                             self.type,
                             self.mp4_quality,
-                            self.gif_speed,
+                            self.gif_factor,
                             self.output_scale,
                             self.gif_high_quality,
                             self.gif_fps)
