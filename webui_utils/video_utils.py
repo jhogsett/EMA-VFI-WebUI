@@ -478,7 +478,8 @@ def slice_video(input_path : str,
                 gif_speed : int=1,
                 scale_factor : float=0.5,
                 gif_high_quality : bool=False,
-                gif_fps : float=0.0):
+                gif_fps : float=0.0,
+                gif_end_delay : float=0.0):
     # 153=5.1
     # 203+1=6.8
     # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.mp4
@@ -504,15 +505,18 @@ f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_widt
         end_time = seconds_to_hms(end_second / gif_speed)
         gif_fps = fps if gif_fps == 0.0 else gif_fps
 
+        # expressed in 1/100th seconds
+        final_delay = f"-final_delay {int(gif_end_delay * 100)}" if gif_end_delay else ""
+
         if gif_high_quality: # extremely slow
             ffcmd = FFmpeg(inputs= {input_path : None},
                                     outputs={output_filepath :
-                    f"-ss {start_time} -to {end_time} -vf 'setpts=PTS/{gif_speed},fps={gif_fps},scale=iw*{scale_factor}:-2,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -loop 0"},
+                    f"-ss {start_time} -to {end_time} -vf 'setpts=PTS/{gif_speed},fps={gif_fps},scale=iw*{scale_factor}:-2,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -loop 0 {final_delay}"},
                 global_options="-y")
         else:
             ffcmd = FFmpeg(inputs= {input_path : None},
                                     outputs={output_filepath :
-                    f"-ss {start_time} -to {end_time} -vf 'setpts=PTS/{gif_speed},fps={gif_fps},scale=iw*{scale_factor}:-2' -loop 0"},
+                    f"-ss {start_time} -to {end_time} -vf 'setpts=PTS/{gif_speed},fps={gif_fps},scale=iw*{scale_factor}:-2' -loop 0 {final_delay}"},
                 global_options="-y")
 
     elif type == "wav" or type == "mp3":

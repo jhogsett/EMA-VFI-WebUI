@@ -32,6 +32,8 @@ def main():
                         help="Enable high-qualty GIF palette - slow (default: False)")
     parser.add_argument("--gif_fps", default=0.0, type=float,
                         help="GIF frame rate (default 0.0 = same as input FPS)")
+    parser.add_argument("--gif_end_delay", default=0.0, type=float,
+                        help="GIF seconds delay after last frame (default 0.0)")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
@@ -48,6 +50,7 @@ def main():
                 args.edge_trim,
                 args.gif_high_quality,
                 args.gif_fps,
+                args.gif_end_delay,
                 log.log).slice()
 
 class SliceVideo:
@@ -64,6 +67,7 @@ class SliceVideo:
                 edge_trim : int,
                 gif_high_quality : bool,
                 gif_fps : float,
+                gif_end_delay : float,
                 log_fn : Callable | None):
         self.input_path = input_path
         self.fps = fps
@@ -76,6 +80,7 @@ class SliceVideo:
         self.edge_trim = edge_trim
         self.gif_high_quality = gif_high_quality
         self.gif_fps = gif_fps
+        self.gif_end_delay = gif_end_delay
         self.log_fn = log_fn
         valid_types = ["mp4", "gif", "wav", "mp3", "jpg"]
 
@@ -123,7 +128,8 @@ class SliceVideo:
                             self.gif_factor,
                             self.output_scale,
                             self.gif_high_quality,
-                            self.gif_fps)
+                            self.gif_fps,
+                            self.gif_end_delay)
                 self.log(f"FFmpeg command line: '{ffmpeg_cmd}'")
                 Mtqdm().update_bar(bar)
 
