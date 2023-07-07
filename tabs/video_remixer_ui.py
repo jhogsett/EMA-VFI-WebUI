@@ -6,9 +6,11 @@ import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.image_utils import create_gif
-from webui_utils.file_utils import get_files, create_directory, locate_frame_file, duplicate_directory
+from webui_utils.file_utils import get_files, create_directory, locate_frame_file, duplicate_directory, split_filepath
 from webui_utils.auto_increment import AutoIncrementDirectory, AutoIncrementFilename
-from webui_utils.video_utils import PNGtoMP4, QUALITY_SMALLER_SIZE, MP4toPNG
+from webui_utils.video_utils import PNGtoMP4, QUALITY_SMALLER_SIZE, MP4toPNG, get_video_details, decode_aspect, get_essential_video_details
+from webui_utils.simple_utils import seconds_to_hms, clean_dict, get_frac_str_as_float
+from webui_utils.mtqdm import Mtqdm
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
@@ -32,6 +34,29 @@ class VideoRemixer(TabBase):
                     engine : InterpolateEngine,
                     log_fn : Callable):
         TabBase.__init__(self, config, engine, log_fn)
+        self.new_project()
+
+    def new_project(self):
+        self.source_video = None
+        self.video_details = {}
+        self.project_path = None
+        self.project_fps = None
+        self.split_type = None
+        self.resize_w = None
+        self.resize_h = None
+        self.crop_w = None
+        self.crop_h = None
+        self.scene_names = []
+        self.scene_states = {}
+        self.current_scene = None
+        self.resynthesize = False
+        self.inflate = False
+        self.resize = False
+        self.upscale = False
+        self.upscale_option = None
+        self.assemble = False
+        self.keep_scene_clips = False
+
 
     def render_tab(self):
         """Render tab into UI"""
@@ -48,15 +73,11 @@ class VideoRemixer(TabBase):
 
                 ### NEW PROJECT
                 with gr.Tab("New Project", id=0):
+                    gr.Markdown("**Input a video to get started remixing**")
                     video_path = gr.Textbox(label="Video Path",
                                     placeholder="Path on this server to the video to be remixed")
                     message_box0 = gr.Textbox(show_label=False, visible=False, interactive=False)
                     next_button0 = gr.Button(value="Next >", variant="primary")
-
-                    # video path is validated
-                    # video info is gotten
-                    # if there's a problem, message_box0 is revealed and message displayed
-                    # otherwise fill video_info1 and move to tab id=1
 
                 ### REMIX SETTINGS
                 with gr.Tab("Remix Settings", id=1):
@@ -75,16 +96,10 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         crop_w = gr.Number(label="Crop Width")
                         crop_h = gr.Number(label="Crop Height")
-
                     message_box1 = gr.Textbox(show_label=False, visible=False, interactive=False)
-
                     next_button1 = gr.Button(value="Next >", variant="primary")
 
-                    # entries are validated
-                    # if there's a problem, message_box1 is revealed and message displayed
-                    # otherwise fill project_info2 and # set tab id=2
-
-                ## CREATE PROJECT
+                ## SET UP PROJECT
                 with gr.Tab("Set Up Project", id=2):
                     gr.Markdown("**Ready to Set Up Video Remixer Project**")
                     with gr.Row():
@@ -93,22 +108,8 @@ class VideoRemixer(TabBase):
                         message_box2 = gr.Textbox(value="Progress can be tracked in the console",
                                                   show_label=False, interactive=False)
 
-                    next_button2 = gr.Button(value="Set Up Project > " + SimpleIcons.SLOW_SYMBOL,
+                    next_button2 = gr.Button(value="Set Up Project " + SimpleIcons.SLOW_SYMBOL,
                                              variant="primary")
-
-                    # project path is created
-                    # video is copied there if not already
-                    # video is split into PNG frames to a RAW directory
-                    # video is split into scenes
-                    # GIF thumbnails are created
-                    # initial selection is established (all or none copied GIFs)
-                    # ?VideoRemixerProject is created?
-                    # VideoRemixerState is initialized
-                    # if there's a problem, message_box2 (is revealed and) message displayed
-                    # otherwise
-                    # - updates for scene chooser from VideoRemixerState for scene #0:
-                    #   - scene_image, scene_state
-                    #   - set tab id=3
 
                 ## CHOOSE SCENES
                 with gr.Tab("Choose Scenes", id=3):
@@ -131,19 +132,14 @@ class VideoRemixer(TabBase):
 
                     next_button3 = gr.Button(value="Done Choosing Scenes", variant="primary")
 
-                    # set tab id=4
-
                 ## COMPILE SCENES
                 with gr.Tab("Compile Scenes", id=4):
                     project_info4 = gr.Textbox(label="Scene Details")
                     message_box4 = gr.Textbox(value="Progress can be tracked in the console",
                                               show_label=False, interactive=False)
 
-                    next_button4 = gr.Button(value="Compile Chosen Scenes > " +
+                    next_button4 = gr.Button(value="Compile Chosen Scenes " +
                                              SimpleIcons.SLOW_SYMBOL, variant="primary")
-
-                    # performs a strip scenes operation
-                    # then update tab ID to 5
 
                 ## REMIX OPTIONS
                 with gr.Tab("Remix Options", id=5):
@@ -171,7 +167,7 @@ class VideoRemixer(TabBase):
                     message_box5 = gr.Textbox(value="Progress can be tracked in the console",
                                               show_label=False, interactive=False)
 
-                    next_button5 = gr.Button(value="Remix Video > " +
+                    next_button5 = gr.Button(value="Remix Video " +
                                              SimpleIcons.SLOW_SYMBOL, variant="primary")
 
                 ## REMIX SUMMARY
@@ -181,8 +177,8 @@ class VideoRemixer(TabBase):
 
         next_button0.click(self.next_button0,
                            inputs=video_path,
-                           outputs=[tabs_video_remixer, message_box0, video_info1, project_path, resize_w, resize_h,
-                                    crop_w, crop_h])
+                           outputs=[tabs_video_remixer, message_box0, video_info1, project_path,
+                                    resize_w, resize_h, crop_w, crop_h])
 
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, resize_w, resize_h,
@@ -190,8 +186,8 @@ class VideoRemixer(TabBase):
                            outputs=[tabs_video_remixer, message_box1, project_info2])
 
         next_button2.click(self.next_button2,
-                           outputs=[tabs_video_remixer, message_box2, scene_label, scene_image, scene_state])
-
+                           outputs=[tabs_video_remixer, message_box2, scene_label, scene_image,
+                                    scene_state])
 
         keep_next.click(self.keep_next, show_progress=False,
                             inputs=[scene_label, scene_state],
@@ -216,20 +212,81 @@ class VideoRemixer(TabBase):
                            outputs=[tabs_video_remixer, message_box4])
 
         next_button5.click(self.next_button5,
-                           inputs=[resynthesize, inflate, resize, upscale, upscale_option, assemble, keep_scene_clips],
+                           inputs=[resynthesize, inflate, resize, upscale, upscale_option,
+                                   assemble, keep_scene_clips],
                            outputs=[tabs_video_remixer, message_box5, summary_info6])
 
-
-
-
-
     def next_button0(self, video_path):
+        self.new_project()
+        if video_path:
+            if os.path.exists(video_path):
+                self.source_video = video_path
+                path, filename, ext = split_filepath(video_path)
+                self.project_path = path
+
+                with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
+                    Mtqdm().message(bar, "FFmpeg in use ...")
+                    try:
+                        video_details = get_essential_video_details(video_path)
+                    except RuntimeError as error:
+                        message = f"Error getting video details for '{video_path}': {error}"
+                        return gr.update(selected=0), gr.update(visible=True, value=message), None, None, None, None, None, None
+                    finally:
+                        Mtqdm().update_bar(bar)
+
+                report = []
+                report.append(f"Frame Rate: {video_details['frame_rate']}")
+                report.append(f"Duration: {video_details['duration']}")
+                report.append(f"Display Size: {video_details['display_dimensions']}")
+                report.append(f"Aspect Ratio: {video_details['display_aspect_ratio']}")
+                report.append(f"Content Size: {video_details['content_dimensions']}")
+                report.append(f"Frame Count: {video_details['frame_count']}")
+                report.append(f"File Size: {video_details['file_size']}")
+                message = "\r\n".join(report)
+
+                project_path = path
+                resize_w = video_details['display_width']
+                resize_h = video_details['display_height']
+                crop_w, crop_h = resize_w, resize_h
+                return gr.update(selected=1), gr.update(visible=False, value=None), gr.update(value=message), project_path, resize_w, resize_h, crop_w, crop_h
+
+            else:
+                message = f"File {video_path} was not found"
+                return gr.update(selected=0), gr.update(visible=True, value=message), None, None, None, None, None, None
+
+
+
+
+        # video path is validated
+        # video info is gotten
+        # if there's a problem, message_box0 is revealed and message displayed
+        # otherwise fill video_info1 and move to tab id=1
+
         return gr.update(selected=1), "message", "info", "path", 123, 456, 789, 1011
 
     def next_button1(self, project_path, project_fps, split_type, resize_w, resize_h, crop_w, crop_h):
+        # entries are validated
+        # if there's a problem, message_box1 is revealed and message displayed
+        # otherwise fill project_info2 and # set tab id=2
+
         return gr.update(selected=2), "message", "info"
 
     def next_button2(self):
+        # project path is created
+        # video is copied there if not already
+        # video is split into PNG frames to a RAW directory
+        # video is split into scenes
+        # GIF thumbnails are created
+        # initial selection is established (all or none copied GIFs)
+        # ?VideoRemixerProject is created?
+        # VideoRemixerState is initialized
+        # if there's a problem, message_box2 (is revealed and) message displayed
+        # otherwise
+        # - updates for scene chooser from VideoRemixerState for scene #0:
+        #   - scene_image, scene_state
+        #   - set tab id=3
+
+
         return gr.update(selected=3), "message", "[123-456]", None, "Keep"
 
     def keep_next(self, scene_label, scene_state):
@@ -248,7 +305,11 @@ class VideoRemixer(TabBase):
         return gr.update(selected=4), "info"
 
     def next_button4(self):
+        # performs a strip scenes operation
+        # then update tab ID to 5
+
         return gr.update(selected=5), "info"
 
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option, assemble, keep_scene_clips):
+        # do all the things
         return gr.update(selected=6), "message", "info"

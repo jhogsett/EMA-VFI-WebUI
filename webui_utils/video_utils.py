@@ -7,7 +7,7 @@ from fractions import Fraction
 from ffmpy import FFmpeg, FFprobe, FFRuntimeError
 from .image_utils import gif_frame_count
 from .file_utils import split_filepath, get_directories
-from .simple_utils import seconds_to_hms
+from .simple_utils import seconds_to_hms, clean_dict, get_frac_str_as_float
 
 QUALITY_NEAR_LOSSLESS = 17
 QUALITY_SMALLER_SIZE = 28
@@ -200,6 +200,72 @@ def get_video_details(input_path : str, count_frames = True) -> dict:
                 "exit_code" : error.exit_code,
                 "console_output" : str(error.stderr.decode("UTF-8"))}}
 
+def get_essential_video_details(input_path : str, count_frames = True) -> dict:
+    """Use FFprobe to get video details essential for automatic processing
+       If count_type is True and frames can't be determined, a RuntimeError is raised
+    """
+    video_details = get_video_details(input_path, count_frames=True)
+    if video_details.get("error"):
+        error = video_details["error"]
+        error_message = error["console_output"]
+        message = f"error getting video details for '{input_path}': '{error_message}'"
+        raise RuntimeError(message)
+    else:
+        video_essentials = {}
+        format_data = video_details["format"]
+        file_size = f"{int(format_data.get('size', 0)):,d}"
+        video_essentials["file_size"] = file_size
+
+        streams_data = video_details["streams"]
+        for stream_data in streams_data:
+            codec_type = stream_data.get("codec_type")
+            if codec_type != "video":
+                continue
+
+            video_essentials["stream_index"] = stream_data.get("index")
+
+            avg_frame_rate = stream_data.get("avg_frame_rate")
+            avg_frame_rate = get_frac_str_as_float(avg_frame_rate)
+            r_frame_rate = stream_data.get("r_frame_rate")
+            r_frame_rate = get_frac_str_as_float(r_frame_rate)
+            frame_rate = avg_frame_rate or r_frame_rate
+            frame_rate = f"{frame_rate:0.2f}" if frame_rate else "0.00"
+            video_essentials["frame_rate"] = frame_rate
+
+            duration = seconds_to_hms(float(stream_data.get("duration", 0)))
+            video_essentials["duration"] = duration[:duration.find(".")]
+
+            width = stream_data.get("width")
+            height = stream_data.get("height")
+            video_essentials["content_width"] = width
+            video_essentials["content_height"] = height
+            video_essentials["content_dimensions"] = f"{width}x{height}"
+
+            frame_count = stream_data.get("nb_read_frames") or stream_data.get("nb_frames")
+            if not frame_count and count_frames:
+                raise RuntimeError(f"unable to determine frame count for '{input_path}'")
+            frame_count = f"{int(frame_count):,d}"
+            video_essentials["frame_count"] = frame_count
+
+            sample_factor = 1.0
+            display_width = width
+            display_height = height
+            sample_aspect_ratio = stream_data.get("sample_aspect_ratio")
+            if sample_aspect_ratio:
+                try:
+                    sample_factor = decode_aspect(sample_aspect_ratio)
+                    display_width = int(width * sample_factor)
+                    display_height = height
+                except ValueError:
+                    pass
+            video_essentials["sample_factor"] = sample_factor
+            video_essentials["display_width"] = display_width
+            video_essentials["display_height"] = display_height
+            video_essentials["display_dimensions"] = f"{display_width}x{display_height}"
+
+            video_essentials["display_aspect_ratio"] = stream_data.get("display_aspect_ratio")
+        return video_essentials
+
 def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group : int):
     """Use FFmpeg to get a list of duplicate frames without making changes
         - input_path: path to PNG frame files
@@ -349,7 +415,7 @@ def get_detected_scenes(input_path : str, threshold : float=0.5):
     filename_pattern = determine_input_pattern(input_path)
     input_sequence = os.path.join(input_path, filename_pattern)
     output_sequence = "-"
-    filter = f"select='gt(scene\,{threshold})',metadata=print:file=-"
+    filter = f"select='gt(scene\\,{threshold})',metadata=print:file=-"
 
     ffcmd = FFmpeg(inputs= {input_sequence : None},
         outputs={output_sequence : f"-filter_complex {filter} -f null"},
@@ -537,3 +603,20 @@ f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_widt
     cmd = ffcmd.cmd
     ffcmd.run()
     return cmd
+
+# input: "40:30"
+# output: 1.2121212121...
+def decode_aspect(aspect):
+    if not aspect or not isinstance(aspect, str):
+        raise ValueError("'aspect' must be a string")
+    parts = aspect.split(":")
+    if len(parts) != 2:
+        raise ValueError(f"'{aspect}' must be two values joined by ':'")
+    try:
+        den = float(int(parts[0]))
+        div = float(int(parts[1]))
+        return den / div
+    except ValueError:
+        raise ValueError(f"'{aspect}' must be two integers joined by ':'")
+    except ZeroDivisionError:
+        raise ValueError(f"the aspect '{aspect}' is not valid'")
