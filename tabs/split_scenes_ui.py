@@ -3,6 +3,7 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
+from webui_utils.mtqdm import Mtqdm
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
@@ -58,15 +59,18 @@ class SplitScenes(TabBase):
                         scene_threshold : float):
         """Split Scenes button handler"""
         if input_path and output_path:
-            _SplitScenes(
-                input_path,
-                output_path,
-                "png",
-                "scene",
-                float(scene_threshold),
-                0.0,
-                0.0,
-                self.log).split()
+            with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
+                Mtqdm().message(bar, "FFmpeg in use ...")
+                _SplitScenes(
+                    input_path,
+                    output_path,
+                    "png",
+                    "scene",
+                    float(scene_threshold),
+                    0.0,
+                    0.0,
+                    self.log).split()
+                Mtqdm().update_bar(bar)
 
     def split_breaks(self,
                         input_path : str,
@@ -75,12 +79,15 @@ class SplitScenes(TabBase):
                         break_ratio : float):
         """Split Breaks button handler"""
         if input_path and output_path:
-            _SplitScenes(
-                input_path,
-                output_path,
-                "png",
-                "break",
-                0.0,
-                float(break_duration),
-                float(break_ratio),
-                self.log).split()
+            with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
+                Mtqdm().message(bar, "FFmpeg in use ...")
+                _SplitScenes(
+                    input_path,
+                    output_path,
+                    "png",
+                    "break",
+                    0.0,
+                    float(break_duration),
+                    float(break_ratio),
+                    self.log).split()
+                Mtqdm().update_bar(bar)

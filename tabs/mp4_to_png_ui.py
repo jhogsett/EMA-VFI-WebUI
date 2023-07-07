@@ -5,6 +5,7 @@ from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.file_utils import create_directory
 from webui_utils.video_utils import MP4toPNG as _MP4toPNG
+from webui_utils.mtqdm import Mtqdm
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
@@ -55,9 +56,13 @@ class MP4toPNG(TabBase):
         if input_filepath and output_path:
             create_directory(output_path)
             self.log("using MP4toPNG (may cause long delay while counting frames)")
-            ffmpeg_cmd = _MP4toPNG(input_filepath,
-                                   output_pattern,
-                                   float(frame_rate),
-                                   output_path,
-                                   deinterlace=deinterlace)
+
+            with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
+                Mtqdm().message(bar, "FFmpeg in use ...")
+                ffmpeg_cmd = _MP4toPNG(input_filepath,
+                                    output_pattern,
+                                    float(frame_rate),
+                                    output_path,
+                                    deinterlace=deinterlace)
+                Mtqdm().update_bar(bar)
             return gr.update(value=ffmpeg_cmd, visible=True)

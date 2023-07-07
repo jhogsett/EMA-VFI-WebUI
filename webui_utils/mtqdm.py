@@ -202,6 +202,10 @@ class Mtqdm:
             # now_current_bar = entered_bars[now_current_position]
             # now_current_bar.update()
 
+    def message(self, bar, message):
+        position = self.find_bar_position(bar)
+        bar.display(message, position+1)
+
     @contextmanager
     def open_bar(self, total=100, desc="Please Wait"):
         try:
@@ -338,6 +342,12 @@ class MtqdmTester():
         Mtqdm().set_palette("doesnotexist")
         self.test_bars_2(min, max, delay)
 
+    def test_bars_8(self, delay):
+        with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
+            Mtqdm().message(bar, "Please wait for this long operation")
+            time.sleep(delay)
+            Mtqdm().update_bar(bar)
+
     def run_test(self, test : int):
         {
             1 : lambda : self.test_bars_1(9, 3, 0.01),
@@ -347,8 +357,9 @@ class MtqdmTester():
             5 : lambda : self.test_bars_5(5, 15, 0.1),
             6 : lambda : self.test_bars_6(5, 10, 0.1),
             7 : lambda : self.test_bars_7(5, 10, 0.1),
+            8 : lambda : self.test_bars_8(3),
         }[test]()
 
 if __name__ == '__main__':
     while True:
-        MtqdmTester().run_test(int(input(f"Mtqdm Test (1..7)):")))
+        MtqdmTester().run_test(int(input(f"Mtqdm Test (1..8)):")))
