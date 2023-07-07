@@ -74,13 +74,16 @@ class VideoRemixer(TabBase):
                 ### NEW PROJECT
                 with gr.Tab("New Project", id=0):
                     gr.Markdown("**Input a video to get started remixing**")
-                    video_path = gr.Textbox(label="Video Path",
+                    with gr.Row():
+                        video_path = gr.Textbox(label="Video Path",
                                     placeholder="Path on this server to the video to be remixed")
-                    message_box0 = gr.Textbox(show_label=False, visible=False, interactive=False)
+                    message_box0 = gr.Textbox(show_label=False, visible=False,
+                                    interactive=False)
                     next_button0 = gr.Button(value="Next >", variant="primary")
 
                 ### REMIX SETTINGS
                 with gr.Tab("Remix Settings", id=1):
+                    gr.Markdown("**Confirm Remixer Settings**")
                     video_info1 = gr.Textbox(label="Video Details")
                     with gr.Row():
                         project_path = gr.Textbox(label="Project Path",
@@ -228,10 +231,12 @@ class VideoRemixer(TabBase):
                     Mtqdm().message(bar, "FFmpeg in use ...")
                     try:
                         video_details = get_essential_video_details(video_path)
+                        self.video_details = video_details
                     except RuntimeError as error:
                         message = f"Error getting video details for '{video_path}': {error}"
                         return gr.update(selected=0), gr.update(visible=True, value=message), None, None, None, None, None, None
                     finally:
+                        Mtqdm().message(bar, "")
                         Mtqdm().update_bar(bar)
 
                 report = []
@@ -254,22 +259,32 @@ class VideoRemixer(TabBase):
                 message = f"File {video_path} was not found"
                 return gr.update(selected=0), gr.update(visible=True, value=message), None, None, None, None, None, None
 
-
-
-
-        # video path is validated
-        # video info is gotten
-        # if there's a problem, message_box0 is revealed and message displayed
-        # otherwise fill video_info1 and move to tab id=1
-
-        return gr.update(selected=1), "message", "info", "path", 123, 456, 789, 1011
+        return gr.update(selected=0), gr.update(visible=True, value="Enter a path to a video on this server to get started"), None, None, None, None, None, None
 
     def next_button1(self, project_path, project_fps, split_type, resize_w, resize_h, crop_w, crop_h):
-        # entries are validated
-        # if there's a problem, message_box1 is revealed and message displayed
-        # otherwise fill project_info2 and # set tab id=2
+        # validate entries
+        self.project_path = project_path
+        self.project_fps = project_fps
+        self.split_type = split_type
+        self.resize_w = int(resize_w)
+        self.resize_h = int(resize_h)
+        self.crop_w = int(crop_w)
+        self.crop_h = int(crop_h)
 
-        return gr.update(selected=2), "message", "info"
+        report, sep = [], ""
+        report.append(f"Project Path: {self.project_path}")
+        report.append(f"Project Frame Rate: {self.project_fps}")
+        report.append(f"Scene Split Type: {self.split_type}")
+        report.append(f"Resize To: {self.resize_w}x{self.resize_h}")
+        report.append(f"Crop To: {self.crop_w}x{self.crop_h}")
+        report.append(sep)
+        report.append(f"Source Video: {self.source_video}")
+        report.append(f"Duration: {self.video_details['duration']}")
+        report.append(f"Frame Rate: {self.video_details['frame_rate']}")
+        report.append(f"File Size: {self.video_details['file_size']}")
+        report.append(f"Frame Count: {self.video_details['frame_count']}")
+        message = "\r\n".join(report)
+        return gr.update(selected=2), gr.update(visible=False, value=None), message
 
     def next_button2(self):
         # project path is created
