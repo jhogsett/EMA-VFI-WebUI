@@ -107,7 +107,7 @@ search_settings:
   max_splits: 60
 slice_settings:
   default_crf: 28
-  default_gif_fps: 10
+  default_gif_fps: 5
   def_scale_factor: 0.5
   frame_rate: 30
   gif_factor: 4
