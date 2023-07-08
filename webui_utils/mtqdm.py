@@ -202,7 +202,7 @@ class Mtqdm:
             # now_current_bar = entered_bars[now_current_position]
             # now_current_bar.update()
 
-    def message(self, bar, message):
+    def message(self, bar, message=""):
         position = self.find_bar_position(bar)
         bar.display(message, position+1)
 

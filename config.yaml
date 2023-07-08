@@ -95,7 +95,12 @@ realesrgan_settings:
   tiling: 256
 remixer_settings:
   def_project_fps: 29.97
+  default_gif_fps: 10
+  gif_end_delay: 1.0
+  gif_factor: 10
   max_project_fps: 60.0
+  max_thumb_size: 512
+  thumb_scale: 0.5
 restoration_settings:
   create_gif: True
   create_zip: True

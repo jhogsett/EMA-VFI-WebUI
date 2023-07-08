@@ -244,8 +244,9 @@ def get_essential_video_details(input_path : str, count_frames = True) -> dict:
             frame_count = stream_data.get("nb_read_frames") or stream_data.get("nb_frames")
             if not frame_count and count_frames:
                 raise RuntimeError(f"unable to determine frame count for '{input_path}'")
-            frame_count = f"{int(frame_count):,d}"
             video_essentials["frame_count"] = frame_count
+            video_essentials["index_width"] = len(str(frame_count))
+            video_essentials["frame_count_show"] = f"{int(frame_count):,d}"
 
             sample_factor = 1.0
             display_width = width

@@ -55,6 +55,7 @@ class VideoDetails(TabBase):
                     data = get_video_details(input_path, count_frames=count_frames)
                     self.log("received details:")
                     self.log(str(data))
+                    Mtqdm().message(bar)
                     Mtqdm().update_bar(bar)
 
                 error_data = data.get("error")
