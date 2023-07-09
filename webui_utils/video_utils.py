@@ -8,6 +8,7 @@ from ffmpy import FFmpeg, FFprobe, FFRuntimeError
 from .image_utils import gif_frame_count
 from .file_utils import split_filepath, get_directories
 from .simple_utils import seconds_to_hms, clean_dict, get_frac_str_as_float
+from .jot import Jot
 
 QUALITY_NEAR_LOSSLESS = 17
 QUALITY_SMALLER_SIZE = 28
@@ -621,3 +622,40 @@ def decode_aspect(aspect):
         raise ValueError(f"'{aspect}' must be two integers joined by ':'")
     except ZeroDivisionError:
         raise ValueError(f"the aspect '{aspect}' is not valid'")
+
+def combine_video_audio(video_path : str,
+                        audio_path : str,
+                        output_filepath : str):
+# ffmpeg -y -i "MALE Me-TV-03192023-0335PM[000001-001245].wav" -i "MALE Me-TV-03192023-0335PM[000001-001245].mp4" -c:v copy -c:a aac output1.mp4
+    ffcmd = FFmpeg(
+        inputs= {video_path : None,
+                 audio_path : None},
+        outputs={output_filepath : "-c:v copy -c:a aac"},
+        global_options="-y")
+    cmd = ffcmd.cmd
+    ffcmd.run()
+    return cmd
+
+# combine videos that have the same code,dimensions,etc
+def combine_videos(input_paths : list, output_filepath : str):
+# ffmpeg -y -f concat -i file.txt -c copy final.mp4
+# file 'output1.mp4'
+# file 'output2.mp4'
+    for input_path in input_paths:
+        if not os.path.exists(input_path):
+            raise ValueError(f"input path '{input_path}' not found")
+
+    # uses the FFmpeg concat demuxer that only works with an input file
+    path, filename, _ = split_filepath(output_filepath)
+    concat_file = os.path.join(path, f"{filename}-files.txt")
+    with Jot(file=concat_file) as jot:
+        for input_path in input_paths:
+            jot.down(f"file '{input_path}'")
+
+    ffcmd = FFmpeg(
+        inputs= {concat_file : "-safe 0 -f concat"},
+        outputs={output_filepath : "-c: copy"},
+        global_options="-y")
+    cmd = ffcmd.cmd
+    ffcmd.run()
+    return cmd
