@@ -1,0 +1,43 @@
+"""Video Remixer UI state management"""
+import yaml
+from yaml import Loader
+class VideoRemixerState():
+    def __init__(self):
+        self.source_video = None
+        self.video_details = {}
+        self.project_path = None
+        self.project_fps = None
+        self.split_type = None
+        self.scene_threshold = None
+        self.break_duration = None
+        self.break_ratio = None
+        self.resize_w = None
+        self.resize_h = None
+        self.crop_w = None
+        self.crop_h = None
+        self.scene_names = []
+        self.scene_states = {}
+        self.current_scene = None
+        self.resynthesize = False
+        self.inflate = False
+        self.resize = False
+        self.upscale = False
+        self.upscale_option = None
+        self.assemble = False
+        self.keep_scene_clips = False
+        self.output_pattern = None
+        self.frames_path = None
+        self.scenes_path = None
+        self.frames_per_minute = None
+
+    def reset(self):
+        self.__init__()
+
+    def save(self, filepath : str):
+        with open(filepath, "w", encoding="UTF-8") as file:
+            yaml.dump(self, file)
+
+    @staticmethod
+    def load(filepath : str):
+        with open(filepath, "r") as file:
+            return yaml.load(file, Loader=Loader)

@@ -25,6 +25,7 @@ from simplify_png_files import SimplifyPngFiles
 from split_scenes import SplitScenes
 from split_frames import SplitFrames
 from slice_video import SliceVideo
+from video_remixer import VideoRemixerState
 
 # state info
 # scene paths list
@@ -40,44 +41,15 @@ class VideoRemixer(TabBase):
         self.new_project()
 
     def new_project(self):
-        self.source_video = None
-        self.video_details = {}
-        self.project_path = None
-        self.project_fps = None
-        self.split_type = None
-        self.scene_threshold = None
-        self.break_duration = None
-        self.break_ratio = None
-        self.resize_w = None
-        self.resize_h = None
-        self.crop_w = None
-        self.crop_h = None
-        self.scene_names = []
-        self.scene_states = {}
-        self.current_scene = None
-        self.resynthesize = False
-        self.inflate = False
-        self.resize = False
-        self.upscale = False
-        self.upscale_option = None
-        self.assemble = False
-        self.keep_scene_clips = False
-        self.output_pattern = None
-        self.frames_path = None
-        self.scenes_path = None
-        self.frames_per_minute = None
+        self.state = VideoRemixerState()
 
     def render_tab(self):
         """Render tab into UI"""
-
-        # need configs
-        # tab1:
-        # - project fps slider settings
         def_project_fps = self.config.remixer_settings["def_project_fps"]
         max_project_fps = self.config.remixer_settings["max_project_fps"]
-
         with gr.Tab("Video Remixer"):
-
+            gr.Markdown(
+                SimpleIcons.VULCAN_HAND + "Restore & Remix Videos with Audio")
             with gr.Tabs() as tabs_video_remixer:
 
                 ### NEW PROJECT
@@ -250,15 +222,15 @@ class VideoRemixer(TabBase):
         self.new_project()
         if video_path:
             if os.path.exists(video_path):
-                self.source_video = video_path
+                self.state.source_video = video_path
                 path, _, _ = split_filepath(video_path)
-                self.project_path = path
+                self.state.project_path = path
 
                 with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
                     Mtqdm().message(bar, "FFmpeg in use ...")
                     try:
                         video_details = get_essential_video_details(video_path)
-                        self.video_details = video_details
+                        self.state.video_details = video_details
                     except RuntimeError as error:
                         message = f"Error getting video details for '{video_path}': {error}"
                         return gr.update(selected=0), gr.update(visible=True, value=message), None, None, None, None, None, None
@@ -290,115 +262,115 @@ class VideoRemixer(TabBase):
 
     def next_button1(self, project_path, project_fps, split_type, scene_threshold, break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h):
         # validate entries
-        self.project_path = project_path
-        self.project_fps = project_fps
-        self.split_type = split_type
-        self.scene_threshold = scene_threshold
-        self.break_duration = break_duration
-        self.break_ratio = break_ratio
-        self.resize_w = int(resize_w)
-        self.resize_h = int(resize_h)
-        self.crop_w = int(crop_w)
-        self.crop_h = int(crop_h)
+        self.state.project_path = project_path
+        self.state.project_fps = project_fps
+        self.state.split_type = split_type
+        self.state.scene_threshold = scene_threshold
+        self.state.break_duration = break_duration
+        self.state.break_ratio = break_ratio
+        self.state.resize_w = int(resize_w)
+        self.state.resize_h = int(resize_h)
+        self.state.crop_w = int(crop_w)
+        self.state.crop_h = int(crop_h)
 
         report, sep = [], ""
-        report.append(f"Project Path: {self.project_path}")
-        report.append(f"Project Frame Rate: {self.project_fps}")
-        report.append(f"Resize To: {self.resize_w}x{self.resize_h}")
-        report.append(f"Crop To: {self.crop_w}x{self.crop_h}")
-        report.append(f"Scene Split Type: {self.split_type}")
-        if self.split_type == "scene":
-            report.append(f"Scene Detection Threshold: {self.scene_threshold}")
-        elif self.split_type == "break":
-            report.append(f"Break Minimum Duration: {self.break_duration}")
-            report.append(f"Break Black Frame Ratio: {self.break_duration}")
+        report.append(f"Project Path: {self.state.project_path}")
+        report.append(f"Project Frame Rate: {self.state.project_fps}")
+        report.append(f"Resize To: {self.state.resize_w}x{self.state.resize_h}")
+        report.append(f"Crop To: {self.state.crop_w}x{self.state.crop_h}")
+        report.append(f"Scene Split Type: {self.state.split_type}")
+        if self.state.split_type == "scene":
+            report.append(f"Scene Detection Threshold: {self.state.scene_threshold}")
+        elif self.state.split_type == "break":
+            report.append(f"Break Minimum Duration: {self.state.break_duration}")
+            report.append(f"Break Black Frame Ratio: {self.state.break_duration}")
         else:
-            self.frames_per_minute = int(float(self.project_fps) * 60)
-            report.append(f"Frames per Minute: {self.frames_per_minute}")
+            self.state.frames_per_minute = int(float(self.state.project_fps) * 60)
+            report.append(f"Frames per Minute: {self.state.frames_per_minute}")
         report.append(sep)
 
-        report.append(f"Source Video: {self.source_video}")
-        report.append(f"Duration: {self.video_details['duration']}")
-        report.append(f"Frame Rate: {self.video_details['frame_rate']}")
-        report.append(f"File Size: {self.video_details['file_size']}")
-        report.append(f"Frame Count: {self.video_details['frame_count']}")
+        report.append(f"Source Video: {self.state.source_video}")
+        report.append(f"Duration: {self.state.video_details['duration']}")
+        report.append(f"Frame Rate: {self.state.video_details['frame_rate']}")
+        report.append(f"File Size: {self.state.video_details['file_size']}")
+        report.append(f"Frame Count: {self.state.video_details['frame_count']}")
         message = "\r\n".join(report)
         return gr.update(selected=2), gr.update(visible=True), message
 
     def next_button2(self):
         # create project directory
-        self.log(f"creating project path {self.project_path}")
-        create_directory(self.project_path)
+        self.log(f"creating project path {self.state.project_path}")
+        create_directory(self.state.project_path)
 
         # copy video to project directory
-        _, filename, ext = split_filepath(self.source_video)
+        _, filename, ext = split_filepath(self.state.source_video)
         video_filename = filename + ext
-        project_video_path = os.path.join(self.project_path, video_filename)
+        project_video_path = os.path.join(self.state.project_path, video_filename)
         if not os.path.exists(project_video_path):
-            self.log(f"copying video from {self.source_video} to project path")
+            self.log(f"copying video from {self.state.source_video} to project path")
             with Mtqdm().open_bar(total=1, desc="Copying") as bar:
                 Mtqdm().message(bar, "Copying source video to project path ...")
-                shutil.copy(self.source_video, project_video_path)
-                self.source_video = project_video_path
+                shutil.copy(self.state.source_video, project_video_path)
+                self.state.source_video = project_video_path
                 Mtqdm().message(bar)
                 Mtqdm().update_bar(bar)
 
         # split video into raw PNG frames
-        video_path = self.source_video
-        index_width = self.video_details["index_width"]
-        self.output_pattern = f"source_%0{index_width}d.png"
-        frame_rate = self.project_fps
-        self.frames_path = os.path.join(self.project_path, "SOURCE")
-        self.log(f"creating frames directory {self.frames_path}")
-        create_directory(self.frames_path)
+        video_path = self.state.source_video
+        index_width = self.state.video_details["index_width"]
+        self.state.output_pattern = f"source_%0{index_width}d.png"
+        frame_rate = self.state.project_fps
+        self.state.frames_path = os.path.join(self.state.project_path, "SOURCE")
+        self.log(f"creating frames directory {self.state.frames_path}")
+        create_directory(self.state.frames_path)
         with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
             Mtqdm().message(bar, "FFmpeg in use ...")
             self.log(f"calling MP4toPNG with input path={video_path}" +\
-        f" pattern={self.output_pattern} frame rate={frame_rate} frames path={self.frames_path})")
-            ffmpeg_cmd = MP4toPNG(video_path, self.output_pattern, frame_rate, self.frames_path)
+        f" pattern={self.state.output_pattern} frame rate={frame_rate} frames path={self.state.frames_path})")
+            ffmpeg_cmd = MP4toPNG(video_path, self.state.output_pattern, frame_rate, self.state.frames_path)
             self.log(f"FFmpeg command: {ffmpeg_cmd}")
             Mtqdm().message(bar)
             Mtqdm().update_bar(bar)
 
         # split frames into scenes
-        self.scenes_path = os.path.join(self.project_path, "SCENES")
-        self.log(f"creating scenes directory {self.scenes_path}")
-        create_directory(self.scenes_path)
-        if self.split_type == "Scene":
+        self.state.scenes_path = os.path.join(self.state.project_path, "SCENES")
+        self.log(f"creating scenes directory {self.state.scenes_path}")
+        create_directory(self.state.scenes_path)
+        if self.state.split_type == "Scene":
             with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
                 Mtqdm().message(bar, "FFmpeg in use ...")
-                SplitScenes(self.frames_path,
-                            self.scenes_path,
+                SplitScenes(self.state.frames_path,
+                            self.state.scenes_path,
                             "png",
                             "scene",
-                            self.scene_threshold,
+                            self.state.scene_threshold,
                             0.0,
                             0.0,
                             self.log).split()
                 Mtqdm().message(bar)
                 Mtqdm().update_bar(bar)
-        elif self.split_type == "Break":
+        elif self.state.split_type == "Break":
             with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
                 Mtqdm().message(bar, "FFmpeg in use ...")
-                SplitScenes(self.frames_path,
-                            self.scenes_path,
+                SplitScenes(self.state.frames_path,
+                            self.state.scenes_path,
                             "png",
                             "break",
                             0.0,
-                            self.break_duration,
-                            self.break_ratio,
+                            self.state.break_duration,
+                            self.state.break_ratio,
                             self.log).split()
                 Mtqdm().message(bar)
                 Mtqdm().update_bar(bar)
         else:
             # split by minute
             SplitFrames(
-                self.frames_path,
-                self.scenes_path,
+                self.state.frames_path,
+                self.state.scenes_path,
                 "png",
                 "precise",
                 0,
-                self.frames_per_minute,
+                self.state.frames_per_minute,
                 "copy",
                 False,
                 self.log).split()
@@ -407,23 +379,23 @@ class VideoRemixer(TabBase):
         gif_fps = self.config.remixer_settings["default_gif_fps"]
         gif_factor = self.config.remixer_settings["gif_factor"]
         gif_end_delay = self.config.remixer_settings["gif_end_delay"]
-
         thumb_scale = self.config.remixer_settings["thumb_scale"]
         max_thumb_size = self.config.remixer_settings["max_thumb_size"]
-        video_w = self.video_details['display_width']
-        video_h = self.video_details['display_height']
+
+        video_w = self.state.video_details['display_width']
+        video_h = self.state.video_details['display_height']
         max_frame_dimension = video_w if video_w > video_h else video_h
         thumb_size = max_frame_dimension * thumb_scale
         if thumb_size > max_thumb_size:
             thumb_scale = max_thumb_size / max_frame_dimension
 
-        source_fps = float(self.video_details['frame_rate'])
-        self.thumbnail_path = os.path.join(self.project_path, "THUMBNAILS")
+        source_fps = float(self.state.video_details['frame_rate'])
+        self.thumbnail_path = os.path.join(self.state.project_path, "THUMBNAILS")
         self.log(f"creating thumbnails directory {self.thumbnail_path}")
         create_directory(self.thumbnail_path)
-        SliceVideo(self.source_video,
+        SliceVideo(self.state.source_video,
                     source_fps,
-                    self.scenes_path,
+                    self.state.scenes_path,
                     self.thumbnail_path,
                     thumb_scale,
                     "gif",
