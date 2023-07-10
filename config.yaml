@@ -100,7 +100,9 @@ remixer_settings:
   gif_factor: 10
   max_project_fps: 60.0
   max_thumb_size: 512
+  scale_type: "lanczos"
   thumb_scale: 0.5
+  use_tiling: False
 restoration_settings:
   create_gif: True
   create_zip: True

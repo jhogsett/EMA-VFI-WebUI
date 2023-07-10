@@ -37,7 +37,9 @@ class VideoRemixerState():
         self.video_clips_path = None
         self.video_clips = []
         self.resynthesis_path = None
-
+        self.inflation_path = None
+        self.resize_path = None
+        self.upscale_path = None
         self.video_info1 = None
         self.project_info2 = None
         self.project_info4 = None
