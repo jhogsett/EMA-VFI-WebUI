@@ -11,6 +11,7 @@ from webui_utils.auto_increment import AutoIncrementDirectory, AutoIncrementFile
 from webui_utils.video_utils import PNGtoMP4, QUALITY_SMALLER_SIZE, MP4toPNG, get_video_details, decode_aspect, get_essential_video_details
 from webui_utils.simple_utils import seconds_to_hms, clean_dict, get_frac_str_as_float
 from webui_utils.mtqdm import Mtqdm
+from webui_utils.jot import Jot
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
@@ -62,7 +63,7 @@ class VideoRemixer(TabBase):
                                     placeholder="Path on this server to the video to be remixed")
                             with gr.Row():
                                 message_box00 = gr.Textbox(
-                value="About to inspect video and count frames ... this could take a minute ...",
+                        value="About to: Inspect video and count frames (takes a minute or more)",
                                             show_label=False, visible=True, interactive=False)
                             gr.Markdown("*Progress can be tracked in the console*")
                             next_button00 = gr.Button(value="New Project > " +
@@ -119,7 +120,7 @@ class VideoRemixer(TabBase):
                                                    interactive=False)
                     with gr.Row():
                         message_box2 = gr.Textbox(
-    value="About to split video info scenes and create thumbnails ... this could take a while ...",
+        value="About to: Create scenes, thumbnails and audio clips (takes from minutes to hours)",
                                     show_label=False, visible=True, interactive=False)
 
                     gr.Markdown("*Progress can be tracked in the console*")
@@ -145,8 +146,13 @@ class VideoRemixer(TabBase):
                             drop_next = gr.Button(value="Drop Scene | Next >", variant="primary",
                                                 elem_id="actionbutton")
                             with gr.Row():
-                                prev_scene = gr.Button(value="< Prev Scene", variant="secondary")
-                                next_scene = gr.Button(value="Next Scene >", variant="secondary")
+                                prev_scene = gr.Button(value="< Prev Scene", variant="primary")
+                                next_scene = gr.Button(value="Next Scene >", variant="primary")
+                            with gr.Row():
+                                first_scene = gr.Button(value="<< First Scene",
+                                                            variant="secondary")
+                                last_scene = gr.Button(value="Last Scene >>",
+                                                            variant="secondary")
                             gr.Box()
                             with gr.Row():
                                 keep_all_button = gr.Button(value="Keep All Scenes",
@@ -158,17 +164,15 @@ class VideoRemixer(TabBase):
 
                 ## COMPILE SCENES
                 with gr.Tab("Compile Scenes", id=4):
-                    project_info4 = gr.Textbox(label="Scene Details", lines=6)
-                    message_box4 = gr.Textbox(value="About to (strip scenes)",
-                                              show_label=False, interactive=False)
-
-                    gr.Markdown("*Progress can be tracked in the console*")
-                    next_button4 = gr.Button(value="Compile Chosen Scenes " +
-                                             SimpleIcons.SLOW_SYMBOL, variant="primary")
+                    project_info4 = gr.Textbox(label="Scene Details", lines=2)
+                    message_box4 = gr.Textbox(show_label=False, interactive=False,
+                                        value="About to: Set aside Drop scenes (takes a moment)")
+                    # gr.Markdown("*Progress can be tracked in the console*")
+                    next_button4 = gr.Button(value="Compile Scenes", variant="primary")
 
                 ## REMIX OPTIONS
                 with gr.Tab("Procesing Options", id=5):
-                    gr.Markdown("**Ready to Process Remixed Video**")
+                    gr.Markdown("**Ready to Process Original Content into Remix Content**")
                     with gr.Row():
                         resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True,
                                                    info="Remove grain and stabilize motion")
@@ -183,13 +187,8 @@ class VideoRemixer(TabBase):
                                               info="Use Real-ESRGAN to Enlarge Video")
                         upscale_option = gr.Radio(label="Upscale By", value="2X",
                                                   choices=["2X", "4x"])
-                    with gr.Row():
-                        assemble = gr.Checkbox(label="Assemble Video", value=True,
-                                               info="Merge reprocessed frames with audio")
-                        keep_scene_clips = gr.Checkbox(label="Keep Scene Clips", value=True,
-                                    info="Retain clips of individual scenes")
 
-                    message_box5 = gr.Textbox(value="About to ... take hours-to-days",
+                    message_box5 = gr.Textbox(value="About to: Perform the above processing steps (takes from hours to days)",
                                               show_label=False, interactive=False)
 
                     gr.Markdown("*Progress can be tracked in the console*")
@@ -248,6 +247,14 @@ class VideoRemixer(TabBase):
                             inputs=scene_label,
                             outputs=[scene_label, scene_image, scene_state, scene_info])
 
+        first_scene.click(self.first_scene, show_progress=False,
+                            inputs=scene_label,
+                            outputs=[scene_label, scene_image, scene_state, scene_info])
+
+        last_scene.click(self.last_scene, show_progress=False,
+                            inputs=scene_label,
+                            outputs=[scene_label, scene_image, scene_state, scene_info])
+
         next_button3.click(self.next_button3,
                            outputs=[tabs_video_remixer, project_info4])
 
@@ -255,8 +262,7 @@ class VideoRemixer(TabBase):
                            outputs=[tabs_video_remixer, message_box4])
 
         next_button5.click(self.next_button5,
-                           inputs=[resynthesize, inflate, resize, upscale, upscale_option,
-                                   assemble, keep_scene_clips],
+                           inputs=[resynthesize, inflate, resize, upscale, upscale_option],
                            outputs=[tabs_video_remixer, message_box5, summary_info6])
 
     def next_button01(self, project_path):
@@ -418,7 +424,7 @@ class VideoRemixer(TabBase):
                 Mtqdm().message(bar)
                 Mtqdm().update_bar(bar)
 
-        self.log(f"saving project after ensuring video is in project path")
+        self.log("saving project after ensuring video is in project path")
         self.state.save()
 
         # split video into raw PNG frames
@@ -438,13 +444,20 @@ class VideoRemixer(TabBase):
             Mtqdm().message(bar)
             Mtqdm().update_bar(bar)
 
-        self.log(f"saving project after converting video to PNG frames")
+        self.log("saving project after converting video to PNG frames")
+        self.state.save()
+
+        self.state.scenes_path = os.path.join(self.state.project_path, "SCENES")
+        self.state.dropped_scenes_path = os.path.join(self.state.project_path, "DROPPED_SCENES")
+        self.log(f"creating scenes directory {self.state.scenes_path}")
+        create_directory(self.state.scenes_path)
+        self.log(f"creating dropped scenes directory {self.state.dropped_scenes_path}")
+        create_directory(self.state.dropped_scenes_path)
+
+        self.log("saving project after establishing scene paths")
         self.state.save()
 
         # split frames into scenes
-        self.state.scenes_path = os.path.join(self.state.project_path, "SCENES")
-        self.log(f"creating scenes directory {self.state.scenes_path}")
-        create_directory(self.state.scenes_path)
         if self.state.split_type == "Scene":
             with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
                 Mtqdm().message(bar, "FFmpeg in use ...")
@@ -484,7 +497,7 @@ class VideoRemixer(TabBase):
                 False,
                 self.log).split()
 
-        self.log(f"saving project after converting video to PNG frames")
+        self.log("saving project after converting video to PNG frames")
         self.state.save()
 
         # create animated gif thumbnails
@@ -500,13 +513,13 @@ class VideoRemixer(TabBase):
         thumb_size = max_frame_dimension * thumb_scale
         if thumb_size > max_thumb_size:
             thumb_scale = max_thumb_size / max_frame_dimension
-        source_fps = float(self.state.video_details['frame_rate'])
+        # source_fps = float(self.state.video_details['frame_rate'])
         self.state.thumbnail_path = os.path.join(self.state.project_path, "THUMBNAILS")
         self.log(f"creating thumbnails directory {self.state.thumbnail_path}")
         create_directory(self.state.thumbnail_path)
         self.log(f"creating animated GIF thumbnails")
         SliceVideo(self.state.source_video,
-                    source_fps,
+                    self.state.project_fps,
                     self.state.scenes_path,
                     self.state.thumbnail_path,
                     thumb_scale,
@@ -518,9 +531,9 @@ class VideoRemixer(TabBase):
                     gif_fps,
                     gif_end_delay,
                     self.log).slice()
-        self.state.thumbnails = get_files(self.state.thumbnail_path)
+        self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
 
-        self.log(f"saving project after creating scene thumbnails")
+        self.log("saving project after creating scene thumbnails")
         self.state.save()
 
         self.state.clips_path = os.path.join(self.state.project_path, "CLIPS")
@@ -537,7 +550,7 @@ class VideoRemixer(TabBase):
 
         self.log(f"creating audio clips")
         SliceVideo(self.state.source_video,
-                    source_fps,
+                    self.state.project_fps,
                     self.state.scenes_path,
                     self.state.audio_clips_path,
                     0.0,
@@ -549,16 +562,16 @@ class VideoRemixer(TabBase):
                     0.0,
                     0.0,
                     self.log).slice()
-        self.state.audio_clips = get_files(self.state.audio_clips_path)
+        self.state.audio_clips = sorted(get_files(self.state.audio_clips_path))
 
-        self.log(f"saving project after creating audio clips")
+        self.log("saving project after creating audio clips")
         self.state.save()
 
-        self.state.scene_names = get_directories(self.state.scenes_path)
+        self.state.scene_names = sorted(get_directories(self.state.scenes_path))
         self.state.drop_all_scenes()
         self.state.current_scene = self.state.scene_names[0]
 
-        self.log(f"saving project after setting up scene selection states")
+        self.log("saving project after setting up scene selection states")
         self.state.save()
 
         return gr.update(selected=3), gr.update(visible=True), \
@@ -570,12 +583,12 @@ class VideoRemixer(TabBase):
         return self.scene_chooser_details(self.state.current_scene)
 
     def keep_next(self, scene_label):
-        self.state.scene_states[scene_label, "Keep"]
+        self.state.scene_states[scene_label] = "Keep"
         self.state.save()
         return self.next_scene(scene_label)
 
     def drop_next(self, scene_label):
-        self.state.scene_states[scene_label, "Drop"]
+        self.state.scene_states[scene_label] = "Drop"
         self.state.save()
         return self.next_scene(scene_label)
 
@@ -601,21 +614,109 @@ class VideoRemixer(TabBase):
         self.state.drop_all_scenes()
         return self.scene_chooser_details(self.state.current_scene)
 
+    def first_scene(self, scene_label):
+        self.state.current_scene = self.state.scene_names[0]
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def last_scene(self, scene_label):
+        self.state.current_scene = self.state.scene_names[-1]
+        return self.scene_chooser_details(self.state.current_scene)
+
     def next_button3(self   ):
+        with Jot() as jot:
+            jot.down(f"Keep Scenes: {len(self.state.kept_scenes())}")
+            jot.down(f"Drop Scenes: {len(self.state.dropped_scenes())}")
+        self.state.project_info4 = jot
 
-
-
-        return gr.update(selected=4), "info"
+        self.log("saving project after displaying scene choices")
+        self.state.save()
+        return gr.update(selected=4), jot
 
     def next_button4(self):
-        # performs a strip scenes operation
-        # then update tab ID to 5
+        self.log("moving previously dropped scenes back to scenes directory")
+        dropped_dirs = get_directories(self.state.dropped_scenes_path)
+        for dir in dropped_dirs:
+            current_path = os.path.join(self.state.dropped_scenes_path, dir)
+            undropped_path = os.path.join(self.state.scenes_path, dir)
+            self.log(f"moving directory {current_path} to {undropped_path}")
+            shutil.move(current_path, undropped_path)
 
-        return gr.update(selected=5), "info"
+        self.log("moving dropped scenes to dropped scenes directory")
+        dropped_scenes = self.state.dropped_scenes()
+        for dir in dropped_scenes:
+            current_path = os.path.join(self.state.scenes_path, dir)
+            dropped_path = os.path.join(self.state.dropped_scenes_path, dir)
+            self.log(f"moving directory {current_path} to {dropped_path}")
+            shutil.move(current_path, dropped_path)
 
-    def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option, assemble, keep_scene_clips):
-        # do all the things
-        return gr.update(selected=6), "messag2", "info"
+        return gr.update(selected=5), gr.update(visible=True)
+
+    def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option):
+        self.state.resynthesize = resynthesize
+        self.state.inflate = inflate
+        self.state.resize = resize
+        self.state.upscale = upscale
+        self.state.upscale_option = upscale_option
+
+        self.log("saving project after storing processing choices")
+        self.state.save()
+
+        jot = Jot()
+        kept_scenes = self.state.kept_scenes()
+        if kept_scenes:
+            if self.state.resynthesize:
+                interpolater = Interpolate(self.engine.model, self.log)
+                use_time_step = self.config.engine_settings["use_time_step"]
+                deep_interpolater = DeepInterpolate(interpolater, use_time_step, self.log)
+                series_interpolater = InterpolateSeries(deep_interpolater, self.log)
+
+                self.state.resynthesis_path = os.path.join(self.state.project_path, "SCENES-RE")
+                self.log(f"creating resynthesized scenes directory {self.state.resynthesis_path}")
+                create_directory(self.state.resynthesis_path)
+
+                self.log(f"ResynthesizeVideo processing with input_path={self.state.scenes_path}" +\
+                        f" output_path={self.state.resynthesis_path}")
+
+                with Mtqdm().open_bar(total=len(kept_scenes), desc="Scene") as bar:
+                    for scene_name in kept_scenes:
+                        scene_input_path = os.path.join(self.state.scenes_path, scene_name)
+                        scene_output_path = os.path.join(self.state.resynthesis_path, scene_name)
+
+                        self.log(f"creating output directory {scene_output_path}")
+                        create_directory(scene_output_path)
+
+                        output_basename = "resynthesized_frames"
+                        file_list = sorted(get_files(scene_input_path, extension="png"))
+
+                        self.log(f"beginning series of frame recreations at {scene_output_path}")
+                        series_interpolater.interpolate_series(file_list,
+                                                               scene_output_path,
+                                                               1,
+                                                               output_basename,
+                                                               offset=2)
+
+                        self.log(f"auto-resequencing recreated frames at {scene_output_path}")
+                        ResequenceFiles(scene_output_path,
+                                        "png",
+                                        "resynthesized_frame",
+                                        1,
+                                        1,
+                                        1,
+                                        0,
+                                        -1,
+                                        True,
+                                        self.log).resequence()
+                        Mtqdm().update_bar(bar)
+
+                jot.down(f"Resynthesized scenes created in {self.state.resynthesis_path}")
+                self.log("saving project after resynthesizing frames")
+                self.state.save()
+            return gr.update(selected=6), gr.update(visible=True), jot
+
+        else:
+            return gr.update(selected=5), \
+        gr.update(value="At least one scene must be set to 'Keep' before processing can proceed")
+
 
     def scene_chooser_details(self, scene_name):
         scene_index = self.state.scene_names.index(scene_name)

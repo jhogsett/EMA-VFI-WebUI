@@ -24,11 +24,10 @@ class VideoRemixerState():
         self.resize = False
         self.upscale = False
         self.upscale_option = None
-        self.assemble = False
-        self.keep_scene_clips = False
         self.output_pattern = None
         self.frames_path = None
         self.scenes_path = None
+        self.dropped_scenes_path = None
         self.frames_per_minute = None
         self.thumbnail_path = None
         self.thumbnails = []
@@ -37,6 +36,8 @@ class VideoRemixerState():
         self.audio_clips = []
         self.video_clips_path = None
         self.video_clips = []
+        self.resynthesis_path = None
+
         self.video_info1 = None
         self.project_info2 = None
         self.project_info4 = None
@@ -61,7 +62,20 @@ class VideoRemixerState():
     def drop_all_scenes(self):
         self.scene_states = {scene_name : "Drop" for scene_name in self.scene_names}
 
+    def kept_scenes(self):
+        return [scene for scene in self.scene_states if self.scene_states[scene] == "Keep"]
+
+    def dropped_scenes(self):
+        return [scene for scene in self.scene_states if self.scene_states[scene] == "Drop"]
+
+
+
     @staticmethod
     def load(filepath : str):
         with open(filepath, "r") as file:
-            return yaml.load(file, Loader=Loader)
+            state = yaml.load(file, Loader=Loader)
+            state.scene_names = sorted(state.scene_names)
+            state.thumbnails = sorted(state.thumbnails)
+            state.audio_clips = sorted(state.audio_clips)
+            state.video_clips = sorted(state.video_clips)
+            return state
