@@ -55,6 +55,12 @@ class VideoRemixerState():
     def project_filepath(self, filename : str=DEF_FILENAME):
         return os.path.join(self.project_path, filename)
 
+    def keep_all_scenes(self):
+        self.scene_states = {scene_name : "Keep" for scene_name in self.scene_names}
+
+    def drop_all_scenes(self):
+        self.scene_states = {scene_name : "Drop" for scene_name in self.scene_names}
+
     @staticmethod
     def load(filepath : str):
         with open(filepath, "r") as file:
