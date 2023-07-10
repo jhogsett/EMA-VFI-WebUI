@@ -53,18 +53,31 @@ class VideoRemixer(TabBase):
             with gr.Tabs() as tabs_video_remixer:
 
                 ### NEW PROJECT
-                with gr.Tab("New Project", id=0):
-                    gr.Markdown("**Input a video to get started remixing**")
+                with gr.Tab("Remix Home", id=0):
                     with gr.Row():
-                        video_path = gr.Textbox(label="Video Path",
+                        with gr.Column():
+                            gr.Markdown("**Input a video to get started remixing**")
+                            with gr.Row():
+                                video_path = gr.Textbox(label="Video Path",
                                     placeholder="Path on this server to the video to be remixed")
-                    with gr.Row():
-                        message_box0 = gr.Textbox(
+                            with gr.Row():
+                                message_box00 = gr.Textbox(
                 value="About to inspect video and count frames ... this could take a minute ...",
-                                    show_label=False, visible=True, interactive=False)
-                    gr.Markdown("*Progress can be tracked in the console*")
-                    next_button0 = gr.Button(value="Next > " + SimpleIcons.SLOW_SYMBOL,
-                                             variant="primary")
+                                            show_label=False, visible=True, interactive=False)
+                            gr.Markdown("*Progress can be tracked in the console*")
+                            next_button00 = gr.Button(value="New Project > " +
+                                                        SimpleIcons.SLOW_SYMBOL, variant="primary")
+                        with gr.Column():
+                            gr.Markdown("**Open an existing Video Remixer project**")
+                            with gr.Row():
+                                project_load_path = gr.Textbox(label="Project Path",
+                placeholder="Path on this server to the Video Remixer project directory or file")
+                            with gr.Row():
+                                message_box01 = gr.Textbox(value=None,
+                                            show_label=False, visible=True, interactive=False)
+                            gr.Markdown("*The Scene Chooser will be shown after loading project*")
+                            next_button01 = gr.Button(value="Open Project >",
+                                                    variant="primary")
 
                 ### REMIX SETTINGS
                 with gr.Tab("Remix Settings", id=1):
@@ -102,7 +115,8 @@ class VideoRemixer(TabBase):
                 with gr.Tab("Set Up Project", id=2):
                     gr.Markdown("**Ready to Set Up Video Remixer Project**")
                     with gr.Row():
-                        project_info2 = gr.Textbox(label="Project Details")
+                        project_info2 = gr.Textbox(label="Project Details", lines=6,
+                                                   interactive=False)
                     with gr.Row():
                         message_box2 = gr.Textbox(
     value="About to split video info scenes and create thumbnails ... this could take a while ...",
@@ -135,7 +149,7 @@ class VideoRemixer(TabBase):
 
                 ## COMPILE SCENES
                 with gr.Tab("Compile Scenes", id=4):
-                    project_info4 = gr.Textbox(label="Scene Details")
+                    project_info4 = gr.Textbox(label="Scene Details", lines=6)
                     message_box4 = gr.Textbox(value="About to (strip scenes)",
                                               show_label=False, interactive=False)
 
@@ -166,7 +180,7 @@ class VideoRemixer(TabBase):
                         keep_scene_clips = gr.Checkbox(label="Keep Scene Clips", value=True,
                                     info="Retain clips of individual scenes")
 
-                    message_box5 = gr.Textbox(value="About to ... take hours or days",
+                    message_box5 = gr.Textbox(value="About to ... take hours-to-days",
                                               show_label=False, interactive=False)
 
                     gr.Markdown("*Progress can be tracked in the console*")
@@ -176,12 +190,18 @@ class VideoRemixer(TabBase):
                 ## REMIX SUMMARY
                 with gr.Tab("Remix Final", id=6):
                     gr.Markdown("**Remixed Video Ready**")
-                    summary_info6 = gr.Textbox(label="Scene Details", interactive=False)
+                    summary_info6 = gr.Textbox(label="Scene Details", lines=6, interactive=False)
 
-        next_button0.click(self.next_button0,
+        next_button00.click(self.next_button00,
                            inputs=video_path,
-                           outputs=[tabs_video_remixer, message_box0, video_info1, project_path,
+                           outputs=[tabs_video_remixer, message_box00, video_info1, project_path,
                                     resize_w, resize_h, crop_w, crop_h])
+
+        next_button01.click(self.next_button01,
+                           inputs=project_load_path,
+                           outputs=[tabs_video_remixer, message_box01, video_info1, project_path,
+                                    resize_w, resize_h, crop_w, crop_h, project_info2, scene_label,
+                                    scene_image, scene_state, project_info4, summary_info6])
 
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold, break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h],
@@ -218,13 +238,56 @@ class VideoRemixer(TabBase):
                                    assemble, keep_scene_clips],
                            outputs=[tabs_video_remixer, message_box5, summary_info6])
 
-    def next_button0(self, video_path):
+    def next_button01(self, project_path):
+        if project_path:
+            if os.path.exists(project_path):
+                if os.path.isdir(project_path):
+                    project_file = os.path.join(project_path, VideoRemixerState.DEF_FILENAME)
+                else:
+                    project_file = project_path
+                if os.path.exists(project_file):
+                    try:
+                        self.state = VideoRemixerState.load(project_file)
+                        # use self.state.current_scene to load chooser
+                        return gr.update(selected=3), \
+                            gr.update(visible=True), \
+                            self.state.video_info1, \
+                            self.state.project_path, \
+                            self.state.resize_w, \
+                            self.state.resize_h, \
+                            self.state.crop_w, \
+                            self.state.crop_h, \
+                            self.state.project_info2, \
+                            None, \
+                            None, \
+                            None, \
+                            self.state.project_info4, \
+                            self.state.summary_info6
+                    except Exception as error:
+                        message = \
+                    f"An error was encountered accessing the Project file {project_file}: '{error}'"
+                        return gr.update(selected=0), \
+                            gr.update(visible=True, value=message), *[None for n in range(12)]
+                else:
+                    message = f"Project file {project_file} was not found"
+                    return gr.update(selected=0), \
+                        gr.update(visible=True, value=message), *[None for n in range(12)]
+            else:
+                message = f"Directory {project_path} was not found"
+                return gr.update(selected=0), \
+                    gr.update(visible=True, value=message), *[None for n in range(12)]
+        else:
+            message = \
+                "Enter a path to a Video Remixer project directory on this server to get started"
+            return gr.update(selected=0), \
+                gr.update(visible=True, value=message), *[None for n in range(12)]
+
+    def next_button00(self, video_path):
         self.new_project()
         if video_path:
             if os.path.exists(video_path):
                 self.state.source_video = video_path
                 path, _, _ = split_filepath(video_path)
-                self.state.project_path = path
 
                 with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
                     Mtqdm().message(bar, "FFmpeg in use ...")
@@ -232,8 +295,7 @@ class VideoRemixer(TabBase):
                         video_details = get_essential_video_details(video_path)
                         self.state.video_details = video_details
                     except RuntimeError as error:
-                        message = f"Error getting video details for '{video_path}': {error}"
-                        return gr.update(selected=0), gr.update(visible=True, value=message), None, None, None, None, None, None
+                        return gr.update(selected=0), gr.update(visible=True, value=error), None, None, None, None, None, None
                     finally:
                         Mtqdm().message(bar)
                         Mtqdm().update_bar(bar)
@@ -247,13 +309,23 @@ class VideoRemixer(TabBase):
                 report.append(f"Frame Count: {video_details['frame_count']}")
                 report.append(f"File Size: {video_details['file_size']}")
                 message = "\r\n".join(report)
+                self.state.video_info1 = message
 
                 project_path = os.path.join(path, "REMIX")
                 resize_w = video_details['display_width']
                 resize_h = video_details['display_height']
                 crop_w, crop_h = resize_w, resize_h
-                return gr.update(selected=1), gr.update(visible=True), gr.update(value=message), project_path, resize_w, resize_h, crop_w, crop_h
 
+                self.state.project_path = project_path
+                self.state.resize_w = resize_w
+                self.state.resize_h = resize_h
+                self.state.crop_w = crop_w
+                self.state.crop_h = crop_h
+
+                # don't save yet, let user change auto-chosen path on next tab
+                # self.state.save()
+
+                return gr.update(selected=1), gr.update(visible=True), gr.update(value=message), project_path, resize_w, resize_h, crop_w, crop_h
             else:
                 message = f"File {video_path} was not found"
                 return gr.update(selected=0), gr.update(visible=True, value=message), None, None, None, None, None, None
@@ -263,6 +335,9 @@ class VideoRemixer(TabBase):
     def next_button1(self, project_path, project_fps, split_type, scene_threshold, break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h):
         # validate entries
         self.state.project_path = project_path
+        self.log(f"creating project path {project_path}")
+        create_directory(project_path)
+
         self.state.project_fps = project_fps
         self.state.split_type = split_type
         self.state.scene_threshold = scene_threshold
@@ -295,6 +370,9 @@ class VideoRemixer(TabBase):
         report.append(f"File Size: {self.state.video_details['file_size']}")
         report.append(f"Frame Count: {self.state.video_details['frame_count']}")
         message = "\r\n".join(report)
+        self.state.project_info2 = message
+        self.state.save()
+
         return gr.update(selected=2), gr.update(visible=True), message
 
     def next_button2(self):

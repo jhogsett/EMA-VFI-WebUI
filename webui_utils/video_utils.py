@@ -209,7 +209,9 @@ def get_essential_video_details(input_path : str, count_frames = True) -> dict:
     if video_details.get("error"):
         error = video_details["error"]
         error_message = error["console_output"]
-        message = f"error getting video details for '{input_path}': '{error_message}'"
+        # keep only the last line, presumably with the error (the rest is ffprobe spew)
+        console_error = error_message.splitlines()[-1]
+        message = f"error getting video details for '{input_path}':\r\n'{console_error}'"
         raise RuntimeError(message)
     else:
         video_essentials = {}

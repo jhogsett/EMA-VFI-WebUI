@@ -1,4 +1,5 @@
 """Video Remixer UI state management"""
+import os
 import yaml
 from yaml import Loader
 class VideoRemixerState():
@@ -29,13 +30,23 @@ class VideoRemixerState():
         self.frames_path = None
         self.scenes_path = None
         self.frames_per_minute = None
+        self.video_info1 = None
+        self.project_info2 = None
+        self.project_info4 = None
+        self.summary_info6 = None
 
     def reset(self):
         self.__init__()
 
-    def save(self, filepath : str):
+    DEF_FILENAME = "project.yaml"
+
+    def save(self, filepath : str=None):
+        filepath = filepath or self.project_filepath()
         with open(filepath, "w", encoding="UTF-8") as file:
             yaml.dump(self, file)
+
+    def project_filepath(self, filename : str=DEF_FILENAME):
+        return os.path.join(self.project_path, filename)
 
     @staticmethod
     def load(filepath : str):
