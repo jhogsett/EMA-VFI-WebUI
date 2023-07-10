@@ -6,7 +6,7 @@ import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.image_utils import create_gif
-from webui_utils.file_utils import get_files, create_directory, locate_frame_file, duplicate_directory, split_filepath
+from webui_utils.file_utils import get_files, create_directory, locate_frame_file, duplicate_directory, split_filepath, get_directories
 from webui_utils.auto_increment import AutoIncrementDirectory, AutoIncrementFilename
 from webui_utils.video_utils import PNGtoMP4, QUALITY_SMALLER_SIZE, MP4toPNG, get_video_details, decode_aspect, get_essential_video_details
 from webui_utils.simple_utils import seconds_to_hms, clean_dict, get_frac_str_as_float
@@ -184,13 +184,13 @@ class VideoRemixer(TabBase):
                                               show_label=False, interactive=False)
 
                     gr.Markdown("*Progress can be tracked in the console*")
-                    next_button5 = gr.Button(value="Remix Video " +
+                    next_button5 = gr.Button(value="Process Remix " +
                                              SimpleIcons.SLOW_SYMBOL, variant="primary")
 
                 ## REMIX SUMMARY
-                with gr.Tab("Remix Final", id=6):
-                    gr.Markdown("**Remixed Video Ready**")
-                    summary_info6 = gr.Textbox(label="Scene Details", lines=6, interactive=False)
+                with gr.Tab("Remix Video", id=6):
+                    gr.Markdown("**Create Video with Processed Content**")
+                    summary_info6 = gr.Textbox(label="Something", lines=6, interactive=False)
 
         next_button00.click(self.next_button00,
                            inputs=video_path,
@@ -333,7 +333,6 @@ class VideoRemixer(TabBase):
         return gr.update(selected=0), gr.update(visible=True, value="Enter a path to a video on this server to get started"), None, None, None, None, None, None
 
     def next_button1(self, project_path, project_fps, split_type, scene_threshold, break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h):
-        # validate entries
         self.state.project_path = project_path
         self.log(f"creating project path {project_path}")
         create_directory(project_path)
@@ -371,7 +370,10 @@ class VideoRemixer(TabBase):
         report.append(f"Frame Count: {self.state.video_details['frame_count']}")
         message = "\r\n".join(report)
         self.state.project_info2 = message
-        self.state.save()
+
+        # don't save yet, give user a chance to back up and change settings
+        # before any real processing starts
+        # self.state.save()
 
         return gr.update(selected=2), gr.update(visible=True), message
 
@@ -379,6 +381,9 @@ class VideoRemixer(TabBase):
         # create project directory
         self.log(f"creating project path {self.state.project_path}")
         create_directory(self.state.project_path)
+
+        self.log(f"saving new project at {self.state.project_filepath()}")
+        self.state.save()
 
         # copy video to project directory
         _, filename, ext = split_filepath(self.state.source_video)
@@ -392,6 +397,9 @@ class VideoRemixer(TabBase):
                 self.state.source_video = project_video_path
                 Mtqdm().message(bar)
                 Mtqdm().update_bar(bar)
+
+        self.log(f"saving project after ensuring video is in project path")
+        self.state.save()
 
         # split video into raw PNG frames
         video_path = self.state.source_video
@@ -409,6 +417,9 @@ class VideoRemixer(TabBase):
             self.log(f"FFmpeg command: {ffmpeg_cmd}")
             Mtqdm().message(bar)
             Mtqdm().update_bar(bar)
+
+        self.log(f"saving project after converting video to PNG frames")
+        self.state.save()
 
         # split frames into scenes
         self.state.scenes_path = os.path.join(self.state.project_path, "SCENES")
@@ -453,28 +464,31 @@ class VideoRemixer(TabBase):
                 False,
                 self.log).split()
 
+        self.log(f"saving project after converting video to PNG frames")
+        self.state.save()
+
         # create animated gif thumbnails
         gif_fps = self.config.remixer_settings["default_gif_fps"]
         gif_factor = self.config.remixer_settings["gif_factor"]
         gif_end_delay = self.config.remixer_settings["gif_end_delay"]
         thumb_scale = self.config.remixer_settings["thumb_scale"]
         max_thumb_size = self.config.remixer_settings["max_thumb_size"]
-
         video_w = self.state.video_details['display_width']
         video_h = self.state.video_details['display_height']
+
         max_frame_dimension = video_w if video_w > video_h else video_h
         thumb_size = max_frame_dimension * thumb_scale
         if thumb_size > max_thumb_size:
             thumb_scale = max_thumb_size / max_frame_dimension
-
         source_fps = float(self.state.video_details['frame_rate'])
-        self.thumbnail_path = os.path.join(self.state.project_path, "THUMBNAILS")
-        self.log(f"creating thumbnails directory {self.thumbnail_path}")
-        create_directory(self.thumbnail_path)
+        self.state.thumbnail_path = os.path.join(self.state.project_path, "THUMBNAILS")
+        self.log(f"creating thumbnails directory {self.state.thumbnail_path}")
+        create_directory(self.state.thumbnail_path)
+        self.log(f"creating animated GIF thumbnails")
         SliceVideo(self.state.source_video,
                     source_fps,
                     self.state.scenes_path,
-                    self.thumbnail_path,
+                    self.state.thumbnail_path,
                     thumb_scale,
                     "gif",
                     0,
@@ -484,18 +498,51 @@ class VideoRemixer(TabBase):
                     gif_fps,
                     gif_end_delay,
                     self.log).slice()
+        self.state.thumbnails = get_files(self.state.thumbnail_path)
 
-        # initial selection is established (all or none copied GIFs)
-        # ?VideoRemixerProject is created?
-        # VideoRemixerState is initialized
-        # if there's a problem, message_box2 (is revealed and) message displayed
-        # otherwise
-        # - updates for scene chooser from VideoRemixerState for scene #0:
-        #   - scene_image, scene_state
-        #   - set tab id=3
+        self.log(f"saving project after creating scene thumbnails")
+        self.state.save()
 
+        self.state.clips_path = os.path.join(self.state.project_path, "CLIPS")
+        self.log(f"creating clips directory {self.state.clips_path}")
+        create_directory(self.state.clips_path)
 
-        return gr.update(selected=3), "messag1", "[123-456]", None, "Keep"
+        self.state.audio_clips_path = os.path.join(self.state.clips_path, "AUDIO")
+        self.log(f"creating audio clips directory {self.state.audio_clips_path}")
+        create_directory(self.state.audio_clips_path)
+
+        self.state.video_clips_path = os.path.join(self.state.clips_path, "VIDEO")
+        self.log(f"creating video clips directory {self.state.video_clips_path}")
+        create_directory(self.state.video_clips_path)
+
+        self.log(f"creating audio clips")
+        SliceVideo(self.state.source_video,
+                    source_fps,
+                    self.state.scenes_path,
+                    self.state.audio_clips_path,
+                    0.0,
+                    "wav",
+                    0,
+                    1,
+                    0,
+                    False,
+                    0.0,
+                    0.0,
+                    self.log).slice()
+        self.state.audio_clips = get_files(self.state.audio_clips_path)
+
+        self.log(f"saving project after creating audio clips")
+        self.state.save()
+
+        self.state.scene_names = get_directories(self.state.scenes_path)
+        self.state.scene_states = {scene_name : "Drop" for scene_name in self.state.scene_names}
+        self.state.current_scene = self.state.scene_names[0]
+
+        self.log(f"saving project after setting up scene selection states")
+        self.state.save()
+
+        return gr.update(selected=3), gr.update(visible=True), \
+            *self.scene_chooser_details(self.state.current_scene)
 
     def keep_next(self, scene_label, scene_state):
         return "[000-123]", None, "Keep"
@@ -521,3 +568,9 @@ class VideoRemixer(TabBase):
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option, assemble, keep_scene_clips):
         # do all the things
         return gr.update(selected=6), "messag2", "info"
+
+    def scene_chooser_details(self, scene_name):
+        scene_index = self.state.scene_names.index(scene_name)
+        thumbnail_path = self.state.thumbnails[scene_index]
+        scene_state = self.state.scene_states[scene_name]
+        return scene_name, thumbnail_path, scene_state

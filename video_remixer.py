@@ -30,6 +30,13 @@ class VideoRemixerState():
         self.frames_path = None
         self.scenes_path = None
         self.frames_per_minute = None
+        self.thumbnail_path = None
+        self.thumbnails = []
+        self.clips_path = None
+        self.audio_clips_path = None
+        self.audio_clips = []
+        self.video_clips_path = None
+        self.video_clips = []
         self.video_info1 = None
         self.project_info2 = None
         self.project_info4 = None
