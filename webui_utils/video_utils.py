@@ -222,10 +222,15 @@ def get_essential_video_details(input_path : str, count_frames = True) -> dict:
         streams_data = video_details["streams"]
         for stream_data in streams_data:
             codec_type = stream_data.get("codec_type")
+
+            if codec_type == "audio":
+                video_essentials["has_audio"] = True
+                continue
+
             if codec_type != "video":
                 continue
 
-            video_essentials["stream_index"] = stream_data.get("index")
+            video_essentials["video_index"] = stream_data.get("index")
 
             avg_frame_rate = stream_data.get("avg_frame_rate")
             avg_frame_rate = get_frac_str_as_float(avg_frame_rate)

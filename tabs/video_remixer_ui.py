@@ -168,7 +168,8 @@ class VideoRemixer(TabBase):
                 with gr.Tab("Compile Scenes", id=4):
                     project_info4 = gr.Textbox(label="Scene Details", lines=2)
                     message_box4 = gr.Textbox(show_label=False, interactive=False,
-                                        value="Next: Set aside Drop scenes (takes a moment)")
+                                    value="Next: Remove derivatives of previous scene choices" +\
+                                        " and set aside new dropped scenes (takes a moment)")
                     # gr.Markdown("*Progress can be tracked in the console*")
                     next_button4 = gr.Button(value="Compile Scenes", variant="primary")
 
@@ -324,7 +325,8 @@ class VideoRemixer(TabBase):
                         video_details = get_essential_video_details(video_path)
                         self.state.video_details = video_details
                     except RuntimeError as error:
-                        return gr.update(selected=0), gr.update(visible=True, value=error), None, None, None, None, None, None
+                        return gr.update(selected=0), gr.update(visible=True, value=error), \
+                            None, None, None, None, None, None
                     finally:
                         Mtqdm().message(bar)
                         Mtqdm().update_bar(bar)
@@ -337,6 +339,7 @@ class VideoRemixer(TabBase):
                 report.append(f"Content Size: {video_details['content_dimensions']}")
                 report.append(f"Frame Count: {video_details['frame_count']}")
                 report.append(f"File Size: {video_details['file_size']}")
+                report.append(f"Has Audio: {True if video_details['has_audio'] else False}")
                 message = "\r\n".join(report)
                 self.state.video_info1 = message
 
@@ -354,14 +357,19 @@ class VideoRemixer(TabBase):
                 # don't save yet, let user change auto-chosen path on next tab
                 # self.state.save()
 
-                return gr.update(selected=1), gr.update(visible=True), gr.update(value=message), project_path, resize_w, resize_h, crop_w, crop_h
+                return gr.update(selected=1), gr.update(visible=True), gr.update(value=message), \
+                    project_path, resize_w, resize_h, crop_w, crop_h
             else:
                 message = f"File {video_path} was not found"
-                return gr.update(selected=0), gr.update(visible=True, value=message), None, None, None, None, None, None
+                return gr.update(selected=0), gr.update(visible=True, value=message), \
+                    None, None, None, None, None, None
 
-        return gr.update(selected=0), gr.update(visible=True, value="Enter a path to a video on this server to get started"), None, None, None, None, None, None
+        return gr.update(selected=0), gr.update(visible=True,
+            value="Enter a path to a video on this server to get started"), \
+                None, None, None, None, None, None
 
-    def next_button1(self, project_path, project_fps, split_type, scene_threshold, break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h):
+    def next_button1(self, project_path, project_fps, split_type, scene_threshold, break_duration, \
+                     break_ratio, resize_w, resize_h, crop_w, crop_h):
         self.state.project_path = project_path
         self.log(f"creating project path {project_path}")
         create_directory(project_path)
@@ -429,6 +437,33 @@ class VideoRemixer(TabBase):
 
         self.log("saving project after ensuring video is in project path")
         self.state.save()
+
+        # user may be redoing this, so clear things that may exist and interfere
+        self.log("removing derivatives of previous project settings")
+        if os.path.exists(self.state.frames_path):
+            self.log(f"removing {self.state.frames_path}")
+            shutil.rmtree(self.state.frames_path)
+        if os.path.exists(self.state.scenes_path):
+            self.log(f"removing {self.state.scenes_path}")
+            shutil.rmtree(self.state.scenes_path)
+        if os.path.exists(self.state.dropped_scenes_path):
+            self.log(f"removing {self.state.dropped_scenes_path}")
+            shutil.rmtree(self.state.dropped_scenes_path)
+        if os.path.exists(self.state.thumbnail_path):
+            self.log(f"removing {self.state.thumbnail_path}")
+            shutil.rmtree(self.state.thumbnail_path)
+        if os.path.exists(self.state.clips_path):
+            self.log(f"removing {self.state.clips_path}")
+            shutil.rmtree(self.state.clips_path)
+        if os.path.exists(self.state.resize_path):
+            self.log(f"removing {self.state.resize_path}")
+            shutil.rmtree(self.state.resize_path)
+        if os.path.exists(self.state.resynthesis_path):
+            self.log(f"removing {self.state.resynthesis_path}")
+            shutil.rmtree(self.state.resynthesis_path)
+        if os.path.exists(self.state.inflation_path):
+            self.log(f"removing {self.state.inflation_path}")
+            shutil.rmtree(self.state.inflation_path)
 
         # split video into raw PNG frames
         video_path = self.state.source_video
@@ -625,6 +660,17 @@ class VideoRemixer(TabBase):
             self.log(f"moving directory {current_path} to {dropped_path}")
             shutil.move(current_path, dropped_path)
 
+        # need to remove anything that was derived from the edited SCENES directory
+        self.log("removing derivatives of previous scene choices")
+        if os.path.exists(self.state.resize_path):
+            self.log(f"removing {self.state.resize_path}")
+            shutil.rmtree(self.state.resize_path)
+        if os.path.exists(self.state.resynthesis_path):
+            self.log(f"removing {self.state.resynthesis_path}")
+            shutil.rmtree(self.state.resynthesis_path)
+        if os.path.exists(self.state.inflation_path):
+            self.log(f"removing {self.state.inflation_path}")
+            shutil.rmtree(self.state.inflation_path)
         return gr.update(selected=5), gr.update(visible=True)
 
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option):
@@ -640,33 +686,34 @@ class VideoRemixer(TabBase):
         jot = Jot()
         kept_scenes = self.state.kept_scenes()
         if kept_scenes:
-            self.state.audio_clips_path = os.path.join(self.state.clips_path, "AUDIO")
-            self.log(f"creating audio clips directory {self.state.audio_clips_path}")
-            create_directory(self.state.audio_clips_path)
+            if self.state.video_details["has_audio"]:
+                self.state.audio_clips_path = os.path.join(self.state.clips_path, "AUDIO")
+                self.log(f"creating audio clips directory {self.state.audio_clips_path}")
+                create_directory(self.state.audio_clips_path)
 
-            self.state.video_clips_path = os.path.join(self.state.clips_path, "VIDEO")
-            self.log(f"creating video clips directory {self.state.video_clips_path}")
-            create_directory(self.state.video_clips_path)
+                # self.state.video_clips_path = os.path.join(self.state.clips_path, "VIDEO")
+                # self.log(f"creating video clips directory {self.state.video_clips_path}")
+                # create_directory(self.state.video_clips_path)
 
-            self.log(f"creating audio clips")
-            edge_trim = 1 if self.state.resynthesize else 0
-            SliceVideo(self.state.source_video,
-                        self.state.project_fps,
-                        self.state.scenes_path,
-                        self.state.audio_clips_path,
-                        0.0,
-                        "wav",
-                        0,
-                        1,
-                        edge_trim,
-                        False,
-                        0.0,
-                        0.0,
-                        self.log).slice()
-            self.state.audio_clips = sorted(get_files(self.state.audio_clips_path))
-            jot.down(f"Audio clips created in {self.state.audio_clips_path}")
-            self.log("saving project after creating audio clips")
-            self.state.save()
+                self.log(f"creating audio clips")
+                edge_trim = 1 if self.state.resynthesize else 0
+                SliceVideo(self.state.source_video,
+                            self.state.project_fps,
+                            self.state.scenes_path,
+                            self.state.audio_clips_path,
+                            0.0,
+                            "wav",
+                            0,
+                            1,
+                            edge_trim,
+                            False,
+                            0.0,
+                            0.0,
+                            self.log).slice()
+                self.state.audio_clips = sorted(get_files(self.state.audio_clips_path))
+                jot.down(f"Audio clips created in {self.state.audio_clips_path}")
+                self.log("saving project after creating audio clips")
+                self.state.save()
 
             if self.state.resize:
                 scenes_base_path = self.state.scenes_path
