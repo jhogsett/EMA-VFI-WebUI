@@ -164,9 +164,7 @@ class VideoRemixer(TabBase):
                 with gr.Tab("Compile Scenes", id=4):
                     project_info4 = gr.Textbox(label="Scene Details", lines=2)
                     message_box4 = gr.Textbox(show_label=False, interactive=False,
-                                    value="Next: Remove derivatives of previous scene choices" +\
-                                        " and set aside new dropped scenes (takes a moment)")
-                    # gr.Markdown("*Progress can be tracked in the console*")
+                                    value="Next: Compile Keep scenes and set aside Drop scenes")
                     next_button4 = gr.Button(value="Compile Scenes", variant="primary")
 
                 ## PROCESSING OPTIONS
@@ -199,18 +197,13 @@ class VideoRemixer(TabBase):
                                              SimpleIcons.SLOW_SYMBOL, variant="primary")
 
                 ## REMIX VIDEOS
-                with gr.Tab("Remix Video", id=6):
-                    gr.Markdown("**Ready to Create Remixed Video**")
+                with gr.Tab("Save Remix", id=6):
+                    gr.Markdown("**Ready to Save Remixed Video**")
                     summary_info6 = gr.Textbox(label="Processed Content", lines=6, interactive=False)
                     output_filepath = gr.Textbox(label="Output Filepath", max_lines=1,
                                info="Enter a path and filename for the remixed video")
-                    message_box6 = gr.Textbox(
-                        value="Next: Create Remixed Video (takes from minutes to hours)",
-                                              show_label=False, interactive=False)
-                    gr.Markdown("*Progress can be tracked in the console*")
-                    next_button6 = gr.Button(value="Process Remix " +
-                                             SimpleIcons.SLOW_SYMBOL, variant="primary")
-
+                    message_box6 = gr.Textbox(value=None, show_label=False, interactive=False)
+                    next_button6 = gr.Button(value="Save Remix", variant="primary")
 
         next_button00.click(self.next_button00,
                            inputs=video_path,
@@ -451,24 +444,16 @@ class VideoRemixer(TabBase):
 
         # user may be redoing this, so clear things that may exist and interfere
         self.log("removing derivatives of previous project settings")
-        dirs = []
-        self.log(f"removing {self.state.frames_path}")
-        self.log(f"removing {self.state.scenes_path}")
-        self.log(f"removing {self.state.dropped_scenes_path}")
-        self.log(f"removing {self.state.thumbnail_path}")
-        self.log(f"removing {self.state.clips_path}")
-        self.log(f"removing {self.state.resize_path}")
-        self.log(f"removing {self.state.resynthesis_path}")
-        self.log(f"removing {self.state.inflation_path}")
-        dirs.append(self.state.frames_path)
-        dirs.append(self.state.scenes_path)
-        dirs.append(self.state.dropped_scenes_path)
-        dirs.append(self.state.thumbnail_path)
-        dirs.append(self.state.clips_path)
-        dirs.append(self.state.resize_path)
-        dirs.append(self.state.resynthesis_path)
-        dirs.append(self.state.inflation_path)
-        remove_directories(dirs)
+        remove_directories([
+            self.state.frames_path,
+            self.state.scenes_path,
+            self.state.dropped_scenes_path,
+            self.state.thumbnail_path,
+            self.state.clips_path,
+            self.state.resize_path,
+            self.state.resynthesis_path,
+            self.state.inflation_path,
+            self.state.upscale_path])
 
         # split video into raw PNG frames
         video_path = self.state.source_video
@@ -665,17 +650,6 @@ class VideoRemixer(TabBase):
             self.log(f"moving directory {current_path} to {dropped_path}")
             shutil.move(current_path, dropped_path)
 
-        # need to remove anything that was derived from the edited SCENES directory
-        self.log("removing derivatives of previous scene choices")
-        dirs = []
-        self.log(f"removing {self.state.resize_path}")
-        self.log(f"removing {self.state.resynthesis_path}")
-        self.log(f"removing {self.state.inflation_path}")
-        dirs.append(self.state.resize_path)
-        dirs.append(self.state.resynthesis_path)
-        dirs.append(self.state.inflation_path)
-        remove_directories(dirs)
-
         return gr.update(selected=5), gr.update(visible=True)
 
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option, quality):
@@ -691,6 +665,15 @@ class VideoRemixer(TabBase):
         jot = Jot()
         kept_scenes = self.state.kept_scenes()
         if kept_scenes:
+            # need to remove anything that was created previously based on these settings
+            self.log("removing processed files from previous processing choices")
+            remove_directories([
+                self.state.clips_path,
+                self.state.resize_path,
+                self.state.resynthesis_path,
+                self.state.inflation_path,
+                self.state.upscale_path])
+
             if self.state.video_details["has_audio"]:
                 self.state.audio_clips_path = os.path.join(self.state.clips_path, "AUDIO")
                 self.log(f"creating audio clips directory {self.state.audio_clips_path}")
@@ -943,6 +926,9 @@ class VideoRemixer(TabBase):
                 scenes_base_path = self.state.scenes_path
 
             self.log(f"creating processed video clips")
+            video_clip_fps = \
+                2 * self.state.project_fps if self.state.inflate else self.state.project_fps
+
             with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
                 for scene_name in kept_scenes:
                     scene_input_path = os.path.join(scenes_base_path, scene_name)
@@ -960,20 +946,15 @@ class VideoRemixer(TabBase):
                                     -1,
                                     True,
                                     self.log).resequence()
-
-                    self.log(
-f"about to use PNGtoMP4 with input_path={scene_input_path} output_filepath={scene_output_filepath}")
-                    ffcmd = PNGtoMP4(scene_input_path, None, self.state.project_fps,
+                    self.log(f"about to use PNGtoMP4 with input_path={scene_input_path}" +\
+                             f" fps={video_clip_fps} output_filepath={scene_output_filepath}")
+                    ffcmd = PNGtoMP4(scene_input_path, None, video_clip_fps,
                                      scene_output_filepath, quality)
                     self.log(f"FFMpeg command: {ffcmd}")
                     Mtqdm().update_bar(bar)
 
-                jot.down(f"Processed video clips created in {self.state.video_clips_path}")
-                self.log("saving project after creating video clips")
-                self.state.save()
-
             self.state.video_clips = sorted(get_files(self.state.video_clips_path))
-            jot.down(f"Video clips created in {self.state.video_clips_path}")
+            jot.down(f"Processed video clips created in {self.state.video_clips_path}")
             self.log("saving project after creating video clips")
             self.state.save()
 
@@ -1018,7 +999,7 @@ f"about to use PNGtoMP4 with input_path={scene_input_path} output_filepath={scen
                 Mtqdm().message(bar)
                 Mtqdm().update_bar(bar)
 
-                return gr.update(value=f"Remixed video {output_filepath} is complete.",
+            return gr.update(value=f"Remixed video {output_filepath} is complete.",
                                  visible=True)
         else:
             return gr.update(value="No processed video clips were found", visible=True)
