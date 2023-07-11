@@ -224,7 +224,7 @@ class VideoRemixer(TabBase):
                            outputs=[tabs_video_remixer, message_box2, scene_label, scene_image,
                                     scene_state, scene_info])
 
-        scene_state.change(self.scene_state_button,
+        scene_state.change(self.scene_state_button, show_progress=False,
                             inputs=[scene_label, scene_state],
                             outputs=[scene_label, scene_image, scene_state, scene_info])
 
@@ -507,8 +507,8 @@ class VideoRemixer(TabBase):
                             "png",
                             "break",
                             0.0,
-                            self.state.break_duration,
-                            self.state.break_ratio,
+                            float(self.state.break_duration),
+                            float(self.state.break_ratio),
                             self.log).split()
                 Mtqdm().message(bar)
                 Mtqdm().update_bar(bar)
@@ -623,7 +623,7 @@ class VideoRemixer(TabBase):
         self.state.current_scene = self.state.scene_names[-1]
         return self.scene_chooser_details(self.state.current_scene)
 
-    def next_button3(self   ):
+    def next_button3(self):
         with Jot() as jot:
             jot.down(f"Keep Scenes: {len(self.state.kept_scenes())}")
             jot.down(f"Drop Scenes: {len(self.state.dropped_scenes())}")

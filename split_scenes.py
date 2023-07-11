@@ -134,7 +134,8 @@ class SplitScenes:
         num_width = len(str(num_files))
         self.log(f"calling `get_detected_breaks` with input path '{self.input_path}'" +\
                  f" duration '{self.break_duration}' ratio '{self.break_ratio}'")
-        scenes = get_detected_breaks(self.input_path, self.break_duration, self.break_ratio)
+        scenes = get_detected_breaks(self.input_path, float(self.break_duration),
+                                     float(self.break_ratio))
         # add one more final fake detection past the end to include frames past the last detection
         scenes.append(num_files+1)
         ranges = scene_list_to_ranges(scenes, num_files)
@@ -209,9 +210,6 @@ class SplitScenes:
         else:
             self.log(f"Creating base output path {self.output_path}")
             create_directory(self.output_path)
-
-
-
 
     def log(self, message : str) -> None:
         """Logging"""
