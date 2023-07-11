@@ -32,6 +32,7 @@ class VideoRemixerState():
         self.thumbnail_path = None
         self.thumbnails = []
         self.clips_path = None
+        self.clips = []
         self.audio_clips_path = None
         self.audio_clips = []
         self.video_clips_path = None
@@ -40,6 +41,7 @@ class VideoRemixerState():
         self.inflation_path = None
         self.resize_path = None
         self.upscale_path = None
+        self.clips = []
         self.video_info1 = None
         self.project_info2 = None
         self.project_info4 = None

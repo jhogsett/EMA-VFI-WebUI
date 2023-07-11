@@ -94,12 +94,15 @@ realesrgan_settings:
   tile_pad: 10
   tiling: 256
 remixer_settings:
+  default_crf: 23
   def_project_fps: 29.97
   default_gif_fps: 10
   gif_end_delay: 1.0
   gif_factor: 10
   max_project_fps: 60.0
   max_thumb_size: 512
+  maximum_crf: 28
+  minimum_crf: 17
   scale_type: "lanczos"
   thumb_scale: 0.5
   use_tiling: False
