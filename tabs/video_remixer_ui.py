@@ -60,7 +60,7 @@ class VideoRemixer(TabBase):
                                     placeholder="Path on this server to the video to be remixed")
                             with gr.Row():
                                 message_box00 = gr.Textbox(
-                        value="Next: Inspect video and count frames (takes a minute or more)",
+                        value="Next: Inspect Video and Count Frames (takes a minute or more)",
                                             show_label=False, visible=True, interactive=False)
                             gr.Markdown("*Progress can be tracked in the console*")
                             next_button00 = gr.Button(value="New Project > " +
@@ -117,7 +117,7 @@ class VideoRemixer(TabBase):
                                                    interactive=False)
                     with gr.Row():
                         message_box2 = gr.Textbox(
-        value="Next: Create scenes, thumbnails and audio clips (takes from minutes to hours)",
+        value="Next: Create Scenes, Thumbnails and Audio Clips (takes from minutes to hours)",
                                     show_label=False, visible=True, interactive=False)
 
                     gr.Markdown("*Progress can be tracked in the console*")
@@ -164,7 +164,7 @@ class VideoRemixer(TabBase):
                 with gr.Tab("Compile Scenes", id=4):
                     project_info4 = gr.Textbox(label="Scene Details", lines=2)
                     message_box4 = gr.Textbox(show_label=False, interactive=False,
-                                    value="Next: Compile Keep scenes and set aside Drop scenes")
+                                    value="Next: Compile 'Keep' and 'Drop' scenes")
                     next_button4 = gr.Button(value="Compile Scenes", variant="primary")
 
                 ## PROCESSING OPTIONS
@@ -190,7 +190,7 @@ class VideoRemixer(TabBase):
                             info="Lower values mean higher video quality")
 
                     message_box5 = gr.Textbox(
-                        value="Next: Perform all processing steps (takes from hours to days)",
+                        value="Next: Perform all Processing Steps (takes from hours to days)",
                                               show_label=False, interactive=False)
                     gr.Markdown("*Progress can be tracked in the console*")
                     next_button5 = gr.Button(value="Process Remix " +
