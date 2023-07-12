@@ -70,6 +70,7 @@ class SplitScenes(TabBase):
                     0.0,
                     0.0,
                     self.log).split()
+                Mtqdm().message(bar)
                 Mtqdm().update_bar(bar)
 
     def split_breaks(self,
@@ -90,4 +91,5 @@ class SplitScenes(TabBase):
                     float(break_duration),
                     float(break_ratio),
                     self.log).split()
+                Mtqdm().message(bar)
                 Mtqdm().update_bar(bar)

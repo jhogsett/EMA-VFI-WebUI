@@ -71,8 +71,6 @@ class SplitFrames:
             raise ValueError("'input_path' must be a legal path")
         if not is_safe_path(self.output_path):
             raise ValueError("'output_path' must be a legal path")
-        if self.num_groups < 2:
-            raise ValueError("'num_groups' must be >= 2")
         if not self.type in valid_types:
             raise ValueError(f"'type' must be one of {', '.join([t for t in valid_types])}")
         if not self.action in valid_actions:
@@ -94,6 +92,8 @@ class SplitFrames:
             self.num_groups = needed_groups
             self.log(f"overriding 'num_groups' with computed value {needed_groups}")
         else:
+            if self.num_groups < 2:
+                raise ValueError("'num_groups' must be >= 2")
             files_per_group = int(math.ceil(num_files / self.num_groups))
         self.log(f"Splitting files to {self.num_groups} groups of {files_per_group} files")
 

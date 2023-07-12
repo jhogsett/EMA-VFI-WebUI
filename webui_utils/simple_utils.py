@@ -141,3 +141,20 @@ def create_sample_set(samples : list, offset : int, stride : int):
 
 def seconds_to_hms(_seconds):
     return str(datetime.timedelta(seconds = _seconds))
+
+def clean_dict(_dict):
+    cleaned = {}
+    for k, v in _dict.items():
+        if v:
+            if isinstance(v, dict):
+                cleaned[k] = clean_dict(v)
+            else:
+                cleaned[k] = v
+    return cleaned
+
+def get_frac_str_as_float(fraction_string : str) -> float:
+    try:
+        return float(Fraction(fraction_string))
+    except ZeroDivisionError:
+        return 0.0
+

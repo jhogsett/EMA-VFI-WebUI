@@ -35,7 +35,7 @@ class SliceVideo(TabBase):
                     placeholder="Path on this server to the media file to be split")
                 input_frame_rate = gr.Slider(minimum=1, maximum=max_frame_rate, value=frame_rate,
                     step=0.01, label="Input Media Frame Rate",
-                    info="This must be set precisely for accurate frame cuts")
+                info="This must match the frame rate of the split groups for accurate frame cuts")
             with gr.Row():
                 group_path = gr.Text(max_lines=1, label="Split Groups Path",
                     placeholder="Path on this server containing the indexed file groups",

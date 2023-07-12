@@ -22,7 +22,7 @@ from tabs.tab_base import TabBase
 from simplify_png_files import SimplifyPngFiles
 
 class VideoBlender(TabBase):
-    """Encapsulates UI elements and events for the Video Blender eature"""
+    """Encapsulates UI elements and events for the Video Blender Feature"""
     def __init__(self,
                     config : SimpleConfig,
                     engine : InterpolateEngine,
@@ -80,7 +80,7 @@ class VideoBlender(TabBase):
                                 interactive=False, type="filepath", elem_id="sideimage")
                         with gr.Column():
                             output_curr_frame_vb = gr.Image(show_label=False,
-                                interactive=False, type="filepath", elem_id="mainimage")
+                                interactive=False, type="filepath", elem_id="actionimage")
                         with gr.Column():
                             output_next_frame_vb = gr.Image(label="Next Frame",
                                 interactive=False, type="filepath", elem_id="sideimage")
