@@ -136,8 +136,7 @@ class VideoRemixer(TabBase):
                                                 choices=["Keep", "Drop"])
                     with gr.Row():
                         with gr.Column():
-                            scene_image = gr.Image(type="filepath", interactive=False).style(
-                                width=max_thumb_size, height=max_thumb_size)
+                            scene_image = gr.Image(type="filepath", interactive=False).style(height=max_thumb_size)
                         with gr.Column():
                             keep_next = gr.Button(value="Keep Scene | Next >", variant="primary",
                                                 elem_id="actionbutton")
