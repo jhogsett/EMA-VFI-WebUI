@@ -4,8 +4,11 @@ import yaml
 from yaml import Loader
 class VideoRemixerState():
     def __init__(self):
+        # source video from initial tab
         self.source_video = None
-        self.video_details = {}
+        self.video_details = {} # set again during project set up (pointing to duplicate copy)
+
+        # project set up options
         self.project_path = None
         self.project_fps = None
         self.split_type = None
@@ -16,36 +19,44 @@ class VideoRemixerState():
         self.resize_h = None
         self.crop_w = None
         self.crop_h = None
+        self.frames_per_minute = None
+        self.project_info2 = None # re-set on re-opening project
+
+        # set during project set up
+        self.output_pattern = None
+        self.frames_path = None
+        self.scenes_path = None
+        self.dropped_scenes_path = None
+        self.thumbnail_path = None
+        self.thumbnails = []
+        self.clips_path = None
         self.scene_names = []
         self.scene_states = {}
         self.current_scene = None
+
+        # set when done choosing scenes
+        self.project_info4 = None # re-set on re-opening project
+
+        # project processing options
         self.resynthesize = False
         self.inflate = False
         self.resize = False
         self.upscale = False
         self.upscale_option = None
-        self.output_pattern = None
-        self.frames_path = None
-        self.scenes_path = None
-        self.dropped_scenes_path = None
-        self.frames_per_minute = None
-        self.thumbnail_path = None
-        self.thumbnails = []
-        self.clips_path = None
-        self.clips = []
+
+        # set during processing
         self.audio_clips_path = None
         self.audio_clips = []
-        self.video_clips_path = None
-        self.video_clips = []
+        self.resize_path = None
         self.resynthesis_path = None
         self.inflation_path = None
-        self.resize_path = None
         self.upscale_path = None
+        self.summary_info6 = None # re-set on re-opening project
+
+        # set during final clip creation and remix merging
+        self.video_clips_path = None
+        self.video_clips = []
         self.clips = []
-        self.video_info1 = None
-        self.project_info2 = None
-        self.project_info4 = None
-        self.summary_info6 = None
 
     def reset(self):
         self.__init__()
