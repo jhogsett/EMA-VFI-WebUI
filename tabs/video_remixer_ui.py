@@ -5,10 +5,11 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
+from webui_utils.simple_utils import seconds_to_hmsf
 from webui_utils.file_utils import get_files, create_directory, split_filepath, get_directories, \
     remove_directories
 from webui_utils.video_utils import MP4toPNG, get_essential_video_details, PNGtoMP4, \
-    combine_video_audio, combine_videos
+    combine_video_audio, combine_videos, details_from_group_name
 from webui_utils.mtqdm import Mtqdm
 from webui_utils.jot import Jot
 # from webui_tips import WebuiTips
@@ -130,7 +131,7 @@ class VideoRemixer(TabBase):
                         with gr.Column():
                             with gr.Row():
                                 scene_label = gr.Text(label="Scene", interactive=False)
-                                scene_info = gr.Text(label="Scene Index", interactive=False)
+                                scene_info = gr.Text(label="Scene Details", interactive=False)
                         with gr.Column():
                             scene_state = gr.Radio(label="Scene selection", value=None,
                                                 choices=["Keep", "Drop"])
@@ -205,7 +206,7 @@ class VideoRemixer(TabBase):
                         message_box6 = gr.Textbox(value=None, show_label=False, interactive=False)
                     gr.Markdown("*Progress can be tracked in the console*")
                     next_button6 = gr.Button(value="Process Remix " + SimpleIcons.SLOW_SYMBOL,
-                                             variant="primary", variant="primary")
+                                             variant="primary")
 
         next_button00.click(self.next_button00,
                            inputs=video_path,
@@ -630,7 +631,19 @@ class VideoRemixer(TabBase):
         scene_index = self.state.scene_names.index(scene_name)
         thumbnail_path = self.state.thumbnails[scene_index]
         scene_state = self.state.scene_states[scene_name]
-        scene_info = f"{scene_index+1} / {len(self.state.scene_names)}"
+
+        scene_position = f"{scene_index+1}/{len(self.state.scene_names)}"
+
+        first_index, last_index, _ = details_from_group_name(scene_name)
+
+        scene_start = seconds_to_hmsf(first_index / self.state.project_fps, self.state.project_fps)
+
+        scene_duration = seconds_to_hmsf((last_index - first_index) / self.state.project_fps,
+                                         self.state.project_fps)
+
+        sep = "  -  "
+        scene_info = f"{scene_position}{sep}Start: {scene_start}{sep}Length: {scene_duration}"
+
         return scene_name, thumbnail_path, scene_state, scene_info
 
     def next_button3(self):
