@@ -9,7 +9,7 @@ from interpolate_engine import InterpolateEngine
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.file_utils import create_directories, is_safe_path
-from webui_utils.console_colors import ColorOut
+from webui_utils.color_out import ColorOut
 from webui_utils.mtqdm import Mtqdm
 from create_ui import create_ui
 from webui_tips import WebuiTips

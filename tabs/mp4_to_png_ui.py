@@ -64,6 +64,5 @@ class MP4toPNG(TabBase):
                                     float(frame_rate),
                                     output_path,
                                     deinterlace=deinterlace)
-                Mtqdm().message(bar)
                 Mtqdm().update_bar(bar)
             return gr.update(value=ffmpeg_cmd, visible=True)

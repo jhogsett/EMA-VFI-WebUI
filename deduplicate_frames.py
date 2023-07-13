@@ -8,7 +8,7 @@ from webui_utils.simple_log import SimpleLog
 from webui_utils.video_utils import get_duplicate_frames_report, get_duplicate_frames,\
     compute_report_stats
 from webui_utils.file_utils import split_filepath, create_directory
-from webui_utils.console_colors import ColorOut
+from webui_utils.color_out import ColorOut
 from webui_utils.mtqdm import Mtqdm
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
