@@ -147,16 +147,20 @@ class VideoRemixer(TabBase):
                                 prev_scene = gr.Button(value="< Prev Scene", variant="primary")
                                 next_scene = gr.Button(value="Next Scene >", variant="primary")
                             with gr.Row():
+                                prev_keep = gr.Button(value="< Prev Keep", variant="secondary")
+                                next_keep = gr.Button(value="Next Keep >", variant="secondary")
+                            gr.Box()
+                            with gr.Row():
                                 first_scene = gr.Button(value="<< First Scene",
                                                             variant="secondary")
                                 last_scene = gr.Button(value="Last Scene >>",
                                                             variant="secondary")
-                            gr.Box()
-                            with gr.Row():
-                                keep_all_button = gr.Button(value="Keep All Scenes",
-                                                            variant="secondary")
-                                drop_all_button = gr.Button(value="Drop All Scenes",
-                                                            variant="secondary")
+                            with gr.Accordion(label="Danger Zone", open=False):
+                                with gr.Row():
+                                    keep_all_button = gr.Button(value="Keep All Scenes",
+                                                                variant="stop")
+                                    drop_all_button = gr.Button(value="Drop All Scenes",
+                                                                variant="stop")
 
                     next_button3 = gr.Button(value="Done Choosing Scenes", variant="primary")
 
@@ -244,6 +248,14 @@ class VideoRemixer(TabBase):
                             outputs=[scene_label, scene_image, scene_state, scene_info])
 
         prev_scene.click(self.prev_scene, show_progress=False,
+                            inputs=scene_label,
+                            outputs=[scene_label, scene_image, scene_state, scene_info])
+
+        next_keep.click(self.next_keep, show_progress=False,
+                            inputs=scene_label,
+                            outputs=[scene_label, scene_image, scene_state, scene_info])
+
+        prev_keep.click(self.prev_keep, show_progress=False,
                             inputs=scene_label,
                             outputs=[scene_label, scene_image, scene_state, scene_info])
 
@@ -609,6 +621,24 @@ class VideoRemixer(TabBase):
         if scene_index > 0:
             scene_index -= 1
             self.state.current_scene = self.state.scene_names[scene_index]
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def next_keep(self, scene_label):
+        scene_index = self.state.scene_names.index(scene_label)
+        for index in range(scene_index+1, len(self.state.scene_names)):
+            scene_name = self.state.scene_names[index]
+            if self.state.scene_states[scene_name] == "Keep":
+                self.state.current_scene = scene_name
+                break
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def prev_keep(self, scene_label):
+        scene_index = self.state.scene_names.index(scene_label)
+        for index in range(scene_index-1, -1, -1):
+            scene_name = self.state.scene_names[index]
+            if self.state.scene_states[scene_name] == "Keep":
+                self.state.current_scene = scene_name
+                break
         return self.scene_chooser_details(self.state.current_scene)
 
     def keep_all_scenes(self, scene_label):
