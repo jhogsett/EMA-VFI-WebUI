@@ -160,10 +160,10 @@ class MtqdmTester():
                 "Random" : "random"
             },
             {
-                "Subdued" : "subdued"
+                "BeMine" : "bemine"
             },
             {
-                "Random Subdued" : "randsub"
+                "Random BeMine" : "randbemine"
             },
             {
                 "Non-existent" : "doesnotexist"

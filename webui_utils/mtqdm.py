@@ -102,7 +102,7 @@ class Mtqdm():
         alt_colors["cyan"],
         alt_colors["white"]]
 
-    subdued_palette = [
+    bemine_palette = [
         subdued_colors["green"],
         subdued_colors["yellow"],
         subdued_colors["orange"],
@@ -113,7 +113,7 @@ class Mtqdm():
         subdued_colors["cyan"],
         subdued_colors["white"]]
 
-    subdued_palette_alt = [
+    bemine_palette_alt = [
         alt_subdued_colors["green"],
         alt_subdued_colors["yellow"],
         alt_subdued_colors["orange"],
@@ -127,17 +127,17 @@ class Mtqdm():
     palettes = {
         "default" : default_palette,
         "rainbow" : rainbow_palette,
-        "subdued" : subdued_palette,
+        "bemine" : bemine_palette,
         "random" : default_palette.copy(),
-        "randsub" : subdued_palette.copy()
+        "randbemine" : bemine_palette.copy()
     }
 
     alt_palettes = {
         "default" : default_palette_alt,
         "rainbow" : rainbow_palette_alt,
-        "subdued" : subdued_palette_alt,
+        "bemine" : bemine_palette_alt,
         "random" : default_palette.copy(),
-        "randsub" : subdued_palette_alt.copy()
+        "randbemine" : bemine_palette_alt.copy()
     }
 
     def init(self, use_color : bool=True, palette : str="default"):
