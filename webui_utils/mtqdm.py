@@ -245,6 +245,10 @@ class Mtqdm():
     def message(self, bar, message=""):
         position = self._find_bar_position(bar)
         self.bar_message[position] = position + 1
+        if self.use_color:
+            palette = self._get_palette(self.current_palette)
+            color = palette[position]
+            message = self._webcolor_text(message, color)
         bar.display(message, position + 1)
 
     def update_bar(self, bar, steps=1):
@@ -314,3 +318,15 @@ class Mtqdm():
             return self.entered_bars.index(bar)
         except ValueError:
             return None
+
+    RGBSTART = "\x1b[38;2;"
+    RGBEND = "m"
+    RGBCLOSE = "\x1b[0m"
+
+    def _webcolor_text(self, text : str, color : str) -> str:
+        assert color.startswith("#") and len(color) == 7
+        red = int(color[1:3], base=16)
+        green = int(color[3:5], base=16)
+        blue = int(color[5:7], base=16)
+        color = f"{red};{green};{blue}"
+        return f"{self.RGBSTART}{color}{self.RGBEND}{text.strip()}{self.RGBCLOSE}"
