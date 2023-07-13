@@ -19,6 +19,9 @@ class VideoRemixerState():
         self.resize_h = None
         self.crop_w = None
         self.crop_h = None
+        self.deinterlace = None
+
+        # set on confirming set up options
         self.frames_per_minute = None
         self.project_info2 = None # re-set on re-opening project
 
