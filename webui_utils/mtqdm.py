@@ -3,7 +3,7 @@ import random
 from contextlib import contextmanager
 from tqdm import tqdm
 
-class Mtqdm:
+class Mtqdm():
     """Manage multiple nested tqdm progress bars with optional auto-coloring"""
     def __new__(cls, use_color : bool=True, palette : str="default"):
         if not hasattr(cls, 'instance'):

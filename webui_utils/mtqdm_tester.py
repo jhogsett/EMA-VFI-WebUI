@@ -1,6 +1,6 @@
 import time
 import random
-from mtqdm import Mtqdm
+from mtqdm import Mtqdm # pylint: disable=import-error
 
 class MtqdmTester():
     indexes = []
