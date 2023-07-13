@@ -1,5 +1,5 @@
 class Jot():
-    """Simple class to ease creating text multi-line reports"""
+    """Simple class for creating quick multi-line reports"""
     def __init__(self, title=None, file=None):
         self.lines = []
         self.title = title
@@ -8,29 +8,39 @@ class Jot():
     def __enter__(self):
         return self
 
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        self.write()
+    def __exit__(self, _1, _2, _3):
+        self.keep()
 
     def __str__(self):
-        return self.report()
+        return self.grab()
+
+    def __repr__(self):
+        return self.grab()
 
     BLANK = ""
 
-    def add(self, text=BLANK):
+    def down(self, text=BLANK):
+        """Jot down something in the report, turns argument into a string"""
         self.lines.append(str(text))
-    down = add
 
-    def report(self):
+    def grab(self):
+        """Grab a current version of the report"""
         _report = []
         if self.title:
-            _report.append(f"[{self.title}]")
+            _report.append(f"{self.title}")
             _report.append(self.BLANK)
         _report += self.lines
         return "\r\n".join(_report)
-    grab = report
 
-    def write(self):
+    def keep(self):
+        """Keep the report on disk if there's a filename, returns the lines list"""
         if self.file:
             with open(self.file, "w", encoding="UTF-8") as file:
-                file.write(self.report())
-    save = write
+                file.write(self.grab())
+        return self.lines
+
+    def wipe(self):
+        """Wipe out the current report, returns the former lines list"""
+        lines_before = self.lines
+        self.lines = []
+        return lines_before
