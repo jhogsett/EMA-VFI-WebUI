@@ -46,7 +46,7 @@ class VideoRemixer(TabBase):
         maximum_crf = self.config.remixer_settings["maximum_crf"]
         default_crf = self.config.remixer_settings["default_crf"]
         max_thumb_size = self.config.remixer_settings["max_thumb_size"]
-        with gr.Tab("Video Remixer"):
+        with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Video Remixer"):
             gr.Markdown(
                 SimpleIcons.VULCAN_HAND + "Restore & Remix Videos with Audio")
             with gr.Tabs() as tabs_video_remixer:
@@ -85,6 +85,7 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         project_path = gr.Textbox(label="Project Path",
                                             placeholder="Path on this server to store project data")
+                    with gr.Row():
                         project_fps = gr.Slider(label="Remix Frame Rate", value=def_project_fps,
                                                 minimum=1.0, maximum=max_project_fps, step=0.01)
                         deinterlace = gr.Checkbox(label="Deinterlace Soure Video")
@@ -100,7 +101,6 @@ class VideoRemixer(TabBase):
                         break_ratio = gr.Slider(value=0.98, minimum=0.0, maximum=1.0, step=0.01,
                                                     label="Break Black Frame Ratio",
                                                     info="Choose a value between 0.0 and 1.0")
-
                     with gr.Row():
                         resize_w = gr.Number(label="Resize Width")
                         resize_h = gr.Number(label="Resize Height")
@@ -167,9 +167,11 @@ class VideoRemixer(TabBase):
 
                 ## COMPILE SCENES
                 with gr.Tab("Compile Scenes", id=4):
-                    project_info4 = gr.Textbox(label="Scene Details", lines=2)
-                    message_box4 = gr.Textbox(show_label=False, interactive=False,
-                                    value="Next: Compile 'Keep' and 'Drop' scenes")
+                    with gr.Row():
+                        project_info4 = gr.Textbox(label="Chosen Scene Details", lines=6)
+                    with gr.Row():
+                        message_box4 = gr.Textbox(show_label=False, interactive=False,
+                                        value="Next: Compile 'Keep' and 'Drop' scenes")
                     next_button4 = gr.Button(value="Compile Scenes", variant="primary")
 
                 ## PROCESSING OPTIONS
@@ -221,9 +223,10 @@ class VideoRemixer(TabBase):
         next_button01.click(self.next_button01,
                            inputs=project_load_path,
                            outputs=[tabs_video_remixer, message_box01, video_info1, project_path,
-                                resize_w, resize_h, crop_w, crop_h, deinterlace, project_info2,
-                                scene_label, scene_image, scene_state, scene_info, project_info4,
-                                summary_info6])
+                                project_fps, deinterlace, split_type, scene_threshold,
+                                break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
+                                project_info2, scene_label, scene_image, scene_state, scene_info,
+                                project_info4, summary_info6])
 
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold,
@@ -363,17 +366,21 @@ class VideoRemixer(TabBase):
                             return gr.update(selected=0), \
                                 gr.update(visible=True, value=message), *[None for n in range(14)]
 
-                        # use self.state.current_scene to load chooser
                         scene_details = self.scene_chooser_details(self.state.current_scene)
                         return gr.update(selected=3), \
                             gr.update(visible=True), \
                             self.state.video_info1, \
                             self.state.project_path, \
+                            self.state.project_fps, \
+                            self.state.deinterlace, \
+                            self.state.split_type, \
+                            self.state.scene_threshold, \
+                            self.state.break_duration, \
+                            self.state.break_ratio, \
                             self.state.resize_w, \
                             self.state.resize_h, \
                             self.state.crop_w, \
                             self.state.crop_h, \
-                            self.state.deinterlace, \
                             self.state.project_info2, \
                             *scene_details, \
                             self.state.project_info4, \
@@ -384,20 +391,20 @@ class VideoRemixer(TabBase):
                         message = \
                     f"An error was encountered accessing the Project file {project_file}: '{error}'"
                         return gr.update(selected=0), \
-                            gr.update(visible=True, value=message), *[None for n in range(14)]
+                            gr.update(visible=True, value=message), *[None for n in range(19)]
                 else:
                     message = f"Project file {project_file} was not found"
                     return gr.update(selected=0), \
-                        gr.update(visible=True, value=message), *[None for n in range(14)]
+                        gr.update(visible=True, value=message), *[None for n in range(19)]
             else:
                 message = f"Directory {project_path} was not found"
                 return gr.update(selected=0), \
-                    gr.update(visible=True, value=message), *[None for n in range(14)]
+                    gr.update(visible=True, value=message), *[None for n in range(19)]
         else:
             message = \
                 "Enter a path to a Video Remixer project directory on this server to get started"
             return gr.update(selected=0), \
-                gr.update(visible=True, value=message), *[None for n in range(14)]
+                gr.update(visible=True, value=message), *[None for n in range(19)]
 
     def next_button1(self, project_path, project_fps, split_type, scene_threshold, break_duration, \
                      break_ratio, resize_w, resize_h, crop_w, crop_h, deinterlace):
@@ -496,8 +503,9 @@ class VideoRemixer(TabBase):
             self.log(f"calling MP4toPNG with input path={video_path}" +\
                 f" pattern={self.state.output_pattern} frame rate={frame_rate}" +\
                 f" frames path={self.state.frames_path} deinterlace={self.state.deinterlace})")
+            global_options = self.config.ffmpeg_settings["global_options"]
             ffmpeg_cmd = MP4toPNG(video_path, self.state.output_pattern, frame_rate,
-                                  self.state.frames_path, deinterlace=self.state.deinterlace)
+        self.state.frames_path, deinterlace=self.state.deinterlace, global_options=global_options)
             self.log(f"FFmpeg command: {ffmpeg_cmd}")
             Mtqdm().update_bar(bar)
 
@@ -568,10 +576,10 @@ class VideoRemixer(TabBase):
         thumb_size = max_frame_dimension * thumb_scale
         if thumb_size > max_thumb_size:
             thumb_scale = max_thumb_size / max_frame_dimension
-        # source_fps = float(self.state.video_details['frame_rate'])
         self.state.thumbnail_path = os.path.join(self.state.project_path, "THUMBNAILS")
         self.log(f"creating thumbnails directory {self.state.thumbnail_path}")
         create_directory(self.state.thumbnail_path)
+        global_options = self.config.ffmpeg_settings["global_options"]
         self.log(f"creating animated GIF thumbnails")
         SliceVideo(self.state.source_video,
                     self.state.project_fps,
@@ -585,7 +593,8 @@ class VideoRemixer(TabBase):
                     False,
                     gif_fps,
                     gif_end_delay,
-                    self.log).slice()
+                    self.log,
+                    global_options=global_options).slice()
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
 
         self.log("saving project after creating scene thumbnails")
@@ -676,10 +685,11 @@ class VideoRemixer(TabBase):
 
             scene_position = f"{scene_index+1}/{len(self.state.scene_names)}"
             first_index, last_index, _ = details_from_group_name(scene_name)
-            scene_start = seconds_to_hmsf(first_index / self.state.project_fps, self.state.project_fps)
+            scene_start = seconds_to_hmsf(first_index / self.state.project_fps,
+                                          self.state.project_fps)
             scene_duration = seconds_to_hmsf((last_index - first_index) / self.state.project_fps,
                                             self.state.project_fps)
-            sep = "  -  "
+            sep = "      "
             scene_info = f"{scene_position}{sep}Time: {scene_start}{sep}Span: {scene_duration}"
             return scene_name, thumbnail_path, scene_state, scene_info
         except ValueError as error:
@@ -688,8 +698,21 @@ class VideoRemixer(TabBase):
 
     def next_button3(self):
         with Jot() as jot:
-            jot.down(f"Keep Scenes: {len(self.state.kept_scenes())}")
-            jot.down(f"Drop Scenes: {len(self.state.dropped_scenes())}")
+            all_scenes = len(self.state.scene_names)
+            all_frames = self.state.scene_frames("all")
+            all_time = self.state.scene_frames_time(all_frames)
+            keep_scenes = len(self.state.kept_scenes())
+            keep_frames = self.state.scene_frames("keep")
+            keep_time = self.state.scene_frames_time(keep_frames)
+            drop_scenes = len(self.state.dropped_scenes())
+            drop_frames = self.state.scene_frames("drop")
+            drop_time = self.state.scene_frames_time(drop_frames)
+
+            jot.down(f"SOURCE: Scenes: {all_scenes:,d} Frames: {all_frames:,d} Length: {all_time}")
+            jot.down()
+            jot.down(f"KEEP: Scenes: {keep_scenes:,d} Frames: {keep_frames:,d} Length: {keep_time}")
+            jot.down()
+            jot.down(f"DROP: Scenes: {drop_scenes:,d} Frames: {drop_frames:,d} Length: {drop_time}")
         self.state.project_info4 = jot
 
         self.log("saving project after displaying scene choices")
@@ -741,6 +764,7 @@ class VideoRemixer(TabBase):
                 self.state.audio_clips_path = os.path.join(self.state.clips_path, "AUDIO")
                 self.log(f"creating audio clips directory {self.state.audio_clips_path}")
                 create_directory(self.state.audio_clips_path)
+                global_options = self.config.ffmpeg_settings["global_options"]
 
                 self.log(f"creating audio clips")
                 edge_trim = 1 if self.state.resynthesize else 0
@@ -756,7 +780,8 @@ class VideoRemixer(TabBase):
                             False,
                             0.0,
                             0.0,
-                            self.log).slice()
+                            self.log,
+                            global_options=global_options).slice()
                 self.state.audio_clips = sorted(get_files(self.state.audio_clips_path))
                 jot.down(f"Audio clips created in {self.state.audio_clips_path}")
                 self.log("saving project after creating audio clips")
@@ -1030,8 +1055,9 @@ class VideoRemixer(TabBase):
                                         self.log).resequence()
                         self.log(f"about to use PNGtoMP4 with input_path={scene_input_path}" +\
                                 f" fps={video_clip_fps} output_filepath={scene_output_filepath}")
+                        global_options = self.config.ffmpeg_settings["global_options"]
                         ffcmd = PNGtoMP4(scene_input_path, None, video_clip_fps,
-                                        scene_output_filepath, quality)
+                                scene_output_filepath, crf=quality, global_options=global_options)
                         self.log(f"FFMpeg command: {ffcmd}")
                         Mtqdm().update_bar(bar)
 
@@ -1040,23 +1066,28 @@ class VideoRemixer(TabBase):
                 self.log("saving project after creating video clips")
                 self.state.save()
 
-                self.log(f"merging processed video clips and audio clips")
-                with Mtqdm().open_bar(total=len(kept_scenes), desc="Merge Clips") as bar:
-                    for index, scene_name in enumerate(kept_scenes):
-                        scene_video_path = self.state.video_clips[index]
-                        scene_audio_path = self.state.audio_clips[index]
-                        scene_output_filepath = os.path.join(self.state.clips_path, f"{scene_name}.mp4")
+                if self.state.video_details["has_audio"]:
+                    self.log(f"merging processed video clips and audio clips")
+                    with Mtqdm().open_bar(total=len(kept_scenes), desc="Merge Clips") as bar:
+                        for index, scene_name in enumerate(kept_scenes):
+                            scene_video_path = self.state.video_clips[index]
+                            scene_audio_path = self.state.audio_clips[index]
+                            scene_output_filepath = os.path.join(self.state.clips_path,
+                                                                f"{scene_name}.mp4")
 
-                        self.log(
+                            self.log(
                             f"about to use combine_video_audio with video_path={scene_video_path} " +\
                             f"audio_path={scene_audio_path} output_filepath={scene_output_filepath}")
-                        ffcmd = combine_video_audio(scene_video_path, scene_audio_path,
-                                                    scene_output_filepath)
-                        self.log(f"FFmpeg command {ffcmd}")
-                        Mtqdm().update_bar(bar)
+                            global_options = self.config.ffmpeg_settings["global_options"]
+                            ffcmd = combine_video_audio(scene_video_path, scene_audio_path,
+                                                scene_output_filepath, global_options=global_options)
+                            self.log(f"FFmpeg command {ffcmd}")
+                            Mtqdm().update_bar(bar)
 
-                self.state.clips = sorted(get_files(self.state.clips_path))
-                # jot.down(f"Merged clips created in {self.state.clips_path}")
+                if self.state.video_details["has_audio"]:
+                    self.state.clips = sorted(get_files(self.state.clips_path))
+                else:
+                    self.state.clips = sorted(get_files(self.state.video_clips_path))
                 self.log("saving project after creating merged clips")
                 self.state.save()
 
@@ -1065,7 +1096,9 @@ class VideoRemixer(TabBase):
                         Mtqdm().message(bar, "FFmpeg in use ...")
                         self.log(f"about to use combine_videos with output_path={output_filepath} " +\
                                 f"and input_paths={self.state.clips}")
-                        ffcmd = combine_videos(self.state.clips, output_filepath)
+                        global_options = self.config.ffmpeg_settings["global_options"]
+                        ffcmd = combine_videos(self.state.clips, output_filepath,
+                                               global_options=global_options)
                         self.log(f"FFmpeg command {ffcmd}")
                         Mtqdm().update_bar(bar)
 

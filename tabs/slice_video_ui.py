@@ -79,7 +79,7 @@ class SliceVideo(TabBase):
             gif_factor = self.config.slice_settings["gif_factor"]
             gif_high_quality = self.config.slice_settings["gif_high_quality"]
             gif_end_delay = self.config.slice_settings["gif_end_delay"]
-
+            global_options = self.config.ffmpeg_settings["global_options"]
             # if compensating for video resynthesis, set edge trim to "1"
             # to leave out the (now missing) outer frames when slicing
             trim = 1 if edge_trim else 0
@@ -96,4 +96,5 @@ class SliceVideo(TabBase):
                         gif_high_quality,
                         gif_frame_rate,
                         gif_end_delay,
-                        self.log).slice()
+                        self.log,
+                        global_options=global_options).slice()

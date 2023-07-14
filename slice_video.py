@@ -68,7 +68,8 @@ class SliceVideo:
                 gif_high_quality : bool,
                 gif_fps : float,
                 gif_end_delay : float,
-                log_fn : Callable | None):
+                log_fn : Callable | None,
+                global_options : str=""):
         self.input_path = input_path
         self.fps = fps
         self.group_path = group_path
@@ -82,6 +83,7 @@ class SliceVideo:
         self.gif_fps = gif_fps
         self.gif_end_delay = gif_end_delay
         self.log_fn = log_fn
+        self.global_options = global_options
         valid_types = ["mp4", "gif", "wav", "mp3", "jpg"]
 
         if not is_safe_path(self.input_path):
@@ -135,7 +137,8 @@ class SliceVideo:
                             self.output_scale,
                             self.gif_high_quality,
                             self.gif_fps,
-                            self.gif_end_delay)
+                            self.gif_end_delay,
+                            global_options=self.global_options)
                 self.log(f"FFmpeg command line: '{ffmpeg_cmd}'")
                 Mtqdm().update_bar(bar)
 

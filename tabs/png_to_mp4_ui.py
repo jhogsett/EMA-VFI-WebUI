@@ -86,13 +86,15 @@ class PNGtoMP4(TabBase):
                     for group_name in group_names:
                         group_input_path = os.path.join(input_path, group_name)
                         group_output_file = os.path.join(output_path, f"{group_name}.mp4")
+                        global_options = self.config.ffmpeg_settings["global_options"]
 
                         ffmpeg_cmd = _PNGtoMP4(
                             group_input_path,
                             None,
                             float(frame_rate),
                             group_output_file,
-                            crf=quality)
+                            crf=quality,
+                            global_options=global_options)
                         self.log(f"FFmpeg command: '{ffmpeg_cmd}'")
                         Mtqdm().update_bar(bar)
                 message = f"Processed {len(group_names)} frame groups found in {input_path}"
@@ -112,8 +114,9 @@ class PNGtoMP4(TabBase):
         if input_path and output_filepath:
             directory, _, _ = split_filepath(output_filepath)
             create_directory(directory)
+            global_options = self.config.ffmpeg_settings["global_options"]
             ffmpeg_cmd = _PNGtoMP4(input_path, input_pattern, float(frame_rate), output_filepath,
-                crf=quality)
+                crf=quality, global_options=global_options)
             return gr.update(value=ffmpeg_cmd, visible=True)
         else:
             message = "Enter an input path to the PNG frames, and an output path for the MP4 file to proceed"

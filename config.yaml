@@ -41,6 +41,8 @@ engine_settings:
   gpu_ids: "0"
   model: "ours"
   use_time_step: False
+ffmpeg_settings:
+  global_options: "-hide_banner -loglevel error -nostats"
 fps_change_settings:
   default_precision: 10
   ending_fps: 30

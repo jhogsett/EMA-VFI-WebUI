@@ -52,5 +52,7 @@ class PNGtoGIF(TabBase):
         if input_path and output_filepath:
             directory, _, _ = split_filepath(output_filepath)
             create_directory(directory)
-            ffmpeg_cmd = _PNGtoGIF(input_path, input_pattern, output_filepath, frame_rate)
+            global_options = self.config.ffmpeg_settings["global_options"]
+            ffmpeg_cmd = _PNGtoGIF(input_path, input_pattern, output_filepath, frame_rate,
+                                   global_options=global_options)
             return gr.update(value=ffmpeg_cmd, visible=True)
