@@ -125,8 +125,12 @@ class MtqdmTester():
 
     def bar_message(self, delay):
         with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
-            Mtqdm().message(bar, "Please wait for this long operation")
+            Mtqdm().message(bar, "This won't take but a moment")
             time.sleep(delay)
+            with Mtqdm().open_bar(total=1, desc="More FFmpeg") as bar2:
+                Mtqdm().message(bar2, "Forgot this was needed too")
+                time.sleep(delay)
+                Mtqdm().update_bar(bar2)
             Mtqdm().update_bar(bar)
 
     def auto_total_bar(self, delay):
