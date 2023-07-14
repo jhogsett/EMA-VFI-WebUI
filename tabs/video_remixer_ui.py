@@ -79,7 +79,7 @@ class VideoRemixer(TabBase):
                                             show_label=False, visible=True, interactive=False)
                             gr.Markdown("*Progress can be tracked in the console*")
                             next_button00 = gr.Button(value="New Project > " +
-                                                        SimpleIcons.SLOW_SYMBOL, variant="primary")
+                                SimpleIcons.SLOW_SYMBOL, variant="primary", elem_id="actionbutton")
                         with gr.Column():
                             gr.Markdown("**Open an existing Video Remixer project**")
                             with gr.Row():
@@ -123,7 +123,11 @@ class VideoRemixer(TabBase):
 
                     message_box1 = gr.Textbox(show_label=False, interactive=False,
                                             value="Next: Confirm Project Setup (no processing yet)")
-                    next_button1 = gr.Button(value="Next >", variant="primary")
+                    with gr.Row():
+                        back_button1 = gr.Button(value="< Back", variant="secondary").\
+                            style(full_width=False)
+                        next_button1 = gr.Button(value="Next >", variant="primary",
+                                                elem_id="actionbutton")
 
                 ## SET UP PROJECT
                 with gr.Tab("Set Up Project", id=2):
@@ -141,8 +145,11 @@ class VideoRemixer(TabBase):
                                     show_label=False, visible=True, interactive=False)
 
                     gr.Markdown("*Progress can be tracked in the console*")
-                    next_button2 = gr.Button(value="Set Up Project " + SimpleIcons.SLOW_SYMBOL,
-                                             variant="primary")
+                    with gr.Row():
+                        back_button2 = gr.Button(value="< Back", variant="secondary").\
+                            style(full_width=False)
+                        next_button2 = gr.Button(value="Set Up Project " + SimpleIcons.SLOW_SYMBOL,
+                                                variant="primary", elem_id="actionbutton")
 
                 ## CHOOSE SCENES
                 with gr.Tab("Choose Scenes", id=3):
@@ -181,7 +188,11 @@ class VideoRemixer(TabBase):
                                     drop_all_button = gr.Button(value="Drop All Scenes",
                                                                 variant="stop")
 
-                    next_button3 = gr.Button(value="Done Choosing Scenes", variant="primary")
+                    with gr.Row():
+                        back_button3 = gr.Button(value="< Back", variant="secondary").\
+                            style(full_width=False)
+                        next_button3 = gr.Button(value="Done Choosing Scenes", variant="primary",
+                                                elem_id="actionbutton")
 
                 ## COMPILE SCENES
                 with gr.Tab("Compile Scenes", id=4):
@@ -190,7 +201,11 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         message_box4 = gr.Textbox(show_label=False, interactive=False,
                                         value="Next: Compile 'Keep' and 'Drop' scenes")
-                    next_button4 = gr.Button(value="Compile Scenes", variant="primary")
+                    with gr.Row():
+                        back_button4 = gr.Button(value="< Back", variant="secondary").\
+                            style(full_width=False)
+                        next_button4 = gr.Button(value="Compile Scenes", variant="primary",
+                                                elem_id="actionbutton")
 
                 ## PROCESSING OPTIONS
                 with gr.Tab("Procesing Options", id=5):
@@ -213,8 +228,11 @@ class VideoRemixer(TabBase):
                         value="Next: Perform all Processing Steps (takes from hours to days)",
                                               show_label=False, interactive=False)
                     gr.Markdown("*Progress can be tracked in the console*")
-                    next_button5 = gr.Button(value="Process Remix " +
-                                             SimpleIcons.SLOW_SYMBOL, variant="primary")
+                    with gr.Row():
+                        back_button5 = gr.Button(value="< Back", variant="secondary").\
+                            style(full_width=False)
+                        next_button5 = gr.Button(value="Process Remix " +
+                                    SimpleIcons.SLOW_SYMBOL, variant="primary", elem_id="actionbutton")
 
                 ## REMIX VIDEOS
                 with gr.Tab("Save Remix", id=6):
@@ -230,8 +248,11 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         message_box6 = gr.Textbox(value=None, show_label=False, interactive=False)
                     gr.Markdown("*Progress can be tracked in the console*")
-                    next_button6 = gr.Button(value="Process Remix " + SimpleIcons.SLOW_SYMBOL,
-                                             variant="primary")
+                    with gr.Row():
+                        back_button6 = gr.Button(value="< Back", variant="secondary").\
+                            style(full_width=False)
+                        next_button6 = gr.Button(value="Process Remix " + SimpleIcons.SLOW_SYMBOL,
+                                                variant="primary", elem_id="highlightbutton")
 
         next_button00.click(self.next_button00,
                            inputs=video_path,
@@ -252,9 +273,13 @@ class VideoRemixer(TabBase):
                     break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h, deinterlace],
                            outputs=[tabs_video_remixer, message_box1, project_info2, message_box2])
 
+        back_button1.click(self.back_button1, outputs=tabs_video_remixer)
+
         next_button2.click(self.next_button2, inputs=thumbnail_type,
                            outputs=[tabs_video_remixer, message_box2, scene_label, scene_image,
                                     scene_state, scene_info])
+
+        back_button2.click(self.back_button2, outputs=tabs_video_remixer)
 
         scene_state.change(self.scene_state_button, show_progress=False,
                             inputs=[scene_label, scene_state],
@@ -303,15 +328,23 @@ class VideoRemixer(TabBase):
         next_button3.click(self.next_button3,
                            outputs=[tabs_video_remixer, project_info4])
 
+        back_button3.click(self.back_button3, outputs=tabs_video_remixer)
+
         next_button4.click(self.next_button4,
                            outputs=[tabs_video_remixer, message_box4, message_box5])
+
+        back_button4.click(self.back_button4, outputs=tabs_video_remixer)
 
         next_button5.click(self.next_button5,
                     inputs=[resynthesize, inflate, resize, upscale, upscale_option],
                     outputs=[tabs_video_remixer, message_box5, summary_info6, output_filepath])
 
+        back_button5.click(self.back_button5, outputs=tabs_video_remixer)
+
         next_button6.click(self.next_button6, inputs=[output_filepath, quality_slider],
                            outputs=message_box6)
+
+        back_button6.click(self.back_button6, outputs=tabs_video_remixer)
 
     def next_button00(self, video_path):
         self.new_project()
@@ -1196,3 +1229,16 @@ class VideoRemixer(TabBase):
                 return gr.update(value="No processed video clips were found", visible=True)
         else:
             return gr.update(value="Enter a path for the remixed video to proceed", visible=True)
+
+    def back_button1(self):
+        return gr.update(selected=0)
+    def back_button2(self):
+        return gr.update(selected=1)
+    def back_button3(self):
+        return gr.update(selected=2)
+    def back_button4(self):
+        return gr.update(selected=3)
+    def back_button5(self):
+        return gr.update(selected=4)
+    def back_button6(self):
+        return gr.update(selected=5)
