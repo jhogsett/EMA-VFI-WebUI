@@ -139,6 +139,7 @@ class SimpleIcons:
         HAMMER_WRENCH,
         INCREASING,
         INFO,
+        LABCOAT,
         MAGIC_WAND,
         MAGNIFIER,
         MICROSCOPE,
@@ -162,5 +163,4 @@ class SimpleIcons:
         VULCAN_HAND,
         WARNING,
         WATCH,
-        WRENCH,
 ]

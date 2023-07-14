@@ -9,7 +9,7 @@ from interpolate_engine import InterpolateEngine
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.file_utils import create_directories, is_safe_path
-from webui_utils.console_colors import ColorOut
+from webui_utils.color_out import ColorOut
 from webui_utils.mtqdm import Mtqdm
 from create_ui import create_ui
 from webui_tips import WebuiTips
@@ -49,8 +49,14 @@ class WebUI:
         engine = InterpolateEngine(model, gpu_ids, use_time_step=use_time_step)
         while True:
             print()
-            ColorOut("Starting EMA-VFI-WebUI", "green")
-            print("Models are loaded on the first interpolation")
+            if self.config.user_interface["mtqdm_use_color"]:
+                print("\x1b[38;2;255;255;255m▄▄▄\x1b[0m\x1b[38;2;255;255;0m▄▄▄\x1b[0m\x1b[38;2;0;255;255m▄▄▄\x1b[0m\x1b[38;2;0;255;0m▄▄▄\x1b[0m\x1b[38;2;255;0;255m▄▄▄\x1b[0m\x1b[38;2;255;0;0m▄▄▄\x1b[0m\x1b[38;2;0;0;255m▄▄▄\x1b[0m")
+                print("\x1b[38;2;255;255;255m███\x1b[0m EMA-VFI WebUI \x1b[38;2;0;0;255m███\x1b[0m")
+                print("\x1b[38;2;255;255;255m▀▀▀\x1b[0m\x1b[38;2;255;255;0m▀▀▀\x1b[0m\x1b[38;2;0;255;255m▀▀▀\x1b[0m\x1b[38;2;0;255;0m▀▀▀\x1b[0m\x1b[38;2;255;0;255m▀▀▀\x1b[0m\x1b[38;2;255;0;0m▀▀▀\x1b[0m\x1b[38;2;0;0;255m▀▀▀\x1b[0m")
+            else:
+                print("▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄")
+                print("███ EMA-VFI WebUI ███")
+                print("▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀")
             print()
             app = create_ui(self.config, engine, self.log, self.restart_app)
             app.launch(inbrowser = self.config.app_settings["auto_launch_browser"] and not self.prevent_inbrowser,

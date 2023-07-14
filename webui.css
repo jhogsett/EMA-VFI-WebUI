@@ -21,7 +21,7 @@
     /*filter: grayscale(100%);*/
 }
 
-#mainimage {
+#actionimage {
     filter: drop-shadow(0px 0px 17px var(--frame-chooser-action));
 }
 

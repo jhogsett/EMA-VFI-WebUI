@@ -10,7 +10,7 @@ from realesrgan.archs.srvgg_arch import SRVGGNetCompact # pylint: disable=import
 from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import create_directory, get_files, build_series_filename,\
     split_filepath
-from webui_utils.console_colors import ColorOut
+from webui_utils.color_out import ColorOut
 from webui_utils.mtqdm import Mtqdm
 
 def main():

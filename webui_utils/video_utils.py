@@ -7,7 +7,8 @@ from fractions import Fraction
 from ffmpy import FFmpeg, FFprobe, FFRuntimeError
 from .image_utils import gif_frame_count
 from .file_utils import split_filepath, get_directories
-from .simple_utils import seconds_to_hms
+from .simple_utils import seconds_to_hms, clean_dict, get_frac_str_as_float
+from .jot import Jot
 
 QUALITY_NEAR_LOSSLESS = 17
 QUALITY_SMALLER_SIZE = 28
@@ -33,7 +34,8 @@ def PNGtoMP4(input_path : str, # pylint: disable=invalid-name
             filename_pattern : str,
             frame_rate : float,
             output_filepath : str,
-            crf : int = QUALITY_DEFAULT):
+            crf : int=QUALITY_DEFAULT,
+            global_options : str=""):
     """Encapsulate logic for the PNG Sequence to MP4 feature"""
     # if filename_pattern is empty it uses the filename of the first found file
     # and the count of file to determine the pattern, .png as the file type
@@ -43,7 +45,7 @@ def PNGtoMP4(input_path : str, # pylint: disable=invalid-name
     ffcmd = FFmpeg(
         inputs= {os.path.join(input_path, pattern) : f"-framerate {frame_rate}"},
         outputs={output_filepath : f"-c:v libx264 -r {frame_rate} -pix_fmt yuv420p -crf {crf}"},
-        global_options="-y")
+        global_options="-y " + global_options)
     cmd = ffcmd.cmd
     ffcmd.run()
     return cmd
@@ -55,7 +57,8 @@ def MP4toPNG(input_path : str,  # pylint: disable=invalid-name
             frame_rate : float,
             output_path : str,
             start_number : int = 0,
-            deinterlace : bool = False):
+            deinterlace : bool = False,
+            global_options : str = ""):
     """Encapsulate logic for the MP4 to PNG Sequence feature"""
     pattern = filename_pattern or determine_output_pattern(input_path)
     if deinterlace:
@@ -66,7 +69,7 @@ def MP4toPNG(input_path : str,  # pylint: disable=invalid-name
     ffcmd = FFmpeg(inputs= {input_path : None},
         outputs={os.path.join(output_path, pattern) :
             f"-filter:v {filter} -start_number {start_number}"},
-        global_options="-y")
+        global_options="-y " + global_options)
     cmd = ffcmd.cmd
     ffcmd.run()
     return cmd
@@ -78,13 +81,14 @@ def MP4toPNG(input_path : str,  # pylint: disable=invalid-name
 # ffmpeg -i gifframes_%02d.png -vf palettegen palette.png
 def PNGtoPalette(input_path : str, # pylint: disable=invalid-name
                 filename_pattern : str,
-                output_filepath : str):
+                output_filepath : str,
+                global_options : str=""):
     """Create a palette from a set of PNG files to feed into animated GIF creation"""
     if filename_pattern == "auto":
         filename_pattern = determine_input_pattern(input_path)
     ffcmd = FFmpeg(inputs= {os.path.join(input_path, filename_pattern) : None},
                 outputs={output_filepath : "-vf palettegen"},
-                global_options="-y")
+                global_options="-y " + global_options)
     cmd = ffcmd.cmd
     ffcmd.run()
     return cmd
@@ -92,7 +96,8 @@ def PNGtoPalette(input_path : str, # pylint: disable=invalid-name
 def PNGtoGIF(input_path : str, # pylint: disable=invalid-name
             filename_pattern : str,
             output_filepath : str,
-            frame_rate : float):
+            frame_rate : float,
+            global_options : str=""):
     """Encapsulates logic for the PNG sequence to GIF feature"""
     # if filename_pattern is empty it uses the filename of the first found file
     # and the count of file to determine the pattern, .png as the file type
@@ -101,20 +106,21 @@ def PNGtoGIF(input_path : str, # pylint: disable=invalid-name
     pattern = filename_pattern or determine_input_pattern(input_path)
     output_path, base_filename, _ = split_filepath(output_filepath)
     palette_filepath = os.path.join(output_path, base_filename + "-palette.png")
-    palette_cmd = PNGtoPalette(input_path, pattern, palette_filepath)
+    palette_cmd = PNGtoPalette(input_path, pattern, palette_filepath, global_options=global_options)
 
     ffcmd = FFmpeg(inputs= {
             os.path.join(input_path, pattern) : f"-framerate {frame_rate}",
             palette_filepath : None},
         outputs={output_filepath : "-lavfi paletteuse"},
-        global_options="-y")
+        global_options="-y " + global_options)
     cmd = ffcmd.cmd
     ffcmd.run()
     return "\n".join([palette_cmd, cmd])
 
 def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
             output_path : str,
-            start_number : int = 0):
+            start_number : int = 0,
+            global_options : str = ""):
     """Encapsulates logic for the GIF to PNG Sequence feature"""
     # ffmpeg -y -i images\example.gif -start_number 0 gifframes_%09d.png
     _, base_filename, extension = split_filepath(input_path)
@@ -131,14 +137,15 @@ def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
     filename_pattern = f"{base_filename}%0{num_width}d.png"
     ffcmd = FFmpeg(inputs= {input_path : None},
         outputs={os.path.join(output_path, filename_pattern) : f"-start_number {start_number}"},
-        global_options="-y")
+        global_options="-y " + global_options)
     cmd = ffcmd.cmd
     ffcmd.run()
     return cmd
 
 def deduplicate_frames(input_path : str,
                       output_path : str,
-                      threshold : int):
+                      threshold : int,
+                      global_options : str = ""):
     """Encapsulate logic for detecting and removing duplicate frames"""
     # ffmpeg -i "C:\CONTENT\ODDS\odds%04d.png"
     # -vf mpdecimate=hi=2047:lo=2047:frac=1:max=0,setpts=N/FRAME_RATE/TB
@@ -150,7 +157,7 @@ def deduplicate_frames(input_path : str,
 
     ffcmd = FFmpeg(inputs= {input_sequence : None},
         outputs={output_sequence : f"-vf {filter} -start_number 0"},
-        global_options="-y")
+        global_options="-y " + global_options)
     cmd = ffcmd.cmd
     ffcmd.run()
     return cmd
@@ -199,6 +206,86 @@ def get_video_details(input_path : str, count_frames = True) -> dict:
                 "ffprobe_cmd" : error.cmd,
                 "exit_code" : error.exit_code,
                 "console_output" : str(error.stderr.decode("UTF-8"))}}
+
+def get_essential_video_details(input_path : str, count_frames=False) -> dict:
+    """Use FFprobe to get video details essential for automatic processing
+       If count_type is True and frames can't be determined, a RuntimeError is raised
+    """
+    video_details = get_video_details(input_path, count_frames=count_frames)
+    if video_details.get("error"):
+        error = video_details["error"]
+        error_message = error["console_output"]
+        # keep only the last line, presumably with the error (the rest is ffprobe spew)
+        console_error = error_message.splitlines()[-1]
+        message = f"error getting video details for '{input_path}':\r\n'{console_error}'"
+        raise RuntimeError(message)
+    else:
+        video_essentials = {}
+        format_data = video_details["format"]
+        file_size = f"{int(format_data.get('size', 0)):,d}"
+        video_essentials["file_size"] = file_size
+
+        streams_data = video_details["streams"]
+        for stream_data in streams_data:
+            codec_type = stream_data.get("codec_type")
+
+            if codec_type == "audio":
+                video_essentials["has_audio"] = True
+                continue
+
+            if codec_type != "video":
+                continue
+
+            frame_count = stream_data.get("nb_frames") or stream_data.get("nb_read_frames")
+            if not frame_count:
+                if count_frames:
+                    raise RuntimeError(f"unable to determine frame count for '{input_path}'")
+                else:
+                    # rerun with frame counting
+                    return get_essential_video_details(input_path, count_frames=True)
+            video_essentials["frame_count"] = frame_count
+
+            video_essentials["source_video"] = input_path
+            video_essentials["video_index"] = stream_data.get("index")
+
+            avg_frame_rate = stream_data.get("avg_frame_rate")
+            avg_frame_rate = get_frac_str_as_float(avg_frame_rate)
+            r_frame_rate = stream_data.get("r_frame_rate")
+            r_frame_rate = get_frac_str_as_float(r_frame_rate)
+            frame_rate = avg_frame_rate or r_frame_rate
+            frame_rate = f"{frame_rate:0.2f}" if frame_rate else "0.00"
+            video_essentials["frame_rate"] = frame_rate
+
+            duration = seconds_to_hms(float(stream_data.get("duration", 0)))
+            video_essentials["duration"] = duration[:duration.find(".")]
+
+            width = stream_data.get("width")
+            height = stream_data.get("height")
+            video_essentials["content_width"] = width
+            video_essentials["content_height"] = height
+            video_essentials["content_dimensions"] = f"{width}x{height}"
+
+            video_essentials["index_width"] = len(str(frame_count))
+            video_essentials["frame_count_show"] = f"{int(frame_count):,d}"
+
+            sample_factor = 1.0
+            display_width = width
+            display_height = height
+            sample_aspect_ratio = stream_data.get("sample_aspect_ratio")
+            if sample_aspect_ratio:
+                try:
+                    sample_factor = decode_aspect(sample_aspect_ratio)
+                    display_width = int(width * sample_factor)
+                    display_height = height
+                except ValueError:
+                    pass
+            video_essentials["sample_factor"] = sample_factor
+            video_essentials["display_width"] = display_width
+            video_essentials["display_height"] = display_height
+            video_essentials["display_dimensions"] = f"{display_width}x{display_height}"
+
+            video_essentials["display_aspect_ratio"] = stream_data.get("display_aspect_ratio")
+        return video_essentials
 
 def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group : int):
     """Use FFmpeg to get a list of duplicate frames without making changes
@@ -349,7 +436,7 @@ def get_detected_scenes(input_path : str, threshold : float=0.5):
     filename_pattern = determine_input_pattern(input_path)
     input_sequence = os.path.join(input_path, filename_pattern)
     output_sequence = "-"
-    filter = f"select='gt(scene\,{threshold})',metadata=print:file=-"
+    filter = f"select='gt(scene\\,{threshold})',metadata=print:file=-"
 
     ffcmd = FFmpeg(inputs= {input_sequence : None},
         outputs={output_sequence : f"-filter_complex {filter} -f null"},
@@ -479,7 +566,8 @@ def slice_video(input_path : str,
                 scale_factor : float=0.5,
                 gif_high_quality : bool=False,
                 gif_fps : float=0.0,
-                gif_end_delay : float=0.0):
+                gif_end_delay : float=0.0,
+                global_options : str=""):
     # 153=5.1
     # 203+1=6.8
     # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.mp4
@@ -497,7 +585,7 @@ f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_widt
         ffcmd = FFmpeg(inputs= {input_path : None},
                                 outputs={output_filepath :
                 f"-ss {start_time} -to {end_time} -copyts -vf 'scale=iw*{scale_factor}:-2,fps={fps}' -crf {mp4_quality}"},
-            global_options="-y")
+            global_options="-y " + global_options)
 
     if type == "gif":
         # ffmpeg -y -i "C:\CONTENT\UHURA BUTTONS\ST apollo H and I-06232023-0800PM.mp4" -ss 0:00:44.488933 -to 0:00:55.612279 -vf setpts=PTS/30,fps=5,scale=iw*0.5:-2 -loop 0 "C:\CONTENT\UHURA BUTTONS\SOURCE\040000-050000\ST apollo H and I-06232023-0800PM[040000-050000]5fps.gif"
@@ -512,18 +600,18 @@ f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_widt
             ffcmd = FFmpeg(inputs= {input_path : None},
                                     outputs={output_filepath :
                     f"-ss {start_time} -to {end_time} -vf 'setpts=PTS/{gif_speed},fps={gif_fps},scale=iw*{scale_factor}:-2,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -loop 0 {final_delay}"},
-                global_options="-y")
+                global_options="-y " + global_options)
         else:
             ffcmd = FFmpeg(inputs= {input_path : None},
                                     outputs={output_filepath :
                     f"-ss {start_time} -to {end_time} -vf 'setpts=PTS/{gif_speed},fps={gif_fps},scale=iw*{scale_factor}:-2' -loop 0 {final_delay}"},
-                global_options="-y")
+                global_options="-y " + global_options)
 
     elif type == "wav" or type == "mp3":
         ffcmd = FFmpeg(inputs= {input_path : None},
                                 outputs={output_filepath :
                 f"-ss {start_time} -to {end_time} -copyts -ac 2"},
-            global_options="-y")
+            global_options="-y " + global_options)
 
     elif type == "jpg":
         mid_frame = int((last_frame + first_frame) / 2)
@@ -532,8 +620,63 @@ f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_widt
         ffcmd = FFmpeg(inputs= {input_path : f"-ss {start_time}"},
                                 outputs={output_filepath :
                 f"-vf scale=iw*{scale_factor}:-2 -qscale:v 2 -vframes 1"},
-            global_options="-y")
+            global_options="-y " + global_options)
 
+    cmd = ffcmd.cmd
+    ffcmd.run()
+    return cmd
+
+# input: "40:30"
+# output: 1.2121212121...
+def decode_aspect(aspect):
+    if not aspect or not isinstance(aspect, str):
+        raise ValueError("'aspect' must be a string")
+    parts = aspect.split(":")
+    if len(parts) != 2:
+        raise ValueError(f"'{aspect}' must be two values joined by ':'")
+    try:
+        den = float(int(parts[0]))
+        div = float(int(parts[1]))
+        return den / div
+    except ValueError:
+        raise ValueError(f"'{aspect}' must be two integers joined by ':'")
+    except ZeroDivisionError:
+        raise ValueError(f"the aspect '{aspect}' is not valid'")
+
+def combine_video_audio(video_path : str,
+                        audio_path : str,
+                        output_filepath : str,
+                        global_options : str = ""):
+# ffmpeg -y -i "MALE Me-TV-03192023-0335PM[000001-001245].wav" -i "MALE Me-TV-03192023-0335PM[000001-001245].mp4" -c:v copy -c:a aac output1.mp4
+    ffcmd = FFmpeg(
+        inputs= {video_path : None,
+                 audio_path : None},
+        outputs={output_filepath : "-c:v copy -c:a aac"},
+        global_options="-y " + global_options)
+    cmd = ffcmd.cmd
+    ffcmd.run()
+    return cmd
+
+# combine videos that have the same code,dimensions,etc
+def combine_videos(input_paths : list, output_filepath : str, global_options : str=""):
+# ffmpeg -y -f concat -i file.txt -c copy final.mp4
+# file 'output1.mp4'
+# file 'output2.mp4'
+    for input_path in input_paths:
+        if not os.path.exists(input_path):
+            raise ValueError(f"input path '{input_path}' not found")
+
+    # uses the FFmpeg concat demuxer that only works with an input file
+    path, filename, _ = split_filepath(output_filepath)
+    concat_file = os.path.join(path, f"{filename}-files.txt")
+    with Jot(file=concat_file) as jot:
+        for input_path in input_paths:
+            jot.down(f"file '{input_path}'")
+
+    ffcmd = FFmpeg(
+        inputs= {concat_file : "-safe 0 -f concat"},
+        outputs={output_filepath : "-c: copy"},
+        global_options="-y " + global_options)
     cmd = ffcmd.cmd
     ffcmd.run()
     return cmd

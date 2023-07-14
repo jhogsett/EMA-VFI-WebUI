@@ -1,12 +1,12 @@
 """Video Details feature UI and event handlers"""
 import os
-from fractions import Fraction
 from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import seconds_to_hms
+from webui_utils.simple_utils import seconds_to_hms, clean_dict, get_frac_str_as_float
 from webui_utils.video_utils import get_video_details
+from webui_utils.mtqdm import Mtqdm
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
@@ -42,19 +42,6 @@ class VideoDetails(TabBase):
         report_button.click(self.create_report, inputs=[input_file, count_frames],
                     outputs=[output_text, frame_rate, duration, dimensions, frame_count, file_size])
 
-    def clean_dict(self, dict):
-        cleaned = {}
-        for k, v in dict.items():
-            if v:
-                cleaned[k] = v
-        return cleaned
-
-    def get_frac_str_as_float(self, fraction_string : str) -> float:
-        try:
-            return float(Fraction(fraction_string))
-        except ZeroDivisionError:
-            return 0.0
-
     def create_report(self, input_path : str, count_frames : bool):
         """Create Report button handler"""
         if input_path:
@@ -63,9 +50,12 @@ class VideoDetails(TabBase):
                 report = []
 
                 self.log(f"calling get_video_details for {input_path}")
-                data = get_video_details(input_path, count_frames=count_frames)
-                self.log("received details:")
-                self.log(str(data))
+                with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
+                    Mtqdm().message(bar, "FFmpeg in use ...")
+                    data = get_video_details(input_path, count_frames=count_frames)
+                    self.log("received details:")
+                    self.log(str(data))
+                    Mtqdm().update_bar(bar)
 
                 error_data = data.get("error")
                 if error_data:
@@ -87,7 +77,7 @@ class VideoDetails(TabBase):
                 format["size"] = file_size
                 format["bit_rate"] = f"{int(format_data.get('bit_rate', 0)):,d}"
                 format["format_name"] = format_data.get("format_long_name")
-                format = self.clean_dict(format)
+                format = clean_dict(format)
 
                 warning = "Unknown"
                 video_summary = {}
@@ -99,11 +89,10 @@ class VideoDetails(TabBase):
                     stream = {}
 
                     avg_frame_rate = stream_data.get("avg_frame_rate")
-                    avg_frame_rate = self.get_frac_str_as_float(avg_frame_rate)
+                    avg_frame_rate = get_frac_str_as_float(avg_frame_rate)
                     r_frame_rate = stream_data.get("r_frame_rate")
-                    r_frame_rate = self.get_frac_str_as_float(r_frame_rate)
+                    r_frame_rate = get_frac_str_as_float(r_frame_rate)
                     frame_rate = avg_frame_rate or r_frame_rate
-
                     frame_rate = f"{frame_rate:0.2f}" if frame_rate else warning
                     stream["frame_rate"] = frame_rate
 
@@ -130,12 +119,11 @@ class VideoDetails(TabBase):
                     if not video_summary and codec_type == "video":
                         video_summary["frame_rate"] = frame_rate
                         video_summary["duration"] = duration[:duration.find(".")]
-                        video_summary["dimensions"] =\
-                            f"{stream_data.get('width')}x{stream_data.get('height')}"
+                        video_summary["dimensions"] = f"{stream['width']}x{stream['height']}"
                         video_summary["frame_count"] = frame_count
                         video_summary["file_size"] = file_size
 
-                    stream = self.clean_dict(stream)
+                    stream = clean_dict(stream)
                     stream_name = f"#{index} {codec_type}"
                     streams.append({stream_name : stream})
 

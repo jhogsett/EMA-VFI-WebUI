@@ -35,7 +35,7 @@ class SliceVideo(TabBase):
                     placeholder="Path on this server to the media file to be split")
                 input_frame_rate = gr.Slider(minimum=1, maximum=max_frame_rate, value=frame_rate,
                     step=0.01, label="Input Media Frame Rate",
-                    info="This must be set precisely for accurate frame cuts")
+                info="This must match the frame rate of the split groups for accurate frame cuts")
             with gr.Row():
                 group_path = gr.Text(max_lines=1, label="Split Groups Path",
                     placeholder="Path on this server containing the indexed file groups",
@@ -79,7 +79,7 @@ class SliceVideo(TabBase):
             gif_factor = self.config.slice_settings["gif_factor"]
             gif_high_quality = self.config.slice_settings["gif_high_quality"]
             gif_end_delay = self.config.slice_settings["gif_end_delay"]
-
+            global_options = self.config.ffmpeg_settings["global_options"]
             # if compensating for video resynthesis, set edge trim to "1"
             # to leave out the (now missing) outer frames when slicing
             trim = 1 if edge_trim else 0
@@ -96,4 +96,5 @@ class SliceVideo(TabBase):
                         gif_high_quality,
                         gif_frame_rate,
                         gif_end_delay,
-                        self.log).slice()
+                        self.log,
+                        global_options=global_options).slice()

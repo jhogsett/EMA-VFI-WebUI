@@ -139,5 +139,37 @@ def create_sample_set(samples : list, offset : int, stride : int):
     sample_set = create_sample_indices(len(samples), offset, stride)
     return [samples[index] for index in sample_set]
 
-def seconds_to_hms(_seconds):
-    return str(datetime.timedelta(seconds = _seconds))
+def seconds_to_hms(seconds):
+    return str(datetime.timedelta(seconds = seconds))
+
+def seconds_to_hmsf(seconds : float, framerate : float, framechar : str="/"):
+    if not isinstance(seconds, (float, int)):
+        raise ValueError("'seconds' must be a float(able)")
+    if not isinstance(framerate, (float, int)):
+        raise ValueError("'framerate' must be a float(able)")
+    seconds = float(seconds)
+    framerate = float(framerate)
+
+    hms = seconds_to_hms(seconds).split(".")
+    hms_only = hms[0]
+    hms_frac = int((seconds % 1) * framerate)
+    frame_width = len(str(int(framerate)))
+    frames = str(hms_frac).zfill(frame_width)
+    return f"{hms_only}{framechar}{frames}"
+
+def clean_dict(_dict):
+    cleaned = {}
+    for k, v in _dict.items():
+        if v:
+            if isinstance(v, dict):
+                cleaned[k] = clean_dict(v)
+            else:
+                cleaned[k] = v
+    return cleaned
+
+def get_frac_str_as_float(fraction_string : str) -> float:
+    try:
+        return float(Fraction(fraction_string))
+    except ZeroDivisionError:
+        return 0.0
+

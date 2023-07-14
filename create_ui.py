@@ -34,6 +34,7 @@ from tabs.merge_frames_ui import MergeFrames
 from tabs.split_scenes_ui import SplitScenes
 from tabs.slice_video_ui import SliceVideo
 from tabs.strip_scenes_ui import StripScenes
+from tabs.video_remixer_ui import VideoRemixer
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
@@ -62,7 +63,7 @@ def create_ui(config : SimpleConfig,
         FrameRestoration(config, engine, log.log).render_tab()
         VideoBlender(config, engine, log.log).render_tab()
         GIFtoMP4(config, engine, log.log).render_tab()
-        with gr.Tab(SimpleIcons.WRENCH + "Tools"):
+        with gr.Tab(SimpleIcons.LABCOAT + "Tools"):
             with gr.Tab("File Conversion"):
                 gr.HTML(SimpleIcons.HAMMER_WRENCH +
                     "Tools for common video file conversion tasks",
@@ -83,6 +84,7 @@ def create_ui(config : SimpleConfig,
                 SplitScenes(config, engine, log.log).render_tab()
                 SliceVideo(config, engine, log.log).render_tab()
                 StripScenes(config, engine, log.log).render_tab()
+                VideoRemixer(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             UpscaleFrames(config, engine, log.log).render_tab()
             VideoDetails(config, engine, log.log).render_tab()

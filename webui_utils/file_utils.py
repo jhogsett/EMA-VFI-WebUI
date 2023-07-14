@@ -31,6 +31,11 @@ def create_directories(dirs : dict):
     for key in dirs.keys():
         create_directory(dirs[key])
 
+def remove_directories(dirs : list):
+    for dir in dirs:
+        if dir and is_safe_path(dir) and os.path.exists(dir):
+            shutil.rmtree(dir)
+
 _duplicate_directory_progress = None
 def _copy(source_path, dest_path):
     global _duplicate_directory_progress

@@ -22,7 +22,7 @@ from tabs.tab_base import TabBase
 from simplify_png_files import SimplifyPngFiles
 
 class VideoBlender(TabBase):
-    """Encapsulates UI elements and events for the Video Blender eature"""
+    """Encapsulates UI elements and events for the Video Blender Feature"""
     def __init__(self,
                     config : SimpleConfig,
                     engine : InterpolateEngine,
@@ -80,7 +80,7 @@ class VideoBlender(TabBase):
                                 interactive=False, type="filepath", elem_id="sideimage")
                         with gr.Column():
                             output_curr_frame_vb = gr.Image(show_label=False,
-                                interactive=False, type="filepath", elem_id="mainimage")
+                                interactive=False, type="filepath", elem_id="actionimage")
                         with gr.Column():
                             output_next_frame_vb = gr.Image(label="Next Frame",
                                 interactive=False, type="filepath", elem_id="sideimage")
@@ -529,8 +529,9 @@ class VideoBlender(TabBase):
         if input_path:
             output_filepath, _ = AutoIncrementFilename(self.config.directories["working"],
                 "mp4").next_filename("video_preview", "mp4")
+            global_options = self.config.ffmpeg_settings["global_options"]
             PNGtoMP4(input_path, None, float(frame_rate), output_filepath,
-                crf=QUALITY_SMALLER_SIZE)
+                crf=QUALITY_SMALLER_SIZE, global_options=global_options)
             return output_filepath
 
     def video_blender_new_project_ui_switch(self,
@@ -628,8 +629,10 @@ class VideoBlender(TabBase):
             if step1_enabled:
                 output_pattern = "source_frame%09d.png"
                 self.log(f"using FFmpeg to create PNG frames from input video {step1_path}")
+                deinterlace = False # TODO
+                global_options = self.config.ffmpeg_settings["global_options"]
                 ffmpeg_cmd = MP4toPNG(step1_path, output_pattern, float(step1_frame_rate),
-                                      source_frames_path)
+                        source_frames_path, deinterlace=deinterlace, global_options=global_options)
                 self.log(ffmpeg_cmd)
             else:
                 self.log(f"skipping creating PNG frames, using frames from {source_frames_path}")
