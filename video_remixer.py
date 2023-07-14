@@ -75,7 +75,7 @@ class VideoRemixerState():
 
     # how far progressed into project and the tab ID to return to on re-opening
     PROGRESS_STEPS = {
-        "home" : 0,
+        "home" : 1,
         "settings" : 1,
         "setup" : 2,
         "choose" : 3,
