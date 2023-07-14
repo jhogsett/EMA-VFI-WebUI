@@ -41,6 +41,7 @@ class VideoRemixerState():
         self.current_scene = None
 
         # set when done choosing scenes
+        self.thumbnail_type = None
         self.project_info4 = None # re-set on re-opening project
 
         # project processing options

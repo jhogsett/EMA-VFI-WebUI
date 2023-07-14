@@ -118,6 +118,9 @@ class VideoRemixer(TabBase):
                         project_info2 = gr.Textbox(label="Project Details", lines=6,
                                                    interactive=False)
                     with gr.Row():
+                        thumbnail_type = gr.Radio(choices=["GIF", "JPG"], value="JPG",
+                                    info="Choose 'GIF' for whole-scene animations (slow to render)")
+                    with gr.Row():
                         message_box2 = gr.Textbox(
         value="Next: Create Scenes, Thumbnails and Audio Clips (takes from minutes to hours)",
                                     show_label=False, visible=True, interactive=False)
@@ -223,17 +226,17 @@ class VideoRemixer(TabBase):
         next_button01.click(self.next_button01,
                            inputs=project_load_path,
                            outputs=[tabs_video_remixer, message_box01, video_info1, project_path,
-                                project_fps, deinterlace, split_type, scene_threshold,
-                                break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
-                                project_info2, scene_label, scene_image, scene_state, scene_info,
-                                project_info4, summary_info6])
+                                thumbnail_type, project_fps, deinterlace, split_type,
+                                scene_threshold, break_duration, break_ratio, resize_w, resize_h,
+                                crop_w, crop_h, project_info2, scene_label, scene_image,
+                                scene_state, scene_info, project_info4, summary_info6])
 
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold,
                     break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h, deinterlace],
                            outputs=[tabs_video_remixer, message_box1, project_info2])
 
-        next_button2.click(self.next_button2,
+        next_button2.click(self.next_button2, inputs=thumbnail_type,
                            outputs=[tabs_video_remixer, message_box2, scene_label, scene_image,
                                     scene_state, scene_info])
 
@@ -364,13 +367,14 @@ class VideoRemixer(TabBase):
                         if self.state.project_path != project_path:
                             message = f"Project must be opened from {self.state.project_path}"
                             return gr.update(selected=0), \
-                                gr.update(visible=True, value=message), *[None for n in range(14)]
+                                gr.update(visible=True, value=message), *[None for n in range(20)]
 
                         scene_details = self.scene_chooser_details(self.state.current_scene)
                         return gr.update(selected=3), \
                             gr.update(visible=True), \
                             self.state.video_info1, \
                             self.state.project_path, \
+                            self.state.thumbnail_type, \
                             self.state.project_fps, \
                             self.state.deinterlace, \
                             self.state.split_type, \
@@ -391,15 +395,15 @@ class VideoRemixer(TabBase):
                         message = \
                     f"An error was encountered accessing the Project file {project_file}: '{error}'"
                         return gr.update(selected=0), \
-                            gr.update(visible=True, value=message), *[None for n in range(19)]
+                            gr.update(visible=True, value=message), *[None for n in range(20)]
                 else:
                     message = f"Project file {project_file} was not found"
                     return gr.update(selected=0), \
-                        gr.update(visible=True, value=message), *[None for n in range(19)]
+                        gr.update(visible=True, value=message), *[None for n in range(20)]
             else:
                 message = f"Directory {project_path} was not found"
                 return gr.update(selected=0), \
-                    gr.update(visible=True, value=message), *[None for n in range(19)]
+                    gr.update(visible=True, value=message), *[None for n in range(20)]
         else:
             message = \
                 "Enter a path to a Video Remixer project directory on this server to get started"
@@ -454,11 +458,11 @@ class VideoRemixer(TabBase):
 
         return gr.update(selected=2), gr.update(visible=True), message
 
-    def next_button2(self):
+    def next_button2(self, thumbnail_type):
         # create project directory
         self.log(f"creating project path {self.state.project_path}")
         create_directory(self.state.project_path)
-
+        self.state.thumbnail_type = thumbnail_type
         self.log(f"saving new project at {self.state.project_filepath()}")
         self.state.save()
 
@@ -563,40 +567,78 @@ class VideoRemixer(TabBase):
         self.log("saving project after converting video to PNG frames")
         self.state.save()
 
-        # create animated gif thumbnails
-        gif_fps = self.config.remixer_settings["default_gif_fps"]
-        gif_factor = self.config.remixer_settings["gif_factor"]
-        gif_end_delay = self.config.remixer_settings["gif_end_delay"]
-        thumb_scale = self.config.remixer_settings["thumb_scale"]
-        max_thumb_size = self.config.remixer_settings["max_thumb_size"]
-        video_w = self.state.video_details['display_width']
-        video_h = self.state.video_details['display_height']
+        if self.state.thumbnail_type == "JPG":
+            # create jpeg thumbnails
+            # gif_fps = self.config.remixer_settings["default_gif_fps"]
+            # gif_factor = self.config.remixer_settings["gif_factor"]
+            # gif_end_delay = self.config.remixer_settings["gif_end_delay"]
+            thumb_scale = self.config.remixer_settings["thumb_scale"]
+            max_thumb_size = self.config.remixer_settings["max_thumb_size"]
+            video_w = self.state.video_details['display_width']
+            video_h = self.state.video_details['display_height']
 
-        max_frame_dimension = video_w if video_w > video_h else video_h
-        thumb_size = max_frame_dimension * thumb_scale
-        if thumb_size > max_thumb_size:
-            thumb_scale = max_thumb_size / max_frame_dimension
-        self.state.thumbnail_path = os.path.join(self.state.project_path, "THUMBNAILS")
-        self.log(f"creating thumbnails directory {self.state.thumbnail_path}")
-        create_directory(self.state.thumbnail_path)
-        global_options = self.config.ffmpeg_settings["global_options"]
-        self.log(f"creating animated GIF thumbnails")
-        SliceVideo(self.state.source_video,
-                    self.state.project_fps,
-                    self.state.scenes_path,
-                    self.state.thumbnail_path,
-                    thumb_scale,
-                    "gif",
-                    0,
-                    gif_factor,
-                    0,
-                    False,
-                    gif_fps,
-                    gif_end_delay,
-                    self.log,
-                    global_options=global_options).slice()
+            max_frame_dimension = video_w if video_w > video_h else video_h
+            thumb_size = max_frame_dimension * thumb_scale
+            if thumb_size > max_thumb_size:
+                thumb_scale = max_thumb_size / max_frame_dimension
+
+            self.state.thumbnail_path = os.path.join(self.state.project_path, "THUMBNAILS")
+            self.log(f"creating thumbnails directory {self.state.thumbnail_path}")
+            create_directory(self.state.thumbnail_path)
+
+            global_options = self.config.ffmpeg_settings["global_options"]
+            self.log(f"creating animated GIF thumbnails")
+            SliceVideo(self.state.source_video,
+                        self.state.project_fps,
+                        self.state.scenes_path,
+                        self.state.thumbnail_path,
+                        thumb_scale,
+                        "jpg",
+                        0,
+                        1,
+                        0,
+                        False,
+                        0.0,
+                        0.0,
+                        self.log,
+                        global_options=global_options).slice()
+        elif self.state.thumbnail_type == "JPG":
+            # create animated gif thumbnails
+            gif_fps = self.config.remixer_settings["default_gif_fps"]
+            gif_factor = self.config.remixer_settings["gif_factor"]
+            gif_end_delay = self.config.remixer_settings["gif_end_delay"]
+            thumb_scale = self.config.remixer_settings["thumb_scale"]
+            max_thumb_size = self.config.remixer_settings["max_thumb_size"]
+            video_w = self.state.video_details['display_width']
+            video_h = self.state.video_details['display_height']
+
+            max_frame_dimension = video_w if video_w > video_h else video_h
+            thumb_size = max_frame_dimension * thumb_scale
+            if thumb_size > max_thumb_size:
+                thumb_scale = max_thumb_size / max_frame_dimension
+            self.state.thumbnail_path = os.path.join(self.state.project_path, "THUMBNAILS")
+            self.log(f"creating thumbnails directory {self.state.thumbnail_path}")
+            create_directory(self.state.thumbnail_path)
+            global_options = self.config.ffmpeg_settings["global_options"]
+            self.log(f"creating animated GIF thumbnails")
+            SliceVideo(self.state.source_video,
+                        self.state.project_fps,
+                        self.state.scenes_path,
+                        self.state.thumbnail_path,
+                        thumb_scale,
+                        "gif",
+                        0,
+                        gif_factor,
+                        0,
+                        False,
+                        gif_fps,
+                        gif_end_delay,
+                        self.log,
+                        global_options=global_options).slice()
+        else:
+            raise ValueError(f"thumbnail type '{self.state.thumbnail_type}' is not implemented")
+
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
-
         self.log("saving project after creating scene thumbnails")
         self.state.save()
 
