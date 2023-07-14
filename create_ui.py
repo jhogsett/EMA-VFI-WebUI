@@ -63,7 +63,7 @@ def create_ui(config : SimpleConfig,
         FrameRestoration(config, engine, log.log).render_tab()
         VideoBlender(config, engine, log.log).render_tab()
         GIFtoMP4(config, engine, log.log).render_tab()
-        with gr.Tab(SimpleIcons.WRENCH + "Tools"):
+        with gr.Tab(SimpleIcons.LABCOAT + "Tools"):
             with gr.Tab("File Conversion"):
                 gr.HTML(SimpleIcons.HAMMER_WRENCH +
                     "Tools for common video file conversion tasks",

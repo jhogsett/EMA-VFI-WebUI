@@ -2,6 +2,9 @@
 import os
 import yaml
 from yaml import Loader
+from webui_utils.file_utils import get_files
+from webui_utils.simple_utils import seconds_to_hmsf
+from webui_utils.video_utils import details_from_group_name
 class VideoRemixerState():
     def __init__(self):
         # source video from initial tab
@@ -86,7 +89,21 @@ class VideoRemixerState():
     def dropped_scenes(self):
         return [scene for scene in self.scene_states if self.scene_states[scene] == "Drop"]
 
+    def scene_frames(self, type : str="all") -> int:
+        if type.lower() == "keep":
+            scenes = self.kept_scenes()
+        elif type.lower() == "drop":
+            scenes = self.dropped_scenes()
+        else:
+            scenes = self.scene_names
+        accum = 0
+        for scene in scenes:
+            first, last, _ = details_from_group_name(scene)
+            accum += (last - first) + 1
+        return accum
 
+    def scene_frames_time(self, frames : int) -> str:
+        return seconds_to_hmsf(frames / self.project_fps, self.project_fps)
 
     @staticmethod
     def load(filepath : str):

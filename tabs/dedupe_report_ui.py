@@ -4,7 +4,6 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.video_utils import get_duplicate_frames_report
 from webui_tips import WebuiTips
 from webui_utils.auto_increment import AutoIncrementDirectory
 from interpolate_engine import InterpolateEngine
