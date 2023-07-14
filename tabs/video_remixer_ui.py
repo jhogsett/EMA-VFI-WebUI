@@ -234,7 +234,7 @@ class VideoRemixer(TabBase):
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold,
                     break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h, deinterlace],
-                           outputs=[tabs_video_remixer, message_box1, project_info2])
+                           outputs=[tabs_video_remixer, message_box1, project_info2, message_box2])
 
         next_button2.click(self.next_button2, inputs=thumbnail_type,
                            outputs=[tabs_video_remixer, message_box2, scene_label, scene_image,
@@ -288,7 +288,7 @@ class VideoRemixer(TabBase):
                            outputs=[tabs_video_remixer, project_info4])
 
         next_button4.click(self.next_button4,
-                           outputs=[tabs_video_remixer, message_box4])
+                           outputs=[tabs_video_remixer, message_box4, message_box5])
 
         next_button5.click(self.next_button5,
                     inputs=[resynthesize, inflate, resize, upscale, upscale_option],
@@ -453,7 +453,8 @@ class VideoRemixer(TabBase):
         # before any real processing starts
         # self.state.save()
 
-        return gr.update(selected=2), gr.update(visible=True), message
+        return gr.update(selected=2), gr.update(visible=True), message, \
+            "Next: Create Scenes, Thumbnails and Audio Clips (takes from minutes to hours)"
 
     def next_button2(self, thumbnail_type):
         # create project directory
@@ -570,15 +571,15 @@ class VideoRemixer(TabBase):
         self.log("saving project after establishing scene names")
         self.state.save()
 
-        self.log("checking for zero-length scenes")
-        bad_scenes = self.state.check_for_bad_scenes()
-        if bad_scenes:
-            bad_scenes = "\r\n".join(bad_scenes)
-            self.log(f"zero-length scenes found: " + bad_scenes)
-            message = SimpleIcons.WARNING + \
-                f" WARNING: Zero-length scenes found - adjust split settings: " + bad_scenes
-            return gr.update(selected=2), gr.update(visible=True, value=message), \
-                *self.scene_chooser_details(self.state.current_scene)
+        # self.log("checking for zero-length scenes")
+        # bad_scenes = self.state.check_for_bad_scenes()
+        # if bad_scenes:
+        #     bad_scenes = "\r\n".join(bad_scenes)
+        #     self.log(f"zero-length scenes found: " + bad_scenes)
+        #     message = SimpleIcons.WARNING + \
+        #         f" WARNING: Zero-length scenes found - adjust split settings: " + bad_scenes
+        #     return gr.update(selected=2), gr.update(visible=True, value=message), \
+        #         None, None, None, None
 
         if self.state.thumbnail_type == "JPG":
             # create jpeg thumbnails
@@ -787,7 +788,8 @@ class VideoRemixer(TabBase):
             self.log(f"moving directory {current_path} to {dropped_path}")
             shutil.move(current_path, dropped_path)
 
-        return gr.update(selected=5), gr.update(visible=True)
+        return gr.update(selected=5), gr.update(visible=True), \
+            "Next: Perform all Processing Steps (takes from hours to days)"
 
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option):
         self.state.resynthesize = resynthesize

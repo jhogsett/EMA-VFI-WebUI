@@ -106,13 +106,13 @@ class VideoRemixerState():
     def scene_frames_time(self, frames : int) -> str:
         return seconds_to_hmsf(frames / self.project_fps, self.project_fps)
 
-    def check_for_bad_scenes(self):
-        bad_scenes = []
-        for scene in self.scene_names:
-            first, last, _ = details_from_group_name(scene)
-            if last <= first:
-                bad_scenes.append(scene)
-        return bad_scenes
+    # def check_for_bad_scenes(self):
+    #     bad_scenes = []
+    #     for scene in self.scene_names:
+    #         first, last, _ = details_from_group_name(scene)
+    #         if last <= first:
+    #             bad_scenes.append(scene)
+    #     return bad_scenes
 
     @staticmethod
     def load(filepath : str):
