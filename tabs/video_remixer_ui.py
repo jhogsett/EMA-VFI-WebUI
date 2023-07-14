@@ -38,6 +38,20 @@ class VideoRemixer(TabBase):
     def new_project(self):
         self.state = VideoRemixerState()
 
+        # set project settings UI defaults in case the project is reopened
+        # otherwise some UI elements get set to None on reopened new projects
+        self.state.project_fps = self.config.remixer_settings["def_project_fps"]
+        self.state.split_type = "Scene"
+        self.state.scene_threshold = 0.6
+        self.state.break_duration = 2.0
+        self.state.break_ratio = 0.98
+        self.state.thumbnail_type = "JPG"
+        self.state.resynthesize = True
+        self.state.inflate = True
+        self.state.resize = True
+        self.state.upscale = True
+        self.state.upscale_option = "2X"
+
     def render_tab(self):
         """Render tab into UI"""
         def_project_fps = self.config.remixer_settings["def_project_fps"]
@@ -119,6 +133,7 @@ class VideoRemixer(TabBase):
                                                    interactive=False)
                     with gr.Row():
                         thumbnail_type = gr.Radio(choices=["GIF", "JPG"], value="JPG",
+                                                  label="Thumbnail Type",
                                     info="Choose 'GIF' for whole-scene animations (slow to render)")
                     with gr.Row():
                         message_box2 = gr.Textbox(
@@ -226,10 +241,11 @@ class VideoRemixer(TabBase):
         next_button01.click(self.next_button01,
                            inputs=project_load_path,
                            outputs=[tabs_video_remixer, message_box01, video_info1, project_path,
-                                thumbnail_type, project_fps, deinterlace, split_type,
-                                scene_threshold, break_duration, break_ratio, resize_w, resize_h,
-                                crop_w, crop_h, project_info2, scene_label, scene_image,
-                                scene_state, scene_info, project_info4, summary_info6])
+                                project_fps, deinterlace, split_type, scene_threshold,
+                                break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
+                                project_info2, thumbnail_type, scene_label, scene_image,
+                                scene_state, scene_info, project_info4, resize, resynthesize,
+                                inflate, upscale, upscale_option, summary_info6])
 
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold,
@@ -338,8 +354,10 @@ class VideoRemixer(TabBase):
                 self.state.crop_w = crop_w
                 self.state.crop_h = crop_h
 
-                # don't save yet, let user change auto-chosen path on next tab
-                # self.state.save()
+                # advancing to the next tab displays information about the source video only
+                # user may decide not to proceed after seeing it
+                # therefore it is too early to save project advancement
+                # self.state.save_progress("settings")
 
                 return gr.update(selected=1), gr.update(visible=True), gr.update(value=jot), \
                     project_path, resize_w, resize_h, crop_w, crop_h
@@ -363,49 +381,55 @@ class VideoRemixer(TabBase):
                 if os.path.exists(project_file):
                     try:
                         self.state = VideoRemixerState.load(project_file)
-
-                        if self.state.project_path != project_path:
-                            message = f"Project must be opened from {self.state.project_path}"
-                            return gr.update(selected=0), \
-                                gr.update(visible=True, value=message), *[None for n in range(20)]
-
-                        scene_details = self.scene_chooser_details(self.state.current_scene)
-                        return gr.update(selected=3), \
-                            gr.update(visible=True), \
-                            self.state.video_info1, \
-                            self.state.project_path, \
-                            self.state.thumbnail_type, \
-                            self.state.project_fps, \
-                            self.state.deinterlace, \
-                            self.state.split_type, \
-                            self.state.scene_threshold, \
-                            self.state.break_duration, \
-                            self.state.break_ratio, \
-                            self.state.resize_w, \
-                            self.state.resize_h, \
-                            self.state.crop_w, \
-                            self.state.crop_h, \
-                            self.state.project_info2, \
-                            *scene_details, \
-                            self.state.project_info4, \
-                            self.state.summary_info6
                     except ValueError as error:
                         self.log(f"error opening project: {error}")
                         return gr.update(selected=0), \
-                            gr.update(visible=True, value=error), *[None for n in range(20)]
+                            gr.update(visible=True, value=error), *[None for n in range(25)]
+
+                    if self.state.project_path != project_path:
+                        message = f"Project must be opened from original project path {self.state.project_path}"
+                        return gr.update(selected=0), \
+                            gr.update(visible=True, value=message), *[None for n in range(25)]
+
+                    return_to_tab = self.state.get_progress_tab()
+                    scene_details = self.scene_chooser_details(self.state.current_scene)
+                    return gr.update(selected=return_to_tab), \
+                        gr.update(visible=True), \
+                        self.state.video_info1, \
+                        self.state.project_path, \
+                        self.state.project_fps, \
+                        self.state.deinterlace, \
+                        self.state.split_type, \
+                        self.state.scene_threshold, \
+                        self.state.break_duration, \
+                        self.state.break_ratio, \
+                        self.state.resize_w, \
+                        self.state.resize_h, \
+                        self.state.crop_w, \
+                        self.state.crop_h, \
+                        self.state.project_info2, \
+                        self.state.thumbnail_type, \
+                        *scene_details, \
+                        self.state.project_info4, \
+                        self.state.resize, \
+                        self.state.resynthesize, \
+                        self.state.inflate, \
+                        self.state.upscale, \
+                        self.state.upscale_option, \
+                        self.state.summary_info6
                 else:
                     message = f"Project file {project_file} was not found"
                     return gr.update(selected=0), \
-                        gr.update(visible=True, value=message), *[None for n in range(20)]
+                        gr.update(visible=True, value=message), *[None for n in range(25)]
             else:
                 message = f"Directory {project_path} was not found"
                 return gr.update(selected=0), \
-                    gr.update(visible=True, value=message), *[None for n in range(20)]
+                    gr.update(visible=True, value=message), *[None for n in range(25)]
         else:
             message = \
                 "Enter a path to a Video Remixer project directory on this server to get started"
             return gr.update(selected=0), \
-                gr.update(visible=True, value=message), *[None for n in range(19)]
+                gr.update(visible=True, value=message), *[None for n in range(25)]
 
     def next_button1(self, project_path, project_fps, split_type, scene_threshold, break_duration, \
                      break_ratio, resize_w, resize_h, crop_w, crop_h, deinterlace):
@@ -449,17 +473,14 @@ class VideoRemixer(TabBase):
         message = "\r\n".join(report)
         self.state.project_info2 = message
 
-        # don't save project yet, give user a chance to back up and change settings
-        # before any real processing starts
-        # self.state.save()
+        # user will expect to return to the setup tab on reopening
+        self.log(f"saving new project at {self.state.project_filepath()}")
+        self.state.save_progress("setup")
 
         return gr.update(selected=2), gr.update(visible=True), message, \
             "Next: Create Scenes, Thumbnails and Audio Clips (takes from minutes to hours)"
 
     def next_button2(self, thumbnail_type):
-        # create project directory
-        self.log(f"creating project path {self.state.project_path}")
-        create_directory(self.state.project_path)
         self.state.thumbnail_type = thumbnail_type
         self.log(f"saving new project at {self.state.project_filepath()}")
         self.state.save()
@@ -491,6 +512,7 @@ class VideoRemixer(TabBase):
             self.state.resynthesis_path,
             self.state.inflation_path,
             self.state.upscale_path])
+        self.state.thumbnails = []
 
         # split video into raw PNG frames
         video_path = self.state.source_video
@@ -583,9 +605,6 @@ class VideoRemixer(TabBase):
 
         if self.state.thumbnail_type == "JPG":
             # create jpeg thumbnails
-            # gif_fps = self.config.remixer_settings["default_gif_fps"]
-            # gif_factor = self.config.remixer_settings["gif_factor"]
-            # gif_end_delay = self.config.remixer_settings["gif_end_delay"]
             thumb_scale = self.config.remixer_settings["thumb_scale"]
             max_thumb_size = self.config.remixer_settings["max_thumb_size"]
             video_w = self.state.video_details['display_width']
@@ -616,7 +635,7 @@ class VideoRemixer(TabBase):
                         0.0,
                         self.log,
                         global_options=global_options).slice()
-        elif self.state.thumbnail_type == "JPG":
+        elif self.state.thumbnail_type == "GIF":
             # create animated gif thumbnails
             gif_fps = self.config.remixer_settings["default_gif_fps"]
             gif_factor = self.config.remixer_settings["gif_factor"]
@@ -660,8 +679,9 @@ class VideoRemixer(TabBase):
         self.log(f"creating clips directory {self.state.clips_path}")
         create_directory(self.state.clips_path)
 
+        # user will expect to return to scene chooser on reopening
         self.log("saving project after setting up scene selection states")
-        self.state.save()
+        self.state.save_progress("choose")
 
         return gr.update(selected=3), gr.update(visible=True), \
             *self.scene_chooser_details(self.state.current_scene)
@@ -730,22 +750,29 @@ class VideoRemixer(TabBase):
         return self.scene_chooser_details(self.state.current_scene)
 
     def scene_chooser_details(self, scene_name):
-        try:
-            scene_index = self.state.scene_names.index(scene_name)
-            thumbnail_path = self.state.thumbnails[scene_index]
-            scene_state = self.state.scene_states[scene_name]
+        if self.state.thumbnails:
+            try:
+                scene_index = self.state.scene_names.index(scene_name)
+                thumbnail_path = self.state.thumbnails[scene_index]
+                scene_state = self.state.scene_states[scene_name]
 
-            scene_position = f"{scene_index+1}/{len(self.state.scene_names)}"
-            first_index, last_index, _ = details_from_group_name(scene_name)
-            scene_start = seconds_to_hmsf(first_index / self.state.project_fps,
-                                          self.state.project_fps)
-            scene_duration = seconds_to_hmsf((last_index - first_index) / self.state.project_fps,
+                scene_position = f"{scene_index+1}/{len(self.state.scene_names)}"
+                first_index, last_index, _ = details_from_group_name(scene_name)
+                scene_start = seconds_to_hmsf(first_index / self.state.project_fps,
                                             self.state.project_fps)
-            sep = "      "
-            scene_info = f"{scene_position}{sep}Time: {scene_start}{sep}Span: {scene_duration}"
-            return scene_name, thumbnail_path, scene_state, scene_info
-        except IndexError as error:
-            self.log(f"error using scene_chooser_details(): {error}")
+                scene_duration = seconds_to_hmsf((last_index - first_index) / self.state.project_fps,
+                                                self.state.project_fps)
+                sep = "      "
+                scene_info = f"{scene_position}{sep}Time: {scene_start}{sep}Span: {scene_duration}"
+                return scene_name, thumbnail_path, scene_state, scene_info
+            except ValueError as error:
+                self.log(f"value error using scene_chooser_details(): {error}")
+                return None, None, None, None
+            except IndexError as error:
+                self.log(f"index error using scene_chooser_details(): {error}")
+                return None, None, None, None
+        else:
+            self.log(f"thumbnails don't exist yet in scene_chooser_details()")
             return None, None, None, None
 
     def next_button3(self):
@@ -767,8 +794,10 @@ class VideoRemixer(TabBase):
             jot.down(f"DROP: Scenes: {drop_scenes:,d} Frames: {drop_frames:,d} Length: {drop_time}")
         self.state.project_info4 = jot
 
+        # user will expect to return to the compilation tab on reopening
         self.log("saving project after displaying scene choices")
-        self.state.save()
+        self.state.save_progress("compile")
+
         return gr.update(selected=4), jot
 
     def next_button4(self):
@@ -787,6 +816,10 @@ class VideoRemixer(TabBase):
             dropped_path = os.path.join(self.state.dropped_scenes_path, dir)
             self.log(f"moving directory {current_path} to {dropped_path}")
             shutil.move(current_path, dropped_path)
+
+        # user will expect to return to the processing tab on reopening
+        self.log("saving project after compiling scenes")
+        self.state.save_progress("process")
 
         return gr.update(selected=5), gr.update(visible=True), \
             "Next: Perform all Processing Steps (takes from hours to days)"
@@ -1056,8 +1089,10 @@ class VideoRemixer(TabBase):
             _, filename, _ = split_filepath(self.state.source_video)
             output_filepath = os.path.join(self.state.project_path, f"{filename}-remixed.mp4")
             self.state.summary_info6 = jot
+
+            # user will expect to return to the save remix tab on reopening
             self.log("saving project after completing processing steps")
-            self.state.save()
+            self.state.save_progress("save")
 
             return gr.update(selected=6), gr.update(visible=True), jot, output_filepath
         else:
@@ -1160,4 +1195,4 @@ class VideoRemixer(TabBase):
             else:
                 return gr.update(value="No processed video clips were found", visible=True)
         else:
-            return gr.update(value="Please enter an output path to proceed", visible=True)
+            return gr.update(value="Enter a path for the remixed video to proceed", visible=True)

@@ -207,11 +207,11 @@ def get_video_details(input_path : str, count_frames = True) -> dict:
                 "exit_code" : error.exit_code,
                 "console_output" : str(error.stderr.decode("UTF-8"))}}
 
-def get_essential_video_details(input_path : str, count_frames = True) -> dict:
+def get_essential_video_details(input_path : str, count_frames=False) -> dict:
     """Use FFprobe to get video details essential for automatic processing
        If count_type is True and frames can't be determined, a RuntimeError is raised
     """
-    video_details = get_video_details(input_path, count_frames=True)
+    video_details = get_video_details(input_path, count_frames=count_frames)
     if video_details.get("error"):
         error = video_details["error"]
         error_message = error["console_output"]
@@ -236,6 +236,15 @@ def get_essential_video_details(input_path : str, count_frames = True) -> dict:
             if codec_type != "video":
                 continue
 
+            frame_count = stream_data.get("nb_frames") or stream_data.get("nb_read_frames")
+            if not frame_count:
+                if count_frames:
+                    raise RuntimeError(f"unable to determine frame count for '{input_path}'")
+                else:
+                    # rerun with frame counting
+                    return get_essential_video_details(input_path, count_frames=True)
+            video_essentials["frame_count"] = frame_count
+
             video_essentials["source_video"] = input_path
             video_essentials["video_index"] = stream_data.get("index")
 
@@ -256,10 +265,6 @@ def get_essential_video_details(input_path : str, count_frames = True) -> dict:
             video_essentials["content_height"] = height
             video_essentials["content_dimensions"] = f"{width}x{height}"
 
-            frame_count = stream_data.get("nb_read_frames") or stream_data.get("nb_frames")
-            if not frame_count and count_frames:
-                raise RuntimeError(f"unable to determine frame count for '{input_path}'")
-            video_essentials["frame_count"] = frame_count
             video_essentials["index_width"] = len(str(frame_count))
             video_essentials["frame_count_show"] = f"{int(frame_count):,d}"
 

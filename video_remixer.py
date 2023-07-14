@@ -7,6 +7,9 @@ from webui_utils.simple_utils import seconds_to_hmsf
 from webui_utils.video_utils import details_from_group_name
 class VideoRemixerState():
     def __init__(self):
+        # set at various stages
+        self.progress = "home"
+
         # source video from initial tab
         self.source_video = None
         self.video_details = {} # set again during project set up (pointing to duplicate copy)
@@ -28,6 +31,9 @@ class VideoRemixerState():
         self.frames_per_minute = None
         self.project_info2 = None # re-set on re-opening project
 
+        # set on confirming project setup
+        self.thumbnail_type = None
+
         # set during project set up
         self.output_pattern = None
         self.frames_path = None
@@ -41,7 +47,6 @@ class VideoRemixerState():
         self.current_scene = None
 
         # set when done choosing scenes
-        self.thumbnail_type = None
         self.project_info4 = None # re-set on re-opening project
 
         # project processing options
@@ -67,6 +72,27 @@ class VideoRemixerState():
 
     def reset(self):
         self.__init__()
+
+    # how far progressed into project and the tab ID to return to on re-opening
+    PROGRESS_STEPS = {
+        "home" : 0,
+        "settings" : 1,
+        "setup" : 2,
+        "choose" : 3,
+        "compile" : 4,
+        "process" : 5,
+        "save" : 6
+    }
+
+    def save_progress(self, progress : str):
+        self.progress = progress
+        self.save()
+
+    def get_progress_tab(self) -> int:
+        try:
+            return self.PROGRESS_STEPS[self.progress]
+        except:
+            return self.PROGRESS_STEPS["home"]
 
     DEF_FILENAME = "project.yaml"
 
@@ -119,10 +145,10 @@ class VideoRemixerState():
         with open(filepath, "r") as file:
             try:
                 state = yaml.load(file, Loader=Loader)
-                state.scene_names = sorted(state.scene_names)
-                state.thumbnails = sorted(state.thumbnails)
-                state.audio_clips = sorted(state.audio_clips)
-                state.video_clips = sorted(state.video_clips)
+                state.scene_names = sorted(state.scene_names) if state.scene_names else []
+                state.thumbnails = sorted(state.thumbnails) if state.thumbnails else []
+                state.audio_clips = sorted(state.audio_clips) if state.audio_clips else []
+                state.video_clips = sorted(state.video_clips) if state.video_clips else []
                 return state
             except YAMLError as error:
                 if hasattr(error, 'problem_mark'):
