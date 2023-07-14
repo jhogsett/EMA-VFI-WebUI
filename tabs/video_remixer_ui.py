@@ -315,17 +315,17 @@ class VideoRemixer(TabBase):
                     finally:
                         Mtqdm().update_bar(bar)
 
-                report = []
-                report.append(f"Frame Rate: {video_details['frame_rate']}")
-                report.append(f"Duration: {video_details['duration']}")
-                report.append(f"Display Size: {video_details['display_dimensions']}")
-                report.append(f"Aspect Ratio: {video_details['display_aspect_ratio']}")
-                report.append(f"Content Size: {video_details['content_dimensions']}")
-                report.append(f"Frame Count: {video_details['frame_count']}")
-                report.append(f"File Size: {video_details['file_size']}")
-                report.append(f"Has Audio: {True if video_details['has_audio'] else False}")
-                message = "\r\n".join(report)
-                self.state.video_info1 = message
+                with Jot() as jot:
+                    jot.down(f"Source Video: {video_details['source_video']}")
+                    jot.down(f"Frame Rate: {video_details['frame_rate']}")
+                    jot.down(f"Duration: {video_details['duration']}")
+                    jot.down(f"Display Size: {video_details['display_dimensions']}")
+                    jot.down(f"Aspect Ratio: {video_details['display_aspect_ratio']}")
+                    jot.down(f"Content Size: {video_details['content_dimensions']}")
+                    jot.down(f"Frame Count: {video_details['frame_count']}")
+                    jot.down(f"File Size: {video_details['file_size']}")
+                    jot.down(f"Has Audio: {True if video_details['has_audio'] else False}")
+                self.state.video_info1 = jot
 
                 project_path = os.path.join(path, f"REMIX-{filename}")
                 resize_w = video_details['display_width']
@@ -341,7 +341,7 @@ class VideoRemixer(TabBase):
                 # don't save yet, let user change auto-chosen path on next tab
                 # self.state.save()
 
-                return gr.update(selected=1), gr.update(visible=True), gr.update(value=message), \
+                return gr.update(selected=1), gr.update(visible=True), gr.update(value=jot), \
                     project_path, resize_w, resize_h, crop_w, crop_h
             else:
                 message = f"File {video_path} was not found"
@@ -389,13 +389,10 @@ class VideoRemixer(TabBase):
                             *scene_details, \
                             self.state.project_info4, \
                             self.state.summary_info6
-                    except Exception as error:
+                    except ValueError as error:
                         self.log(f"error opening project: {error}")
-                        self.log(error.__traceback__)
-                        message = \
-                    f"An error was encountered accessing the Project file {project_file}: '{error}'"
                         return gr.update(selected=0), \
-                            gr.update(visible=True, value=message), *[None for n in range(20)]
+                            gr.update(visible=True, value=error), *[None for n in range(20)]
                 else:
                     message = f"Project file {project_file} was not found"
                     return gr.update(selected=0), \
@@ -564,8 +561,24 @@ class VideoRemixer(TabBase):
                 False,
                 self.log).split()
 
-        self.log("saving project after converting video to PNG frames")
+        self.log("saving project after splitting into scenes")
         self.state.save()
+
+        self.state.scene_names = sorted(get_directories(self.state.scenes_path))
+        self.state.drop_all_scenes()
+        self.state.current_scene = self.state.scene_names[0]
+        self.log("saving project after establishing scene names")
+        self.state.save()
+
+        self.log("checking for zero-length scenes")
+        bad_scenes = self.state.check_for_bad_scenes()
+        if bad_scenes:
+            bad_scenes = "\r\n".join(bad_scenes)
+            self.log(f"zero-length scenes found: " + bad_scenes)
+            message = SimpleIcons.WARNING + \
+                f" WARNING: Zero-length scenes found - adjust split settings: " + bad_scenes
+            return gr.update(selected=2), gr.update(visible=True, value=message), \
+                *self.scene_chooser_details(self.state.current_scene)
 
         if self.state.thumbnail_type == "JPG":
             # create jpeg thumbnails
@@ -587,7 +600,7 @@ class VideoRemixer(TabBase):
             create_directory(self.state.thumbnail_path)
 
             global_options = self.config.ffmpeg_settings["global_options"]
-            self.log(f"creating animated GIF thumbnails")
+            self.log(f"creating JPG thumbnails")
             SliceVideo(self.state.source_video,
                         self.state.project_fps,
                         self.state.scenes_path,
@@ -645,10 +658,6 @@ class VideoRemixer(TabBase):
         self.state.clips_path = os.path.join(self.state.project_path, "CLIPS")
         self.log(f"creating clips directory {self.state.clips_path}")
         create_directory(self.state.clips_path)
-
-        self.state.scene_names = sorted(get_directories(self.state.scenes_path))
-        self.state.drop_all_scenes()
-        self.state.current_scene = self.state.scene_names[0]
 
         self.log("saving project after setting up scene selection states")
         self.state.save()
@@ -734,7 +743,7 @@ class VideoRemixer(TabBase):
             sep = "      "
             scene_info = f"{scene_position}{sep}Time: {scene_start}{sep}Span: {scene_duration}"
             return scene_name, thumbnail_path, scene_state, scene_info
-        except ValueError as error:
+        except IndexError as error:
             self.log(f"error using scene_chooser_details(): {error}")
             return None, None, None, None
 

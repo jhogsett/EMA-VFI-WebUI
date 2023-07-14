@@ -236,6 +236,7 @@ def get_essential_video_details(input_path : str, count_frames = True) -> dict:
             if codec_type != "video":
                 continue
 
+            video_essentials["source_video"] = input_path
             video_essentials["video_index"] = stream_data.get("index")
 
             avg_frame_rate = stream_data.get("avg_frame_rate")

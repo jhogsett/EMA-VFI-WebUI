@@ -1,7 +1,7 @@
 """Video Remixer UI state management"""
 import os
 import yaml
-from yaml import Loader
+from yaml import Loader, YAMLError
 from webui_utils.file_utils import get_files
 from webui_utils.simple_utils import seconds_to_hmsf
 from webui_utils.video_utils import details_from_group_name
@@ -106,12 +106,28 @@ class VideoRemixerState():
     def scene_frames_time(self, frames : int) -> str:
         return seconds_to_hmsf(frames / self.project_fps, self.project_fps)
 
+    def check_for_bad_scenes(self):
+        bad_scenes = []
+        for scene in self.scene_names:
+            first, last, _ = details_from_group_name(scene)
+            if last <= first:
+                bad_scenes.append(scene)
+        return bad_scenes
+
     @staticmethod
     def load(filepath : str):
         with open(filepath, "r") as file:
-            state = yaml.load(file, Loader=Loader)
-            state.scene_names = sorted(state.scene_names)
-            state.thumbnails = sorted(state.thumbnails)
-            state.audio_clips = sorted(state.audio_clips)
-            state.video_clips = sorted(state.video_clips)
-            return state
+            try:
+                state = yaml.load(file, Loader=Loader)
+                state.scene_names = sorted(state.scene_names)
+                state.thumbnails = sorted(state.thumbnails)
+                state.audio_clips = sorted(state.audio_clips)
+                state.video_clips = sorted(state.video_clips)
+                return state
+            except YAMLError as error:
+                if hasattr(error, 'problem_mark'):
+                    mark = error.problem_mark
+                    message = f"Error loading project file on line {mark.line+1} column {mark.column+1}: {error}"
+                else:
+                    message = error
+                raise ValueError(message)
