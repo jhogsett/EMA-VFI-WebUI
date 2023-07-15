@@ -88,14 +88,13 @@ def create_ui(config : SimpleConfig,
                 AutofillFrames(config, engine, log.log).render_tab()
             GIFtoMP4(config, engine, log.log).render_tab()
 
-        VideoRemixer(config, engine, log.log).render_tab()
+        VideoDetails(config, engine, log.log).render_tab()
         VideoBlender(config, engine, log.log).render_tab()
+        VideoRemixer(config, engine, log.log).render_tab()
 
         with gr.Tab(SimpleIcons.LABCOAT + "Tools"):
-            VideoDetails(config, engine, log.log).render_tab()
             ResequenceFiles(config, engine, log.log).render_tab()
             ResizeFrames(config, engine, log.log).render_tab()
-            ChangeFPS(config, engine, log.log).render_tab()
             with gr.Tab("File Conversion"):
                 gr.HTML(SimpleIcons.HAMMER_WRENCH +
                     "Tools for common video file conversion tasks",
@@ -104,7 +103,8 @@ def create_ui(config : SimpleConfig,
                 PNGtoMP4(config, engine, log.log).render_tab()
                 GIFtoPNG(config, engine, log.log).render_tab()
                 PNGtoGIF(config, engine, log.log).render_tab()
-                SimplifyPngFiles(config, engine, log.log).render_tab()
+            SimplifyPngFiles(config, engine, log.log).render_tab()
+            ChangeFPS(config, engine, log.log).render_tab()
             with gr.Tab(SimpleIcons.GEAR + "Application"):
                 Options(config, engine, log.log, restart_fn).render_tab()
                 Resources(config, engine, log.log).render_tab()
