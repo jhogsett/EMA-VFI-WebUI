@@ -16,5 +16,6 @@
 
 ## ⚠️Important⚠️
 - **THIS PROCESS COULD BE SLOW, POSSIBLY MANY HOURS OR DAYS!!!**
-
+- The browser window does NOT need to be left open
+    - The project can be opened later and resumed where you left off
 - `ffmpeg.exe` must be available on the system path

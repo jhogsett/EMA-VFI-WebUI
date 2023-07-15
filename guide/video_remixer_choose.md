@@ -1,4 +1,4 @@
-**Video Remixer Sceme Chooser** - Step through scenes choosing which to keep
+**Video Remixer Scene Chooser** - Step through scenes choosing which to keep
 
 ## Important Action Buttons
 The Green buttons:
