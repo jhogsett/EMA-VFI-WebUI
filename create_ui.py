@@ -56,14 +56,50 @@ def create_ui(config : SimpleConfig,
                     css=config.user_interface["css_file"]) as app:
         if config.user_interface["show_header"]:
             app_header.render()
-        FrameInterpolation(config, engine, log.log).render_tab()
-        FrameSearch(config, engine, log.log).render_tab()
-        VideoInflation(config, engine, log.log).render_tab()
-        ResynthesizeVideo(config, engine, log.log).render_tab()
-        FrameRestoration(config, engine, log.log).render_tab()
-        VideoBlender(config, engine, log.log).render_tab()
+
+        with gr.Tab("Interpolate Frames"):
+            FrameInterpolation(config, engine, log.log).render_tab()
+            FrameSearch(config, engine, log.log).render_tab()
+
+        with gr.Tab("Interpolate Video"):
+            VideoInflation(config, engine, log.log).render_tab()
+            ResynthesizeVideo(config, engine, log.log).render_tab()
+
+        with gr.Tab("Film Restoration"):
+            FrameRestoration(config, engine, log.log).render_tab()
+            VideoBlender(config, engine, log.log).render_tab()
+
+        with gr.Tab("Video Renovation"):
+            VideoRemixer(config, engine, log.log).render_tab()
+            UpscaleFrames(config, engine, log.log).render_tab()
+
+            with gr.Tab("Split & Merge"):
+                gr.HTML(SimpleIcons.SPLIT_MERGE_SYMBOL +
+                    "Split & Merge large PNG framesets and process in groups",
+                    elem_id="tabheading")
+                SplitFrames(config, engine, log.log).render_tab()
+                MergeFrames(config, engine, log.log).render_tab()
+                SplitScenes(config, engine, log.log).render_tab()
+                SliceVideo(config, engine, log.log).render_tab()
+                StripScenes(config, engine, log.log).render_tab()
+
+            with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Deduplication"):
+                gr.HTML(SimpleIcons.SCISSORS +
+                    "Tools for duplicate frame detection and repair",
+                    elem_id="tabheading")
+                DuplicateFramesReport(config, engine, log.log).render_tab()
+                DuplicateTuning(config, engine, log.log).render_tab()
+                DedupeFrames(config, engine, log.log).render_tab()
+                AutofillFrames(config, engine, log.log).render_tab()
+
         GIFtoMP4(config, engine, log.log).render_tab()
+
         with gr.Tab(SimpleIcons.LABCOAT + "Tools"):
+            VideoDetails(config, engine, log.log).render_tab()
+            ResequenceFiles(config, engine, log.log).render_tab()
+            ResizeFrames(config, engine, log.log).render_tab()
+            ChangeFPS(config, engine, log.log).render_tab()
+
             with gr.Tab("File Conversion"):
                 gr.HTML(SimpleIcons.HAMMER_WRENCH +
                     "Tools for common video file conversion tasks",
@@ -73,33 +109,15 @@ def create_ui(config : SimpleConfig,
                 GIFtoPNG(config, engine, log.log).render_tab()
                 PNGtoGIF(config, engine, log.log).render_tab()
                 SimplifyPngFiles(config, engine, log.log).render_tab()
-                ResizeFrames(config, engine, log.log).render_tab()
-            ResequenceFiles(config, engine, log.log).render_tab()
-            with gr.Tab("Split & Merge Frames"):
-                gr.HTML(SimpleIcons.SPLIT_MERGE_SYMBOL +
-                    "Split & Merge large PNG framesets and process in groups",
-                    elem_id="tabheading")
-                SplitFrames(config, engine, log.log).render_tab()
-                MergeFrames(config, engine, log.log).render_tab()
-                SplitScenes(config, engine, log.log).render_tab()
-                SliceVideo(config, engine, log.log).render_tab()
-                StripScenes(config, engine, log.log).render_tab()
-                VideoRemixer(config, engine, log.log).render_tab()
-            ChangeFPS(config, engine, log.log).render_tab()
-            UpscaleFrames(config, engine, log.log).render_tab()
-            VideoDetails(config, engine, log.log).render_tab()
-            with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Deduplicate Frames"):
-                gr.HTML(SimpleIcons.SCISSORS +
-                    "Tools for duplicate frame detection and repair",
-                    elem_id="tabheading")
-                DuplicateFramesReport(config, engine, log.log).render_tab()
-                DuplicateTuning(config, engine, log.log).render_tab()
-                DedupeFrames(config, engine, log.log).render_tab()
-                AutofillFrames(config, engine, log.log).render_tab()
+
             with gr.Tab(SimpleIcons.GEAR + "Application"):
                 Options(config, engine, log.log, restart_fn).render_tab()
                 Resources(config, engine, log.log).render_tab()
                 LogViewer(config, engine, log.log, log).render_tab()
+
         if config.user_interface["show_header"]:
             app_footer.render()
     return app
+
+
+
