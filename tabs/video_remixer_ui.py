@@ -251,7 +251,7 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         back_button6 = gr.Button(value="< Back", variant="secondary").\
                             style(full_width=False)
-                        next_button6 = gr.Button(value="Process Remix " + SimpleIcons.SLOW_SYMBOL,
+                        next_button6 = gr.Button(value="Save Remix " + SimpleIcons.SLOW_SYMBOL,
                                                 variant="primary", elem_id="highlightbutton")
 
         next_button00.click(self.next_button00,
