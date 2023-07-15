@@ -102,9 +102,9 @@ class MtqdmTester():
                 for o in range(total):
                     with Mtqdm().open_bar(total=total, desc="Some More") as bar2:
                         for p in range(total):
-                            bar2.update()
+                            Mtqdm().update_bar(bar2)
                             time.sleep(delay)
-                    bar.update()
+                    Mtqdm().update_bar(bar)
 
     def parallel_bars(self, times, count, total, delay):
         for m in range(times):
@@ -148,9 +148,33 @@ class MtqdmTester():
                 for o in range(total):
                     with Mtqdm().open_bar(total=total, desc="Some More", leave=True) as bar2:
                         for p in range(total):
-                            bar2.update()
+                            Mtqdm().update_bar(bar2)
                             time.sleep(delay)
-                    bar.update()
+                    Mtqdm().update_bar(bar)
+
+    def negative_updates(self, times, total, delay):
+        for n in range(times):
+            with Mtqdm().open_bar(total=total, desc="Snoozing") as bar:
+                for m in range(total):
+                    Mtqdm().update_bar(bar, steps=1)
+                    time.sleep(delay)
+                for m in range(total-1, -1, -1):
+                    Mtqdm().update_bar(bar, steps=-1)
+                    time.sleep(delay)
+
+    def insanity_bars(self, times, count, total, delay):
+        for m in range(times):
+            bars = [None for n in range(count)]
+            for n in range(count):
+                bars[n] = Mtqdm().enter_bar(total=total, desc=f"Bar{n}")
+            for n in range(total):
+                for bar in bars:
+                    _range = int(total / 10)
+                    steps = random.randint(-_range, +_range)
+                    Mtqdm().update_bar(bar, steps=steps)
+                time.sleep(delay)
+            for n in range(count-1, -1, -1):
+                Mtqdm().leave_bar(bars[n])
 
     def test_palettes(self):
         return [
@@ -199,6 +223,12 @@ class MtqdmTester():
             },
             {
                 "Additional Leaves" : lambda : self.bar_additional_leave(10, 10, .001)
+            },
+            {
+                "Negative Updates" : lambda : self.negative_updates(6, 100, .01)
+            },
+            {
+                "Insanity Bars" : lambda : self.insanity_bars(20, Mtqdm.MAX_BARS, 25, 0.025)
             },
         ]
 

@@ -254,8 +254,29 @@ class Mtqdm():
     def update_bar(self, bar, steps=1):
         """Update a bar's progress"""
         position = self._find_bar_position(bar)
+        current_progress = self.bar_updates[position]
+        new_progress = current_progress + steps
+        progress_diff = new_progress - current_progress
+
+        # don't let positive updates go above total
+        total = self.bar_totals[position]
+        if new_progress > total:
+            steps = total - current_progress
+
+        # don't let negative updates go below zero
+        if new_progress < 0:
+            steps = -current_progress
+
+        new_progress = current_progress + steps
         self.bar_updates[position] += steps
         bar.update(n=steps)
+
+        # negative and 100% updates don't refresh automatically
+        if progress_diff <= 0 or new_progress == total:
+            bar.refresh()
+
+    def get_bar(self, index):
+        return self.entered_bars[index]
 
     def get_bar_max(self, index):
         """Get the total for a bar by index"""
