@@ -9,7 +9,7 @@ The _Chosen Scenes Details_ box shows a summary of the remix project about to be
 1. Click _Compile Scenes_
     - Dropped scenes (directories of PNG files) are moved to a _dropped frame_ directory
         - Note: this takes only a moment
-    - You are taken to the _Processing Options_ tab
+    - You will be taken to the _Processing Options_ tab
 
 ## Important
 - `ffmpeg.exe` must be available on the system path

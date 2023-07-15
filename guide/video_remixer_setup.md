@@ -18,5 +18,5 @@ The _Project Details_ box shows a summary of the remix project about to be creat
 ## Important
 - This process could be slow, perhaps many hours long!
 - The browser window does NOT need to be left open
-    - The project can be opened later and resumed where you left off
+    - The project can be reopened later to resume where you left off
 - `ffmpeg.exe` must be available on the system path

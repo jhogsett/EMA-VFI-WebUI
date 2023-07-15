@@ -1,14 +1,14 @@
 **Video Remixer Settings** - Choose content options for project set up
 
 ## How To Use
-1. Set _Project Path_ to a path on your server for all project data to be stored
-    - **Important** Video frame data can consume vast quantities of disk space
-    - _Tip: A default path is created based on the original video location_
+1. Set _Project Path_ to a path on your server for project data to be stored
+    - **Important** - Video frame data can consume large amounts of disk space
+    - _Tip: A default path is offered based on the original video location_
 1. Choose a _Remix Frame Rate_
     - For best results, this should probably be related to the source (double, half, etc.)
     - _Tip: Broadcast content is typically based on a multiple of 29.97 FPS_
 1. Leave _Deinterlace Source Video_ unchecked
-    - If using content captured over-the-air or from DVDs, use deinterlacing to remove _mouse teeth_ artifacts
+    - If remixing broadcast content, use deinterlacing to remove interlacing artifacts
 1. Choose a _Split Type_
     - **_Scene_**
         - Split by scene using FFmpeg scene detection
@@ -16,10 +16,10 @@
             - A higher value means fewer found scenes
     - **_Break_**
         - Split by breaks using FFmpeg break detection
-        - Set _Break Minimum Duration_ to the minimum break duration in seconds
-        - Set _Break Black Frame Ratio_ to the amount of black pixels to be a breaking frame
+        - Set _Break Minimum Duration_ for the minimum break duration in seconds
+        - Set _Break Black Frame Ratio_ to a value 0.0 to 1.0 for the ratio of black pixels to count as break frame
     - **_Minute_**
-        - Split minute, as calculated based on the source video frame rate
+        - Split by minute, as calculated based on the source video frame rate
 1. Set **_Resize_** and **_Crop_** Settings
     - **Important**
         - When using the _Aspect Ratio_ feature later, _Resize_ and _Crop_ settings must be set properly.
@@ -42,7 +42,7 @@
                 - some encoders can't handle odd dimensions
                 - a dropped pixel isn't noticeable
         - Letterboxed Content
-            - If the content is **4:3** or similar aspect ratio content with _letterboxing_, such as old television broadcasts, the settings may need to like these:
+            - For **4:3** or similar content with _letterboxing_ like television broadcasts, the settings may need to be like these:
             - _Crop W x H_: `720 x 480`
             - _Crop W x H_: `640 x 480`
 1. Click _Next_

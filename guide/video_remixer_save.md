@@ -1,6 +1,6 @@
-**Video Remixer Save Remix** - Create processed scene clips and assemble remixed video
+**Video Remixer Save Remix** - Marge audio with processed content and create remixed video
 
-The _Processed Content_ box shows a summary of the processing just completed for your information.
+The _Processed Content_ box shows a summary of the processing that has been completed.
 
 ## How To Use
 1. Choose _Video Quality_

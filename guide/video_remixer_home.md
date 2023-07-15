@@ -14,11 +14,11 @@
 1. You will be taken to your last saved activity
 
 ## Notes
-- The video propery inspection process can be lengthy!
-    - Videos without frame count metadata require scanning the whole file to count
+- The video property inspection process can be lengthy!
+    - Videos without frame count metadata require scanning the file to count
 - Progress is shown in the console using standard progress bars
 - The browser window does NOT need to be left open
-    - The project can be opened later and resumed where you left off
+    - The project can be reopened later to resume where you left off
 
 ## Important
 - `ffmpeg.exe` must be available on the system path
