@@ -12,7 +12,7 @@ from webui_utils.video_utils import MP4toPNG, get_essential_video_details, PNGto
     combine_video_audio, combine_videos, details_from_group_name
 from webui_utils.mtqdm import Mtqdm
 from webui_utils.jot import Jot
-# from webui_tips import WebuiTips
+from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
 from deep_interpolate import DeepInterpolate
@@ -91,6 +91,8 @@ class VideoRemixer(TabBase):
                             gr.Markdown("*The Scene Chooser will be shown after loading project*")
                             next_button01 = gr.Button(value="Open Project >",
                                                     variant="primary")
+                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                        WebuiTips.video_remixer_home.render()
 
                 ### REMIX SETTINGS
                 with gr.Tab("Remix Settings", id=1):
@@ -128,6 +130,8 @@ class VideoRemixer(TabBase):
                             style(full_width=False)
                         next_button1 = gr.Button(value="Next >", variant="primary",
                                                 elem_id="actionbutton")
+                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                        WebuiTips.video_remixer_settings.render()
 
                 ## SET UP PROJECT
                 with gr.Tab("Set Up Project", id=2):
@@ -150,6 +154,8 @@ class VideoRemixer(TabBase):
                             style(full_width=False)
                         next_button2 = gr.Button(value="Set Up Project " + SimpleIcons.SLOW_SYMBOL,
                                                 variant="primary", elem_id="actionbutton")
+                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                        WebuiTips.video_remixer_setup.render()
 
                 ## CHOOSE SCENES
                 with gr.Tab("Choose Scenes", id=3):
@@ -187,12 +193,13 @@ class VideoRemixer(TabBase):
                                                                 variant="stop")
                                     drop_all_button = gr.Button(value="Drop All Scenes",
                                                                 variant="stop")
-
                     with gr.Row():
                         back_button3 = gr.Button(value="< Back", variant="secondary").\
                             style(full_width=False)
                         next_button3 = gr.Button(value="Done Choosing Scenes", variant="primary",
                                                 elem_id="actionbutton")
+                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                        WebuiTips.video_remixer_choose.render()
 
                 ## COMPILE SCENES
                 with gr.Tab("Compile Scenes", id=4):
@@ -206,6 +213,8 @@ class VideoRemixer(TabBase):
                             style(full_width=False)
                         next_button4 = gr.Button(value="Compile Scenes", variant="primary",
                                                 elem_id="actionbutton")
+                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                        WebuiTips.video_remixer_compile.render()
 
                 ## PROCESSING OPTIONS
                 with gr.Tab("Procesing Options", id=5):
@@ -233,6 +242,8 @@ class VideoRemixer(TabBase):
                             style(full_width=False)
                         next_button5 = gr.Button(value="Process Remix " +
                                     SimpleIcons.SLOW_SYMBOL, variant="primary", elem_id="actionbutton")
+                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                        WebuiTips.video_remixer_processing.render()
 
                 ## REMIX VIDEOS
                 with gr.Tab("Save Remix", id=6):
@@ -253,6 +264,8 @@ class VideoRemixer(TabBase):
                             style(full_width=False)
                         next_button6 = gr.Button(value="Save Remix " + SimpleIcons.SLOW_SYMBOL,
                                                 variant="primary", elem_id="highlightbutton")
+                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                        WebuiTips.video_remixer_save.render()
 
         next_button00.click(self.next_button00,
                            inputs=video_path,
