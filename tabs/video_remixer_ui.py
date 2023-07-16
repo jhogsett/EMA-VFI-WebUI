@@ -1,37 +1,22 @@
 """Video Remixer feature UI and event handlers"""
 import os
-import shutil
 from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import seconds_to_hmsf
-from webui_utils.file_utils import get_files, create_directory, split_filepath, get_directories, \
-    remove_directories
-from webui_utils.video_utils import MP4toPNG, get_essential_video_details, PNGtoMP4, \
-    combine_video_audio, combine_videos, details_from_group_name
-from webui_utils.mtqdm import Mtqdm
+from webui_utils.file_utils import get_files, create_directory, get_directories
 from webui_utils.jot import Jot
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
-from interpolate import Interpolate
-from deep_interpolate import DeepInterpolate
-from interpolate_series import InterpolateSeries
-from resequence_files import ResequenceFiles
 from tabs.tab_base import TabBase
-from split_scenes import SplitScenes
-from split_frames import SplitFrames
-from slice_video import SliceVideo
 from video_remixer import VideoRemixerState
-from resize_frames import ResizeFrames
-from upscale_series import UpscaleSeries
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
     def __init__(self,
-                    config : SimpleConfig,
-                    engine : InterpolateEngine,
-                    log_fn : Callable):
+                 config : SimpleConfig,
+                 engine : InterpolateEngine,
+                 log_fn : Callable):
         TabBase.__init__(self, config, engine, log_fn)
         self.new_project()
 
@@ -269,7 +254,7 @@ class VideoRemixer(TabBase):
                                 break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
                                 project_info2, thumbnail_type, scene_label, scene_image,
                                 scene_state, scene_info, project_info4, resize, resynthesize,
-                                inflate, upscale, upscale_option, summary_info6])
+                                inflate, upscale, upscale_option, summary_info6, output_filepath])
 
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold,
@@ -398,13 +383,13 @@ class VideoRemixer(TabBase):
             return gr.update(selected=0), \
                    gr.update(visible=True,
         value="Enter a path to a Video Remixer project directory on this server to get started"), \
-                   *self.empty_args(25)
+                   *self.empty_args(26)
 
         if not os.path.exists(project_path):
             return gr.update(selected=0), \
                    gr.update(visible=True,
                              value=f"Directory {project_path} was not found"), \
-                   *self.empty_args(25)
+                   *self.empty_args(26)
 
         try:
             project_file = self.state.determine_project_filepath(project_path)
@@ -412,7 +397,7 @@ class VideoRemixer(TabBase):
             return gr.update(selected=0), \
                    gr.update(visible=True,
                              value=error), \
-                   *self.empty_args(25)
+                   *self.empty_args(26)
 
         try:
             self.state = VideoRemixerState.load(project_file)
@@ -421,13 +406,13 @@ class VideoRemixer(TabBase):
             return gr.update(selected=0), \
                    gr.update(visible=True,
                              value=error), \
-                   *self.empty_args(25)
+                   *self.empty_args(26)
 
         if self.state.project_path != project_path:
             return gr.update(selected=0), \
                    gr.update(visible=True,
             value=f"Project must be opened from original project path {self.state.project_path}"), \
-                   *self.empty_args(25)
+                   *self.empty_args(26)
 
         return_to_tab = self.state.get_progress_tab()
         scene_details = self.scene_chooser_details(self.state.current_scene)
@@ -454,7 +439,8 @@ class VideoRemixer(TabBase):
                self.state.inflate, \
                self.state.upscale, \
                self.state.upscale_option, \
-               self.state.summary_info6
+               self.state.summary_info6, \
+               self.state.output_filepath
 
     ### REMIX SETTINGS EVENT HANDLERS
 
@@ -463,7 +449,7 @@ class VideoRemixer(TabBase):
                      break_ratio, resize_w, resize_h, crop_w, crop_h, deinterlace):
         self.state.project_path = project_path
 
-        # this is first time there is a project write
+        # this is first project write
         self.log(f"creating project path {project_path}")
         create_directory(project_path)
 
@@ -496,57 +482,32 @@ class VideoRemixer(TabBase):
 
     # User has clicked Set Up Project from Set Up Project
     def next_button2(self, thumbnail_type):
+        global_options = self.config.ffmpeg_settings["global_options"]
+
         self.state.thumbnail_type = thumbnail_type
-        self.log(f"saving new project at {self.state.project_filepath()}")
+        self.log("saving after setting thumbnail type")
         self.state.save()
 
-        # copy video to project directory
-        _, filename, ext = split_filepath(self.state.source_video)
-        video_filename = filename + ext
-        project_video_path = os.path.join(self.state.project_path, video_filename)
-        if not os.path.exists(project_video_path):
+        try:
             self.log(f"copying video from {self.state.source_video} to project path")
-            with Mtqdm().open_bar(total=1, desc="Copying") as bar:
-                Mtqdm().message(bar, "Copying source video to project path ...")
-                shutil.copy(self.state.source_video, project_video_path)
-                self.state.source_video = project_video_path
-                Mtqdm().update_bar(bar)
+            self.state.save_original_video(prevent_overwrite=True)
+        except ValueError as error:
+            # ignore, don't copy the file a second time if the user is restarting here
+            self.log(f"ignoring: {error}")
 
         self.log("saving project after ensuring video is in project path")
         self.state.save()
 
-        # user may be redoing this, so clear things that may exist and interfere
-        self.log("removing derivatives of previous project settings")
-        remove_directories([
-            self.state.frames_path,
-            self.state.scenes_path,
-            self.state.dropped_scenes_path,
-            self.state.thumbnail_path,
-            self.state.clips_path,
-            self.state.resize_path,
-            self.state.resynthesis_path,
-            self.state.inflation_path,
-            self.state.upscale_path])
-        self.state.thumbnails = []
+        # user may be redoing project set up
+        # settings changes could affect already-processed content
+        self.log("resetting project on rendering for project settings")
+        self.state.reset_at_project_settings()
 
         # split video into raw PNG frames
-        video_path = self.state.source_video
-        index_width = self.state.video_details["index_width"]
-        self.state.output_pattern = f"source_%0{index_width}d.png"
-        frame_rate = self.state.project_fps
-        self.state.frames_path = os.path.join(self.state.project_path, "SOURCE")
-        self.log(f"creating frames directory {self.state.frames_path}")
-        create_directory(self.state.frames_path)
-        with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
-            Mtqdm().message(bar, "FFmpeg in use ...")
-            self.log(f"calling MP4toPNG with input path={video_path}" +\
-                f" pattern={self.state.output_pattern} frame rate={frame_rate}" +\
-                f" frames path={self.state.frames_path} deinterlace={self.state.deinterlace})")
-            global_options = self.config.ffmpeg_settings["global_options"]
-            ffmpeg_cmd = MP4toPNG(video_path, self.state.output_pattern, frame_rate,
-        self.state.frames_path, deinterlace=self.state.deinterlace, global_options=global_options)
-            self.log(f"FFmpeg command: {ffmpeg_cmd}")
-            Mtqdm().update_bar(bar)
+        self.log("splitting source video into PNG frames")
+        global_options = self.config.ffmpeg_settings["global_options"]
+        ffcmd = self.state.render_source_frames(global_options=global_options)
+        self.log(f"FFmpeg command: {ffcmd}")
 
         self.log("saving project after converting video to PNG frames")
         self.state.save()
@@ -561,44 +522,8 @@ class VideoRemixer(TabBase):
         self.log("saving project after establishing scene paths")
         self.state.save()
 
-        # split frames into scenes
-        if self.state.split_type == "Scene":
-            with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
-                Mtqdm().message(bar, "FFmpeg in use ...")
-                SplitScenes(self.state.frames_path,
-                            self.state.scenes_path,
-                            "png",
-                            "scene",
-                            self.state.scene_threshold,
-                            0.0,
-                            0.0,
-                            self.log).split()
-                Mtqdm().update_bar(bar)
-        elif self.state.split_type == "Break":
-            with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
-                Mtqdm().message(bar, "FFmpeg in use ...")
-                SplitScenes(self.state.frames_path,
-                            self.state.scenes_path,
-                            "png",
-                            "break",
-                            0.0,
-                            float(self.state.break_duration),
-                            float(self.state.break_ratio),
-                            self.log).split()
-                Mtqdm().update_bar(bar)
-        else:
-            # split by minute
-            SplitFrames(
-                self.state.frames_path,
-                self.state.scenes_path,
-                "png",
-                "precise",
-                0,
-                self.state.frames_per_minute,
-                "copy",
-                False,
-                self.log).split()
-
+        self.log("about to process scene splits")
+        self.state.split_scenes(self.log)
         self.log("saving project after splitting into scenes")
         self.state.save()
 
@@ -608,86 +533,30 @@ class VideoRemixer(TabBase):
         self.log("saving project after establishing scene names")
         self.state.save()
 
-        # self.log("checking for zero-length scenes")
-        # bad_scenes = self.state.check_for_bad_scenes()
-        # if bad_scenes:
-        #     bad_scenes = "\r\n".join(bad_scenes)
-        #     self.log(f"zero-length scenes found: " + bad_scenes)
-        #     message = SimpleIcons.WARNING + \
-        #         f" WARNING: Zero-length scenes found - adjust split settings: " + bad_scenes
-        #     return gr.update(selected=2), gr.update(visible=True, value=message), \
-        #         None, None, None, None
+        self.log(f"about to split scenes by {self.state.split_type}")
+        error = self.state.split_scenes(self.log)
+        if error:
+            return gr.update(selected=2), \
+                   gr.update(visible=True,
+                             value=f"There was an error splitting the source video: {error}"), \
+                   *self.empty_args(4)
 
-        if self.state.thumbnail_type == "JPG":
-            thumb_scale = self.config.remixer_settings["thumb_scale"]
-            max_thumb_size = self.config.remixer_settings["max_thumb_size"]
-            video_w = self.state.video_details['display_width']
-            video_h = self.state.video_details['display_height']
+        # TODO put in a check for a bad splits - zero scenes, missing scenes
 
-            max_frame_dimension = video_w if video_w > video_h else video_h
-            thumb_size = max_frame_dimension * thumb_scale
-            if thumb_size > max_thumb_size:
-                thumb_scale = max_thumb_size / max_frame_dimension
-
-            self.state.thumbnail_path = os.path.join(self.state.project_path, "THUMBNAILS")
-            self.log(f"creating thumbnails directory {self.state.thumbnail_path}")
-            create_directory(self.state.thumbnail_path)
-
-            global_options = self.config.ffmpeg_settings["global_options"]
-            self.log(f"creating JPG thumbnails")
-            SliceVideo(self.state.source_video,
-                        self.state.project_fps,
-                        self.state.scenes_path,
-                        self.state.thumbnail_path,
-                        thumb_scale,
-                        "jpg",
-                        0,
-                        1,
-                        0,
-                        False,
-                        0.0,
-                        0.0,
-                        self.log,
-                        global_options=global_options).slice()
-        elif self.state.thumbnail_type == "GIF":
-            gif_fps = self.config.remixer_settings["default_gif_fps"]
-            gif_factor = self.config.remixer_settings["gif_factor"]
-            gif_end_delay = self.config.remixer_settings["gif_end_delay"]
-            thumb_scale = self.config.remixer_settings["thumb_scale"]
-            max_thumb_size = self.config.remixer_settings["max_thumb_size"]
-            video_w = self.state.video_details['display_width']
-            video_h = self.state.video_details['display_height']
-
-            max_frame_dimension = video_w if video_w > video_h else video_h
-            thumb_size = max_frame_dimension * thumb_scale
-            if thumb_size > max_thumb_size:
-                thumb_scale = max_thumb_size / max_frame_dimension
-            self.state.thumbnail_path = os.path.join(self.state.project_path, "THUMBNAILS")
-            self.log(f"creating thumbnails directory {self.state.thumbnail_path}")
-            create_directory(self.state.thumbnail_path)
-            global_options = self.config.ffmpeg_settings["global_options"]
-            self.log(f"creating animated GIF thumbnails")
-            SliceVideo(self.state.source_video,
-                        self.state.project_fps,
-                        self.state.scenes_path,
-                        self.state.thumbnail_path,
-                        thumb_scale,
-                        "gif",
-                        0,
-                        gif_factor,
-                        0,
-                        False,
-                        gif_fps,
-                        gif_end_delay,
-                        self.log,
-                        global_options=global_options).slice()
-        else:
-            raise ValueError(f"thumbnail type '{self.state.thumbnail_type}' is not implemented")
+        self.log(f"about to create thumbnails of type {self.state.thumbnail_type}")
+        try:
+            self.state.create_thumbnails(self.log, global_options, self.config.remixer_settings)
+        except ValueError as error:
+            return gr.update(selected=2), \
+                   gr.update(visible=True,
+                    value=f"There was an error creating thumbnails from source video: {error}"), \
+                   *self.empty_args(4)
 
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
         self.log("saving project after creating scene thumbnails")
         self.state.save()
 
+        # TODO this is fine as part of project setup but does it belong here?
         self.state.clips_path = os.path.join(self.state.project_path, "CLIPS")
         self.log(f"creating clips directory {self.state.clips_path}")
         create_directory(self.state.clips_path)
@@ -696,8 +565,9 @@ class VideoRemixer(TabBase):
         self.log("saving project after setting up scene selection states")
         self.state.save_progress("choose")
 
-        return gr.update(selected=3), gr.update(visible=True), \
-            *self.scene_chooser_details(self.state.current_scene)
+        return gr.update(selected=3), \
+               gr.update(visible=True), \
+               *self.scene_chooser_details(self.state.current_scene)
 
     def back_button2(self):
         return gr.update(selected=1)
@@ -770,56 +640,26 @@ class VideoRemixer(TabBase):
 
     # given scene name such as [042-420] compute details to display in Scene Chooser
     def scene_chooser_details(self, scene_name):
-        if self.state.thumbnails:
-            try:
-                scene_index = self.state.scene_names.index(scene_name)
-                thumbnail_path = self.state.thumbnails[scene_index]
-                scene_state = self.state.scene_states[scene_name]
-
-                scene_position = f"{scene_index+1}/{len(self.state.scene_names)}"
-                first_index, last_index, _ = details_from_group_name(scene_name)
-                scene_start = seconds_to_hmsf(first_index / self.state.project_fps,
-                                            self.state.project_fps)
-                scene_duration = seconds_to_hmsf((last_index - first_index) / self.state.project_fps,
-                                                self.state.project_fps)
-                sep = "      "
-                scene_info = f"{scene_position}{sep}Time: {scene_start}{sep}Span: {scene_duration}"
-                return scene_name, thumbnail_path, scene_state, scene_info
-            except ValueError as error:
-                self.log(f"value error using scene_chooser_details(): {error}")
-                return None, None, None, None
-            except IndexError as error:
-                self.log(f"index error using scene_chooser_details(): {error}")
-                return None, None, None, None
-        else:
+        if not self.state.thumbnails:
             self.log(f"thumbnails don't exist yet in scene_chooser_details()")
-            return None, None, None, None
+            return self.empty_args(4)
+
+        try:
+            thumbnail_path, scene_state, scene_info = self.state.scene_chooser_details(scene_name)
+            return scene_name, thumbnail_path, scene_state, scene_info
+        except ValueError as error:
+            self.log(error)
+            return self.empty_args(4)
 
     # User has clicked Done Chooser Scenes from Scene Chooser
     def next_button3(self):
-        with Jot() as jot:
-            all_scenes = len(self.state.scene_names)
-            all_frames = self.state.scene_frames("all")
-            all_time = self.state.scene_frames_time(all_frames)
-            keep_scenes = len(self.state.kept_scenes())
-            keep_frames = self.state.scene_frames("keep")
-            keep_time = self.state.scene_frames_time(keep_frames)
-            drop_scenes = len(self.state.dropped_scenes())
-            drop_frames = self.state.scene_frames("drop")
-            drop_time = self.state.scene_frames_time(drop_frames)
-
-            jot.down(f"SOURCE: Scenes: {all_scenes:,d} Frames: {all_frames:,d} Length: {all_time}")
-            jot.down()
-            jot.down(f"KEEP: Scenes: {keep_scenes:,d} Frames: {keep_frames:,d} Length: {keep_time}")
-            jot.down()
-            jot.down(f"DROP: Scenes: {drop_scenes:,d} Frames: {drop_frames:,d} Length: {drop_time}")
-        self.state.project_info4 = jot
+        self.state.project_info4 = self.state.chosen_scenes_report()
 
         # user will expect to return to the compilation tab on reopening
         self.log("saving project after displaying scene choices")
         self.state.save_progress("compile")
 
-        return gr.update(selected=4), jot
+        return gr.update(selected=4), self.state.project_info4
 
     def back_button3(self):
         return gr.update(selected=2)
@@ -829,27 +669,18 @@ class VideoRemixer(TabBase):
     # User has clicked Compile Scenes from Compile Scenes
     def next_button4(self):
         self.log("moving previously dropped scenes back to scenes directory")
-        dropped_dirs = get_directories(self.state.dropped_scenes_path)
-        for dir in dropped_dirs:
-            current_path = os.path.join(self.state.dropped_scenes_path, dir)
-            undropped_path = os.path.join(self.state.scenes_path, dir)
-            self.log(f"moving directory {current_path} to {undropped_path}")
-            shutil.move(current_path, undropped_path)
+        self.state.uncompile_scenes()
 
         self.log("moving dropped scenes to dropped scenes directory")
-        dropped_scenes = self.state.dropped_scenes()
-        for dir in dropped_scenes:
-            current_path = os.path.join(self.state.scenes_path, dir)
-            dropped_path = os.path.join(self.state.dropped_scenes_path, dir)
-            self.log(f"moving directory {current_path} to {dropped_path}")
-            shutil.move(current_path, dropped_path)
+        self.state.compile_scenes()
 
         # user will expect to return to the processing tab on reopening
         self.log("saving project after compiling scenes")
         self.state.save_progress("process")
 
-        return gr.update(selected=5), gr.update(visible=True), \
-            "Next: Perform all Processing Steps (takes from hours to days)"
+        return gr.update(selected=5),  \
+               gr.update(visible=True), \
+               "Next: Perform all Processing Steps (takes from hours to days)"
 
     def back_button4(self):
         return gr.update(selected=3)
@@ -858,281 +689,80 @@ class VideoRemixer(TabBase):
 
     # User has clicked Process Remix from Processing Options
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option):
+        global_options = self.config.ffmpeg_settings["global_options"]
         self.state.resynthesize = resynthesize
         self.state.inflate = inflate
         self.state.resize = resize
         self.state.upscale = upscale
         self.state.upscale_option = upscale_option
-
         self.log("saving project after storing processing choices")
         self.state.save()
 
         jot = Jot()
         kept_scenes = self.state.kept_scenes()
         if kept_scenes:
-            # need to remove anything that was created previously based on these settings
             self.log("removing processed files from previous processing choices")
-            remove_directories([
-                self.state.clips_path,
-                self.state.resize_path,
-                self.state.resynthesis_path,
-                self.state.inflation_path,
-                self.state.upscale_path])
+            self.state.reset_at_processing_options()
 
             if self.state.video_details["has_audio"]:
-                self.state.audio_clips_path = os.path.join(self.state.clips_path, "AUDIO")
-                self.log(f"creating audio clips directory {self.state.audio_clips_path}")
-                create_directory(self.state.audio_clips_path)
-                global_options = self.config.ffmpeg_settings["global_options"]
-
-                self.log(f"creating audio clips")
-                edge_trim = 1 if self.state.resynthesize else 0
-                SliceVideo(self.state.source_video,
-                            self.state.project_fps,
-                            self.state.scenes_path,
-                            self.state.audio_clips_path,
-                            0.0,
-                            "wav",
-                            0,
-                            1,
-                            edge_trim,
-                            False,
-                            0.0,
-                            0.0,
-                            self.log,
-                            global_options=global_options).slice()
+                self.log("about to create autio clips")
+                self.state.create_audio_clips(self.log, global_options)
                 self.state.audio_clips = sorted(get_files(self.state.audio_clips_path))
-                jot.down(f"Audio clips created in {self.state.audio_clips_path}")
                 self.log("saving project after creating audio clips")
                 self.state.save()
+                jot.down(f"Audio clips created in {self.state.audio_clips_path}")
 
             if self.state.resize:
-                scenes_base_path = self.state.scenes_path
-                self.state.resize_path = os.path.join(self.state.project_path, "SCENES-RC")
-                self.log(f"creating resized scenes directory {self.state.resize_path}")
-                create_directory(self.state.resize_path)
-
-                self.log(f"resize processing with input_path={scenes_base_path}" +\
-                        f" output_path={self.state.resize_path}")
-
-                with Mtqdm().open_bar(total=len(kept_scenes), desc="Resize") as bar:
-                    for scene_name in kept_scenes:
-                        scene_input_path = os.path.join(scenes_base_path, scene_name)
-                        scene_output_path = os.path.join(self.state.resize_path, scene_name)
-
-                        self.log(f"creating output directory {scene_output_path}")
-                        create_directory(scene_output_path)
-
-                        if self.state.resize_w == self.state.video_details["content_width"] and \
-                                self.state.resize_h == self.state.video_details["content_height"]:
-                            scale_type = "none"
-                        else:
-                            scale_type = self.config.remixer_settings["scale_type"]
-
-                        if self.state.crop_w == self.state.resize_w and \
-                                self.state.crop_h == self.state.resize_h:
-                            crop_type = "none"
-                        else:
-                            crop_type = "crop"
-                        crop_offset = -1
-
-                        self.log(f"initializing ResizeFrames with input_path={scene_input_path}" +\
-                                f" output_path={scene_output_path}"+\
-                                f" scale_type={scale_type}" +\
-                                f" scale_width={self.state.resize_w}"+\
-                                f" scale_height={self.state.resize_h}" +\
-                                f" crop_type={crop_type} crop_width={self.state.crop_w}" +\
-                                f" crop_height={self.state.crop_h} crop_offset_x={crop_offset}" +\
-                                f" crop_offset_y={crop_offset}")
-                        ResizeFrames(scene_input_path,
-                                    scene_output_path,
-                                    int(self.state.resize_w),
-                                    int(self.state.resize_h),
-                                    scale_type,
-                                    self.log,
-                                    crop_type=crop_type,
-                                    crop_width=self.state.crop_w,
-                                    crop_height=self.state.crop_h,
-                                    crop_offset_x=crop_offset,
-                                    crop_offset_y=crop_offset).resize()
-                        Mtqdm().update_bar(bar)
-
-                jot.down(f"Resized scenes created in {self.state.resize_path}")
+                self.log("about to resize scenes")
+                self.state.resize(self.log, kept_scenes, self.config.remixer_settings)
                 self.log("saving project after resizing frames")
                 self.state.save()
+                jot.down(f"Resized scenes created in {self.state.resize_path}")
 
             if self.state.resynthesize:
-                interpolater = Interpolate(self.engine.model, self.log)
-                use_time_step = self.config.engine_settings["use_time_step"]
-                deep_interpolater = DeepInterpolate(interpolater, use_time_step, self.log)
-                series_interpolater = InterpolateSeries(deep_interpolater, self.log)
-
-                if self.state.resize:
-                    scenes_base_path = self.state.resize_path
-                else:
-                    scenes_base_path = self.state.scenes_path
-
-                self.state.resynthesis_path = os.path.join(self.state.project_path, "SCENES-RE")
-                self.log(f"creating resynthesized scenes directory {self.state.resynthesis_path}")
-                create_directory(self.state.resynthesis_path)
-
-                self.log(f"resynthesize processing with input_path={scenes_base_path}" +\
-                        f" output_path={self.state.resynthesis_path}")
-
-                with Mtqdm().open_bar(total=len(kept_scenes), desc="Resynth") as bar:
-                    for scene_name in kept_scenes:
-                        scene_input_path = os.path.join(scenes_base_path, scene_name)
-                        scene_output_path = os.path.join(self.state.resynthesis_path, scene_name)
-
-                        self.log(f"creating output directory {scene_output_path}")
-                        create_directory(scene_output_path)
-
-                        output_basename = "resynthesized_frames"
-                        file_list = sorted(get_files(scene_input_path, extension="png"))
-
-                        self.log(f"beginning series of frame recreations at {scene_output_path}")
-                        series_interpolater.interpolate_series(file_list,
-                                                               scene_output_path,
-                                                               1,
-                                                               output_basename,
-                                                               offset=2)
-
-                        self.log(f"auto-resequencing recreated frames at {scene_output_path}")
-                        ResequenceFiles(scene_output_path,
-                                        "png",
-                                        "resynthesized_frame",
-                                        1,
-                                        1,
-                                        1,
-                                        0,
-                                        -1,
-                                        True,
-                                        self.log).resequence()
-                        Mtqdm().update_bar(bar)
-
-                jot.down(f"Resynthesized scenes created in {self.state.resynthesis_path}")
+                self.state.resynthesize_scenes(self.log,
+                                               kept_scenes,
+                                               self.engine,
+                                               self.config.engine_settings)
                 self.log("saving project after resynthesizing frames")
                 self.state.save()
+                jot.down(f"Resynthesized scenes created in {self.state.resynthesis_path}")
 
             if self.state.inflate:
-                interpolater = Interpolate(self.engine.model, self.log)
-                use_time_step = self.config.engine_settings["use_time_step"]
-                deep_interpolater = DeepInterpolate(interpolater, use_time_step, self.log)
-                series_interpolater = InterpolateSeries(deep_interpolater, self.log)
-
-                if self.state.resynthesize:
-                    scenes_base_path = self.state.resynthesis_path
-                elif self.state.resize:
-                    scenes_base_path = self.state.resize_path
-                else:
-                    scenes_base_path = self.state.scenes_path
-
-                self.state.inflation_path = os.path.join(self.state.project_path, "SCENES-IN")
-                self.log(f"creating inflated scenes directory {self.state.inflation_path}")
-                create_directory(self.state.inflation_path)
-
-                self.log(f"inflation processing with input_path={scenes_base_path}" +\
-                        f" output_path={self.state.inflation_path}")
-
-                with Mtqdm().open_bar(total=len(kept_scenes), desc="Inflate") as bar:
-                    for scene_name in kept_scenes:
-                        scene_input_path = os.path.join(scenes_base_path, scene_name)
-                        scene_output_path = os.path.join(self.state.inflation_path, scene_name)
-
-                        self.log(f"creating output directory {scene_output_path}")
-                        create_directory(scene_output_path)
-
-                        output_basename = "interpolated_frames"
-                        file_list = sorted(get_files(scene_input_path, extension="png"))
-                        self.log(f"beginning series of deep interpolations at {scene_output_path}")
-                        series_interpolater.interpolate_series(file_list, scene_output_path, 1,
-                            output_basename)
-
-                        self.log(f"auto-resequencing recreated frames at {scene_output_path}")
-                        ResequenceFiles(scene_output_path,
-                                        "png",
-                                        "inflated_frame",
-                                        1,
-                                        1,
-                                        1,
-                                        0,
-                                        -1,
-                                        True,
-                                        self.log).resequence()
-                        Mtqdm().update_bar(bar)
-
-                jot.down(f"Inflated scenes created in {self.state.inflation_path}")
+                self.state.inflate_scenes(self.log,
+                                               kept_scenes,
+                                               self.engine,
+                                               self.config.engine_settings)
                 self.log("saving project after inflating frames")
                 self.state.save()
+                jot.down(f"Inflated scenes created in {self.state.inflation_path}")
 
             if self.state.upscale:
-                if self.state.inflate:
-                    scenes_base_path = self.state.inflation_path
-                elif self.state.resynthesize:
-                    scenes_base_path = self.state.resynthesis_path
-                elif self.state.resize:
-                    scenes_base_path = self.state.resize_path
-                else:
-                    scenes_base_path = self.state.scenes_path
-
-                suffix = self.state.upscale_option
-                self.state.upscale_path = os.path.join(self.state.project_path,
-                                                       "SCENES-UP" + suffix)
-                self.log(f"creating upscaled scenes directory {self.state.upscale_path}")
-                create_directory(self.state.upscale_path)
-
-                self.log(f"upscale processing with input_path={scenes_base_path}" +\
-                        f" output_path={self.state.upscale_path}")
-
-                model_name = self.config.realesrgan_settings["model_name"]
-                gpu_ids = self.config.realesrgan_settings["gpu_ids"]
-                fp32 = self.config.realesrgan_settings["fp32"]
-                use_tiling = self.config.remixer_settings["use_tiling"]
-
-                if use_tiling:
-                    tiling = self.config.realesrgan_settings["tiling"]
-                    tile_pad = self.config.realesrgan_settings["tile_pad"]
-                else:
-                    tiling = 0
-                    tile_pad = 0
-                upscaler = UpscaleSeries(model_name, gpu_ids, fp32, tiling, tile_pad, self.log)
-                upscale_factor = 2.0 if self.state.upscale_option == "2X" else 4.0
-                with Mtqdm().open_bar(total=len(kept_scenes), desc="Upscale") as bar:
-                    for scene_name in kept_scenes:
-                        scene_input_path = os.path.join(scenes_base_path, scene_name)
-                        scene_output_path = os.path.join(self.state.upscale_path, scene_name)
-
-                        self.log(f"creating output directory {scene_output_path}")
-                        create_directory(scene_output_path)
-
-                        file_list = sorted(get_files(scene_input_path))
-                        output_basename = "upscaled_frames"
-
-                        self.log(f"beginning series of upscaling at {scene_output_path}")
-                        upscaler.upscale_series(file_list, scene_output_path, upscale_factor,
-                                                            output_basename, "png")
-                        Mtqdm().update_bar(bar)
-
-                jot.down(f"Upscaled scenes created in {self.state.upscale_path}")
+                self.state.upscale_scenes(self.log,
+                                          kept_scenes,
+                                          self.config.realesrgan_settings,
+                                          self.config.remixer_settings)
                 self.log("saving project after upscaling frames")
                 self.state.save()
+                jot.down(f"Upscaled scenes created in {self.state.upscale_path}")
 
             self.state.summary_info6 = jot
-
-            _, filename, _ = split_filepath(self.state.source_video)
-            output_filepath = os.path.join(self.state.project_path, f"{filename}-remixed.mp4")
-            self.state.summary_info6 = jot
+            self.state.output_filepath = self.state.default_remix_filepath()
+            self.state.save()
 
             # user will expect to return to the save remix tab on reopening
             self.log("saving project after completing processing steps")
             self.state.save_progress("save")
 
-            return gr.update(selected=6), gr.update(visible=True), jot, output_filepath
+            return gr.update(selected=6), \
+                   gr.update(visible=True), \
+                   jot, \
+                   self.state.output_filepath
         else:
             return gr.update(selected=5), \
-                    gr.update(
+                   gr.update(
                 value="At least one scene must be set to 'Keep' before processing can proceed"), \
-                    None
+                   None, None
 
     def back_button5(self):
         return gr.update(selected=4)
@@ -1141,99 +771,42 @@ class VideoRemixer(TabBase):
 
     # User has clicked Save Remix from Save Remix
     def next_button6(self, output_filepath, quality):
-        kept_scenes = self.state.kept_scenes()
-        if output_filepath:
-            if kept_scenes:
-                self.state.video_clips_path = os.path.join(self.state.clips_path, "VIDEO")
-                self.log(f"creating video clips directory {self.state.video_clips_path}")
-                create_directory(self.state.video_clips_path)
+        global_options = self.config.ffmpeg_settings["global_options"]
 
-                if self.state.upscale:
-                    scenes_base_path = self.state.upscale_path
-                elif self.state.inflate:
-                    scenes_base_path = self.state.inflation_path
-                elif self.state.resynthesize:
-                    scenes_base_path = self.state.resynthesis_path
-                elif self.state.resize:
-                    scenes_base_path = self.state.resize_path
-                else:
-                    scenes_base_path = self.state.scenes_path
-
-                self.log(f"creating processed video clips")
-                video_clip_fps = \
-                    2 * self.state.project_fps if self.state.inflate else self.state.project_fps
-
-                with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
-                    for scene_name in kept_scenes:
-                        scene_input_path = os.path.join(scenes_base_path, scene_name)
-                        scene_output_filepath = os.path.join(self.state.video_clips_path,
-                                                            f"{scene_name}.mp4")
-
-                        self.log(f"about to resequence files in {scene_input_path}")
-                        ResequenceFiles(scene_input_path,
-                                        "png",
-                                        "processed_frame",
-                                        1,
-                                        1,
-                                        1,
-                                        0,
-                                        -1,
-                                        True,
-                                        self.log).resequence()
-                        self.log(f"about to use PNGtoMP4 with input_path={scene_input_path}" +\
-                                f" fps={video_clip_fps} output_filepath={scene_output_filepath}")
-                        global_options = self.config.ffmpeg_settings["global_options"]
-                        ffcmd = PNGtoMP4(scene_input_path, None, video_clip_fps,
-                                scene_output_filepath, crf=quality, global_options=global_options)
-                        self.log(f"FFMpeg command: {ffcmd}")
-                        Mtqdm().update_bar(bar)
-
-                self.state.video_clips = sorted(get_files(self.state.video_clips_path))
-                self.log("saving project after creating video clips")
-                self.state.save()
-
-                if self.state.video_details["has_audio"]:
-                    self.log(f"merging processed video clips and audio clips")
-                    with Mtqdm().open_bar(total=len(kept_scenes), desc="Merge Clips") as bar:
-                        for index, scene_name in enumerate(kept_scenes):
-                            scene_video_path = self.state.video_clips[index]
-                            scene_audio_path = self.state.audio_clips[index]
-                            scene_output_filepath = os.path.join(self.state.clips_path,
-                                                                f"{scene_name}.mp4")
-                            self.log(
-                        f"about to use combine_video_audio with video_path={scene_video_path} " +\
-                        f"audio_path={scene_audio_path} output_filepath={scene_output_filepath}")
-                            global_options = self.config.ffmpeg_settings["global_options"]
-                            ffcmd = combine_video_audio(scene_video_path, scene_audio_path,
-                                            scene_output_filepath, global_options=global_options)
-                            self.log(f"FFmpeg command {ffcmd}")
-                            Mtqdm().update_bar(bar)
-
-                if self.state.video_details["has_audio"]:
-                    self.state.clips = sorted(get_files(self.state.clips_path))
-                else:
-                    self.state.clips = sorted(get_files(self.state.video_clips_path))
-                self.log("saving project after creating merged clips")
-                self.state.save()
-
-                if self.state.clips:
-                    with Mtqdm().open_bar(total=1, desc="Remixing Video") as bar:
-                        Mtqdm().message(bar, "FFmpeg in use ...")
-                        self.log(
-                            f"about to use combine_videos with output_path={output_filepath} " +\
-                            f"and input_paths={self.state.clips}")
-                        global_options = self.config.ffmpeg_settings["global_options"]
-                        ffcmd = combine_videos(self.state.clips, output_filepath,
-                                               global_options=global_options)
-                        self.log(f"FFmpeg command {ffcmd}")
-                        Mtqdm().update_bar(bar)
-
-                    return gr.update(value=f"Remixed video {output_filepath} is complete.",
-                                        visible=True)
-            else:
-                return gr.update(value="No processed video clips were found", visible=True)
-        else:
+        if not output_filepath:
             return gr.update(value="Enter a path for the remixed video to proceed", visible=True)
+
+        kept_scenes = self.state.kept_scenes()
+        if not kept_scenes:
+            return gr.update(value="No kept scenes were found", visible=True)
+
+        self.output_filepath = output_filepath
+        self.state.output_quality = quality
+        self.log("saving after storing remix output choices")
+        self.state.save()
+
+        self.log(f"about to create video clips")
+        self.state.create_video_clips(self.log, kept_scenes, global_options)
+        self.state.video_clips = sorted(get_files(self.state.video_clips_path))
+        self.log("saving project after creating video clips")
+        self.state.save()
+
+        self.log("about to create scene clips")
+        self.state.create_scene_clips(self, kept_scenes, global_options)
+        self.log("saving project after creating scene clips")
+        self.state.save()
+
+        if not self.state.clips:
+            return gr.update(value="No processed video clips were found", visible=True)
+
+        self.log("about to create remix viedeo")
+        ffcmd = self.state.create_remix_video(global_options)
+        self.log(f"FFmpeg command: {ffcmd}")
+        self.log("saving project after creating remix video")
+        self.state.save()
+
+        return gr.update(value=f"Remixed video {output_filepath} is complete.",
+                         visible=True)
 
     def back_button6(self):
         return gr.update(selected=5)
