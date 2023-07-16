@@ -445,6 +445,7 @@ class VideoRemixerState():
             jot.down(f"KEEP: Scenes: {keep_scenes:,d} Frames: {keep_frames:,d} Length: {keep_time}")
             jot.down()
             jot.down(f"DROP: Scenes: {drop_scenes:,d} Frames: {drop_frames:,d} Length: {drop_time}")
+        return jot
 
     def uncompile_scenes(self):
         dropped_dirs = get_directories(self.dropped_scenes_path)
