@@ -446,32 +446,33 @@ class VideoRemixer(TabBase):
                    *self.empty_args(26)
 
         return_to_tab = self.state.get_progress_tab()
-        scene_details = self.scene_chooser_details(self.state.current_scene)
+        scene_details = self.scene_chooser_details(self.state.tryattr("current_scene"))
+
         return gr.update(selected=return_to_tab), \
                gr.update(visible=True), \
-               self.state.video_info1, \
-               self.state.project_path, \
-               self.state.project_fps, \
-               self.state.deinterlace, \
-               self.state.split_type, \
-               self.state.scene_threshold, \
-               self.state.break_duration, \
-               self.state.break_ratio, \
-               self.state.resize_w, \
-               self.state.resize_h, \
-               self.state.crop_w, \
-               self.state.crop_h, \
-               self.state.project_info2, \
-               self.state.thumbnail_type, \
+               self.state.tryattr("video_info1"), \
+               self.state.tryattr("project_path"), \
+               self.state.tryattr("project_fps", self.config.remixer_settings["def_project_fps"]), \
+               self.state.tryattr("deinterlace", self.state.UI_SAFETY_DEFAULTS["deinterlace"]), \
+               self.state.tryattr("split_type", self.state.UI_SAFETY_DEFAULTS["split_type"]), \
+               self.state.tryattr("scene_threshold", self.state.UI_SAFETY_DEFAULTS["scene_threshold"]), \
+               self.state.tryattr("break_duration", self.state.UI_SAFETY_DEFAULTS["break_duration"]), \
+               self.state.tryattr("break_ratio", self.state.UI_SAFETY_DEFAULTS["break_ratio"]), \
+               self.state.tryattr("resize_w"), \
+               self.state.tryattr("resize_h"), \
+               self.state.tryattr("crop_w"), \
+               self.state.tryattr("crop_h"), \
+               self.state.tryattr("project_info2"), \
+               self.state.tryattr("thumbnail_type", self.state.UI_SAFETY_DEFAULTS["thumbnail_type"]), \
                *scene_details, \
-               self.state.project_info4, \
-               self.state.resize, \
-               self.state.resynthesize, \
-               self.state.inflate, \
-               self.state.upscale, \
-               self.state.upscale_option, \
-               self.state.summary_info6, \
-               self.state.output_filepath
+               self.state.tryattr("project_info4"), \
+               self.state.tryattr("resize", self.state.UI_SAFETY_DEFAULTS["resize"]), \
+               self.state.tryattr("resynthesize", self.state.UI_SAFETY_DEFAULTS["resynthesize"]), \
+               self.state.tryattr("inflate", self.state.UI_SAFETY_DEFAULTS["inflate"]), \
+               self.state.tryattr("upscale", self.state.UI_SAFETY_DEFAULTS["upscale"]), \
+               self.state.tryattr("upscale_option", self.state.UI_SAFETY_DEFAULTS["upscale_option"]), \
+               self.state.tryattr("summary_info6"), \
+               self.state.tryattr("output_filepath")
 
     ### REMIX SETTINGS EVENT HANDLERS
 
