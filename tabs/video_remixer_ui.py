@@ -712,13 +712,6 @@ class VideoRemixer(TabBase):
             self.log("saving project after purging stale content")
             self.state.save()
 
-            if self.state.video_details["has_audio"] and not self.state.clips:
-                self.log("about to create autio clips")
-                self.state.create_audio_clips(self.log, global_options)
-                self.log("saving project after creating audio clips")
-                self.state.save()
-                jot.down(f"Audio clips created in {self.state.audio_clips_path}")
-
             if self.state.resize and not self.state.processed_content_present("resize"):
                 self.log("about to resize scenes")
                 self.state.resize_scenes(self.log, kept_scenes, self.config.remixer_settings)
@@ -783,22 +776,39 @@ class VideoRemixer(TabBase):
         if not output_filepath:
             return gr.update(value="Enter a path for the remixed video to proceed", visible=True)
 
-        kept_scenes = self.state.kept_scenes()
-        if not kept_scenes:
-            return gr.update(value="No kept scenes were found", visible=True)
-
-        self.output_filepath = output_filepath
+        self.state.output_filepath = output_filepath
         self.state.output_quality = quality
         self.log("saving after storing remix output choices")
         self.state.save()
 
-        self.log(f"about to create video clips")
-        self.state.create_video_clips(self.log, kept_scenes, global_options)
-        self.log("saving project after creating video clips")
+        kept_scenes = self.state.kept_scenes()
+        if not kept_scenes:
+            return gr.update(value="No kept scenes were found", visible=True)
+
+        self.log("about to check and drop empty scenes")
+        self.state.drop_empty_processed_scenes(kept_scenes)
+        self.log("saving after dropping empty scenes")
         self.state.save()
 
+        # get this again in case scenes have been auto-dropped
+        kept_scenes = self.state.kept_scenes()
+        if not kept_scenes:
+            return gr.update(value="No kept scenes were found", visible=True)
+
+        if self.state.video_details["has_audio"] and not self.state.processed_content_present("audio"):
+            self.log("about to create audio clips")
+            self.state.create_audio_clips(self.log, global_options)
+            self.log("saving project after creating audio clips")
+            self.state.save()
+
+        if not self.state.processed_content_present("video"):
+            self.log(f"about to create video clips")
+            self.state.create_video_clips(self.log, kept_scenes, global_options)
+            self.log("saving project after creating video clips")
+            self.state.save()
+
         self.log("about to create scene clips")
-        self.state.create_scene_clips(self, kept_scenes, global_options)
+        self.state.create_scene_clips(kept_scenes, global_options)
         self.log("saving project after creating scene clips")
         self.state.save()
 

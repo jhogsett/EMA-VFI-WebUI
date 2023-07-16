@@ -499,6 +499,12 @@ class VideoRemixerState():
         elif present_at == "upscale":
             upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
             return True if os.path.exists(upscale_path) and get_directories(upscale_path) else False
+        elif present_at == "audio":
+            audio_clips_path = os.path.join(self.clips_path, self.AUDIO_CLIPS_PATH)
+            return True if os.path.exists(audio_clips_path) and get_directories(audio_clips_path) else False
+        elif present_at == "video":
+            video_clips_path = os.path.join(self.clips_path, self.VIDEO_CLIPS_PATH)
+            return True if os.path.exists(video_clips_path) and get_directories(video_clips_path) else False
 
     def purge_stale_processed_content(self, purge_upscale):
         # content is stale if it is present on disk but currently deselected
@@ -511,29 +517,6 @@ class VideoRemixerState():
             self.purge_processed_content("inflate")
         elif self.processed_content_present("upscale") and (not self.upscale or purge_upscale):
             self.purge_processed_content("upscale")
-
-    AUDIO_CLIPS_PATH = "AUDIO"
-
-    def create_audio_clips(self, log_fn, global_options):
-        self.audio_clips_path = os.path.join(self.clips_path, self.AUDIO_CLIPS_PATH)
-        create_directory(self.audio_clips_path)
-
-        edge_trim = 1 if self.resynthesize else 0
-        SliceVideo(self.source_video,
-                    self.project_fps,
-                    self.scenes_path,
-                    self.audio_clips_path,
-                    0.0,
-                    "wav",
-                    0,
-                    1,
-                    edge_trim,
-                    False,
-                    0.0,
-                    0.0,
-                    log_fn,
-                    global_options=global_options).slice()
-        self.audio_clips = sorted(get_files(self.audio_clips_path))
 
     RESIZE_PATH = "SCENES-RC"
 
@@ -703,6 +686,54 @@ class VideoRemixerState():
         _, filename, _ = split_filepath(self.source_video)
         return os.path.join(self.project_path, f"{filename}-remixed.mp4")
 
+    # find scenes that are empty now after processing and should be automatically dropped
+    # this can happen when resynthesis and/or inflation are used on scenes with only a few frames
+    def drop_empty_processed_scenes(self, kept_scenes):
+        # TODO might need to better manage the flow of content between processing steps
+        if self.upscale:
+            scenes_base_path = self.upscale_path
+        elif self.inflate:
+            scenes_base_path = self.inflation_path
+        elif self.resynthesize:
+            scenes_base_path = self.resynthesis_path
+        elif self.resize:
+            scenes_base_path = self.resize_path
+        else:
+            scenes_base_path = self.scenes_path
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Checking Clips") as bar:
+            for scene_name in kept_scenes:
+                scene_input_path = os.path.join(scenes_base_path, scene_name)
+                files = get_files(scene_input_path)
+                if len(files) == 0:
+                    self.scene_states[scene_name] = "Drop"
+                    current_path = os.path.join(self.scenes_path, scene_name)
+                    dropped_path = os.path.join(self.dropped_scenes_path, scene_name)
+                    shutil.move(current_path, dropped_path)
+                Mtqdm().update_bar(bar)
+
+    AUDIO_CLIPS_PATH = "AUDIO"
+
+    def create_audio_clips(self, log_fn, global_options):
+        self.audio_clips_path = os.path.join(self.clips_path, self.AUDIO_CLIPS_PATH)
+        create_directory(self.audio_clips_path)
+
+        edge_trim = 1 if self.resynthesize else 0
+        SliceVideo(self.source_video,
+                    self.project_fps,
+                    self.scenes_path,
+                    self.audio_clips_path,
+                    0.0,
+                    "wav",
+                    0,
+                    1,
+                    edge_trim,
+                    False,
+                    0.0,
+                    0.0,
+                    log_fn,
+                    global_options=global_options).slice()
+        self.audio_clips = sorted(get_files(self.audio_clips_path))
+
     VIDEO_CLIPS_PATH = "VIDEO"
 
     def create_video_clips(self, log_fn, kept_scenes, global_options):
@@ -722,10 +753,11 @@ class VideoRemixerState():
             scenes_base_path = self.scenes_path
 
         video_clip_fps = 2 * self.project_fps if self.inflate else self.project_fps
-        with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_filepath = os.path.join(self.video_clips_path, f"{scene_name}.mp4")
+
                 ResequenceFiles(scene_input_path,
                                 "png",
                                 "processed_frame",
@@ -737,8 +769,8 @@ class VideoRemixerState():
                                 True,
                                 log_fn).resequence()
                 PNGtoMP4(scene_input_path,
-                                 None,
-                                 video_clip_fps,
+                                None,
+                                video_clip_fps,
                                 scene_output_filepath,
                                 crf=self.output_quality,
                                 global_options=global_options)
@@ -747,7 +779,7 @@ class VideoRemixerState():
 
     def create_scene_clips(self, kept_scenes, global_options):
         if self.video_details["has_audio"]:
-            with Mtqdm().open_bar(total=len(kept_scenes), desc="Merge Clips") as bar:
+            with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
                 for index, scene_name in enumerate(kept_scenes):
                     scene_video_path = self.video_clips[index]
                     scene_audio_path = self.audio_clips[index]
