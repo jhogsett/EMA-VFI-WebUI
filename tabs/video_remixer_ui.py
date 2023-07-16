@@ -4,7 +4,7 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.file_utils import get_files, create_directory, get_directories
+from webui_utils.file_utils import get_files, create_directory, get_directories, split_filepath
 from webui_utils.jot import Jot
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
@@ -408,10 +408,11 @@ class VideoRemixer(TabBase):
                              value=error), \
                    *self.empty_args(26)
 
-        if self.state.project_path != project_path:
+        entered_path, _, _ = split_filepath(project_path)
+        if self.state.project_path != entered_path:
             return gr.update(selected=0), \
                    gr.update(visible=True,
-            value=f"Project must be opened from original project path {self.state.project_path}"), \
+            value=f"Portability is not yet implemented, open from: '{self.state.project_path}'"), \
                    *self.empty_args(26)
 
         return_to_tab = self.state.get_progress_tab()
