@@ -352,9 +352,7 @@ class VideoRemixerState():
             if thumb_size > max_thumb_size:
                 thumb_scale = max_thumb_size / max_frame_dimension
             self.thumbnail_path = os.path.join(self.project_path, "THUMBNAILS")
-            self.log(f"creating thumbnails directory {self.thumbnail_path}")
             create_directory(self.thumbnail_path)
-            self.log(f"creating animated GIF thumbnails")
             SliceVideo(self.source_video,
                         self.project_fps,
                         self.scenes_path,
@@ -367,7 +365,7 @@ class VideoRemixerState():
                         False,
                         gif_fps,
                         gif_end_delay,
-                        self.log,
+                        log_fn,
                         global_options=global_options).slice()
         else:
             raise ValueError(f"thumbnail type '{self.thumbnail_type}' is not implemented")
