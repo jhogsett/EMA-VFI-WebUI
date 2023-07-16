@@ -36,6 +36,18 @@ def remove_directories(dirs : list):
         if dir and is_safe_path(dir) and os.path.exists(dir):
             shutil.rmtree(dir)
 
+# remove the files found in the passed directory (no recursion)
+def remove_files(path : str):
+    if path and is_safe_path(path) and os.path.exists(path):
+        files = get_files(path)
+        for file in files:
+            os.remove(file)
+
+# remove the files found in each of the passed directories (no recursion)
+def purge_directories(dirs : list):
+    for _dir in dirs:
+        remove_files(_dir)
+
 _duplicate_directory_progress = None
 def _copy(source_path, dest_path):
     global _duplicate_directory_progress
