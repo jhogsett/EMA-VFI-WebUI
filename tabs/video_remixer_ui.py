@@ -721,7 +721,7 @@ class VideoRemixer(TabBase):
 
             if self.state.resize and not self.state.processed_content_present("resize"):
                 self.log("about to resize scenes")
-                self.state.resize(self.log, kept_scenes, self.config.remixer_settings)
+                self.state.resize_scenes(self.log, kept_scenes, self.config.remixer_settings)
                 self.log("saving project after resizing frames")
                 self.state.save()
                 jot.down(f"Resized scenes created in {self.state.resize_path}")
