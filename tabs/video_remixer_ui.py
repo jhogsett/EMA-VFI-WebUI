@@ -226,19 +226,43 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         summary_info6 = gr.Textbox(label="Processed Content", lines=6,
                                                 interactive=False)
-                    quality_slider = gr.Slider(minimum=minimum_crf, maximum=maximum_crf,
-                        step=1, value=default_crf, label="Video Quality",
-                        info="Lower values mean higher video quality")
-                    output_filepath = gr.Textbox(label="Output Filepath", max_lines=1,
-                               info="Enter a path and filename for the remixed video")
-                    with gr.Row():
-                        message_box6 = gr.Textbox(value=None, show_label=False, interactive=False)
-                    gr.Markdown("*Progress can be tracked in the console*")
-                    with gr.Row():
-                        back_button6 = gr.Button(value="< Back", variant="secondary").\
-                            style(full_width=False)
-                        next_button6 = gr.Button(value="Save Remix " + SimpleIcons.SLOW_SYMBOL,
-                                                variant="primary", elem_id="highlightbutton")
+                    with gr.Tabs():
+                        with gr.Tab(label="Create MP4 Remix"):
+                            quality_slider = gr.Slider(minimum=minimum_crf, maximum=maximum_crf,
+                                step=1, value=default_crf, label="Video Quality",
+                                info="Lower values mean higher video quality")
+                            output_filepath = gr.Textbox(label="Output Filepath", max_lines=1,
+                                    info="Enter a path and filename for the remixed video")
+                            with gr.Row():
+                                message_box60 = gr.Textbox(value=None, show_label=False,
+                                                          interactive=False)
+                            gr.Markdown("*Progress can be tracked in the console*")
+                            with gr.Row():
+                                back_button60 = gr.Button(value="< Back", variant="secondary").\
+                                    style(full_width=False)
+                                next_button60 = gr.Button(
+                                    value="Save Remix " + SimpleIcons.SLOW_SYMBOL,
+                                    variant="primary", elem_id="highlightbutton")
+                        with gr.Tab(label="Create Custom Remix"):
+                            custom_video_options = gr.Textbox(
+                                label="Custom FFmpeg Video Output Options",
+                        info="Passed to FFmpeg as output video settings when converting PNG frames")
+                            custom_audio_options = gr.Textbox(
+                                label="Custom FFmpeg Audio Output Options",
+                        info="Passed to FFmpeg as output audio settings when combining with video")
+                            output_filepath_custom = gr.Textbox(label="Output Filepath", max_lines=1,
+                                    info="Enter a path and filename for the remixed video")
+                            with gr.Row():
+                                message_box61 = gr.Textbox(value=None, show_label=False,
+                                                          interactive=False)
+                            gr.Markdown("*Progress can be tracked in the console*")
+                            with gr.Row():
+                                back_button61 = gr.Button(value="< Back", variant="secondary").\
+                                    style(full_width=False)
+                                next_button61 = gr.Button(
+                                    value="Save Custom Remix " + SimpleIcons.SLOW_SYMBOL,
+                                    variant="primary", elem_id="highlightbutton")
+
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                         WebuiTips.video_remixer_save.render()
 
@@ -329,10 +353,16 @@ class VideoRemixer(TabBase):
 
         back_button5.click(self.back_button5, outputs=tabs_video_remixer)
 
-        next_button6.click(self.next_button6, inputs=[output_filepath, quality_slider],
-                           outputs=message_box6)
+        next_button60.click(self.next_button60, inputs=[output_filepath, quality_slider],
+                           outputs=message_box60)
 
-        back_button6.click(self.back_button6, outputs=tabs_video_remixer)
+        back_button60.click(self.back_button6, outputs=tabs_video_remixer)
+
+        next_button61.click(self.next_button61,
+                        inputs=[custom_video_options, custom_audio_options, output_filepath_custom],
+                        outputs=message_box61)
+
+        back_button61.click(self.back_button6, outputs=tabs_video_remixer)
 
     def empty_args(self, num):
         return [None for _ in range(num)]
@@ -770,7 +800,7 @@ class VideoRemixer(TabBase):
     ### SAVE REMIX EVENT HANDLERS
 
     # User has clicked Save Remix from Save Remix
-    def next_button6(self, output_filepath, quality):
+    def next_button60(self, output_filepath, quality):
         global_options = self.config.ffmpeg_settings["global_options"]
 
         if not output_filepath:
@@ -816,7 +846,67 @@ class VideoRemixer(TabBase):
             return gr.update(value="No processed video clips were found", visible=True)
 
         self.log("about to create remix viedeo")
-        ffcmd = self.state.create_remix_video(global_options)
+        ffcmd = self.state.create_remix_video(global_options, self.state.output_filepath)
+        self.log(f"FFmpeg command: {ffcmd}")
+        self.log("saving project after creating remix video")
+        self.state.save()
+
+        return gr.update(value=f"Remixed video {output_filepath} is complete.",
+                         visible=True)
+
+    # User has clicked Save Custom Remix from Save Remix
+    def next_button61(self, custom_video_options, custom_audio_options, output_filepath):
+        global_options = self.config.ffmpeg_settings["global_options"]
+
+        if not output_filepath:
+            return gr.update(value="Enter a path for the remixed video to proceed", visible=True)
+
+        kept_scenes = self.state.kept_scenes()
+        if not kept_scenes:
+            return gr.update(value="No kept scenes were found", visible=True)
+
+        self.log("about to check and drop empty scenes")
+        self.state.drop_empty_processed_scenes(kept_scenes)
+        self.log("saving after dropping empty scenes")
+        self.state.save()
+
+        # get this again in case scenes have been auto-dropped
+        kept_scenes = self.state.kept_scenes()
+        if not kept_scenes:
+            return gr.update(value="No kept scenes were found", visible=True)
+
+        if self.state.video_details["has_audio"] and not self.state.processed_content_present("audio"):
+            self.log("about to create audio clips")
+            self.state.create_audio_clips(self.log, global_options)
+            self.log("saving project after creating audio clips")
+            self.state.save()
+
+        # grab file type of output file for use in creating scene videos and remix clips
+        _, _, output_ext = split_filepath(output_filepath)
+        output_ext = output_ext[1:]
+
+        # for custom, always recreate video clips
+        self.state.purge_remix_content(purge_from="video_clips")
+
+        self.log(f"about to create video clips")
+        self.state.create_custom_video_clips(self.log, kept_scenes, global_options,
+                                             custom_video_options=custom_video_options,
+                                             custom_ext=output_ext)
+        self.log("saving project after creating video clips")
+        self.state.save()
+
+        self.log("about to create scene clips")
+        self.state.create_custom_scene_clips(kept_scenes, global_options,
+                                             custom_audio_options=custom_audio_options,
+                                             custom_ext=output_ext)
+        self.log("saving project after creating scene clips")
+        self.state.save()
+
+        if not self.state.clips:
+            return gr.update(value="No processed video clips were found", visible=True)
+
+        self.log("about to create remix viedeo")
+        ffcmd = self.state.create_remix_video(global_options, output_filepath)
         self.log(f"FFmpeg command: {ffcmd}")
         self.log("saving project after creating remix video")
         self.state.save()

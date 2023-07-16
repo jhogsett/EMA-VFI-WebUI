@@ -44,7 +44,22 @@ def PNGtoMP4(input_path : str, # pylint: disable=invalid-name
     pattern = filename_pattern or determine_input_pattern(input_path)
     ffcmd = FFmpeg(
         inputs= {os.path.join(input_path, pattern) : f"-framerate {frame_rate}"},
-        outputs={output_filepath : f"-c:v libx264 -r {frame_rate} -pix_fmt yuv420p -crf {crf}"},
+        outputs={output_filepath : f"-r {frame_rate} -pix_fmt yuv420p -c:v libx264 -crf {crf}"},
+        global_options="-y " + global_options)
+    cmd = ffcmd.cmd
+    ffcmd.run()
+    return cmd
+
+def PNGtoCustom(input_path : str, # pylint: disable=invalid-name
+                filename_pattern : str,
+                frame_rate : float,
+                output_filepath : str,
+                global_options : str="",
+                custom_options : str=""):
+    pattern = filename_pattern or determine_input_pattern(input_path)
+    ffcmd = FFmpeg(
+        inputs= {os.path.join(input_path, pattern) : f"-framerate {frame_rate}"},
+        outputs={output_filepath : f"-r {frame_rate} -pix_fmt yuv420p {custom_options}"},
         global_options="-y " + global_options)
     cmd = ffcmd.cmd
     ffcmd.run()
@@ -643,15 +658,17 @@ def decode_aspect(aspect):
     except ZeroDivisionError:
         raise ValueError(f"the aspect '{aspect}' is not valid'")
 
+# presumes AAC audio output
 def combine_video_audio(video_path : str,
                         audio_path : str,
                         output_filepath : str,
-                        global_options : str = ""):
+                        global_options : str = "",
+                        output_options : str = "-c:a aac"):
 # ffmpeg -y -i "MALE Me-TV-03192023-0335PM[000001-001245].wav" -i "MALE Me-TV-03192023-0335PM[000001-001245].mp4" -c:v copy -c:a aac output1.mp4
     ffcmd = FFmpeg(
         inputs= {video_path : None,
                  audio_path : None},
-        outputs={output_filepath : "-c:v copy -c:a aac"},
+        outputs={output_filepath : f"-c:v copy {output_options}"},
         global_options="-y " + global_options)
     cmd = ffcmd.cmd
     ffcmd.run()

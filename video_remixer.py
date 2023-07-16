@@ -3,9 +3,9 @@ import os
 import shutil
 import yaml
 from yaml import Loader, YAMLError
-from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files
+from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files, purge_directories
 from webui_utils.simple_utils import seconds_to_hmsf
-from webui_utils.video_utils import details_from_group_name, get_essential_video_details, MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos
+from webui_utils.video_utils import details_from_group_name, get_essential_video_details, MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom
 from webui_utils.jot import Jot
 from webui_utils.mtqdm import Mtqdm
 from split_scenes import SplitScenes
@@ -482,9 +482,27 @@ class VideoRemixerState():
         elif purge_from == "upscale":
             remove_directories([
                 self.upscale_path])
-        remove_directories([self.video_clips_path])
-        self.video_clips = []
-        self.clips = []
+        self.purge_remix_content(purge_from="audio_clips")
+
+    def purge_remix_content(self, purge_from):
+        if purge_from == "audio_clips":
+            purge_directories([
+                self.audio_clips_path,
+                self.video_clips_path,
+                self.clips_path])
+            self.audio_clips = []
+            self.video_clips = []
+            self.clips = []
+        elif purge_from == "video_clips":
+            purge_directories([
+                self.video_clips_path,
+                self.clips_path])
+            self.video_clips = []
+            self.clips = []
+        elif purge_from == "scene_clips":
+            purge_directories([
+                self.clips_path])
+            self.clips = []
 
     def processed_content_present(self, present_at):
         if present_at == "resize":
@@ -501,10 +519,10 @@ class VideoRemixerState():
             return True if os.path.exists(upscale_path) and get_directories(upscale_path) else False
         elif present_at == "audio":
             audio_clips_path = os.path.join(self.clips_path, self.AUDIO_CLIPS_PATH)
-            return True if os.path.exists(audio_clips_path) and get_directories(audio_clips_path) else False
+            return True if os.path.exists(audio_clips_path) and get_files(audio_clips_path) else False
         elif present_at == "video":
             video_clips_path = os.path.join(self.clips_path, self.VIDEO_CLIPS_PATH)
-            return True if os.path.exists(video_clips_path) and get_directories(video_clips_path) else False
+            return True if os.path.exists(video_clips_path) and get_files(video_clips_path) else False
 
     def purge_stale_processed_content(self, purge_upscale):
         # content is stale if it is present on disk but currently deselected
@@ -791,11 +809,67 @@ class VideoRemixerState():
         else:
             self.clips = sorted(get_files(self.video_clips_path))
 
-    def create_remix_video(self, global_options):
+    def create_custom_video_clips(self, log_fn, kept_scenes, global_options, custom_video_options, custom_ext):
+        self.video_clips_path = os.path.join(self.clips_path, self.VIDEO_CLIPS_PATH)
+        create_directory(self.video_clips_path)
+
+        # TODO might need to better manage the flow of content between processing steps
+        if self.upscale:
+            scenes_base_path = self.upscale_path
+        elif self.inflate:
+            scenes_base_path = self.inflation_path
+        elif self.resynthesize:
+            scenes_base_path = self.resynthesis_path
+        elif self.resize:
+            scenes_base_path = self.resize_path
+        else:
+            scenes_base_path = self.scenes_path
+
+        video_clip_fps = 2 * self.project_fps if self.inflate else self.project_fps
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
+            for scene_name in kept_scenes:
+                scene_input_path = os.path.join(scenes_base_path, scene_name)
+                scene_output_filepath = os.path.join(self.video_clips_path, f"{scene_name}.{custom_ext}")
+
+                ResequenceFiles(scene_input_path,
+                                "png",
+                                "processed_frame",
+                                1,
+                                1,
+                                1,
+                                0,
+                                -1,
+                                True,
+                                log_fn).resequence()
+                PNGtoCustom(scene_input_path,
+                            None,
+                            video_clip_fps,
+                            scene_output_filepath,
+                            global_options=global_options,
+                            custom_options=custom_video_options)
+                Mtqdm().update_bar(bar)
+        self.video_clips = sorted(get_files(self.video_clips_path))
+
+    def create_custom_scene_clips(self, kept_scenes, global_options, custom_audio_options, custom_ext):
+        if self.video_details["has_audio"]:
+            with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
+                for index, scene_name in enumerate(kept_scenes):
+                    scene_video_path = self.video_clips[index]
+                    scene_audio_path = self.audio_clips[index]
+                    scene_output_filepath = os.path.join(self.clips_path, f"{scene_name}.{custom_ext}")
+                    combine_video_audio(scene_video_path, scene_audio_path,
+                                        scene_output_filepath, global_options=global_options,
+                                        output_options=custom_audio_options)
+                    Mtqdm().update_bar(bar)
+            self.clips = sorted(get_files(self.clips_path))
+        else:
+            self.clips = sorted(get_files(self.video_clips_path))
+
+    def create_remix_video(self, global_options, output_filepath):
         with Mtqdm().open_bar(total=1, desc="Saving Remix") as bar:
             Mtqdm().message(bar, "Using FFmpeg to concatenate scene clips - no ETA")
             ffcmd = combine_videos(self.clips,
-                                   self.output_filepath,
+                                   output_filepath,
                                    global_options=global_options)
             Mtqdm().update_bar(bar)
         return ffcmd
