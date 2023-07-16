@@ -273,6 +273,7 @@ class Mtqdm():
 
         # negative and 100% updates don't refresh automatically
         if progress_diff <= 0 or new_progress == total:
+        # if progress_diff < 0:
             bar.refresh()
 
     def get_bar(self, index):
