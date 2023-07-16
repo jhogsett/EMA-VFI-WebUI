@@ -695,32 +695,38 @@ class VideoRemixer(TabBase):
         self.state.inflate = inflate
         self.state.resize = resize
         self.state.upscale = upscale
+
+        upscale_option_changed = False
+        if self.state.upscale_option != None and self.state.upscale_option != upscale_option:
+            upscale_option_changed = True
         self.state.upscale_option = upscale_option
+
         self.log("saving project after storing processing choices")
         self.state.save()
 
         jot = Jot()
         kept_scenes = self.state.kept_scenes()
         if kept_scenes:
-            self.log("removing processed files from previous processing choices")
-            self.state.reset_at_processing_options()
+            self.log("purging stale content")
+            self.state.purge_stale_processed_content(upscale_option_changed)
+            self.log("saving project after purging stale content")
+            self.state.save()
 
-            if self.state.video_details["has_audio"]:
+            if self.state.video_details["has_audio"] and not self.state.clips:
                 self.log("about to create autio clips")
                 self.state.create_audio_clips(self.log, global_options)
-                self.state.audio_clips = sorted(get_files(self.state.audio_clips_path))
                 self.log("saving project after creating audio clips")
                 self.state.save()
                 jot.down(f"Audio clips created in {self.state.audio_clips_path}")
 
-            if self.state.resize:
+            if self.state.resize and not self.state.processed_content_present("resize"):
                 self.log("about to resize scenes")
                 self.state.resize(self.log, kept_scenes, self.config.remixer_settings)
                 self.log("saving project after resizing frames")
                 self.state.save()
                 jot.down(f"Resized scenes created in {self.state.resize_path}")
 
-            if self.state.resynthesize:
+            if self.state.resynthesize and not self.state.processed_content_present("resynth"):
                 self.state.resynthesize_scenes(self.log,
                                                kept_scenes,
                                                self.engine,
@@ -729,7 +735,7 @@ class VideoRemixer(TabBase):
                 self.state.save()
                 jot.down(f"Resynthesized scenes created in {self.state.resynthesis_path}")
 
-            if self.state.inflate:
+            if self.state.inflate and not self.state.processed_content_present("inflate"):
                 self.state.inflate_scenes(self.log,
                                                kept_scenes,
                                                self.engine,
@@ -738,7 +744,7 @@ class VideoRemixer(TabBase):
                 self.state.save()
                 jot.down(f"Inflated scenes created in {self.state.inflation_path}")
 
-            if self.state.upscale:
+            if self.state.upscale and not self.state.processed_content_present("upscale"):
                 self.state.upscale_scenes(self.log,
                                           kept_scenes,
                                           self.config.realesrgan_settings,
@@ -788,7 +794,6 @@ class VideoRemixer(TabBase):
 
         self.log(f"about to create video clips")
         self.state.create_video_clips(self.log, kept_scenes, global_options)
-        self.state.video_clips = sorted(get_files(self.state.video_clips_path))
         self.log("saving project after creating video clips")
         self.state.save()
 

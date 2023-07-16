@@ -462,57 +462,54 @@ class VideoRemixerState():
 
     ## Main Processing ##
 
-    def purge_stale_processed_content(self):
-        pass
+    def purge_processed_content(self, purge_from):
+        if purge_from == "resize":
+            remove_directories([
+                self.resize_path,
+                self.resynthesis_path,
+                self.inflation_path,
+                self.upscale_path])
+        elif purge_from == "resynth":
+            remove_directories([
+                self.resynthesis_path,
+                self.inflation_path,
+                self.upscale_path])
+        elif purge_from == "inflate":
+            remove_directories([
+                self.inflation_path,
+                self.upscale_path])
+        elif purge_from == "upscale":
+            remove_directories([
+                self.upscale_path])
+        remove_directories([self.video_clips_path])
+        self.video_clips = []
+        self.clips = []
 
+    def processed_content_present(self, present_at):
+        if present_at == "resize":
+            resize_path = os.path.join(self.project_path, self.RESIZE_PATH)
+            return True if os.path.exists(resize_path) and get_directories(resize_path) else False
+        elif present_at == "resynth":
+            resynth_path = os.path.join(self.project_path, self.RESYNTH_PATH)
+            return True if os.path.exists(resynth_path) and get_directories(resynth_path) else False
+        elif present_at == "inflate":
+            inflate_path = os.path.join(self.project_path, self.INFLATE_PATH)
+            return True if os.path.exists(inflate_path) and get_directories(inflate_path) else False
+        elif present_at == "upscale":
+            upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
+            return True if os.path.exists(upscale_path) and get_directories(upscale_path) else False
 
-
-    def reset_at_processing_options(self):
-        pass
-
-        # simple rules
-        # if selected, and made, skip making it
-        # if selected, and not made, make it
-        # if not seleted, and made, it will be ignored
-        # if not selected, and not made, it will not be made and will be ignored
-
-
-        # if it was made with something that now isn't wanted, it must be recreated
-
-        # if resize is marked made, and now is not selected:
-        # - if resynth is marked made, and is selected, it needs to be deleted because it is stale
-        # - otherwise there is no need to delete it right now
-
-        # if resynth is marked made, and now is not selected:
-        # - if inflate it marked made, and is selected, it needs to be deleted beacuse it is stale
-        # - otherwise there is no need to delete it right now
-
-        # inflate
-        # upscale
-
-
-
-        # because the processing stage is long, it makes sense to be careful about removing content
-        # TODO add processing steps sub-progress tracking to avoid deleting finished content
-
-        # RULE: only delete if it needs to be recreated
-
-        # recreation example:
-        # first time, want inflation and 2x upscaling
-        # second time around, don't want inflation, but want 4X upscaling
-        # all content was created
-        # if inflation checked before (marked as made) and not checked now
-        # - if something is dependent on it
-
-        # it makes sense to skip already-created content if it's not currently selected
-
-        # remove_directories([
-        #     self.clips_path,
-        #     self.resize_path,
-        #     self.resynthesis_path,
-        #     self.inflation_path,
-        #     self.upscale_path])
-        # reset processing marked done
+    def purge_stale_processed_content(self, purge_upscale):
+        # content is stale if it is present on disk but currently deselected
+        # its presence indicates it and dependent content is now stale
+        if self.processed_content_present("resize") and not self.resize:
+            self.purge_processed_content("resize")
+        elif self.processed_content_present("resynth") and not self.resynthesize:
+            self.purge_processed_content("resynth")
+        elif self.processed_content_present("inflate") and not self.inflate:
+            self.purge_processed_content("inflate")
+        elif self.processed_content_present("upscale") and (not self.upscale or purge_upscale):
+            self.purge_processed_content("upscale")
 
     AUDIO_CLIPS_PATH = "AUDIO"
 
@@ -535,6 +532,7 @@ class VideoRemixerState():
                     0.0,
                     log_fn,
                     global_options=global_options).slice()
+        self.audio_clips = sorted(get_files(self.audio_clips_path))
 
     RESIZE_PATH = "SCENES-RC"
 
@@ -744,6 +742,7 @@ class VideoRemixerState():
                                 crf=self.output_quality,
                                 global_options=global_options)
                 Mtqdm().update_bar(bar)
+        self.video_clips = sorted(get_files(self.video_clips_path))
 
     def create_scene_clips(self, kept_scenes, global_options):
         if self.video_details["has_audio"]:
