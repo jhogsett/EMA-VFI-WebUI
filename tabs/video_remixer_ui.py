@@ -409,10 +409,11 @@ class VideoRemixer(TabBase):
                    *self.empty_args(26)
 
         entered_path, _, _ = split_filepath(project_path)
+        print(entered_path, self.state.project_path, "*" * 100)
         if self.state.project_path != entered_path:
             return gr.update(selected=0), \
                    gr.update(visible=True,
-            value=f"Portability is not yet implemented, open from: '{self.state.project_path}'"), \
+        value=f"Portability will be added later, for now open from: '{self.state.project_path}'"), \
                    *self.empty_args(26)
 
         return_to_tab = self.state.get_progress_tab()
