@@ -831,11 +831,13 @@ class VideoRemixer(TabBase):
             self.log("saving project after creating audio clips")
             self.state.save()
 
-        if not self.state.processed_content_present("video"):
-            self.log(f"about to create video clips")
-            self.state.create_video_clips(self.log, kept_scenes, global_options)
-            self.log("saving project after creating video clips")
-            self.state.save()
+        # always recreate video and scene clips
+        self.state.purge_remix_content(purge_from="video_clips")
+
+        self.log(f"about to create video clips")
+        self.state.create_video_clips(self.log, kept_scenes, global_options)
+        self.log("saving project after creating video clips")
+        self.state.save()
 
         self.log("about to create scene clips")
         self.state.create_scene_clips(kept_scenes, global_options)
@@ -885,7 +887,7 @@ class VideoRemixer(TabBase):
         _, _, output_ext = split_filepath(output_filepath)
         output_ext = output_ext[1:]
 
-        # for custom, always recreate video clips
+        # always recreate video and scene clips
         self.state.purge_remix_content(purge_from="video_clips")
 
         self.log(f"about to create video clips")
