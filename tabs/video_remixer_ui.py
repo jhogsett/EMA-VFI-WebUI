@@ -554,8 +554,13 @@ class VideoRemixer(TabBase):
         self.log("saving project after establishing scene paths")
         self.state.save()
 
-        self.log("about to process scene splits")
-        self.state.split_scenes(self.log)
+        self.log(f"about to split scenes by {self.state.split_type}")
+        error = self.state.split_scenes(self.log)
+        if error:
+            return gr.update(selected=2), \
+                   gr.update(visible=True,
+                             value=f"There was an error splitting the source video: {error}"), \
+                   *self.empty_args(4)
         self.log("saving project after splitting into scenes")
         self.state.save()
 
@@ -564,14 +569,6 @@ class VideoRemixer(TabBase):
         self.state.current_scene = self.state.scene_names[0]
         self.log("saving project after establishing scene names")
         self.state.save()
-
-        self.log(f"about to split scenes by {self.state.split_type}")
-        error = self.state.split_scenes(self.log)
-        if error:
-            return gr.update(selected=2), \
-                   gr.update(visible=True,
-                             value=f"There was an error splitting the source video: {error}"), \
-                   *self.empty_args(4)
 
         # TODO put in a check for a bad splits - zero scenes, missing scenes
 
