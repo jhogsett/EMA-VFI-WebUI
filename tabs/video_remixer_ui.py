@@ -163,10 +163,19 @@ class VideoRemixer(TabBase):
                                                             variant="secondary")
                             with gr.Accordion(label="Danger Zone", open=False):
                                 with gr.Row():
-                                    keep_all_button = gr.Button(value="Keep All Scenes",
-                                                                variant="stop")
-                                    drop_all_button = gr.Button(value="Drop All Scenes",
-                                                                variant="stop")
+                                    merge_scene_button = gr.Button(
+                                        value="<+ Merge with Prev Scene",
+                                        variant="stop")
+                                    split_scene_button = gr.Button(
+                                        value="<- Split to 2 Scenes ->",
+                                        variant="stop")
+                                with gr.Row():
+                                    keep_all_button = gr.Button(
+                                        value="Keep All Scenes" + SimpleIcons.WARNING,
+                                        variant="stop")
+                                    drop_all_button = gr.Button(
+                                        value="Drop All Scenes " + SimpleIcons.WARNING,
+                                        variant="stop")
                     with gr.Row():
                         back_button3 = gr.Button(value="< Back", variant="secondary").\
                             style(full_width=False)
@@ -318,6 +327,14 @@ class VideoRemixer(TabBase):
                             outputs=[scene_label, scene_image, scene_state, scene_info])
 
         prev_keep.click(self.prev_keep, show_progress=False,
+                            inputs=scene_label,
+                            outputs=[scene_label, scene_image, scene_state, scene_info])
+
+        merge_scene_button.click(self.merge_scene,
+                            inputs=scene_label,
+                            outputs=[scene_label, scene_image, scene_state, scene_info])
+
+        split_scene_button.click(self.split_scene,
                             inputs=scene_label,
                             outputs=[scene_label, scene_image, scene_state, scene_info])
 
@@ -653,6 +670,35 @@ class VideoRemixer(TabBase):
                 self.state.current_scene = scene_name
                 break
         return self.scene_chooser_details(self.state.current_scene)
+
+    # danger zone handlers
+    def merge_scene(self, scene_label):
+        # ensure there is a previous scene
+        # ensure scenes are uncompiled
+        # move the files from this scene to the previous one
+        # rename the previous one add increase the frame count by the number of moved files
+        # delete the current scene directory
+        # rebuild the list of scene names
+        # rebuild the thumbnails
+        # return details for the previous (now merged into) scene label
+        pass
+
+    def split_scene(self, scene_label):
+        # ensure scenes are uncompiled
+        # identify the frame position to split one
+        # - half way point
+        # - expressed in terms of position within the scene
+        # if the scene label was [110-121], the position would be 5
+        # - 121-110 inclusive = 12 = (121 + 1) - 110
+        # half of 12 if 6
+        # positions are relative to zero, 5 is the sixth position
+        # create a new folder named for the later half of the split
+        # move the later half files to the new folder
+        # rename the current folder to account for the split
+        # rebuild the list of scene names
+        # rebuild the thumbnails
+        # return details for the previous (now merged into) scene label
+        pass
 
     def keep_all_scenes(self, scene_label):
         self.state.keep_all_scenes()
