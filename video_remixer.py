@@ -18,7 +18,6 @@ from interpolate_series import InterpolateSeries
 from resequence_files import ResequenceFiles
 from upscale_series import UpscaleSeries
 
-
 class VideoRemixerState():
     def __init__(self):
         # set at various stages
@@ -89,20 +88,36 @@ class VideoRemixerState():
     def reset(self):
         self.__init__()
 
+    UI_SAFETY_DEFAULTS = {
+        "project_fps" : 29.97,
+        "deinterlace" : False,
+        "split_type" : "Scene",
+        "scene_threshold" : 0.6,
+        "break_duration" : 2.0,
+        "break_ratio" : 0.98,
+        "thumbnail_type" : "JPG",
+        "resize" : True,
+        "resynthesize" : True,
+        "inflate" : True,
+        "upscale" : True,
+        "upscale_option" : "2X"
+    }
+
     # set project settings UI defaults in case the project is reopened
     # otherwise some UI elements get set to None on reopened new projects
     def set_project_ui_defaults(self, default_fps):
         self.project_fps = default_fps
-        self.split_type = "Scene"
-        self.scene_threshold = 0.6
-        self.break_duration = 2.0
-        self.break_ratio = 0.98
-        self.thumbnail_type = "JPG"
-        self.resynthesize = True
-        self.inflate = True
-        self.resize = True
-        self.upscale = True
-        self.upscale_option = "2X"
+        self.deinterlace = self.UI_SAFETY_DEFAULTS["deinterlace"]
+        self.split_type = self.UI_SAFETY_DEFAULTS["split_type"]
+        self.scene_threshold = self.UI_SAFETY_DEFAULTS["scene_threshold"]
+        self.break_duration = self.UI_SAFETY_DEFAULTS["break_duration"]
+        self.break_ratio = self.UI_SAFETY_DEFAULTS["break_ratio"]
+        self.thumbnail_type = self.UI_SAFETY_DEFAULTS["thumbnail_type"]
+        self.resize = self.UI_SAFETY_DEFAULTS["resize"]
+        self.resynthesize = self.UI_SAFETY_DEFAULTS["resynthesize"]
+        self.inflate = self.UI_SAFETY_DEFAULTS["inflate"]
+        self.upscale = self.UI_SAFETY_DEFAULTS["upscale"]
+        self.upscale_option = self.UI_SAFETY_DEFAULTS["upscale_option"]
 
     # how far progressed into project and the tab ID to return to on re-opening
     PROGRESS_STEPS = {
@@ -891,3 +906,6 @@ class VideoRemixerState():
                 else:
                     message = error
                 raise ValueError(message)
+
+    def tryattr(self, attribute : str, default=None):
+        return getattr(self, attribute) if hasattr(self, attribute) else default
