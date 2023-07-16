@@ -408,8 +408,7 @@ class VideoRemixer(TabBase):
                              value=error), \
                    *self.empty_args(26)
 
-        entered_path, _, _ = split_filepath(project_path)
-        print(entered_path, self.state.project_path, "*" * 100)
+        entered_path, _, _ = split_filepath(project_file)
         if self.state.project_path != entered_path:
             return gr.update(selected=0), \
                    gr.update(visible=True,
