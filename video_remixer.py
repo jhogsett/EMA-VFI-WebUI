@@ -148,12 +148,14 @@ class VideoRemixerState():
             jot.down(f"Has Audio: {True if self.video_details['has_audio'] else False}")
         return jot
 
+    PROJECT_PATH_PREFIX = "REMIX-"
+
     def ingest_video(self, video_path):
         self.source_video = video_path
         path, filename, _ = split_filepath(video_path)
 
-        with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
-            Mtqdm().message(bar, "FFmpeg in use ...")
+        with Mtqdm().open_bar(total=1, desc="FFprobe") as bar:
+            Mtqdm().message(bar, "Inspecting source video - no ETA")
             try:
                 video_details = get_essential_video_details(video_path)
                 self.video_details = video_details
@@ -162,7 +164,7 @@ class VideoRemixerState():
             finally:
                 Mtqdm().update_bar(bar)
 
-        project_path = os.path.join(path, f"REMIX-{filename}")
+        project_path = os.path.join(path, f"{self.PROJECT_PATH_PREFIX}{filename}")
         resize_w = video_details['display_width']
         resize_h = video_details['display_height']
         crop_w, crop_h = resize_w, resize_h
@@ -194,11 +196,9 @@ class VideoRemixerState():
 
             if self.split_type == "Scene":
                 jot.down(f"Scene Detection Threshold: {self.scene_threshold}")
-
             elif self.split_type == "Break":
                 jot.down(f"Break Minimum Duration: {self.break_duration}")
                 jot.down(f"Break Black Frame Ratio: {self.break_duration}")
-
             else:
                 self.frames_per_minute = int(float(self.project_fps) * 60)
                 jot.down(f"Frames per Minute: {self.frames_per_minute}")
@@ -220,7 +220,8 @@ class VideoRemixerState():
         project_video_path = os.path.join(self.project_path, video_filename)
 
         if os.path.exists(project_video_path) and prevent_overwrite:
-            raise ValueError(f"The local project video file already exists, copying skipped: {project_video_path}")
+            raise ValueError(
+            f"The local project video file already exists, copying skipped: {project_video_path}")
 
         with Mtqdm().open_bar(total=1, desc="Copying") as bar:
             Mtqdm().message(bar, "Copying source video locally - no ETA")
@@ -247,17 +248,19 @@ class VideoRemixerState():
         self.current_scene = None
         self.thumbnails = []
 
+    FRAMES_PATH = "SOURCE"
+
     # split video into raw PNG frames
     def render_source_frames(self, global_options):
         video_path = self.source_video
         index_width = self.video_details["index_width"]
         self.output_pattern = f"source_%0{index_width}d.png"
         frame_rate = self.project_fps
-        self.frames_path = os.path.join(self.project_path, "SOURCE")
+        self.frames_path = os.path.join(self.project_path, self.FRAMES_PATH)
         create_directory(self.frames_path)
 
         with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
-            Mtqdm().message(bar, "Converting source video to PNG frame files - no ETA")
+            Mtqdm().message(bar, "Copying source video frames to PNG files - no ETA")
             ffmpeg_cmd = MP4toPNG(video_path,
                                   self.output_pattern,
                                   frame_rate,
@@ -310,8 +313,10 @@ class VideoRemixerState():
         except ValueError as error:
             return error
 
+    THUMBNAILS_PATH = "THUMBNAILS"
+
     def create_thumbnails(self, log_fn, global_options, remixer_settings):
-        self.thumbnail_path = os.path.join(self.project_path, "THUMBNAILS")
+        self.thumbnail_path = os.path.join(self.project_path, self.THUMBNAILS_PATH)
         create_directory(self.thumbnail_path)
 
         if self.thumbnail_type == "JPG":
@@ -338,6 +343,7 @@ class VideoRemixerState():
                         0.0,
                         log_fn,
                         global_options=global_options).slice()
+
         elif self.thumbnail_type == "GIF":
             gif_fps = remixer_settings["default_gif_fps"]
             gif_factor = remixer_settings["gif_factor"]
@@ -352,7 +358,6 @@ class VideoRemixerState():
             if thumb_size > max_thumb_size:
                 thumb_scale = max_thumb_size / max_frame_dimension
             self.thumbnail_path = os.path.join(self.project_path, "THUMBNAILS")
-            create_directory(self.thumbnail_path)
             SliceVideo(self.source_video,
                         self.project_fps,
                         self.scenes_path,
@@ -455,18 +460,64 @@ class VideoRemixerState():
             dropped_path = os.path.join(self.dropped_scenes_path, dir)
             shutil.move(current_path, dropped_path)
 
+    ## Main Processing ##
+
+    def purge_stale_processed_content(self):
+        pass
+
+
+
     def reset_at_processing_options(self):
+        pass
+
+        # simple rules
+        # if selected, and made, skip making it
+        # if selected, and not made, make it
+        # if not seleted, and made, it will be ignored
+        # if not selected, and not made, it will not be made and will be ignored
+
+
+        # if it was made with something that now isn't wanted, it must be recreated
+
+        # if resize is marked made, and now is not selected:
+        # - if resynth is marked made, and is selected, it needs to be deleted because it is stale
+        # - otherwise there is no need to delete it right now
+
+        # if resynth is marked made, and now is not selected:
+        # - if inflate it marked made, and is selected, it needs to be deleted beacuse it is stale
+        # - otherwise there is no need to delete it right now
+
+        # inflate
+        # upscale
+
+
+
         # because the processing stage is long, it makes sense to be careful about removing content
         # TODO add processing steps sub-progress tracking to avoid deleting finished content
-        remove_directories([
-            self.clips_path,
-            self.resize_path,
-            self.resynthesis_path,
-            self.inflation_path,
-            self.upscale_path])
+
+        # RULE: only delete if it needs to be recreated
+
+        # recreation example:
+        # first time, want inflation and 2x upscaling
+        # second time around, don't want inflation, but want 4X upscaling
+        # all content was created
+        # if inflation checked before (marked as made) and not checked now
+        # - if something is dependent on it
+
+        # it makes sense to skip already-created content if it's not currently selected
+
+        # remove_directories([
+        #     self.clips_path,
+        #     self.resize_path,
+        #     self.resynthesis_path,
+        #     self.inflation_path,
+        #     self.upscale_path])
+        # reset processing marked done
+
+    AUDIO_CLIPS_PATH = "AUDIO"
 
     def create_audio_clips(self, log_fn, global_options):
-        self.audio_clips_path = os.path.join(self.clips_path, "AUDIO")
+        self.audio_clips_path = os.path.join(self.clips_path, self.AUDIO_CLIPS_PATH)
         create_directory(self.audio_clips_path)
 
         edge_trim = 1 if self.resynthesize else 0
@@ -485,9 +536,11 @@ class VideoRemixerState():
                     log_fn,
                     global_options=global_options).slice()
 
+    RESIZE_PATH = "SCENES-RC"
+
     def resize_scenes(self, log_fn, kept_scenes, remixer_settings):
         scenes_base_path = self.scenes_path
-        self.resize_path = os.path.join(self.project_path, "SCENES-RC")
+        self.resize_path = os.path.join(self.project_path, self.RESIZE_PATH)
         create_directory(self.resize_path)
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Resize") as bar:
@@ -521,19 +574,20 @@ class VideoRemixerState():
                             crop_offset_y=crop_offset).resize()
                 Mtqdm().update_bar(bar)
 
+    RESYNTH_PATH = "SCENES-RE"
+
     def resynthesize_scenes(self, log_fn, kept_scenes, engine, engine_settings):
         interpolater = Interpolate(engine.model, log_fn)
         use_time_step = engine_settings["use_time_step"]
         deep_interpolater = DeepInterpolate(interpolater, use_time_step, log_fn)
         series_interpolater = InterpolateSeries(deep_interpolater, log_fn)
 
-        # TODO might need to better manage the flow of content between processing steps
         if self.resize:
             scenes_base_path = self.resize_path
         else:
             scenes_base_path = self.scenes_path
 
-        self.resynthesis_path = os.path.join(self.project_path, "SCENES-RE")
+        self.resynthesis_path = os.path.join(self.project_path, self.RESYNTH_PATH)
         create_directory(self.resynthesis_path)
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Resynth") as bar:
@@ -561,6 +615,8 @@ class VideoRemixerState():
                                 log_fn).resequence()
                 Mtqdm().update_bar(bar)
 
+    INFLATE_PATH = "SCENES-IN"
+
     def inflate_scenes(self, log_fn, kept_scenes, engine, engine_settings):
         interpolater = Interpolate(engine.model, log_fn)
         use_time_step = engine_settings["use_time_step"]
@@ -575,7 +631,7 @@ class VideoRemixerState():
         else:
             scenes_base_path = self.scenes_path
 
-        self.inflation_path = os.path.join(self.project_path, "SCENES-IN")
+        self.inflation_path = os.path.join(self.project_path, self.INFLATE_PATH)
         create_directory(self.inflation_path)
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Inflate") as bar:
@@ -602,6 +658,8 @@ class VideoRemixerState():
                                 log_fn).resequence()
                 Mtqdm().update_bar(bar)
 
+    UPSCALE_PATH = "SCENES-UP"
+
     def upscale_scenes(self, log_fn, kept_scenes, realesrgan_settings, remixer_settings):
         model_name = realesrgan_settings["model_name"]
         gpu_ids = realesrgan_settings["gpu_ids"]
@@ -625,8 +683,7 @@ class VideoRemixerState():
         else:
             scenes_base_path = self.scenes_path
 
-        suffix = self.upscale_option
-        self.upscale_path = os.path.join(self.project_path, "SCENES-UP" + suffix)
+        self.upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
         create_directory(self.upscale_path)
 
         upscale_factor = 2.0 if self.upscale_option == "2X" else 4.0
@@ -647,8 +704,10 @@ class VideoRemixerState():
         _, filename, _ = split_filepath(self.source_video)
         return os.path.join(self.project_path, f"{filename}-remixed.mp4")
 
+    VIDEO_CLIPS_PATH = "VIDEO"
+
     def create_video_clips(self, log_fn, kept_scenes, global_options):
-        self.video_clips_path = os.path.join(self.clips_path, "VIDEO")
+        self.video_clips_path = os.path.join(self.clips_path, self.VIDEO_CLIPS_PATH)
         create_directory(self.video_clips_path)
 
         # TODO might need to better manage the flow of content between processing steps
@@ -664,7 +723,7 @@ class VideoRemixerState():
             scenes_base_path = self.scenes_path
 
         video_clip_fps = 2 * self.project_fps if self.inflate else self.project_fps
-        with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_filepath = os.path.join(self.video_clips_path, f"{scene_name}.mp4")
