@@ -157,7 +157,6 @@ class VideoRemixer(TabBase):
                             with gr.Row():
                                 prev_keep = gr.Button(value="< Prev Keep", variant="secondary")
                                 next_keep = gr.Button(value="Next Keep >", variant="secondary")
-                            gr.Box()
                             with gr.Row():
                                 first_scene = gr.Button(value="<< First Scene",
                                                             variant="secondary")
