@@ -403,21 +403,19 @@ class VideoRemixer(TabBase):
         self.new_project()
         try:
             self.state.ingest_video(video_path)
-            self.video_info1 = self.state.ingested_video_report()
+            self.state.video_info1 = self.state.ingested_video_report()
         except ValueError as error:
             return gr.update(selected=0), \
                    gr.update(visible=True,
                              value=error), \
                    *self.empty_args(6)
 
-        # advancing to the next tab displays information about the source video only
-        # user may decide not to proceed after seeing it
-        # therefore it is too early to save project advancement
-        # self.state.save_progress("settings")
+        # don't save yet, user may change project path next
+        self.state.save_progress("settings", save_project=False)
 
         return gr.update(selected=1), \
             gr.update(visible=True), \
-            gr.update(value=self.video_info1), \
+            gr.update(value=self.state.video_info1), \
             self.state.project_path, \
             self.state.resize_w, \
             self.state.resize_h, \

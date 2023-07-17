@@ -25,8 +25,10 @@ class VideoRemixerState():
         self.progress = "home"
 
         # source video from initial tab
-        self.source_video = None
-        self.video_details = {} # set again during project set up (pointing to duplicate copy)
+        self.source_video = None # set on clicking New Project
+                                 # and again during project set up (pointing to duplicate copy)
+        self.video_details = {}
+        self.video_info1 = None
 
         # project set up options
         self.project_path = None
@@ -131,9 +133,10 @@ class VideoRemixerState():
         "save" : 6
     }
 
-    def save_progress(self, progress : str):
+    def save_progress(self, progress : str, save_project : bool=True):
         self.progress = progress
-        self.save()
+        if save_project:
+            self.save()
 
     def get_progress_tab(self) -> int:
         try:
@@ -458,13 +461,13 @@ class VideoRemixerState():
             drop_frames = self.scene_frames("drop")
             drop_time = self.scene_frames_time(drop_frames)
             jot.down(
-                f"Keep: \tscenes: {keep_scenes:<5,d}  \t frames: {keep_frames:<7,d}  \t time: +{keep_time}")
+                f"{SimpleIcons.HEART} Keep: \tscenes: {keep_scenes:<5,d}  \t frames: {keep_frames:<7,d}  \t time: +{keep_time}")
             jot.down()
             jot.down(
-                f"Drop: \tscenes: {drop_scenes:<5,d}  \t frames: {drop_frames:<7,d}  \t time: +{drop_time}")
+                f"{SimpleIcons.PROHIBITED} Drop: \tscenes: {drop_scenes:<5,d}  \t frames: {drop_frames:<7,d}  \t time: +{drop_time}")
             jot.down()
             jot.down(
-                f"Total:\tscenes: {all_scenes:<5,d}  \t frames: {all_frames:<7,d}  \t time: +{all_time}")
+                f"{SimpleIcons.FILM} Total: \tscenes: {all_scenes:<5,d}  \t frames: {all_frames:<7,d}  \t time: +{all_time}")
         return jot
 
     def uncompile_scenes(self):
