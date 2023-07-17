@@ -414,7 +414,7 @@ class VideoRemixerState():
                 self.project_fps)
 
             scene_info = \
-                f"{scene_position}{self.GAP}Time: {scene_start}{self.GAP}Span: {scene_duration}"
+                f"{scene_position}{self.GAP}{scene_start}{self.GAP}+{scene_duration}"
             return scene_name, thumbnail_path, scene_state, scene_info
         except ValueError as error:
             raise ValueError(
