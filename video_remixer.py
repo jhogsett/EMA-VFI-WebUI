@@ -457,12 +457,14 @@ class VideoRemixerState():
             drop_scenes = len(self.dropped_scenes())
             drop_frames = self.scene_frames("drop")
             drop_time = self.scene_frames_time(drop_frames)
-
-            jot.down(f"SOURCE: Scenes: {all_scenes:,d} Frames: {all_frames:,d} Length: {all_time}")
+            jot.down(
+                f"Keep: \tscenes: {keep_scenes:<5,d}  \t frames: {keep_frames:<7,d}  \t time: +{keep_time}")
             jot.down()
-            jot.down(f"KEEP: Scenes: {keep_scenes:,d} Frames: {keep_frames:,d} Length: {keep_time}")
+            jot.down(
+                f"Drop: \tscenes: {drop_scenes:<5,d}  \t frames: {drop_frames:<7,d}  \t time: +{drop_time}")
             jot.down()
-            jot.down(f"DROP: Scenes: {drop_scenes:,d} Frames: {drop_frames:,d} Length: {drop_time}")
+            jot.down(
+                f"Total:\tscenes: {all_scenes:<5,d}  \t frames: {all_frames:<7,d}  \t time: +{all_time}")
         return jot
 
     def uncompile_scenes(self):
