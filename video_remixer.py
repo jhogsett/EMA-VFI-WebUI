@@ -4,6 +4,7 @@ import shutil
 import yaml
 from yaml import Loader, YAMLError
 from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files, purge_directories
+from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom
 from webui_utils.jot import Jot
@@ -396,14 +397,14 @@ class VideoRemixerState():
     def drop_all_scenes(self):
         self.scene_states = {scene_name : "Drop" for scene_name in self.scene_names}
 
-    GAP = " " * 5
+    GAP = " " * 6
 
     def scene_chooser_details(self, scene_index):
         try:
             scene_name = self.scene_names[scene_index]
             thumbnail_path = self.thumbnails[scene_index]
             scene_state = self.scene_states[scene_name]
-            scene_position = f"{scene_index+1}/{len(self.scene_names)}"
+            scene_position = f"{scene_index+1} of {len(self.scene_names)}"
 
             first_index, last_index, _ = details_from_group_name(scene_name)
             scene_start = seconds_to_hmsf(
@@ -412,9 +413,9 @@ class VideoRemixerState():
             scene_duration = seconds_to_hmsf(
                 (last_index - first_index) / self.project_fps,
                 self.project_fps)
-
-            scene_info = \
-                f"{scene_position}{self.GAP}{scene_start}{self.GAP}+{scene_duration}"
+            scene_time = f"{scene_start}{self.GAP}+{scene_duration}"
+            keep_state = SimpleIcons.HEART if scene_state == "Keep" else ""
+            scene_info = f"{scene_position}{self.GAP}{scene_time}{self.GAP}{keep_state}"
             return scene_name, thumbnail_path, scene_state, scene_info
         except ValueError as error:
             raise ValueError(

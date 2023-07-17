@@ -136,12 +136,12 @@ class VideoRemixer(TabBase):
                         with gr.Column():
                             with gr.Row():
                                 scene_label = gr.Text(label="Scene Name", interactive=False)
-                                scene_info = gr.Text(label="Scene Position", interactive=False)
+                                scene_info = gr.Text(label="Scene Details", interactive=False)
                         with gr.Column():
                             with gr.Row():
                                 scene_state = gr.Radio(label="Choose", value=None,
                                                     choices=["Keep", "Drop"])
-                                scene_index = gr.Number(label="Scene Number", precision=0)
+                                scene_index = gr.Number(label="Scene Index", precision=0)
                     with gr.Row():
                         with gr.Column():
                             scene_image = gr.Image(type="filepath", interactive=False).style(
