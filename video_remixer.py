@@ -260,7 +260,7 @@ class VideoRemixerState():
             self.inflation_path,
             self.upscale_path])
         self.scene_names = []
-        self.current_scene = None
+        self.current_scene = 0
         self.thumbnails = []
 
     FRAMES_PATH = "SOURCE"
@@ -396,9 +396,11 @@ class VideoRemixerState():
     def drop_all_scenes(self):
         self.scene_states = {scene_name : "Drop" for scene_name in self.scene_names}
 
-    def scene_chooser_details(self, scene_name):
+    GAP = " " * 5
+
+    def scene_chooser_details(self, scene_index):
         try:
-            scene_index = self.scene_names.index(scene_name)
+            scene_name = self.scene_names[scene_index]
             thumbnail_path = self.thumbnails[scene_index]
             scene_state = self.scene_states[scene_name]
             scene_position = f"{scene_index+1}/{len(self.scene_names)}"
@@ -411,9 +413,9 @@ class VideoRemixerState():
                 (last_index - first_index) / self.project_fps,
                 self.project_fps)
 
-            sep = "     "
-            scene_info = f"{scene_position}{sep}Time: {scene_start}{sep}Span: {scene_duration}"
-            return thumbnail_path, scene_state, scene_info
+            scene_info = \
+                f"{scene_position}{self.GAP}Time: {scene_start}{self.GAP}Span: {scene_duration}"
+            return scene_name, thumbnail_path, scene_state, scene_info
         except ValueError as error:
             raise ValueError(
                 f"ValueError encountered while computing scene chooser details: {error}")
@@ -894,10 +896,21 @@ class VideoRemixerState():
         with open(filepath, "r") as file:
             try:
                 state = yaml.load(file, Loader=Loader)
+
+                # reload some things
                 state.scene_names = sorted(state.scene_names) if state.scene_names else []
                 state.thumbnails = sorted(state.thumbnails) if state.thumbnails else []
                 state.audio_clips = sorted(state.audio_clips) if state.audio_clips else []
                 state.video_clips = sorted(state.video_clips) if state.video_clips else []
+
+                # Compatibility
+                # state.current_scene was originally a string
+                if isinstance(state.current_scene, str):
+                    try:
+                        state.current_scene = state.scene_names.index(state.current_scene)
+                    except IndexError:
+                        state.current_scene = 0
+
                 return state
             except YAMLError as error:
                 if hasattr(error, 'problem_mark'):
