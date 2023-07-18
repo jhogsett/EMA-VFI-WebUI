@@ -202,28 +202,19 @@ class VideoRemixerState():
     def project_settings_report(self):
         with Jot() as jot:
             jot.down(f"Project Path: {self.project_path}")
-            jot.down(f"Project Frame Rate: {self.project_fps}")
-            jot.down(f"Deinterlace Source: {self.deinterlace}")
-            jot.down(f"Resize To: {self.resize_w}x{self.resize_h}")
-            jot.down(f"Crop To: {self.crop_w}x{self.crop_h}")
-            jot.down(f"Scene Split Type: {self.split_type}")
-
             if self.split_type == "Scene":
-                jot.down(f"Scene Detection Threshold: {self.scene_threshold}")
+                jot.down(f"| Frame Rate | Deinterlace | Resize To | Crop To | Split Type | Scene Detection Threshold |")
+                jot.down(f"| :-: | :-: | :-: | :-: | :-: | :-: |")
+                jot.down(f"| {float(self.project_fps):.2f} | {self.deinterlace} | {self.resize_w} x {self.resize_h} | {self.crop_w} x {self.crop_h} | {self.split_type} | {self.scene_threshold} |")
             elif self.split_type == "Break":
-                jot.down(f"Break Minimum Duration: {self.break_duration}")
-                jot.down(f"Break Black Frame Ratio: {self.break_duration}")
+                jot.down(f"| Frame Rate | Deinterlace | Resize To | Crop To | Split Type | Minimum Duration | Black Ratio |")
+                jot.down(f"| :-: | :-: | :-: | :-: | :-: | :-: | :-: |")
+                jot.down(f"| {float(self.project_fps):.2f} | {self.deinterlace} | {self.resize_w} x {self.resize_h} | {self.crop_w} x {self.crop_h} | {self.split_type} | {self.break_duration} | {self.break_ratio} |")
             else:
                 self.frames_per_minute = int(float(self.project_fps) * 60)
-                jot.down(f"Frames per Minute: {self.frames_per_minute}")
-
-            jot.down()
-
-            jot.down(f"Source Video: {self.source_video}")
-            jot.down(f"Duration: {self.video_details['duration']}")
-            jot.down(f"Frame Rate: {self.video_details['frame_rate']}")
-            jot.down(f"File Size: {self.video_details['file_size']}")
-            jot.down(f"Frame Count: {self.video_details['frame_count']}")
+                jot.down(f"| Frame Rate | Deinterlace | Resize To | Crop To | Split Type | Frames Per Minute |")
+                jot.down(f"| :-: | :-: | :-: | :-: | :-: | :-: |")
+                jot.down(f"| {float(self.project_fps):.2f} | {self.deinterlace} | {self.resize_w} x {self.resize_h} | {self.crop_w} x {self.crop_h} | {self.split_type} | {self.frames_per_minute} |")
         return jot.grab()
 
     # keep project's own copy of original video
@@ -445,24 +436,22 @@ class VideoRemixerState():
         return seconds_to_hmsf(frames / self.project_fps, self.project_fps)
 
     def chosen_scenes_report(self):
+        all_scenes = len(self.scene_names)
+        all_frames = self.scene_frames("all")
+        all_time = self.scene_frames_time(all_frames)
+        keep_scenes = len(self.kept_scenes())
+        keep_frames = self.scene_frames("keep")
+        keep_time = self.scene_frames_time(keep_frames)
+        drop_scenes = len(self.dropped_scenes())
+        drop_frames = self.scene_frames("drop")
+        drop_time = self.scene_frames_time(drop_frames)
+
         with Jot() as jot:
-            all_scenes = len(self.scene_names)
-            all_frames = self.scene_frames("all")
-            all_time = self.scene_frames_time(all_frames)
-            keep_scenes = len(self.kept_scenes())
-            keep_frames = self.scene_frames("keep")
-            keep_time = self.scene_frames_time(keep_frames)
-            drop_scenes = len(self.dropped_scenes())
-            drop_frames = self.scene_frames("drop")
-            drop_time = self.scene_frames_time(drop_frames)
-            jot.down(
-                f"{SimpleIcons.HEART} Keep: \tscenes: {keep_scenes:<5,d}  \t frames: {keep_frames:<7,d}  \t time: +{keep_time}")
-            jot.down()
-            jot.down(
-                f"{SimpleIcons.PROHIBITED} Drop: \tscenes: {drop_scenes:<5,d}  \t frames: {drop_frames:<7,d}  \t time: +{drop_time}")
-            jot.down()
-            jot.down(
-                f"{SimpleIcons.FILM} Total: \tscenes: {all_scenes:<5,d}  \t frames: {all_frames:<7,d}  \t time: +{all_time}")
+            jot.down(f"| Scene Choices | Scenes | Frames | Time |")
+            jot.down(f"| :-: | :-: | :-: | :-: |")
+            jot.down(f"| Keep {SimpleIcons.HEART} | {keep_scenes:,d} | {keep_frames:,d} | +{keep_time} |")
+            jot.down(f"| Drop | {drop_scenes:,d} | {drop_frames:,d} | +{drop_time} |")
+            jot.down(f"| Total | {all_scenes:,d} | {all_frames:,d} | +{all_time} |")
         return jot.grab()
 
     def uncompile_scenes(self):

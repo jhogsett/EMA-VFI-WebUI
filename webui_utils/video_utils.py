@@ -272,13 +272,13 @@ def get_essential_video_details(input_path : str, count_frames=False) -> dict:
             video_essentials["frame_rate"] = frame_rate
 
             duration = seconds_to_hms(float(stream_data.get("duration", 0)))
-            video_essentials["duration"] = duration[:duration.find(".")]
+            video_essentials["duration"] = "+" + duration[:duration.find(".")].zfill(8)
 
             width = stream_data.get("width")
             height = stream_data.get("height")
             video_essentials["content_width"] = width
             video_essentials["content_height"] = height
-            video_essentials["content_dimensions"] = f"{width}x{height}"
+            video_essentials["content_dimensions"] = f"{width} x {height}"
 
             video_essentials["index_width"] = len(str(frame_count))
             video_essentials["frame_count_show"] = f"{int(frame_count):,d}"
@@ -297,7 +297,7 @@ def get_essential_video_details(input_path : str, count_frames=False) -> dict:
             video_essentials["sample_factor"] = sample_factor
             video_essentials["display_width"] = display_width
             video_essentials["display_height"] = display_height
-            video_essentials["display_dimensions"] = f"{display_width}x{display_height}"
+            video_essentials["display_dimensions"] = f"{display_width} x {display_height}"
 
             video_essentials["display_aspect_ratio"] = stream_data.get("display_aspect_ratio")
         return video_essentials
