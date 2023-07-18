@@ -215,7 +215,7 @@ class VideoRemixer(TabBase):
                     message_box5 = gr.Textbox(
                         value="Next: Perform all Processing Steps (takes from hours to days)",
                                               show_label=False, interactive=False)
-                    gr.Markdown("*Progress can be tracked in the console*")
+                    gr.Markdown(SimpleIcons.WARNING + " Make backups if redoing this step. Processed content may be purged based on the above settings.\r\n*Progress can be tracked in the console*")
                     with gr.Row():
                         back_button5 = gr.Button(value="< Back", variant="secondary").\
                             style(full_width=False)
