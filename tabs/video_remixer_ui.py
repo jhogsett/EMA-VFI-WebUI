@@ -747,17 +747,14 @@ class VideoRemixer(TabBase):
 
     # User has clicked Process Remix from Processing Options
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option):
-        global_options = self.config.ffmpeg_settings["global_options"]
         self.state.resynthesize = resynthesize
         self.state.inflate = inflate
         self.state.resize = resize
         self.state.upscale = upscale
-
         upscale_option_changed = False
         if self.state.upscale_option != None and self.state.upscale_option != upscale_option:
             upscale_option_changed = True
         self.state.upscale_option = upscale_option
-
         self.log("saving project after storing processing choices")
         self.state.save()
 
