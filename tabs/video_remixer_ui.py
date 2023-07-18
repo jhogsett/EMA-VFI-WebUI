@@ -309,52 +309,52 @@ class VideoRemixer(TabBase):
                                      scene_info])
 
         keep_next.click(self.keep_next, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         drop_next.click(self.drop_next, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         next_scene.click(self.next_scene, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         prev_scene.click(self.prev_scene, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         next_keep.click(self.next_keep, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         prev_keep.click(self.prev_keep, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         keep_all_button.click(self.keep_all_scenes, show_progress=True,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         drop_all_button.click(self.drop_all_scenes, show_progress=True,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         first_scene.click(self.first_scene, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         last_scene.click(self.last_scene, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
