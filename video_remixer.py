@@ -778,9 +778,18 @@ class VideoRemixerState():
                                                     output_basename, "png")
                 Mtqdm().update_bar(bar)
 
+    def remix_filename_suffix(self):
+        label = "remix"
+        label += "-rc" if self.resize else "-or"
+        label += "-re" if self.resynthesize else ""
+        label += "-in" if self.inflate else ""
+        label += "-up" + self.upscale_option[0] if self.upscale else ""
+        return label
+
     def default_remix_filepath(self):
         _, filename, _ = split_filepath(self.source_video)
-        return os.path.join(self.project_path, f"{filename}-remixed.mp4")
+        suffix = self.remix_filename_suffix()
+        return os.path.join(self.project_path, f"{filename}-{suffix}.mp4")
 
     # find scenes that are empty now after processing and should be automatically dropped
     # this can happen when resynthesis and/or inflation are used on scenes with only a few frames

@@ -215,7 +215,7 @@ class VideoRemixer(TabBase):
                     message_box5 = gr.Textbox(
                         value="Next: Perform all Processing Steps (takes from hours to days)",
                                               show_label=False, interactive=False)
-                    gr.Markdown("*Progress can be tracked in the console*")
+                    gr.Markdown(SimpleIcons.WARNING + " Make backups if redoing this step. Processed content may be purged based on the above settings.\r\n*Progress can be tracked in the console*")
                     with gr.Row():
                         back_button5 = gr.Button(value="< Back", variant="secondary").\
                             style(full_width=False)
@@ -747,17 +747,14 @@ class VideoRemixer(TabBase):
 
     # User has clicked Process Remix from Processing Options
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option):
-        global_options = self.config.ffmpeg_settings["global_options"]
         self.state.resynthesize = resynthesize
         self.state.inflate = inflate
         self.state.resize = resize
         self.state.upscale = upscale
-
         upscale_option_changed = False
         if self.state.upscale_option != None and self.state.upscale_option != upscale_option:
             upscale_option_changed = True
         self.state.upscale_option = upscale_option
-
         self.log("saving project after storing processing choices")
         self.state.save()
 
