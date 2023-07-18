@@ -486,23 +486,28 @@ class VideoRemixerState():
 
     ## Main Processing ##
 
+    RESIZE_STEP = "resize"
+    RESYNTH_STEP = "resynth"
+    INFLATE_STEP = "inflate"
+    UPSCALE_STEP = "upscale"
+
     def purge_processed_content(self, purge_from):
-        if purge_from == "resize":
+        if purge_from == self.RESIZE_STEP:
             remove_directories([
                 self.resize_path,
                 self.resynthesis_path,
                 self.inflation_path,
                 self.upscale_path])
-        elif purge_from == "resynth":
+        elif purge_from == self.RESYNTH_STEP:
             remove_directories([
                 self.resynthesis_path,
                 self.inflation_path,
                 self.upscale_path])
-        elif purge_from == "inflate":
+        elif purge_from == self.INFLATE_STEP:
             remove_directories([
                 self.inflation_path,
                 self.upscale_path])
-        elif purge_from == "upscale":
+        elif purge_from == self.UPSCALE_STEP:
             remove_directories([
                 self.upscale_path])
         self.purge_remix_content(purge_from="audio_clips")
@@ -528,19 +533,19 @@ class VideoRemixerState():
             self.clips = []
 
     def processed_content_present(self, present_at):
-        if present_at == "resize":
+        if present_at == self.RESIZE_STEP:
             resize_path = os.path.join(self.project_path, self.RESIZE_PATH)
             return True if os.path.exists(resize_path) and \
                 get_directories(resize_path) else False
-        elif present_at == "resynth":
+        elif present_at == self.RESYNTH_STEP:
             resynth_path = os.path.join(self.project_path, self.RESYNTH_PATH)
             return True if os.path.exists(resynth_path) and \
                 get_directories(resynth_path) else False
-        elif present_at == "inflate":
+        elif present_at == self.INFLATE_STEP:
             inflate_path = os.path.join(self.project_path, self.INFLATE_PATH)
             return True if os.path.exists(inflate_path) and \
                 get_directories(inflate_path) else False
-        elif present_at == "upscale":
+        elif present_at == self.UPSCALE_STEP:
             upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
             return True if os.path.exists(upscale_path) and \
                 get_directories(upscale_path) else False
@@ -556,30 +561,30 @@ class VideoRemixerState():
     def purge_stale_processed_content(self, purge_upscale):
         # content is stale if it is present on disk but currently deselected
         # its presence indicates it and dependent content is now stale
-        if self.processed_content_present("resize") and not self.resize:
-            self.purge_processed_content("resize")
-        if self.processed_content_present("resynth") and not self.resynthesize:
-            self.purge_processed_content("resynth")
-        if self.processed_content_present("inflate") and not self.inflate:
-            self.purge_processed_content("inflate")
-        if self.processed_content_present("upscale") and (not self.upscale or purge_upscale):
-            self.purge_processed_content("upscale")
+        if self.processed_content_present(self.RESIZE_STEP) and not self.resize:
+            self.purge_processed_content(self.RESIZE_STEP)
+        if self.processed_content_present(self.RESYNTH_STEP) and not self.resynthesize:
+            self.purge_processed_content(self.RESYNTH_STEP)
+        if self.processed_content_present(self.INFLATE_STEP) and not self.inflate:
+            self.purge_processed_content(self.INFLATE_STEP)
+        if self.processed_content_present(self.UPSCALE_STEP) and (not self.upscale or purge_upscale):
+            self.purge_processed_content(self.UPSCALE_STEP)
 
     def processed_content_incomplete(self, present_at):
         expected_dirs = len(self.kept_scenes())
-        if present_at == "resize":
+        if present_at == self.RESIZE_STEP:
             resize_path = os.path.join(self.project_path, self.RESIZE_PATH)
             return True if os.path.exists(resize_path) and \
                 len(get_directories(resize_path)) != expected_dirs else False
-        elif present_at == "resynth":
+        elif present_at == self.RESYNTH_STEP:
             resynth_path = os.path.join(self.project_path, self.RESYNTH_PATH)
             return True if os.path.exists(resynth_path) and \
                 len(get_directories(resynth_path)) != expected_dirs else False
-        elif present_at == "inflate":
+        elif present_at == self.INFLATE_STEP:
             inflate_path = os.path.join(self.project_path, self.INFLATE_PATH)
             return True if os.path.exists(inflate_path) and \
                 len(get_directories(inflate_path)) != expected_dirs else False
-        elif present_at == "upscale":
+        elif present_at == self.UPSCALE_STEP:
             upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
             return True if os.path.exists(upscale_path) and \
                 len(get_directories(upscale_path)) != expected_dirs else False
@@ -587,22 +592,57 @@ class VideoRemixerState():
     def purge_incomplete_processed_content(self):
         # content is incomplete if the wrong number of scene directories are present
         # if it is currently selected and incomplete, it should be purged
-        if self.processed_content_incomplete("resize") and self.resize:
-            self.purge_processed_content("resize")
-        if self.processed_content_incomplete("resynth") and self.resynthesize:
-            self.purge_processed_content("resynth")
-        if self.processed_content_incomplete("inflate") and self.inflate:
-            self.purge_processed_content("inflate")
-        if self.processed_content_incomplete("upscale") and self.upscale:
-            self.purge_processed_content("upscale")
+        if self.processed_content_incomplete(self.RESIZE_STEP) and self.resize:
+            self.purge_processed_content(self.RESIZE_STEP)
+        if self.processed_content_incomplete(self.RESYNTH_STEP) and self.resynthesize:
+            self.purge_processed_content(self.RESYNTH_STEP)
+        if self.processed_content_incomplete(self.INFLATE_STEP) and self.inflate:
+            self.purge_processed_content(self.INFLATE_STEP)
+        if self.processed_content_incomplete(self.UPSCALE_STEP) and self.upscale:
+            self.purge_processed_content(self.UPSCALE_STEP)
+
+    def scenes_source_path(self, processing_step):
+        processing_path = self.scenes_path
+
+        if processing_step == self.RESIZE_STEP:
+            # resize is the first processing step and always draws from the scenes path
+            pass
+
+        elif processing_step == self.RESYNTH_STEP:
+            # resynthesis is the second processing step
+            if self.resize:
+                # if resize is enabled, draw from the resized scenes path
+                processing_path = self.resize
+
+        elif processing_step == self.INFLATE_STEP:
+            # inflation is the third processing step
+            if self.resynthesize:
+                # if resynthesis is enabled, draw from the resyntheized scenes path
+                processing_path = self.resynthesis_path
+            elif self.resize:
+                # if resize is enabled, draw from the resized scenes path
+                processing_path = self.resize
+
+        elif processing_step == self.UPSCALE_STEP:
+            # upscaling is the fourth processing step
+            if self.inflate:
+                # if inflation is enabled, draw from the inflation path
+                processing_path = self.inflation_path
+            elif self.resynthesize:
+                # if resynthesis is enabled, draw from the resyntheized scenes path
+                processing_path = self.resynthesis_path
+            elif self.resize:
+                # if resize is enabled, draw from the resized scenes path
+                processing_path = self.resize
+
+        return processing_path
 
     RESIZE_PATH = "SCENES-RC"
 
     def resize_scenes(self, log_fn, kept_scenes, remixer_settings):
-        scenes_base_path = self.scenes_path
+        scenes_base_path = self.scenes_source_path(self.RESIZE_STEP)
         self.resize_path = os.path.join(self.project_path, self.RESIZE_PATH)
         create_directory(self.resize_path)
-        # save the project now to preserve the newly established path
         self.save()
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Resize") as bar:
@@ -644,13 +684,9 @@ class VideoRemixerState():
         deep_interpolater = DeepInterpolate(interpolater, use_time_step, log_fn)
         series_interpolater = InterpolateSeries(deep_interpolater, log_fn)
 
-        if self.resize:
-            scenes_base_path = self.resize_path
-        else:
-            scenes_base_path = self.scenes_path
+        scenes_base_path = self.scenes_source_path("resynthesize")
         self.resynthesis_path = os.path.join(self.project_path, self.RESYNTH_PATH)
         create_directory(self.resynthesis_path)
-        # save the project now to preserve the newly established path
         self.save()
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Resynth") as bar:
@@ -686,16 +722,9 @@ class VideoRemixerState():
         deep_interpolater = DeepInterpolate(interpolater, use_time_step, log_fn)
         series_interpolater = InterpolateSeries(deep_interpolater, log_fn)
 
-        # TODO might need to better manage the flow of content between processing steps
-        if self.resynthesize:
-            scenes_base_path = self.resynthesis_path
-        elif self.resize:
-            scenes_base_path = self.resize_path
-        else:
-            scenes_base_path = self.scenes_path
+        scenes_base_path = self.scenes_source_path(self.INFLATE_STEP)
         self.inflation_path = os.path.join(self.project_path, self.INFLATE_PATH)
         create_directory(self.inflation_path)
-        # save the project now to preserve the newly established path
         self.save()
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Inflate") as bar:

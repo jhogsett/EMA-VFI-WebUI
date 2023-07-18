@@ -767,14 +767,14 @@ class VideoRemixer(TabBase):
             self.log("saving project after purging stale and incomplete content")
             self.state.save()
 
-            if self.state.resize and not self.state.processed_content_present("resize"):
+            if self.state.resize and not self.state.processed_content_present(self.state.RESIZE_STEP):
                 self.log("about to resize scenes")
                 self.state.resize_scenes(self.log, kept_scenes, self.config.remixer_settings)
                 self.log("saving project after resizing frames")
                 self.state.save()
                 jot.down(f"Resized scenes created in {self.state.resize_path}")
 
-            if self.state.resynthesize and not self.state.processed_content_present("resynth"):
+            if self.state.resynthesize and not self.state.processed_content_present(self.state.RESYNTH_STEP):
                 self.state.resynthesize_scenes(self.log,
                                                kept_scenes,
                                                self.engine,
@@ -783,7 +783,7 @@ class VideoRemixer(TabBase):
                 self.state.save()
                 jot.down(f"Resynthesized scenes created in {self.state.resynthesis_path}")
 
-            if self.state.inflate and not self.state.processed_content_present("inflate"):
+            if self.state.inflate and not self.state.processed_content_present(self.state.INFLATE_STEP):
                 self.state.inflate_scenes(self.log,
                                                kept_scenes,
                                                self.engine,
@@ -792,7 +792,8 @@ class VideoRemixer(TabBase):
                 self.state.save()
                 jot.down(f"Inflated scenes created in {self.state.inflation_path}")
 
-            if self.state.upscale and not self.state.processed_content_present("upscale"):
+            if self.state.upscale and not self.state.processed_content_present(
+                    self.state.UPSCALE_STEP):
                 self.state.upscale_scenes(self.log,
                                           kept_scenes,
                                           self.config.realesrgan_settings,
