@@ -179,7 +179,7 @@ class VideoRemixer(TabBase):
                 ## COMPILE SCENES
                 with gr.Tab("Compile Scenes", id=4):
                     with gr.Row():
-                        project_info4 = gr.Textbox(label="Chosen Scene Details", lines=6)
+                        project_info4 = gr.Textbox(label="Chosen Scene Details", lines=5)
                     with gr.Row():
                         message_box4 = gr.Textbox(show_label=False, interactive=False,
                                         value="Next: Compile 'Keep' and 'Drop' scenes")
@@ -705,7 +705,7 @@ class VideoRemixer(TabBase):
             self.log(error)
             return self.empty_args(6)
 
-    # User has clicked Done Chooser Scenes from Scene Chooser
+    # User has clicked Done Choosing Scenes from Scene Chooser
     def next_button3(self):
         self.state.project_info4 = self.state.chosen_scenes_report()
 
@@ -762,7 +762,9 @@ class VideoRemixer(TabBase):
         if kept_scenes:
             self.log("purging stale content")
             self.state.purge_stale_processed_content(upscale_option_changed)
-            self.log("saving project after purging stale content")
+            self.log("purging incomplete content")
+            self.state.purge_incomplete_processed_content()
+            self.log("saving project after purging stale and incomplete content")
             self.state.save()
 
             if self.state.resize and not self.state.processed_content_present("resize"):

@@ -31,17 +31,23 @@ def create_directories(dirs : dict):
     for key in dirs.keys():
         create_directory(dirs[key])
 
-def remove_directories(dirs : list):
+def remove_directories(dirs : list, unsafe=False):
     for dir in dirs:
-        if dir and is_safe_path(dir) and os.path.exists(dir):
-            shutil.rmtree(dir)
+        if dir:
+            if not unsafe and not is_safe_path(dir):
+                raise ValueError(f"error removing unsafe directory '{dir}'")
+            if os.path.exists(dir):
+                shutil.rmtree(dir)
 
 # remove the files found in the passed directory (no recursion)
-def remove_files(path : str):
-    if path and is_safe_path(path) and os.path.exists(path):
-        files = get_files(path)
-        for file in files:
-            os.remove(file)
+def remove_files(path : str, unsafe=False):
+    if path:
+        if not unsafe and not is_safe_path(path):
+            raise ValueError(f"error removing files from unsafe path '{[path]}'")
+        if os.path.exists(path):
+            files = get_files(path)
+            for file in files:
+                os.remove(file)
 
 # remove the files found in each of the passed directories (no recursion)
 def purge_directories(dirs : list):
