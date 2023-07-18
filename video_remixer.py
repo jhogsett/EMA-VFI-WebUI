@@ -157,14 +157,9 @@ class VideoRemixerState():
     def ingested_video_report(self):
         with Jot() as jot:
             jot.down(f"Source Video: {self.video_details['source_video']}")
-            jot.down(f"Frame Rate: {self.video_details['frame_rate']}")
-            jot.down(f"Duration: {self.video_details['duration']}")
-            jot.down(f"Display Size: {self.video_details['display_dimensions']}")
-            jot.down(f"Aspect Ratio: {self.video_details['display_aspect_ratio']}")
-            jot.down(f"Content Size: {self.video_details['content_dimensions']}")
-            jot.down(f"Frame Count: {self.video_details['frame_count']}")
-            jot.down(f"File Size: {self.video_details['file_size']}")
-            jot.down(f"Has Audio: {True if self.video_details['has_audio'] else False}")
+            jot.down(f"| Frame Rate | Duration | Display Size | Aspect Ratio | Content Size | Frame Count | File Size | Has Audio |")
+            jot.down(f"| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |")
+            jot.down(f"| {self.video_details['frame_rate']} | {self.video_details['duration']} | {self.video_details['display_dimensions']} | {self.video_details['display_aspect_ratio']} | {self.video_details['content_dimensions']} | {self.video_details['frame_count_show']} | {self.video_details['file_size']} | {True if self.video_details['has_audio'] else False} |")
         return jot.grab()
 
     PROJECT_PATH_PREFIX = "REMIX-"

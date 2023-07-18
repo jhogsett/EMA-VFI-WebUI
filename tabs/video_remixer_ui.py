@@ -70,7 +70,8 @@ class VideoRemixer(TabBase):
                 ### REMIX SETTINGS
                 with gr.Tab("Remix Settings", id=1):
                     gr.Markdown("**Confirm Remixer Settings**")
-                    video_info1 = gr.Textbox(label="Video Details", lines=6)
+                    with gr.Box():
+                        video_info1 = gr.Markdown("Video Details")
                     with gr.Row():
                         project_path = gr.Textbox(label="Project Path",
                                             placeholder="Path on this server to store project data")
