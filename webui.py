@@ -50,19 +50,19 @@ class WebUI:
         while True:
             print()
             if self.config.user_interface["mtqdm_use_color"]:
-                print("\x1b[38;2;255;255;255m▄▄▄\x1b[0m\x1b[38;2;255;255;0m▄▄▄\x1b[0m\x1b[38;2;0;255;255m▄▄▄\x1b[0m\x1b[38;2;0;255;0m▄▄▄\x1b[0m\x1b[38;2;255;0;255m▄▄▄\x1b[0m\x1b[38;2;255;0;0m▄▄▄\x1b[0m\x1b[38;2;0;0;255m▄▄▄\x1b[0m")
-                print("\x1b[38;2;255;255;255m███\x1b[0m EMA-VFI WebUI \x1b[38;2;0;0;255m███\x1b[0m")
-                print("\x1b[38;2;255;255;255m▀▀▀\x1b[0m\x1b[38;2;255;255;0m▀▀▀\x1b[0m\x1b[38;2;0;255;255m▀▀▀\x1b[0m\x1b[38;2;0;255;0m▀▀▀\x1b[0m\x1b[38;2;255;0;255m▀▀▀\x1b[0m\x1b[38;2;255;0;0m▀▀▀\x1b[0m\x1b[38;2;0;0;255m▀▀▀\x1b[0m")
+                print("\x1b[40m\x1b[38;2;0;0;0m▐\x1b[38;2;255;255;255m▄▄▄\x1b[38;2;255;255;0m▄▄▄\x1b[38;2;0;255;255m▄▄▄\x1b[38;2;0;255;0m▄▄▄\x1b[38;2;255;0;255m▄▄▄\x1b[38;2;255;0;0m▄▄▄\x1b[38;2;0;0;255m▄▄▄\x1b[38;2;0;0;0m▌\x1b[0m")
+                print("\x1b[40m\x1b[38;2;0;0;0m▐\x1b[38;2;255;255;255m███\x1b[97m EMA-VFI WEBUI \x1b[38;2;0;0;255m███\x1b[38;2;0;0;0m▌\x1b[0m")
+                print("\x1b[40m\x1b[38;2;0;0;0m▐\x1b[38;2;255;255;255m▀▀▀\x1b[38;2;255;255;0m▀▀▀\x1b[38;2;0;255;255m▀▀▀\x1b[38;2;0;255;0m▀▀▀\x1b[38;2;255;0;255m▀▀▀\x1b[38;2;255;0;0m▀▀▀\x1b[38;2;0;0;255m▀▀▀\x1b[38;2;0;0;0m▌\x1b[0m")
             else:
-                print("▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄")
-                print("███ EMA-VFI WebUI ███")
-                print("▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀")
+                print(" ▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄▄")
+                print(" ███ EMA-VFI WEBUI ███")
+                print(" ▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀")
             print()
             app = create_ui(self.config, engine, self.log, self.restart_app)
             app.launch(inbrowser = self.config.app_settings["auto_launch_browser"] and not self.prevent_inbrowser,
                         server_name = self.config.app_settings["server_name"],
                         server_port = self.config.app_settings["server_port"],
-                        prevent_thread_lock=True)
+                        prevent_thread_lock=True, quiet=True)
             # after initial launch, disable inbrowser for subsequent restarts
             self.prevent_inbrowser = True
             self.wait_on_server(app)

@@ -70,7 +70,8 @@ class VideoRemixer(TabBase):
                 ### REMIX SETTINGS
                 with gr.Tab("Remix Settings", id=1):
                     gr.Markdown("**Confirm Remixer Settings**")
-                    video_info1 = gr.Textbox(label="Video Details", lines=6)
+                    with gr.Box():
+                        video_info1 = gr.Markdown("Video Details")
                     with gr.Row():
                         project_path = gr.Textbox(label="Project Path",
                                             placeholder="Path on this server to store project data")
@@ -109,9 +110,8 @@ class VideoRemixer(TabBase):
                 ## SET UP PROJECT
                 with gr.Tab("Set Up Project", id=2):
                     gr.Markdown("**Ready to Set Up Video Remixer Project**")
-                    with gr.Row():
-                        project_info2 = gr.Textbox(label="Project Details", lines=6,
-                                                   interactive=False)
+                    with gr.Box():
+                        project_info2 = gr.Markdown("Project Details")
                     with gr.Row():
                         thumbnail_type = gr.Radio(choices=["GIF", "JPG"], value="JPG",
                                                   label="Thumbnail Type",
@@ -136,12 +136,12 @@ class VideoRemixer(TabBase):
                         with gr.Column():
                             with gr.Row():
                                 scene_label = gr.Text(label="Scene Name", interactive=False)
-                                scene_info = gr.Text(label="Scene Position", interactive=False)
+                                scene_info = gr.Text(label="Scene Details", interactive=False)
                         with gr.Column():
                             with gr.Row():
                                 scene_state = gr.Radio(label="Choose", value=None,
                                                     choices=["Keep", "Drop"])
-                                scene_index = gr.Number(label="Scene Number", precision=0)
+                                scene_index = gr.Number(label="Scene Index", precision=0)
                     with gr.Row():
                         with gr.Column():
                             scene_image = gr.Image(type="filepath", interactive=False).style(
@@ -157,7 +157,6 @@ class VideoRemixer(TabBase):
                             with gr.Row():
                                 prev_keep = gr.Button(value="< Prev Keep", variant="secondary")
                                 next_keep = gr.Button(value="Next Keep >", variant="secondary")
-                            gr.Box()
                             with gr.Row():
                                 first_scene = gr.Button(value="<< First Scene",
                                                             variant="secondary")
@@ -179,8 +178,8 @@ class VideoRemixer(TabBase):
 
                 ## COMPILE SCENES
                 with gr.Tab("Compile Scenes", id=4):
-                    with gr.Row():
-                        project_info4 = gr.Textbox(label="Chosen Scene Details", lines=6)
+                    with gr.Box():
+                        project_info4 = gr.Markdown("Chosen Scene Details")
                     with gr.Row():
                         message_box4 = gr.Textbox(show_label=False, interactive=False,
                                         value="Next: Compile 'Keep' and 'Drop' scenes")
@@ -194,21 +193,25 @@ class VideoRemixer(TabBase):
 
                 ## PROCESSING OPTIONS
                 with gr.Tab("Procesing Options", id=5):
-                    gr.Markdown("**Ready to Process Original Content into Remix Content**")
+                    gr.Markdown("**Ready to Process Content for Remix Video**")
                     with gr.Row():
-                        resize = gr.Checkbox(label="Fix Aspect Ratio",value=True,
-                                             info="Adjust for proper display")
+                        resize = gr.Checkbox(label="Fix Aspect Ratio", value=True)
+                        with gr.Box():
+                            gr.Markdown("Frames are resized then cropped according to project settings")
                     with gr.Row():
-                        resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True,
-                                                   info="Remove grain and stabilize motion")
+                        resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True)
+                        with gr.Box():
+                            gr.Markdown("Frames are recreated by AI interpolation of neighboring frames\r\n- Scene outermost frames are lost during resynthesis\r\n- Audio clips are adjusted to compensate for lost frames")
                     with gr.Row():
-                        inflate = gr.Checkbox(label="Inflate New Frames",value=True,
-                                              info="Create smooth motion")
+                        inflate = gr.Checkbox(label="Inflate New Frames",value=True)
+                        with gr.Box():
+                            gr.Markdown("New frames are inserted by AI interpolation for smooth motion\r\n- Project FPS is doubled when inflation is used\r\n- Audio clips do not need adjusting for inflation")
                     with gr.Row():
-                        upscale = gr.Checkbox(label="Upscale Frames", value=True,
-                                              info="Use Real-ESRGAN to Enlarge Video")
+                        upscale = gr.Checkbox(label="Upscale Frames", value=True)
                         upscale_option = gr.Radio(label="Upscale By", value="2X",
                                                   choices=["2X", "4X"])
+                        with gr.Box():
+                            gr.Markdown("Frames are cleansed and enlarged using AI - Real-ESRGAN 4x+\r\n")
                     message_box5 = gr.Textbox(
                         value="Next: Perform all Processing Steps (takes from hours to days)",
                                               show_label=False, interactive=False)
@@ -224,7 +227,7 @@ class VideoRemixer(TabBase):
 
                 ## REMIX VIDEOS
                 with gr.Tab("Save Remix", id=6):
-                    gr.Markdown("**Ready to Finalize Scenes and Merge Remixed Video**")
+                    gr.Markdown("**Ready to Finalize Scenes and Save Remixed Video**")
                     with gr.Row():
                         summary_info6 = gr.Textbox(label="Processed Content", lines=6,
                                                 interactive=False)
@@ -306,52 +309,52 @@ class VideoRemixer(TabBase):
                                      scene_info])
 
         keep_next.click(self.keep_next, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         drop_next.click(self.drop_next, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         next_scene.click(self.next_scene, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         prev_scene.click(self.prev_scene, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         next_keep.click(self.next_keep, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         prev_keep.click(self.prev_keep, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         keep_all_button.click(self.keep_all_scenes, show_progress=True,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         drop_all_button.click(self.drop_all_scenes, show_progress=True,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         first_scene.click(self.first_scene, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
         last_scene.click(self.last_scene, show_progress=False,
-                            inputs=[scene_index, scene_index],
+                            inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
@@ -404,21 +407,19 @@ class VideoRemixer(TabBase):
         self.new_project()
         try:
             self.state.ingest_video(video_path)
-            self.video_info1 = self.state.ingested_video_report()
+            self.state.video_info1 = self.state.ingested_video_report()
         except ValueError as error:
             return gr.update(selected=0), \
                    gr.update(visible=True,
                              value=error), \
                    *self.empty_args(6)
 
-        # advancing to the next tab displays information about the source video only
-        # user may decide not to proceed after seeing it
-        # therefore it is too early to save project advancement
-        # self.state.save_progress("settings")
+        # don't save yet, user may change project path next
+        self.state.save_progress("settings", save_project=False)
 
         return gr.update(selected=1), \
             gr.update(visible=True), \
-            gr.update(value=self.video_info1), \
+            gr.update(value=self.state.video_info1), \
             self.state.project_path, \
             self.state.resize_w, \
             self.state.resize_h, \
@@ -708,7 +709,7 @@ class VideoRemixer(TabBase):
             self.log(error)
             return self.empty_args(6)
 
-    # User has clicked Done Chooser Scenes from Scene Chooser
+    # User has clicked Done Choosing Scenes from Scene Chooser
     def next_button3(self):
         self.state.project_info4 = self.state.chosen_scenes_report()
 
@@ -765,42 +766,64 @@ class VideoRemixer(TabBase):
         if kept_scenes:
             self.log("purging stale content")
             self.state.purge_stale_processed_content(upscale_option_changed)
-            self.log("saving project after purging stale content")
+            self.log("purging incomplete content")
+            self.state.purge_incomplete_processed_content()
+            self.log("saving project after purging stale and incomplete content")
             self.state.save()
 
-            if self.state.resize and not self.state.processed_content_present("resize"):
-                self.log("about to resize scenes")
-                self.state.resize_scenes(self.log, kept_scenes, self.config.remixer_settings)
-                self.log("saving project after resizing frames")
-                self.state.save()
-                jot.down(f"Resized scenes created in {self.state.resize_path}")
+            if not self.state.resize \
+                and not self.state.resynthesize \
+                and not self.state.inflate \
+                and not self.state.upscale:
+                jot.down(f"Using original source content in {self.state.frames_path}")
 
-            if self.state.resynthesize and not self.state.processed_content_present("resynth"):
-                self.state.resynthesize_scenes(self.log,
-                                               kept_scenes,
-                                               self.engine,
-                                               self.config.engine_settings)
-                self.log("saving project after resynthesizing frames")
-                self.state.save()
-                jot.down(f"Resynthesized scenes created in {self.state.resynthesis_path}")
+            if self.state.resize:
+                if self.state.processed_content_present(self.state.RESIZE_STEP):
+                    jot.down(f"Using processed resized scenes in {self.state.resize_path}")
+                else:
+                    self.log("about to resize scenes")
+                    self.state.resize_scenes(self.log,
+                                             kept_scenes,
+                                             self.config.remixer_settings)
+                    self.log("saving project after resizing frames")
+                    self.state.save()
+                    jot.down(f"Resized scenes created in {self.state.resize_path}")
 
-            if self.state.inflate and not self.state.processed_content_present("inflate"):
-                self.state.inflate_scenes(self.log,
-                                               kept_scenes,
-                                               self.engine,
-                                               self.config.engine_settings)
-                self.log("saving project after inflating frames")
-                self.state.save()
-                jot.down(f"Inflated scenes created in {self.state.inflation_path}")
+            if self.state.resynthesize:
+                if self.state.processed_content_present(self.state.RESYNTH_STEP):
+                    jot.down(f"Using processed resynthesized scenes in {self.state.resynthesis_path}")
+                else:
+                    self.state.resynthesize_scenes(self.log,
+                                                kept_scenes,
+                                                self.engine,
+                                                self.config.engine_settings)
+                    self.log("saving project after resynthesizing frames")
+                    self.state.save()
+                    jot.down(f"Resynthesized scenes created in {self.state.resynthesis_path}")
 
-            if self.state.upscale and not self.state.processed_content_present("upscale"):
-                self.state.upscale_scenes(self.log,
-                                          kept_scenes,
-                                          self.config.realesrgan_settings,
-                                          self.config.remixer_settings)
-                self.log("saving project after upscaling frames")
-                self.state.save()
-                jot.down(f"Upscaled scenes created in {self.state.upscale_path}")
+            if self.state.inflate:
+                if self.state.processed_content_present(self.state.INFLATE_STEP):
+                    jot.down(f"Using processed inflated scenes in {self.state.inflation_path}")
+                else:
+                    self.state.inflate_scenes(self.log,
+                                                kept_scenes,
+                                                self.engine,
+                                                self.config.engine_settings)
+                    self.log("saving project after inflating frames")
+                    self.state.save()
+                    jot.down(f"Inflated scenes created in {self.state.inflation_path}")
+
+            if self.state.upscale:
+                if self.state.processed_content_present(self.state.UPSCALE_STEP):
+                    jot.down(f"Using processed upscaled scenes in {self.state.upscale_path}")
+                else:
+                    self.state.upscale_scenes(self.log,
+                                            kept_scenes,
+                                            self.config.realesrgan_settings,
+                                            self.config.remixer_settings)
+                    self.log("saving project after upscaling frames")
+                    self.state.save()
+                    jot.down(f"Upscaled scenes created in {self.state.upscale_path}")
 
             self.state.summary_info6 = jot
             self.state.output_filepath = self.state.default_remix_filepath()

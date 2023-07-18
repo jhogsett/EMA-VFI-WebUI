@@ -302,7 +302,7 @@ class Mtqdm():
         return palette[self.color]
 
     def _enter_color(self):
-        if self.current_palette in ["random", "randsub"]:
+        if self.current_palette in ["random", "randbemine"]:
             self._manage_random_palette()
         else:
             self._manage_color_alternation()

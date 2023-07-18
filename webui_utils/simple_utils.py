@@ -151,7 +151,7 @@ def seconds_to_hmsf(seconds : float, framerate : float, framechar : str="/"):
     framerate = float(framerate)
 
     hms = seconds_to_hms(seconds).split(".")
-    hms_only = hms[0]
+    hms_only = hms[0].zfill(8)
     hms_frac = int((seconds % 1) * framerate)
     frame_width = len(str(int(framerate)))
     frames = str(hms_frac).zfill(frame_width)
