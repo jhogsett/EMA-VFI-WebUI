@@ -668,7 +668,7 @@ class VideoRemixerState():
         deep_interpolater = DeepInterpolate(interpolater, use_time_step, log_fn)
         series_interpolater = InterpolateSeries(deep_interpolater, log_fn)
 
-        scenes_base_path = self.scenes_source_path("resynthesize")
+        scenes_base_path = self.scenes_source_path(self.RESYNTH_STEP)
         self.resynthesis_path = os.path.join(self.project_path, self.RESYNTH_PATH)
         create_directory(self.resynthesis_path)
         self.save()
@@ -750,15 +750,7 @@ class VideoRemixerState():
             tile_pad = 0
         upscaler = UpscaleSeries(model_name, gpu_ids, fp32, tiling, tile_pad, log_fn)
 
-        # TODO might need to better manage the flow of content between processing steps
-        if self.inflate:
-            scenes_base_path = self.inflation_path
-        elif self.resynthesize:
-            scenes_base_path = self.resynthesis_path
-        elif self.resize:
-            scenes_base_path = self.resize_path
-        else:
-            scenes_base_path = self.scenes_path
+        scenes_base_path = self.scenes_source_path(self.UPSCALE_STEP)
         self.upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
         create_directory(self.upscale_path)
         # save the project now to preserve the newly established path
