@@ -596,7 +596,7 @@ class VideoRemixerState():
             # resynthesis is the second processing step
             if self.resize:
                 # if resize is enabled, draw from the resized scenes path
-                processing_path = self.resize
+                processing_path = self.resize_path
 
         elif processing_step == self.INFLATE_STEP:
             # inflation is the third processing step
@@ -605,7 +605,7 @@ class VideoRemixerState():
                 processing_path = self.resynthesis_path
             elif self.resize:
                 # if resize is enabled, draw from the resized scenes path
-                processing_path = self.resize
+                processing_path = self.resize_path
 
         elif processing_step == self.UPSCALE_STEP:
             # upscaling is the fourth processing step
@@ -617,7 +617,7 @@ class VideoRemixerState():
                 processing_path = self.resynthesis_path
             elif self.resize:
                 # if resize is enabled, draw from the resized scenes path
-                processing_path = self.resize
+                processing_path = self.resize_path
 
         return processing_path
 
