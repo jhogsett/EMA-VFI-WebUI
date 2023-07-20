@@ -256,12 +256,16 @@ class VideoRemixerState():
     FRAMES_PATH = "SOURCE"
 
     # split video into raw PNG frames
-    def render_source_frames(self, global_options):
+    def render_source_frames(self, global_options, prevent_overwrite=True):
+        self.frames_path = os.path.join(self.project_path, self.FRAMES_PATH)
+        if prevent_overwrite:
+            if os.path.exists(self.frames_path) and get_files(self.frames_path, "png"):
+                return None
+
         video_path = self.source_video
         index_width = self.video_details["index_width"]
         self.output_pattern = f"source_%0{index_width}d.png"
         frame_rate = self.project_fps
-        self.frames_path = os.path.join(self.project_path, self.FRAMES_PATH)
         create_directory(self.frames_path)
 
         with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
