@@ -756,7 +756,13 @@ class VideoRemixerState():
         # save the project now to preserve the newly established path
         self.save()
 
-        upscale_factor = 2.0 if self.upscale_option == "2X" else 4.0
+        if self.upscale_option == "1X":
+            upscale_factor = 1.0
+        elif self.upscale_option == "2X":
+            upscale_factor = 2.0
+        else:
+            upscale_factor = 4.0
+
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Upscale") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
