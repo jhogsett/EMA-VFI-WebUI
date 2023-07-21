@@ -775,7 +775,7 @@ class VideoRemixer(TabBase):
                 and not self.state.resynthesize \
                 and not self.state.inflate \
                 and not self.state.upscale:
-                jot.down(f"Using original source content in {self.state.frames_path}")
+                jot.down(f"Using original source content in {self.state.scenes_path}")
 
             if self.state.resize:
                 if self.state.processed_content_present(self.state.RESIZE_STEP):
