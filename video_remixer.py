@@ -240,7 +240,6 @@ class VideoRemixerState():
     # TODO make purging on backing up smarter
     def reset_at_project_settings(self):
         remove_directories([
-            # self.frames_path,
             self.scenes_path,
             self.dropped_scenes_path,
             self.thumbnail_path,
