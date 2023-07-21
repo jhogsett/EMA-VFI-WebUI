@@ -209,7 +209,7 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         upscale = gr.Checkbox(label="Upscale Frames", value=True)
                         upscale_option = gr.Radio(label="Upscale By", value="2X",
-                                                  choices=["2X", "4X"])
+                                                  choices=["1X", "2X", "4X"])
                         with gr.Box():
                             gr.Markdown("Frames are cleansed and enlarged using AI - Real-ESRGAN 4x+\r\n")
                     message_box5 = gr.Textbox(
