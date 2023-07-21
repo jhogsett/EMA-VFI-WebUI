@@ -176,6 +176,25 @@ class MtqdmTester():
             for n in range(count-1, -1, -1):
                 Mtqdm().leave_bar(bars[n])
 
+    def absurdity_bars(self, times, count, total, delay):
+        bars = [None for n in range(count)]
+        curr = [0 for n in range(count)]
+        dirs = [1 for n in range(count)]
+        for n in range(count):
+            bars[n] = Mtqdm().enter_bar(total=total, desc=f"Bar{n}")
+        for m in range(times):
+            for n in range(count):
+                incr = (n + 1) * dirs[n]
+                next_val = curr[n] + incr
+                if next_val >= total or next_val < 0:
+                    dirs[n] *= -1
+                else:
+                    curr[n] += incr
+                    Mtqdm().update_bar(bars[n], steps=incr)
+                    time.sleep(delay)
+        for n in range(count-1, -1, -1):
+            Mtqdm().leave_bar(bars[n])
+
     def test_palettes(self):
         return [
             {
@@ -229,6 +248,9 @@ class MtqdmTester():
             },
             {
                 "Insanity Bars" : lambda : self.insanity_bars(20, Mtqdm.MAX_BARS, 25, 0.025)
+            },
+            {
+                "Absurdity Bars" : lambda : self.absurdity_bars(1000, Mtqdm.MAX_BARS, 50, 0.00000001)
             },
         ]
 

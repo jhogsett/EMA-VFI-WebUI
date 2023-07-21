@@ -558,7 +558,10 @@ class VideoRemixer(TabBase):
         self.log("splitting source video into PNG frames")
         global_options = self.config.ffmpeg_settings["global_options"]
         ffcmd = self.state.render_source_frames(global_options=global_options)
-        self.log(f"FFmpeg command: {ffcmd}")
+        if not ffcmd:
+            self.log("rendering source frames skipped")
+        else:
+            self.log(f"FFmpeg command: {ffcmd}")
 
         self.log("saving project after converting video to PNG frames")
         self.state.save()
@@ -772,7 +775,7 @@ class VideoRemixer(TabBase):
                 and not self.state.resynthesize \
                 and not self.state.inflate \
                 and not self.state.upscale:
-                jot.down(f"Using original source content in {self.state.frames_path}")
+                jot.down(f"Using original source content in {self.state.scenes_path}")
 
             if self.state.resize:
                 if self.state.processed_content_present(self.state.RESIZE_STEP):
