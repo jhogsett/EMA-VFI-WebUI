@@ -288,8 +288,10 @@ class VideoRemixer(TabBase):
 
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold,
-                    break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h, deinterlace],
-                           outputs=[tabs_video_remixer, message_box1, project_info2, message_box2])
+                                break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
+                                deinterlace],
+                           outputs=[tabs_video_remixer, message_box1, project_info2, message_box2,
+                                project_load_path])
 
         back_button1.click(self.back_button1, outputs=tabs_video_remixer)
 
@@ -524,7 +526,8 @@ class VideoRemixer(TabBase):
         return gr.update(selected=2), \
                gr.update(visible=True), \
                self.state.project_info2, \
-              "Next: Create Scenes, Thumbnails and Audio Clips (takes from minutes to hours)"
+              "Next: Create Scenes, Thumbnails and Audio Clips (takes from minutes to hours)", \
+              project_path
 
     def back_button1(self):
         return gr.update(selected=0)

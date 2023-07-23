@@ -222,7 +222,9 @@ class VideoRemixerState():
     def save_original_video(self, prevent_overwrite=True):
         _, filename, ext = split_filepath(self.source_video)
         video_filename = filename + ext
-        project_video_path = os.path.join(self.project_path, video_filename)
+        # remove single quotes that cause issues with FFmpeg
+        filtered_filename = video_filename.replace("'", "")
+        project_video_path = os.path.join(self.project_path, filtered_filename)
 
         if os.path.exists(project_video_path) and prevent_overwrite:
             raise ValueError(
@@ -319,6 +321,8 @@ class VideoRemixerState():
                     log_fn).split()
             return None
         except ValueError as error:
+            return error
+        except RuntimeError as error:
             return error
 
     THUMBNAILS_PATH = "THUMBNAILS"

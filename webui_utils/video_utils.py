@@ -497,7 +497,11 @@ def get_detected_breaks(input_path : str, duration : float=0.5, ratio : float=0.
     end_frames = [
         int(line.split("=")[1]) for line in stdout_lines if line.startswith("lavfi.black_end")]
     if len(start_frames) != len(end_frames):
-        raise RuntimeError("unable to parse detected breaks")
+        # it could be the last break never ended
+        if len(end_frames) == len(start_frames) - 1:
+            del start_frames[-1]
+        else:
+            raise RuntimeError("unable to parse detected breaks")
 
     breaks = []
     for index, start in enumerate(start_frames):
