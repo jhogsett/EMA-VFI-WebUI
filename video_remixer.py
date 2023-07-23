@@ -322,6 +322,8 @@ class VideoRemixerState():
             return None
         except ValueError as error:
             return error
+        except RuntimeError as error:
+            return error
 
     THUMBNAILS_PATH = "THUMBNAILS"
 
