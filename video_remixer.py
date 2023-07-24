@@ -3,7 +3,7 @@ import os
 import shutil
 import yaml
 from yaml import Loader, YAMLError
-from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files, purge_directories
+from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files, purge_directories, clean_filename
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom
@@ -163,6 +163,7 @@ class VideoRemixerState():
         return jot.grab()
 
     PROJECT_PATH_PREFIX = "REMIX-"
+    FILENAME_FILTER = [" ", "'", "[", "]"]
 
     def ingest_video(self, video_path):
         self.source_video = video_path
@@ -178,7 +179,8 @@ class VideoRemixerState():
             finally:
                 Mtqdm().update_bar(bar)
 
-        project_path = os.path.join(path, f"{self.PROJECT_PATH_PREFIX}{filename}")
+        filtered_filename = clean_filename(filename, self.FILENAME_FILTER)
+        project_path = os.path.join(path, f"{self.PROJECT_PATH_PREFIX}{filtered_filename}")
         resize_w = video_details['display_width']
         resize_h = video_details['display_height']
         crop_w, crop_h = resize_w, resize_h
@@ -222,8 +224,9 @@ class VideoRemixerState():
     def save_original_video(self, prevent_overwrite=True):
         _, filename, ext = split_filepath(self.source_video)
         video_filename = filename + ext
-        # remove single quotes that cause issues with FFmpeg
-        filtered_filename = video_filename.replace("'", "")
+
+        # clean various problematic chars from filenames
+        filtered_filename = clean_filename(video_filename, self.FILENAME_FILTER)
         project_video_path = os.path.join(self.project_path, filtered_filename)
 
         if os.path.exists(project_video_path) and prevent_overwrite:
