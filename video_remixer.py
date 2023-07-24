@@ -387,6 +387,49 @@ class VideoRemixerState():
         else:
             raise ValueError(f"thumbnail type '{self.thumbnail_type}' is not implemented")
 
+    def fill_missing_thumbnails(self, log_fn, global_options, remixer_settings):
+        thumb_files = get_files(self.thumbnail_path)
+        for file in thumb_files:
+            stat = os.stat(file)
+            if stat.st_size == 0:
+                _, filename, _ = split_filepath(file)
+                label_start = filename.find("[")
+                label_end = filename.find("]")
+                if label_start == -1 or label_end < label_start + 4: # "[0-0]"
+                    log_fn(f"skipping unparsable thumbnail filename {file}")
+                    continue
+                label = filename[label_start + 1 : label_end]
+
+                # gif_fps = remixer_settings["default_gif_fps"]
+                gif_factor = remixer_settings["gif_factor"]
+                # gif_end_delay = remixer_settings["gif_end_delay"]
+                thumb_scale = remixer_settings["thumb_scale"]
+                max_thumb_size = remixer_settings["max_thumb_size"]
+                video_w = self.video_details['display_width']
+                video_h = self.video_details['display_height']
+
+                max_frame_dimension = video_w if video_w > video_h else video_h
+                thumb_size = max_frame_dimension * thumb_scale
+                if thumb_size > max_thumb_size:
+                    thumb_scale = max_thumb_size / max_frame_dimension
+                ffmpeg_cmd = SliceVideo(self.source_video,
+                            self.project_fps,
+                            self.scenes_path,
+                            self.thumbnail_path,
+                            thumb_scale,
+                            "gif",
+                            0,
+                            gif_factor,
+                            0,
+                            False,
+                            0,
+                            0,
+                            log_fn,
+                            global_options=global_options).slice_group(label, static_gif=True)
+                log_fn(f"ffmpeg command: {ffmpeg_cmd}")
+
+
+
     def keep_all_scenes(self):
         self.scene_states = {scene_name : "Keep" for scene_name in self.scene_names}
 

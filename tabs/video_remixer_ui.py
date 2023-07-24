@@ -610,6 +610,10 @@ class VideoRemixer(TabBase):
         self.log("saving project after creating scene thumbnails")
         self.state.save()
 
+        if self.state.thumbnail_type == "GIF":
+            self.log(f"about to check for and fill missing thumbnails")
+        self.state.fill_missing_thumbnails(self.log, global_options, self.config.remixer_settings)
+
         # TODO this is fine as part of project setup but does it belong here?
         self.state.clips_path = os.path.join(self.state.project_path, "CLIPS")
         self.log(f"creating clips directory {self.state.clips_path}")

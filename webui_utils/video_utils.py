@@ -586,7 +586,8 @@ def slice_video(input_path : str,
                 gif_high_quality : bool=False,
                 gif_fps : float=0.0,
                 gif_end_delay : float=0.0,
-                global_options : str=""):
+                global_options : str="",
+                static_gif : bool=False):
     # 153=5.1
     # 203+1=6.8
     # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.mp4
@@ -606,7 +607,7 @@ f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_widt
                 f"-ss {start_time} -to {end_time} -copyts -vf 'scale=iw*{scale_factor}:-2,fps={fps}' -crf {mp4_quality}"},
             global_options="-y " + global_options)
 
-    if type == "gif":
+    if type == "gif" and not static_gif:
         # ffmpeg -y -i "C:\CONTENT\UHURA BUTTONS\ST apollo H and I-06232023-0800PM.mp4" -ss 0:00:44.488933 -to 0:00:55.612279 -vf setpts=PTS/30,fps=5,scale=iw*0.5:-2 -loop 0 "C:\CONTENT\UHURA BUTTONS\SOURCE\040000-050000\ST apollo H and I-06232023-0800PM[040000-050000]5fps.gif"
         start_time = seconds_to_hms(start_second / gif_speed)
         end_time = seconds_to_hms(end_second / gif_speed)
@@ -633,6 +634,15 @@ f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_widt
             global_options="-y " + global_options)
 
     elif type == "jpg":
+        mid_frame = int((last_frame + first_frame) / 2)
+        start_second = mid_frame / (fps * 1.0)
+        start_time = seconds_to_hms(start_second)
+        ffcmd = FFmpeg(inputs= {input_path : f"-ss {start_time}"},
+                                outputs={output_filepath :
+                f"-vf scale=iw*{scale_factor}:-2 -qscale:v 2 -vframes 1"},
+            global_options="-y " + global_options)
+
+    elif type == "gif" and static_gif:
         mid_frame = int((last_frame + first_frame) / 2)
         start_second = mid_frame / (fps * 1.0)
         start_time = seconds_to_hms(start_second)

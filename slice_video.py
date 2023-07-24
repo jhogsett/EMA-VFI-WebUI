@@ -103,42 +103,47 @@ class SliceVideo:
         if self.gif_factor < 1:
             raise ValueError(f"'gif_factor' must be >= 1")
 
+    def slice_group(self, group_name, static_gif=False):
+        first_index, last_index, num_width = details_from_group_name(group_name)
+        output_path = self.output_path or os.path.join(self.group_path, group_name)
+        first_index += self.edge_trim
+        if first_index < 0:
+            first_index = 0
+        last_index -= self.edge_trim
+
+        # With edge trim this can end up with a zero or negative duration
+        # render at least one frame's worth so a valid file is produced.
+        # The combine_video_audio() function will trim to the shortest stream
+        if last_index <= first_index:
+            last_index = first_index + 1
+
+        ffmpeg_cmd = slice_video(self.input_path,
+                    self.fps,
+                    output_path,
+                    num_width,
+                    first_index,
+                    last_index,
+                    self.type,
+                    self.mp4_quality,
+                    self.gif_factor,
+                    self.output_scale,
+                    self.gif_high_quality,
+                    self.gif_fps,
+                    self.gif_end_delay,
+                    global_options=self.global_options,
+                    static_gif=static_gif)
+        return ffmpeg_cmd
+
     def slice(self):
         group_names = validate_input_path(self.group_path, -1)
         if self.output_path:
             self.log(f"Creating output path {self.output_path}")
             create_directory(self.output_path)
 
-        with Mtqdm().open_bar(total=len(group_names), desc="Groups") as bar:
+        self.log("using slice_video (may cause long delay while processing request)")
+        with Mtqdm().open_bar(total=len(group_names), desc="Slice") as bar:
             for group_name in group_names:
-                first_index, last_index, num_width = details_from_group_name(group_name)
-                output_path = self.output_path or os.path.join(self.group_path, group_name)
-                self.log("using slice_video (may cause long delay while processing request)")
-                first_index += self.edge_trim
-                if first_index < 0:
-                    first_index = 0
-                last_index -= self.edge_trim
-
-                # With edge trim this can end up with a zero or negative duration
-                # render at least one frame's worth so a valid file is produced.
-                # The combine_video_audio() function will trim to the shortest stream
-                if last_index <= first_index:
-                    last_index = first_index + 1
-
-                ffmpeg_cmd = slice_video(self.input_path,
-                            self.fps,
-                            output_path,
-                            num_width,
-                            first_index,
-                            last_index,
-                            self.type,
-                            self.mp4_quality,
-                            self.gif_factor,
-                            self.output_scale,
-                            self.gif_high_quality,
-                            self.gif_fps,
-                            self.gif_end_delay,
-                            global_options=self.global_options)
+                ffmpeg_cmd = self.slice_group(group_name)
                 self.log(f"FFmpeg command line: '{ffmpeg_cmd}'")
                 Mtqdm().update_bar(bar)
 
