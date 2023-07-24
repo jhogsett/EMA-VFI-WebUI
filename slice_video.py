@@ -109,11 +109,11 @@ class SliceVideo:
             self.log(f"Creating output path {self.output_path}")
             create_directory(self.output_path)
 
-        with Mtqdm().open_bar(total=len(group_names), desc="Groups") as bar:
+        self.log("using slice_video (may cause long delay while processing request)")
+        with Mtqdm().open_bar(total=len(group_names), desc="Slice") as bar:
             for group_name in group_names:
                 first_index, last_index, num_width = details_from_group_name(group_name)
                 output_path = self.output_path or os.path.join(self.group_path, group_name)
-                self.log("using slice_video (may cause long delay while processing request)")
                 first_index += self.edge_trim
                 if first_index < 0:
                     first_index = 0
