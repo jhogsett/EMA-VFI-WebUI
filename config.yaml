@@ -104,6 +104,7 @@ remixer_settings:
   max_project_fps: 60.0
   max_thumb_size: 512
   maximum_crf: 28
+  min_frames_per_scene: 10
   minimum_crf: 17
   scale_type: "lanczos"
   thumb_scale: 0.5
