@@ -243,3 +243,8 @@ def build_series_filename(base_filename : str | None, output_type : str | None, 
     if base_filename:
         base_filename = build_indexed_filename(base_filename, None, index, max_index)
     return build_filename(input_filename, base_filename, output_type)
+
+def clean_filename(filename, remove_strs=[" "], replace_str="_"):
+    for _str in remove_strs:
+        filename = filename.replace(_str, replace_str)
+    return filename
