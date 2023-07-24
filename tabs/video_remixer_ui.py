@@ -32,6 +32,7 @@ class VideoRemixer(TabBase):
         maximum_crf = self.config.remixer_settings["maximum_crf"]
         default_crf = self.config.remixer_settings["default_crf"]
         max_thumb_size = self.config.remixer_settings["max_thumb_size"]
+        def_min_frames = self.config.remixer_settings["min_frames_per_scene"]
 
         with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Video Remixer"):
             gr.Markdown(
@@ -116,6 +117,9 @@ class VideoRemixer(TabBase):
                         thumbnail_type = gr.Radio(choices=["GIF", "JPG"], value="JPG",
                                                   label="Thumbnail Type",
                                     info="Choose 'GIF' for whole-scene animations (slow to render)")
+                        min_frames_per_scene = gr.Number(label="Minimum Frames Per Scene",
+                                    precision=0, value=def_min_frames,
+                        info="consolidates very small scenes info the next (0 to disable)")
                     with gr.Row():
                         message_box2 = gr.Textbox(
         value="Next: Create Scenes, Thumbnails and Audio Clips (takes from minutes to hours)",
@@ -295,7 +299,7 @@ class VideoRemixer(TabBase):
 
         back_button1.click(self.back_button1, outputs=tabs_video_remixer)
 
-        next_button2.click(self.next_button2, inputs=thumbnail_type,
+        next_button2.click(self.next_button2, inputs=[thumbnail_type, min_frames_per_scene],
                            outputs=[tabs_video_remixer, message_box2, scene_index, scene_label,
                                     scene_image, scene_state, scene_info])
 
@@ -535,11 +539,12 @@ class VideoRemixer(TabBase):
     ### REMIX SETUP EVENT HANDLERS
 
     # User has clicked Set Up Project from Set Up Project
-    def next_button2(self, thumbnail_type):
+    def next_button2(self, thumbnail_type, min_frames_per_scene):
         global_options = self.config.ffmpeg_settings["global_options"]
 
         self.state.thumbnail_type = thumbnail_type
-        self.log("saving after setting thumbnail type")
+        self.state.min_frames_per_scene = min_frames_per_scene
+        self.log("saving after setting thumbnail type and min frames per scene")
         self.state.save()
 
         try:
@@ -564,10 +569,9 @@ class VideoRemixer(TabBase):
         if not ffcmd:
             self.log("rendering source frames skipped")
         else:
+            self.log("saving project after converting video to PNG frames")
+            self.state.save()
             self.log(f"FFmpeg command: {ffcmd}")
-
-        self.log("saving project after converting video to PNG frames")
-        self.state.save()
 
         self.state.scenes_path = os.path.join(self.state.project_path, "SCENES")
         self.state.dropped_scenes_path = os.path.join(self.state.project_path, "DROPPED_SCENES")
@@ -589,13 +593,17 @@ class VideoRemixer(TabBase):
         self.log("saving project after splitting into scenes")
         self.state.save()
 
+        if self.state.min_frames_per_scene > 0:
+            self.log(f"about to consolidate scenes with too few frames")
+            self.state.consolidate_scenes(self.log)
+            self.log("saving project after consolidating scenes")
+            self.state.save()
+
         self.state.scene_names = sorted(get_directories(self.state.scenes_path))
         self.state.drop_all_scenes()
         self.state.current_scene = 0
         self.log("saving project after establishing scene names")
         self.state.save()
-
-        # TODO put in a check for a bad splits - zero scenes, missing scenes
 
         self.log(f"about to create thumbnails of type {self.state.thumbnail_type}")
         try:

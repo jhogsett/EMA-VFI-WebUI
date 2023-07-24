@@ -173,3 +173,69 @@ def get_frac_str_as_float(fraction_string : str) -> float:
     except ZeroDivisionError:
         return 0.0
 
+def _shrink_merge(container_data, key, key_from, move_fn, remove_fn, rename_fn, state):
+    # update the container count in memory
+    count_from = container_data[key_from]
+    container_data[key] += count_from
+
+    move_fn(state, key, key_from)
+    remove_fn(state, key_from)
+    new_key = rename_fn(state, key, count_from)
+
+    # update the key in memory
+    del container_data[key_from]
+    new_containers = {new_key if k == key else k :v for k, v in container_data.items()}
+
+    return new_containers, new_key
+
+## Shrink function
+# containers : dict with container arbitrary key names associated with container contents counts
+#              Meant to represent a set of Ordered containers, containing items of some kind,
+#              where the number of containers should be reduced, so that no container
+#              has fewer than 'minimum' items if possible
+#              example {"000-123" : 124, "124-419" : 296}
+# minimum    : target for the minimum number of items per container
+# move_fn    : callback to move contents between containers
+# remove_fn  : callback to eliminate a container
+# rename_fn  : callback to rekey a container
+# state      : state info passed to callback functions
+# Returns    : a new dict representing the shrunken containers set
+def shrink(container_data, minimum, move_fn, remove_fn, rename_fn, state):
+    last_keys = []
+    last_merged = None
+    while True:
+        keys = list(container_data.keys())
+
+        # if fewer than two container items, work is unneeded
+        if len(keys) < 2:
+            break
+
+        # if the keys have not changed this round, work is done
+        if keys == last_keys:
+            break
+        last_keys = keys
+
+        # merging assumes the following key is always available to merge from
+        for index in range(len(keys) - 1):
+            key = keys[index]
+            # skip processing previous containers until reaching the last merged one
+            # it is the first one that may need merging
+            if last_merged and key != last_merged:
+                continue
+            else:
+                last_merged = None
+            count = container_data[key]
+            if count < minimum:
+                next_key = keys[index + 1]
+                container_data, last_merged = \
+                    _shrink_merge(container_data, key, next_key, move_fn, remove_fn, rename_fn, state)
+                break
+    # handle the final container item, merging back if needed
+    if len(keys) > 1:
+        key = keys[-1]
+        prev_key = keys[-2]
+        count = container_data[key]
+        if count < minimum:
+            container_data, _ = \
+                _shrink_merge(container_data, prev_key, key, move_fn, remove_fn, rename_fn, state)
+    return container_data

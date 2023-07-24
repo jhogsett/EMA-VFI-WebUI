@@ -5,7 +5,7 @@ import yaml
 from yaml import Loader, YAMLError
 from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files, purge_directories, clean_filename
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import seconds_to_hmsf
+from webui_utils.simple_utils import seconds_to_hmsf, shrink
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom
 from webui_utils.jot import Jot
 from webui_utils.mtqdm import Mtqdm
@@ -42,6 +42,7 @@ class VideoRemixerState():
         self.crop_w = None
         self.crop_h = None
         self.deinterlace = None
+        self.min_frames_per_scene = None
 
         # set on confirming set up options
         self.frames_per_minute = None
@@ -328,11 +329,89 @@ class VideoRemixerState():
         except RuntimeError as error:
             return error
 
+    # shrink low-frame count scenes related code
+
+    @staticmethod
+    def decode_scene_label(scene_label):
+        if not scene_label:
+            raise ValueError("'scene_label' is required")
+
+        splits = scene_label.split("-")
+        if len(splits) != 2:
+            raise ValueError(f"scene_label ''{scene_label} is not parsable")
+
+        first, last = int(splits[0]), int(splits[1])
+        count = (last - first) + 1
+        return first, last, count
+
+    @staticmethod
+    def encode_scene_label(num_width, first, last, first_diff, last_diff):
+        first = int(first) + int(first_diff)
+        last = int(last) + int(last_diff)
+        return f"{str(first).zfill(num_width)}-{str(last).zfill(num_width)}"
+
+    @staticmethod
+    def move_frames(state, scene_label, scene_label_from):
+        log_fn = state["log_fn"]
+        path = state["path"]
+        from_path = os.path.join(path, scene_label_from)
+        to_path = os.path.join(path, scene_label)
+        files = get_files(from_path)
+        for file in files:
+            path, filename, ext = split_filepath(file)
+            new_file = os.path.join(to_path, filename + ext)
+            log_fn(f"moving {file} to {new_file}")
+            shutil.move(file, new_file)
+
+    @staticmethod
+    def remove_scene(state, scene_label):
+        log_fn = state["log_fn"]
+        path = state["path"]
+        scene_label_path = os.path.join(path, scene_label)
+        log_fn(f"removing {scene_label_path}")
+        shutil.rmtree(scene_label_path)
+
+    @staticmethod
+    def rename_scene(state, scene_label, new_contents):
+        log_fn = state["log_fn"]
+        path = state["path"]
+        num_width = state["num_width"]
+        first, last, _ = VideoRemixerState.decode_scene_label(scene_label)
+        new_scene_label = VideoRemixerState.encode_scene_label(num_width, first, last, 0, new_contents)
+        scene_label_path = os.path.join(path, scene_label)
+        new_scene_label_path = os.path.join(path, new_scene_label)
+        log_fn(f"renaming {scene_label_path} to {new_scene_label_path}")
+        os.rename(scene_label_path, new_scene_label_path)
+        return new_scene_label
+
+    @staticmethod
+    def get_container_data(path):
+        scene_labels = get_directories(path)
+        result = {}
+        for scene_label in scene_labels:
+            dir_path = os.path.join(path, scene_label)
+            count = len(get_files(dir_path))
+            result[scene_label] = count
+        num_width = len(scene_labels[0].split("-")[0])
+        return result, num_width
+
+    def consolidate_scenes(self, log_fn):
+        container_data, num_width = VideoRemixerState.get_container_data(self.scenes_path)
+        state = {"path" : self.scenes_path,
+                 "num_width" : num_width,
+                 "log_fn" : log_fn}
+        with Mtqdm().open_bar(total=1, desc="Shrink") as bar:
+            Mtqdm().message(bar, "Shrinking small scenes - no ETA")
+            shrunk_container_data = shrink(container_data, self.min_frames_per_scene, VideoRemixerState.move_frames, VideoRemixerState.remove_scene, VideoRemixerState.rename_scene, state)
+            Mtqdm().update_bar(bar)
+        log_fn(f"shrunk container data: {shrunk_container_data}")
+
     THUMBNAILS_PATH = "THUMBNAILS"
 
     def create_thumbnails(self, log_fn, global_options, remixer_settings):
         self.thumbnail_path = os.path.join(self.project_path, self.THUMBNAILS_PATH)
         create_directory(self.thumbnail_path)
+        purge_directories([self.thumbnail_path])
 
         if self.thumbnail_type == "JPG":
             thumb_scale = remixer_settings["thumb_scale"]
