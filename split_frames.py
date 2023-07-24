@@ -161,7 +161,7 @@ class SplitFrames:
                     file_groups[group] = file_groups[group] + [next_start_file]
 
         group_paths = []
-        with Mtqdm().open_bar(total=self.num_groups, desc="Groups") as group_bar:
+        with Mtqdm().open_bar(total=self.num_groups, desc="Split") as group_bar:
             for group in range(self.num_groups):
                 group_files = file_groups[group]
                 num_group_files = len(group_files)
