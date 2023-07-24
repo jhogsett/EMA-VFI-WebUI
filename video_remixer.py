@@ -408,6 +408,7 @@ class VideoRemixerState():
     def create_thumbnails(self, log_fn, global_options, remixer_settings):
         self.thumbnail_path = os.path.join(self.project_path, self.THUMBNAILS_PATH)
         create_directory(self.thumbnail_path)
+        purge_directories([self.thumbnail_path])
 
         if self.thumbnail_type == "JPG":
             thumb_scale = remixer_settings["thumb_scale"]
