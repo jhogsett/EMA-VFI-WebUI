@@ -1,6 +1,7 @@
 """Classes for managing auto-incrementing files and directories"""
 import os
-from .file_utils import get_files, get_directories, is_safe_path
+import glob
+from .file_utils import get_files, get_directories, is_safe_path, split_filepath
 
 class AutoIncrementFilename():
     """Encapsulates logic to create new unique sequentially-numbered filenames"""
@@ -46,3 +47,18 @@ class AutoIncrementDirectory():
                 raise ValueError("'basename' must be a non-empty string")
         else:
             raise ValueError("'basename' must be a string")
+
+class AutoIncrementBackupFilename():
+    """Encapsulates logic to save a uniquely numbered backup file"""
+    def __init__(self, filepath : str, backup_path : str):
+        self.filepath = filepath
+        self.backup_path = backup_path
+
+    def next_filepath(self):
+        _, filename, ext = split_filepath(self.filepath)
+        filename_filter = f"{filename}*{ext}"
+        filepath = os.path.join(self.backup_path, filename_filter)
+        files = glob.glob(filepath)
+        count = len(files)
+        next_filename = f"{filename}{count+1}{ext}"
+        return os.path.join(self.backup_path, next_filename )

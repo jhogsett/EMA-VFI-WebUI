@@ -3,6 +3,7 @@ import os
 import shutil
 import yaml
 from yaml import Loader, YAMLError
+from webui_utils.auto_increment import AutoIncrementBackupFilename
 from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files, purge_directories, clean_filename
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink
@@ -1059,6 +1060,7 @@ class VideoRemixerState():
                 state = yaml.load(file, Loader=Loader)
 
                 # reload some things
+                # TODO maybe reload from what's found on disk
                 state.scene_names = sorted(state.scene_names) if state.scene_names else []
                 state.thumbnails = sorted(state.thumbnails) if state.thumbnails else []
                 state.audio_clips = sorted(state.audio_clips) if state.audio_clips else []
@@ -1081,5 +1083,39 @@ class VideoRemixerState():
                     message = error
                 raise ValueError(message)
 
+
+# ported_profile_file should have document stripped before being used for paths
+
+    @staticmethod
+    def load_ported(original_project_path, ported_project_file : str):
+        original_project_path, _ = os.path.split(original_project_path)
+        new_path, filename, ext = split_filepath(ported_project_file)
+
+        # save the original YAML file
+        backup_path = os.path.join(new_path, "ported_project_files")
+        create_directory(backup_path)
+        backup_filepath = \
+            AutoIncrementBackupFilename(ported_project_file, backup_path).next_filepath()
+        shutil.copy(ported_project_file, backup_filepath)
+        new_path, _ = os.path.split(new_path)
+
+        lines = []
+        with open(ported_project_file, "r", encoding="UTF-8") as file:
+            lines = file.readlines()
+        new_lines = []
+
+        for line in lines:
+            new_line = line.replace(original_project_path, new_path)
+            new_lines.append(new_line)
+
+        with open(ported_project_file, "w", encoding="UTF-8") as file:
+            file.writelines(new_lines)
+
+        return VideoRemixerState.load(ported_project_file)
+
     def tryattr(self, attribute : str, default=None):
         return getattr(self, attribute) if hasattr(self, attribute) else default
+
+    def project_ported(self, opened_project_file):
+        opened_path, _, _ = split_filepath(opened_project_file)
+        return self.project_path != opened_path

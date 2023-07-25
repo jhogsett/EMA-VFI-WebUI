@@ -438,13 +438,13 @@ class VideoRemixer(TabBase):
             return gr.update(selected=0), \
                    gr.update(visible=True,
         value="Enter a path to a Video Remixer project directory on this server to get started"), \
-                   *self.empty_args(26)
+                   *self.empty_args(27)
 
         if not os.path.exists(project_path):
             return gr.update(selected=0), \
                    gr.update(visible=True,
                              value=f"Directory {project_path} was not found"), \
-                   *self.empty_args(26)
+                   *self.empty_args(27)
 
         try:
             project_file = self.state.determine_project_filepath(project_path)
@@ -452,7 +452,7 @@ class VideoRemixer(TabBase):
             return gr.update(selected=0), \
                    gr.update(visible=True,
                              value=error), \
-                   *self.empty_args(26)
+                   *self.empty_args(27)
 
         try:
             self.state = VideoRemixerState.load(project_file)
@@ -461,14 +461,24 @@ class VideoRemixer(TabBase):
             return gr.update(selected=0), \
                    gr.update(visible=True,
                              value=error), \
-                   *self.empty_args(26)
+                   *self.empty_args(27)
 
-        entered_path, _, _ = split_filepath(project_file)
-        if self.state.project_path != entered_path:
-            return gr.update(selected=0), \
-                   gr.update(visible=True,
-        value=f"Portability will be added later, for now open from: '{self.state.project_path}'"), \
-                   *self.empty_args(26)
+        if self.state.project_ported(project_file):
+            try:
+                self.state = VideoRemixerState.load_ported(self.state.project_path, project_file)
+            except ValueError as error:
+                self.log(f"error opening ported project at {project_file}: {error}")
+                return gr.update(selected=0), \
+                    gr.update(visible=True,
+                                value=error), \
+                    *self.empty_args(27)
+
+        # entered_path, _, _ = split_filepath(project_file)
+        # if self.state.project_path != entered_path:
+        #     return gr.update(selected=0), \
+        #            gr.update(visible=True,
+        # value=f"Portability will be added later, for now open from: '{self.state.project_path}'"), \
+        #            *self.empty_args(27)
 
         return_to_tab = self.state.get_progress_tab()
         scene_details = self.scene_chooser_details(self.state.tryattr("current_scene"))
