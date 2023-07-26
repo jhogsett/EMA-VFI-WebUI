@@ -1010,6 +1010,9 @@ class VideoRemixerState():
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_filepath = os.path.join(self.video_clips_path, f"{scene_name}.{custom_ext}")
 
+                # handle some custom text substitutions
+                custom_video_options.replace("<SCENE_NAME>", f"[{scene_name}]")
+
                 ResequenceFiles(scene_input_path,
                                 "png",
                                 "processed_frame",
