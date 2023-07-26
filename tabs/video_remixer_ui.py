@@ -458,9 +458,9 @@ class VideoRemixer(TabBase):
             self.state = VideoRemixerState.load(project_file)
         except ValueError as error:
             self.log(f"error opening project: {error}")
+            error_lines = len(str(error).splitlines())
             return gr.update(selected=0), \
-                   gr.update(visible=True,
-                             value=error), \
+                   gr.update(visible=True, value=error, lines=error_lines), \
                    *self.empty_args(27)
 
         if self.state.project_ported(project_file):
@@ -468,23 +468,19 @@ class VideoRemixer(TabBase):
                 self.state = VideoRemixerState.load_ported(self.state.project_path, project_file)
             except ValueError as error:
                 self.log(f"error opening ported project at {project_file}: {error}")
+                error_lines = len(str(error).splitlines())
                 return gr.update(selected=0), \
-                    gr.update(visible=True,
-                                value=error), \
+                    gr.update(visible=True, value=error, lines=error_lines), \
                     *self.empty_args(27)
 
-        # entered_path, _, _ = split_filepath(project_file)
-        # if self.state.project_path != entered_path:
-        #     return gr.update(selected=0), \
-        #            gr.update(visible=True,
-        # value=f"Portability will be added later, for now open from: '{self.state.project_path}'"), \
-        #            *self.empty_args(27)
+        messages = self.state.post_load_integrity_check()
+        messages_lines = len(messages.splitlines())
 
         return_to_tab = self.state.get_progress_tab()
         scene_details = self.scene_chooser_details(self.state.tryattr("current_scene"))
 
         return gr.update(selected=return_to_tab), \
-            gr.update(visible=True), \
+            gr.update(value=messages, visible=True, lines=messages_lines), \
             self.state.tryattr("video_info1"), \
             self.state.tryattr("project_path"), \
             self.state.tryattr("project_fps", self.config.remixer_settings["def_project_fps"]), \
@@ -846,7 +842,7 @@ class VideoRemixer(TabBase):
                     self.state.save()
                     jot.down(f"Upscaled scenes created in {self.state.upscale_path}")
 
-            self.state.summary_info6 = jot
+            self.state.summary_info6 = jot.grab()
             self.state.output_filepath = self.state.default_remix_filepath()
             self.state.save()
 
