@@ -31,7 +31,7 @@ _Disclaimer: these are proofs of concept, but not necessarily great recommendati
 
 | Output Type | Custom Video Output | Custom Audio Output | Filename | Results |
 | :- | :- | :- | :- | :- |
-| MP4 | -c:v libx264 -crf CRF | -c:a aac | video.mp4 | Options used for standard MP4 remix output |
+| MP4 | -c:v libx264 -crf _CRF Value_ | -c:a aac | video.mp4 | Options used for standard MP4 remix output |
 | MPG | (left blank) | -codec: a mp3 | video.mpg | Video with sound played great |
 | MPEG-PS | -c:v mpeg2video -pix_fmt yuv422p -bf 2 -b:v 10M -maxrate 10M -minrate 10M -s 640x480 -aspect 4:3 | -c:a pcm_s16be -f vob | video.vob | Video+sound played great (with VLC)* |
 | WMV | (left blank) | (left blank) | video.wmv | Video+sound played but was very low quality** |
