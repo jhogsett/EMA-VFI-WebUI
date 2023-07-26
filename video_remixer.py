@@ -1011,7 +1011,7 @@ class VideoRemixerState():
                 scene_output_filepath = os.path.join(self.video_clips_path, f"{scene_name}.{custom_ext}")
 
                 # handle some custom text substitutions
-                custom_video_options = custom_video_options\
+                sub_custom_video_options = custom_video_options\
                     .replace("<SCENE_NAME>", f"[{scene_name}]")
 
                 ResequenceFiles(scene_input_path,
@@ -1029,7 +1029,7 @@ class VideoRemixerState():
                             video_clip_fps,
                             scene_output_filepath,
                             global_options=global_options,
-                            custom_options=custom_video_options)
+                            custom_options=sub_custom_video_options)
                 Mtqdm().update_bar(bar)
         self.video_clips = sorted(get_files(self.video_clips_path))
 
