@@ -3,6 +3,7 @@ import os
 import shutil
 import yaml
 from yaml import Loader, YAMLError
+from webui_utils.auto_increment import AutoIncrementBackupFilename
 from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files, purge_directories, clean_filename
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink
@@ -1052,6 +1053,100 @@ class VideoRemixerState():
             Mtqdm().update_bar(bar)
         return ffcmd
 
+    # returns validated version of path and files, and an optional messages str
+    def ensure_valid_populated_path(self, description : str, path : str, files : list | None=None):
+        if not path:
+            return None, None, None
+
+        messages = Jot()
+        if not os.path.exists(path):
+            messages.add(f"{description} path '{path}' not found - recreating")
+            create_directory(path)
+
+        path_files = get_files(path)
+        file_count = len(files)
+        path_file_count = len(path_files)
+
+        if not files and not path_files:
+            return path, [], messages.report()
+
+        if not files and path_files:
+            messages.add(f"{description} path '{path}' has {path_file_count} files unknown to the project. The files are being ignored (safe to delete).")
+            return path, [], messages.report()
+
+        if path_file_count != file_count:
+            messages.add(f"{description} path '{path}' should have {file_count} files but has {path_file_count}. The files are being ignored (safe to delete).")
+            return path, [], messages.report()
+
+        # TODO further possible checks: files have bytes, files are found to be the right binary type, etc
+
+        return path, files, messages.report()
+
+    # returns validated version of path, and an optional messages str
+    def ensure_valid_path(self, description : str, path : str, files : list | None=None):
+        if not path:
+            return None, None
+
+        messages = Jot()
+        if not os.path.exists(path):
+            messages.add(f"{description} path '{path}' not found - recreating")
+            create_directory(path)
+
+        return path, messages.report()
+
+    def post_load_integrity_check(self):
+        messages = Jot()
+
+        self.thumbnail_path, self.thumbnails, message = self.ensure_valid_populated_path("Thumbnails", self.thumbnail_path, self.thumbnails)
+        if message:
+            messages.add(message)
+
+        self.clips_path, self.clips, message = self.ensure_valid_populated_path("Clips", self.clips_path, self.clips)
+        if message:
+            messages.add(message)
+
+        self.audio_clips_path, self.audio_clips, message = self.ensure_valid_populated_path("Audio Clips", self.audio_clips_path, self.audio_clips)
+        if message:
+            messages.add(message)
+
+        self.video_clips_path, self.video_clips, message = self.ensure_valid_populated_path("Video Clips", self.video_clips_path, self.video_clips)
+        if message:
+            messages.add(message)
+
+        self.dropped_scenes_path, message = self.ensure_valid_path("Dropped Scenes", self.dropped_scenes_path)
+        if message:
+            messages.add(message)
+
+        self.frames_path, message = self.ensure_valid_path("Frames Path", self.frames_path)
+        if message:
+            messages.add(message)
+
+        self.inflation_path, message = self.ensure_valid_path("Inflation Path", self.inflation_path)
+        if message:
+            messages.add(message)
+
+        self.inflation_path, message = self.ensure_valid_path("Inflation Path", self.inflation_path)
+        if message:
+            messages.add(message)
+
+        self.resize_path, message = self.ensure_valid_path("Resize Path", self.resize_path)
+        if message:
+            messages.add(message)
+
+        self.resynthesis_path, message = self.ensure_valid_path("Resynthesis Path", self.resynthesis_path)
+        if message:
+            messages.add(message)
+
+        self.scenes_path, message = self.ensure_valid_path("Scenes Path", self.scenes_path)
+        if message:
+            messages.add(message)
+
+        self.upscale_path, message = self.ensure_valid_path("Upscale Path", self.upscale_path)
+        if message:
+            messages.add(message)
+
+        return messages.report()
+
     @staticmethod
     def load(filepath : str):
         with open(filepath, "r") as file:
@@ -1059,6 +1154,7 @@ class VideoRemixerState():
                 state = yaml.load(file, Loader=Loader)
 
                 # reload some things
+                # TODO maybe reload from what's found on disk
                 state.scene_names = sorted(state.scene_names) if state.scene_names else []
                 state.thumbnails = sorted(state.thumbnails) if state.thumbnails else []
                 state.audio_clips = sorted(state.audio_clips) if state.audio_clips else []
@@ -1081,5 +1177,74 @@ class VideoRemixerState():
                     message = error
                 raise ValueError(message)
 
+    @staticmethod
+    def load_ported(original_project_path, ported_project_file : str):
+        original_project_path, _ = os.path.split(original_project_path)
+        new_path, filename, ext = split_filepath(ported_project_file)
+
+        # save the original YAML file
+        backup_path = os.path.join(new_path, "ported_project_files")
+        create_directory(backup_path)
+        backup_filepath = \
+            AutoIncrementBackupFilename(ported_project_file, backup_path).next_filepath()
+        shutil.copy(ported_project_file, backup_filepath)
+
+        # lose the last path segement, that's the actual project directory
+        new_path, _ = os.path.split(new_path)
+        original_project_path
+
+        if new_path[-1] != "\\":
+            new_path += "\\"
+        if original_project_path[-1] != "\\":
+            original_project_path += "\\"
+
+        lines = []
+        with open(ported_project_file, "r", encoding="UTF-8") as file:
+            lines = file.readlines()
+        new_lines = []
+
+        # Some values are saved within double-doubles, causing them to appear in the .yaml file
+        # with properly esscaped backslashes, for example the info fields and file paths.
+        # Some values are saved raw with no quotes, and no esscaping is needed by the yaml parser
+        # When reading the .yaml file as a text file and attempting to update all the old paths,
+        # both representations are presented the same way, so there's no way to separately update
+        # the escaped ones from the non-escaped ones
+        skip_lines = ["video_info1", "project_info2", "project_info4", "summary_info6"]
+        # this fix only happens to work because on the first line when these have multiple lines
+
+        for line in lines:
+            skip = False
+            for skip_line in skip_lines:
+                if line.startswith(skip_line):
+                    skip = True
+                    break
+            if skip:
+                new_line = line
+            else:
+                new_line = line.replace(original_project_path, new_path)
+            new_lines.append(new_line)
+
+        with open(ported_project_file, "w", encoding="UTF-8") as file:
+            file.writelines(new_lines)
+
+        state = VideoRemixerState.load(ported_project_file)
+
+        # fix up the skipped lines
+        if state.video_info1:
+            state.video_info1 = state.video_info1.replace(original_project_path, new_path)
+        if state.project_info2:
+            state.project_info2 = state.project_info2.replace(original_project_path, new_path)
+        if state.project_info4:
+            state.project_info4 = state.project_info2.replace(original_project_path, new_path)
+        if state.summary_info6:
+            state.summary_info6 = state.summary_info6.replace(original_project_path, new_path)
+        state.save()
+
+        return state
+
     def tryattr(self, attribute : str, default=None):
         return getattr(self, attribute) if hasattr(self, attribute) else default
+
+    def project_ported(self, opened_project_file):
+        opened_path, _, _ = split_filepath(opened_project_file)
+        return self.project_path != opened_path
