@@ -1239,7 +1239,7 @@ class VideoRemixerState():
         if state.project_info2:
             state.project_info2 = state.project_info2.replace(original_project_path, new_path)
         if state.project_info4:
-            state.project_info4 = state.project_info2.replace(original_project_path, new_path)
+            state.project_info4 = state.project_info4.replace(original_project_path, new_path)
         if state.summary_info6:
             state.summary_info6 = state.summary_info6.replace(original_project_path, new_path)
         state.save()
