@@ -196,7 +196,7 @@ class VideoRemixer(TabBase):
                         WebuiTips.video_remixer_compile.render()
 
                 ## PROCESSING OPTIONS
-                with gr.Tab("Procesing Options", id=5):
+                with gr.Tab("Processing Options", id=5):
                     gr.Markdown("**Ready to Process Content for Remix Video**")
                     with gr.Row():
                         resize = gr.Checkbox(label="Fix Aspect Ratio", value=True)
@@ -285,10 +285,10 @@ class VideoRemixer(TabBase):
                            outputs=[tabs_video_remixer, message_box01, video_info1, project_path,
                                 project_fps, deinterlace, split_type, scene_threshold,
                                 break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
-                                project_info2, thumbnail_type, scene_index, scene_label, scene_image,
-                                scene_state, scene_info, project_info4, resize,
-                                resynthesize, inflate, upscale, upscale_option, summary_info6,
-                                output_filepath])
+                                project_info2, thumbnail_type, min_frames_per_scene,
+                                scene_index, scene_label, scene_image, scene_state, scene_info,
+                                project_info4, resize, resynthesize, inflate, upscale,
+                                upscale_option, summary_info6, output_filepath])
 
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold,
@@ -376,7 +376,8 @@ class VideoRemixer(TabBase):
 
         next_button5.click(self.next_button5,
                     inputs=[resynthesize, inflate, resize, upscale, upscale_option],
-                    outputs=[tabs_video_remixer, message_box5, summary_info6, output_filepath])
+                    outputs=[tabs_video_remixer, message_box5, summary_info6, output_filepath,
+                             message_box61])
 
         back_button5.click(self.back_button5, outputs=tabs_video_remixer)
 
@@ -438,13 +439,13 @@ class VideoRemixer(TabBase):
             return gr.update(selected=0), \
                    gr.update(visible=True,
         value="Enter a path to a Video Remixer project directory on this server to get started"), \
-                   *self.empty_args(27)
+                   *self.empty_args(28)
 
         if not os.path.exists(project_path):
             return gr.update(selected=0), \
                    gr.update(visible=True,
                              value=f"Directory {project_path} was not found"), \
-                   *self.empty_args(27)
+                   *self.empty_args(28)
 
         try:
             project_file = self.state.determine_project_filepath(project_path)
@@ -452,7 +453,7 @@ class VideoRemixer(TabBase):
             return gr.update(selected=0), \
                    gr.update(visible=True,
                              value=error), \
-                   *self.empty_args(27)
+                   *self.empty_args(28)
 
         try:
             self.state = VideoRemixerState.load(project_file)
@@ -461,7 +462,7 @@ class VideoRemixer(TabBase):
             error_lines = len(str(error).splitlines())
             return gr.update(selected=0), \
                    gr.update(visible=True, value=error, lines=error_lines), \
-                   *self.empty_args(27)
+                   *self.empty_args(28)
 
         if self.state.project_ported(project_file):
             try:
@@ -471,7 +472,7 @@ class VideoRemixer(TabBase):
                 error_lines = len(str(error).splitlines())
                 return gr.update(selected=0), \
                     gr.update(visible=True, value=error, lines=error_lines), \
-                    *self.empty_args(27)
+                    *self.empty_args(28)
 
         messages = self.state.post_load_integrity_check()
         messages_lines = len(messages.splitlines())
@@ -495,6 +496,7 @@ class VideoRemixer(TabBase):
             self.state.tryattr("crop_h"), \
             self.state.tryattr("project_info2"), \
             self.state.tryattr("thumbnail_type", self.state.UI_SAFETY_DEFAULTS["thumbnail_type"]), \
+            self.state.tryattr("min_frames_per_scene", self.state.UI_SAFETY_DEFAULTS["min_frames_per_scene"]), \
             *scene_details, \
             self.state.tryattr("project_info4"), \
             self.state.tryattr("resize", self.state.UI_SAFETY_DEFAULTS["resize"]), \
@@ -852,13 +854,14 @@ class VideoRemixer(TabBase):
 
             return gr.update(selected=6), \
                    gr.update(visible=True), \
-                   jot, \
-                   self.state.output_filepath
+                   jot.grab(), \
+                   self.state.output_filepath, \
+                   None
         else:
             return gr.update(selected=5), \
                    gr.update(
                 value="At least one scene must be set to 'Keep' before processing can proceed"), \
-                   None, None
+                   None, None, None
 
     def back_button5(self):
         return gr.update(selected=4)
