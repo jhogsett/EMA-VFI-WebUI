@@ -479,7 +479,7 @@ class VideoRemixerState():
 
     GAP = " " * 6
 
-    def scene_chooser_details(self, scene_index):
+    def scene_chooser_data(self, scene_index):
         try:
             scene_name = self.scene_names[scene_index]
             thumbnail_path = self.thumbnails[scene_index]
@@ -493,16 +493,27 @@ class VideoRemixerState():
             scene_duration = seconds_to_hmsf(
                 (last_index - first_index) / self.project_fps,
                 self.project_fps)
-            scene_time = f"{scene_start}{self.GAP}+{scene_duration}"
-            keep_state = SimpleIcons.HEART if scene_state == "Keep" else ""
-            scene_info = f"{scene_position}{self.GAP}{scene_time}{self.GAP}{keep_state}"
-            return scene_name, thumbnail_path, scene_state, scene_info
+            keep_state = True if scene_state == "Keep" else False
+            return scene_name, thumbnail_path, scene_state, scene_position, scene_start, scene_duration, keep_state
         except ValueError as error:
             raise ValueError(
                 f"ValueError encountered while computing scene chooser details: {error}")
         except IndexError as error:
             raise ValueError(
                 f"IndexError encountered while computing scene chooser details: {error}")
+
+    def scene_chooser_details(self, scene_index):
+        try:
+            scene_name, thumbnail_path, scene_state, scene_position, scene_start, scene_duration, \
+                keep_state = self.scene_chooser_data(scene_index)
+
+            scene_time = f"{scene_start}{self.GAP}+{scene_duration}"
+            keep_symbol = SimpleIcons.HEART if keep_state == True else ""
+            scene_info = f"{scene_position}{self.GAP}{scene_time}{self.GAP}{keep_symbol}"
+            return scene_name, thumbnail_path, scene_state, scene_info
+        except ValueError as error:
+            raise ValueError(
+                f"ValueError encountered while getting scene chooser data: {error}")
 
     def kept_scenes(self):
         return [scene for scene in self.scene_states if self.scene_states[scene] == "Keep"]
@@ -1011,6 +1022,26 @@ class VideoRemixerState():
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_filepath = os.path.join(self.video_clips_path, f"{scene_name}.{custom_ext}")
 
+                use_custom_video_options = custom_video_options
+                # handle some custom text substitutions
+                if use_custom_video_options.find("<SCENE_NAME>"):
+                    use_custom_video_options = use_custom_video_options\
+                        .replace("<SCENE_NAME>", f"[{scene_name}]")
+
+                if use_custom_video_options.find("<SCENE_INFO>"):
+                    try:
+                        scene_index = self.scene_names.index(scene_name)
+                        _, _, _, _, scene_start, scene_duration, _ = \
+                            self.scene_chooser_data(scene_index)
+                        scene_info = f"{scene_index} {scene_name} {scene_start} +{scene_duration}"
+                        # FFmpeg needs the colons escaped
+                        scene_info = scene_info.replace(":", "\:")
+                        use_custom_video_options = use_custom_video_options\
+                            .replace("<SCENE_INFO>", f"[{scene_info}]")
+                    except IndexError as error:
+                        use_custom_video_options = use_custom_video_options\
+                            .replace("<SCENE_INFO>", f"[{error}]")
+
                 ResequenceFiles(scene_input_path,
                                 "png",
                                 "processed_frame",
@@ -1026,7 +1057,7 @@ class VideoRemixerState():
                             video_clip_fps,
                             scene_output_filepath,
                             global_options=global_options,
-                            custom_options=custom_video_options)
+                            custom_options=use_custom_video_options)
                 Mtqdm().update_bar(bar)
         self.video_clips = sorted(get_files(self.video_clips_path))
 
