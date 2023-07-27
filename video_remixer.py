@@ -105,7 +105,8 @@ class VideoRemixerState():
         "resynthesize" : True,
         "inflate" : True,
         "upscale" : True,
-        "upscale_option" : "2X"
+        "upscale_option" : "2X",
+        "min_frames_per_scene" : 10
     }
 
     # set project settings UI defaults in case the project is reopened
