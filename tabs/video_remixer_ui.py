@@ -853,7 +853,7 @@ class VideoRemixer(TabBase):
 
             return gr.update(selected=6), \
                    gr.update(visible=True), \
-                   jot, \
+                   jot.grab(), \
                    self.state.output_filepath
         else:
             return gr.update(selected=5), \
