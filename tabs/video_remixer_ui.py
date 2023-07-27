@@ -196,7 +196,7 @@ class VideoRemixer(TabBase):
                         WebuiTips.video_remixer_compile.render()
 
                 ## PROCESSING OPTIONS
-                with gr.Tab("Procesing Options", id=5):
+                with gr.Tab("Processing Options", id=5):
                     gr.Markdown("**Ready to Process Content for Remix Video**")
                     with gr.Row():
                         resize = gr.Checkbox(label="Fix Aspect Ratio", value=True)
