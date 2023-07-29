@@ -918,7 +918,7 @@ class VideoRemixerState():
 
     AUDIO_CLIPS_PATH = "AUDIO"
 
-    def create_audio_clips(self, log_fn, global_options, audio_format="wav"):
+    def create_audio_clips(self, log_fn, global_options, audio_format):
         self.audio_clips_path = os.path.join(self.clips_path, self.AUDIO_CLIPS_PATH)
         create_directory(self.audio_clips_path)
         # save the project now to preserve the newly established path
