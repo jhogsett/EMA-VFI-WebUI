@@ -96,6 +96,7 @@ realesrgan_settings:
   tile_pad: 10
   tiling: 256
 remixer_settings:
+  audio_format: wav
   default_crf: 23
   def_project_fps: 29.97
   default_gif_fps: 10

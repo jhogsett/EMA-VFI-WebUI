@@ -896,7 +896,8 @@ class VideoRemixer(TabBase):
 
         if self.state.video_details["has_audio"] and not self.state.processed_content_present("audio"):
             self.log("about to create audio clips")
-            self.state.create_audio_clips(self.log, global_options)
+            audio_format = self.config.remixer_settings["audio_format"]
+            self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
             self.log("saving project after creating audio clips")
             self.state.save()
 
@@ -948,7 +949,8 @@ class VideoRemixer(TabBase):
 
         if self.state.video_details["has_audio"] and not self.state.processed_content_present("audio"):
             self.log("about to create audio clips")
-            self.state.create_audio_clips(self.log, global_options)
+            audio_format = self.config.remixer_settings["audio_format"]
+            self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
             self.log("saving project after creating audio clips")
             self.state.save()
 
