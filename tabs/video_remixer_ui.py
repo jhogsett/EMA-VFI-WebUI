@@ -274,10 +274,80 @@ class VideoRemixer(TabBase):
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                         WebuiTips.video_remixer_save.render()
 
-                ## SAVE REMIX
-                with gr.Tab("Remix Extra", id=7):
-                    gr.Markdown("**Extra Remix Features**")
-                    with gr.Tab(label="Advanced Functions " + SimpleIcons.CONSTRUCTION):
+                ## Remix Extras
+                with gr.Tab("Remix Extras", id=7):
+                    with gr.Tab(label="Project Clean Up"):
+                        with gr.Tabs():
+                            with gr.Tab(label="Remove Soft-Deleted Content"):
+                                with gr.Row():
+                                    gr.Checkbox(label="Permently Delete Purged Content " + SimpleIcons.CONSTRUCTION)
+                                    with gr.Box():
+                                        gr.Markdown("Delete content that has been set aisde in the 'purged_content' directory.")
+                                with gr.Row():
+                                    gr.Textbox(show_label=False)
+                                gr.Markdown("*Progress can be tracked in the console*")
+                                with gr.Row():
+                                    gr.Button(value="Delete Purged Content " + SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                    gr.Button(value="Select All").style(full_width=False)
+                                    gr.Button(value="Select None").style(full_width=False)
+                            with gr.Tab(label="Remove Scene Chooser Content"):
+                                with gr.Row():
+                                    gr.Checkbox(label="Remove Source Video Frames " + SimpleIcons.CONSTRUCTION)
+                                    with gr.Box():
+                                        gr.Markdown("Delete source video PNG frame files used to split content into scenes.")
+                                with gr.Row():
+                                    gr.Checkbox(label="Remove Dropped Scenes " + SimpleIcons.CONSTRUCTION)
+                                    with gr.Box():
+                                        gr.Markdown("Delete Dropped Scene files used when compiling scenes after making scene choices.")
+                                with gr.Row():
+                                    gr.Checkbox(label="Remove Thumbnails " + SimpleIcons.CONSTRUCTION)
+                                    with gr.Box():
+                                        gr.Markdown("Delete Thumbnails used to display scenes in Scene Chooser.")
+                                with gr.Row():
+                                    gr.Textbox(show_label=False)
+                                gr.Markdown("*Progress can be tracked in the console*")
+                                with gr.Row():
+                                    gr.Button(value="Purge Selected Content " + SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                    gr.Button(value="Select All").style(full_width=False)
+                                    gr.Button(value="Select None").style(full_width=False)
+                            with gr.Tab(label="Remove Remix Video Content"):
+                                with gr.Row():
+                                    gr.Checkbox(label="Remove Resized Frames " + SimpleIcons.CONSTRUCTION)
+                                    with gr.Box():
+                                        gr.Markdown("Delete Resized PNG frame files used as inputs for processing and creating remix video clips.")
+                                with gr.Row():
+                                    gr.Checkbox(label="Remove Resynthesized Frames " + SimpleIcons.CONSTRUCTION)
+                                    with gr.Box():
+                                        gr.Markdown("Delete Resynthesized PNG frame files used as inputs for processing and creating remix video clips.")
+                                with gr.Row():
+                                    gr.Checkbox(label="Remove Inflated Frames " + SimpleIcons.CONSTRUCTION)
+                                    with gr.Box():
+                                        gr.Markdown("Delete Inflated PNG frame files used as inputs for processing and creating remix video clips.")
+                                with gr.Row():
+                                    gr.Checkbox(label="Remove Upscaled Frames " + SimpleIcons.CONSTRUCTION)
+                                    with gr.Box():
+                                        gr.Markdown("Delete Upscaled PNG frame files used as inputs for processing and creating remix video clips.")
+                                with gr.Row():
+                                    gr.Checkbox(label="Delete Audio Clips " + SimpleIcons.CONSTRUCTION)
+                                    with gr.Box():
+                                        gr.Markdown("Delete Audio WAV/MP3 files used as inputs for creating remix video clips.")
+                                with gr.Row():
+                                    gr.Checkbox(label="Delete Video Clips " + SimpleIcons.CONSTRUCTION)
+                                    with gr.Box():
+                                        gr.Markdown("Delete Video MP4 files used as inputs for creating remix video clips.")
+                                with gr.Row():
+                                    gr.Checkbox(label="Delete Remix Video Clips " + SimpleIcons.CONSTRUCTION)
+                                    with gr.Box():
+                                        gr.Markdown("Delete Video+Audio MP4 files used as inputs to concatentate into the final Remix Video.")
+                                with gr.Row():
+                                    gr.Textbox(show_label=False)
+                                gr.Markdown("*Progress can be tracked in the console*")
+                                with gr.Row():
+                                    gr.Button(value="Purge Selected Content " + SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                    gr.Button(value="Select All").style(full_width=False)
+                                    gr.Button(value="Select None").style(full_width=False)
+
+                    with gr.Tab(label="Expert"):
                         with gr.Tabs():
                             with gr.Tab(label="Set Bulk Scene Status " + SimpleIcons.CONSTRUCTION):
                                 gr.Markdown("**Set Scenes Status**\r\n- _Keep_, _Drop_ or _Hide_ a series of scenes")
@@ -327,55 +397,8 @@ class VideoRemixer(TabBase):
                                 # - resized, resynthesized, inflated, upscaled, audio clips
                                 gr.Markdown("**Purge Scene**\r\n- Drop a scene after processing has been compeleted")
                                 gr.Button("Purge Scene ", variant="primary").style(full_width=True)
-                    with gr.Tab(label="Project Clean Up " + SimpleIcons.WARNING):
-                        with gr.Box():
-                            gr.Markdown("## After Scene Choices are Final and Processing is Completed")
-                            with gr.Row():
-                                gr.Checkbox(label="Purge Source Video Frames " + SimpleIcons.CONSTRUCTION)
-                                with gr.Box():
-                                    gr.Markdown("Save space by deleting source video PNG frame files used to compile kept scenes for remix processing.\r\n⚠️**Choose Only if your kept scene choices are final.**")
-                            with gr.Row():
-                                gr.Checkbox(label="Purge Dropped Scenes " + SimpleIcons.CONSTRUCTION)
-                                with gr.Box():
-                                    gr.Markdown("Save space by deleting Dropped Scene files, that are used when changing kept scene choices.\r\n⚠️**Choose Only if your kept scene choices are final.**")
-                            with gr.Row():
-                                gr.Checkbox(label="Purge Thumbnails " + SimpleIcons.CONSTRUCTION)
-                                with gr.Box():
-                                    gr.Markdown("Save space by deleting Thumbnail, that are used when making kept scene choices.\r\n⚠️**Choose Only if your kept scene choices are final.**")
-                        with gr.Box():
-                            gr.Markdown("## After Remix Video(s) have been Saved and Project is Concluded")
-                            with gr.Row():
-                                gr.Checkbox(label="Purge Resized Frames " + SimpleIcons.CONSTRUCTION)
-                                with gr.Box():
-                                    gr.Markdown("Save space by deleting resized PNG frame files, that are used when making creating the remix video.\r\n⚠️**Choose Only if you will never use the resized frames again.**")
-                            with gr.Row():
-                                gr.Checkbox(label="Purge Resynthesized Frames " + SimpleIcons.CONSTRUCTION)
-                                with gr.Box():
-                                    gr.Markdown("Save space by deleting resynthesized PNG frame files, that are used when making creating the remix video.\r\n⚠️**Choose Only if you will never use the resynthesized frames again.**")
-                            with gr.Row():
-                                gr.Checkbox(label="Purge Inflated Frames " + SimpleIcons.CONSTRUCTION)
-                                with gr.Box():
-                                    gr.Markdown("Save space by deleting inflated PNG frame files, that are used when making creating the remix video.\r\n⚠️**Choose Only if you will never use the inflated frames again.**")
-                            with gr.Row():
-                                gr.Checkbox(label="Purge Upscaled Frames " + SimpleIcons.CONSTRUCTION)
-                                with gr.Box():
-                                    gr.Markdown("Save space by deleting upscaled PNG frame files, that are used when making creating the remix video.\r\n⚠️**Choose Only if you will never use the upscaled frames again.**")
-                            with gr.Row():
-                                gr.Checkbox(label="Purge Audio Clips " + SimpleIcons.CONSTRUCTION)
-                                with gr.Box():
-                                    gr.Markdown("Save space by deleting audio clip .WAV files, that are used when making creating the remix video.\r\n⚠️**Choose Only if you will never use the audio clips again.**")
-                            with gr.Row():
-                                gr.Checkbox(label="Purge Video Clips " + SimpleIcons.CONSTRUCTION)
-                                with gr.Box():
-                                    gr.Markdown("Save space by deleting video clip .MP4 files, that are used when making creating the remix video.\r\n⚠️**Choose Only if you will never use the video clips again.**")
-                            with gr.Row():
-                                gr.Checkbox(label="Purge Remix Videos " + SimpleIcons.CONSTRUCTION)
-                                with gr.Box():
-                                    gr.Markdown("Save space by deleting remix video+audio .MP4 files, that are concatenated to save the remix video.\r\n⚠️**Choose Only if you will never use the video clips again.**")
-                        with gr.Row():
-                            gr.Button(value="Purge Selected Items " + SimpleIcons.CONSTRUCTION, variant="stop")
-                            gr.Button(value="Select All").style(full_width=False)
-                            gr.Button(value="Select None").style(full_width=False)
+
+
                     # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     #     WebuiTips.video_remixer_save.render()
 
