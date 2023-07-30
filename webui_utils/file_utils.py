@@ -50,7 +50,7 @@ def remove_files(path : str, unsafe=False):
                 os.remove(file)
 
 # remove the files found in each of the passed directories (no recursion)
-def purge_directories(dirs : list):
+def clean_directories(dirs : list):
     for _dir in dirs:
         remove_files(_dir)
 

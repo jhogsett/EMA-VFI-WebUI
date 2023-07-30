@@ -3,8 +3,8 @@ import os
 import shutil
 import yaml
 from yaml import Loader, YAMLError
-from webui_utils.auto_increment import AutoIncrementBackupFilename
-from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files, purge_directories, clean_filename
+from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
+from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files, clean_directories, clean_filename
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom
@@ -413,7 +413,7 @@ class VideoRemixerState():
     def create_thumbnails(self, log_fn, global_options, remixer_settings):
         self.thumbnail_path = os.path.join(self.project_path, self.THUMBNAILS_PATH)
         create_directory(self.thumbnail_path)
-        purge_directories([self.thumbnail_path])
+        clean_directories([self.thumbnail_path])
 
         if self.thumbnail_type == "JPG":
             thumb_scale = remixer_settings["thumb_scale"]
@@ -577,30 +577,38 @@ class VideoRemixerState():
     INFLATE_STEP = "inflate"
     UPSCALE_STEP = "upscale"
 
+    def purge_paths(self, path_list : list):
+        purged_root_path = os.path.join(self.project_path, "purged_content")
+        create_directory(purged_root_path)
+        purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory("purged")
+        for path in path_list:
+            if path: # some paths may not currently exist
+                shutil.move(path, purged_path)
+
     def purge_processed_content(self, purge_from):
         if purge_from == self.RESIZE_STEP:
-            remove_directories([
+            self.purge_paths([
                 self.resize_path,
                 self.resynthesis_path,
                 self.inflation_path,
                 self.upscale_path])
         elif purge_from == self.RESYNTH_STEP:
-            remove_directories([
+            self.purge_paths([
                 self.resynthesis_path,
                 self.inflation_path,
                 self.upscale_path])
         elif purge_from == self.INFLATE_STEP:
-            remove_directories([
+            self.purge_paths([
                 self.inflation_path,
                 self.upscale_path])
         elif purge_from == self.UPSCALE_STEP:
-            remove_directories([
+            self.purge_paths([
                 self.upscale_path])
-        self.purge_remix_content(purge_from="audio_clips")
+        self.clean_remix_content(purge_from="audio_clips")
 
-    def purge_remix_content(self, purge_from):
+    def clean_remix_content(self, purge_from):
         if purge_from == "audio_clips":
-            purge_directories([
+            clean_directories([
                 self.audio_clips_path,
                 self.video_clips_path,
                 self.clips_path])
@@ -608,13 +616,13 @@ class VideoRemixerState():
             self.video_clips = []
             self.clips = []
         elif purge_from == "video_clips":
-            purge_directories([
+            clean_directories([
                 self.video_clips_path,
                 self.clips_path])
             self.video_clips = []
             self.clips = []
         elif purge_from == "scene_clips":
-            purge_directories([
+            clean_directories([
                 self.clips_path])
             self.clips = []
 

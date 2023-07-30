@@ -219,7 +219,6 @@ class VideoRemixer(TabBase):
                     message_box5 = gr.Textbox(
                         value="Next: Perform all Processing Steps (takes from hours to days)",
                                               show_label=False, interactive=False)
-                    gr.Markdown(SimpleIcons.WARNING + " Make backups if redoing this step. Processed content may be purged based on the above settings.\r\n*Progress can be tracked in the console*")
                     with gr.Row():
                         back_button5 = gr.Button(value="< Back", variant="secondary").\
                             style(full_width=False)
@@ -902,7 +901,7 @@ class VideoRemixer(TabBase):
             self.state.save()
 
         # always recreate video and scene clips
-        self.state.purge_remix_content(purge_from="video_clips")
+        self.state.clean_remix_content(purge_from="video_clips")
 
         self.log(f"about to create video clips")
         self.state.create_video_clips(self.log, kept_scenes, global_options)
@@ -959,7 +958,7 @@ class VideoRemixer(TabBase):
         output_ext = output_ext[1:]
 
         # always recreate video and scene clips
-        self.state.purge_remix_content(purge_from="video_clips")
+        self.state.clean_remix_content(purge_from="video_clips")
 
         self.log(f"about to create video clips")
         self.state.create_custom_video_clips(self.log, kept_scenes, global_options,
