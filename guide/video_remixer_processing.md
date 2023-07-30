@@ -15,6 +15,11 @@
 1. Click _Process Remix_ to kick off the processing
 - Progress can be tracked in the console
 
+## Note
+- Content may be _purged_ (soft-deleted) when clicking _Process Remix_
+    - Previous process content not currently needed is set aside
+- Purged content my be recovered from the `purged_content` project directory
+
 ## ⚠️Important⚠️
 - **THIS PROCESS COULD BE SLOW, POSSIBLY MANY HOURS OR DAYS!!!**
 - The browser window does NOT need to be left open
