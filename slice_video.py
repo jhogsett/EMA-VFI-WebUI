@@ -110,7 +110,8 @@ class SliceVideo:
             create_directory(self.output_path)
 
         self.log("using slice_video (may cause long delay while processing request)")
-        with Mtqdm().open_bar(total=len(group_names), desc="Slice") as bar:
+        pbar_desc = f"Slice {self.type}"
+        with Mtqdm().open_bar(total=len(group_names), desc=pbar_desc) as bar:
             for group_name in group_names:
                 first_index, last_index, num_width = details_from_group_name(group_name)
                 output_path = self.output_path or os.path.join(self.group_path, group_name)
