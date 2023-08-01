@@ -1098,7 +1098,7 @@ class VideoRemixerState():
             create_directory(path)
 
         path_files = get_files(path)
-        file_count = len(files)
+        file_count = len(files) if files else 0
         path_file_count = len(path_files)
 
         if not files and not path_files:
