@@ -582,7 +582,7 @@ class VideoRemixerState():
         create_directory(purged_root_path)
         purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory("purged")
         for path in path_list:
-            if path: # some paths may not currently exist
+            if path and os.path.exists(path):
                 shutil.move(path, purged_path)
 
     def purge_processed_content(self, purge_from):
