@@ -577,13 +577,19 @@ class VideoRemixerState():
     INFLATE_STEP = "inflate"
     UPSCALE_STEP = "upscale"
 
+    PURGED_CONTENT = "purged_content"
+
     def purge_paths(self, path_list : list):
-        purged_root_path = os.path.join(self.project_path, "purged_content")
+        purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
         create_directory(purged_root_path)
         purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory("purged")
         for path in path_list:
             if path and os.path.exists(path):
                 shutil.move(path, purged_path)
+
+    def delete_purged_content(self):
+        purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
+        shutil.rmtree(purged_root_path)
 
     def purge_processed_content(self, purge_from):
         if purge_from == self.RESIZE_STEP:
