@@ -36,7 +36,7 @@ _Disclaimer: these are proofs of concept, but not necessarily great recommendati
 | MPEG-PS | `-c:v mpeg2video -pix_fmt yuv422p -bf 2 -b:v 10M -maxrate 10M -minrate 10M -s 640x480 -aspect 4:3` | `-c:a pcm_s16be -f vob` | video.vob | Video+sound played great (with VLC)* |
 | WMV | (left blank) | (left blank) | video.wmv | Video+sound played but was very low quality** |
 | AVI | (left blank) | (left blank) | video.avi | Video+sound played but was very low quality** |
-| MP4 | `-vf "drawtext=text='<SCENE_INFO>':x=(w-text_w)/2:y=h-(text_h*2):fontsize=22:fontcolor=yellow:fontfile='fonts/trim.ttf'" -c:v libx264 -crf 23` | `-c:a aac` | video.mp4 | Standard MP4 remix video with scene name label*** |
+| MP4 | `-vf "drawtext=text='<SCENE_INFO>':x=(w-text_w)/2:y=h-(text_h*2):fontsize=(h/20):fontcolor=yellow:fontfile='fonts/trim.ttf'" -c:v libx264 -crf 23` | `-c:a aac` | video.mp4 | Standard MP4 remix video with scene name label*** |
 
 _* The console showed many buffer underrun errors while concatenating into remix video_
 
