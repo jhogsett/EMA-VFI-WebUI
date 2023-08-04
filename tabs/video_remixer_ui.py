@@ -274,13 +274,22 @@ class VideoRemixer(TabBase):
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                         WebuiTips.video_remixer_save.render()
 
-                ## Remix Extras
-                with gr.Tab("Remix Extras", id=7):
-                    with gr.Tab(label="Project Clean Up"):
+                ## Remix Extra
+                with gr.Tab("Remix Extra", id=7):
+                    with gr.Tab(label="Expert"):
+                        with gr.Tabs():
+                            with gr.Tab("Drop Processed Scene"):
+                                gr.Markdown("**Drop Processed Scene** - Drop a scene after processing has been compeleted")
+                                scene_id_710 = gr.Number(value=-1, label="Scene Index")
+                                message_box710 = gr.Textbox(show_label=False, interactive=False)
+                                drop_button710 = gr.Button("Drop Scene", variant="stop").style(full_width=True)
+
+                    with gr.Tab(label="Project Clean Up " + SimpleIcons.CONSTRUCTION):
                         with gr.Tabs():
                             with gr.Tab(label="Remove Soft-Deleted Content"):
+                                gr.Markdown("**_Delete content that has been moved to the_** `purged_content` **_directory_**")
                                 with gr.Row():
-                                    gr.Checkbox(label="Permently Delete Purged Content " + SimpleIcons.CONSTRUCTION)
+                                    gr.Checkbox(label="Permanently Delete Purged Content " + SimpleIcons.CONSTRUCTION)
                                     with gr.Box():
                                         gr.Markdown("Delete content that has been set aisde in the 'purged_content' directory.")
                                 with gr.Row():
@@ -291,6 +300,7 @@ class VideoRemixer(TabBase):
                                     gr.Button(value="Select All").style(full_width=False)
                                     gr.Button(value="Select None").style(full_width=False)
                             with gr.Tab(label="Remove Scene Chooser Content"):
+                                gr.Markdown("**_Clear space after final scene choices have been made_**")
                                 with gr.Row():
                                     gr.Checkbox(label="Remove Source Video Frames " + SimpleIcons.CONSTRUCTION)
                                     with gr.Box():
@@ -310,7 +320,8 @@ class VideoRemixer(TabBase):
                                     gr.Button(value="Purge Selected Content " + SimpleIcons.SLOW_SYMBOL, variant="stop")
                                     gr.Button(value="Select All").style(full_width=False)
                                     gr.Button(value="Select None").style(full_width=False)
-                            with gr.Tab(label="Remove Remix Video Content"):
+                            with gr.Tab(label="Remove Remix Video Source Content"):
+                                gr.Markdown("**_Clear space after final Remix Videos have been saved_**")
                                 with gr.Row():
                                     gr.Checkbox(label="Remove Resized Frames " + SimpleIcons.CONSTRUCTION)
                                     with gr.Box():
@@ -346,58 +357,6 @@ class VideoRemixer(TabBase):
                                     gr.Button(value="Purge Selected Content " + SimpleIcons.SLOW_SYMBOL, variant="stop")
                                     gr.Button(value="Select All").style(full_width=False)
                                     gr.Button(value="Select None").style(full_width=False)
-
-                    with gr.Tab(label="Expert"):
-                        with gr.Tabs():
-                            with gr.Tab(label="Set Bulk Scene Status " + SimpleIcons.CONSTRUCTION):
-                                gr.Markdown("**Set Scenes Status**\r\n- _Keep_, _Drop_ or _Hide_ a series of scenes")
-                                # starting scene ID
-                                # ending scene ID
-                                # status Keep, Drop , Hide
-                                # goes through range setting status, does not compile scenes
-                                gr.Button("Set Scene Range " + SimpleIcons.CONSTRUCTION, variant="primary").style(full_width=True)
-                            with gr.Tab(label="Unhide Scenes " + SimpleIcons.CONSTRUCTION):
-                                gr.Markdown("**Unhide Hidden Scenes**\r\n- Unhide all scenes with _Hide_ status")
-                                # goes through all scene choices
-                                # sets hidden ones to dropped
-                                gr.Button("Unhide All " + SimpleIcons.CONSTRUCTION, variant="primary").style(full_width=True)
-                            with gr.Tab(label="Split Scene " + SimpleIcons.CONSTRUCTION):
-                                gr.Markdown("**Split Scene**\r\n- Split a scene in two at a specific frame")
-                                # scene ID
-                                # frame index within scene, -1 = half-way
-                                # uncompile scenes
-                                # create new scene names based on the frame index
-                                # rename the current folder to its new name
-                                # create a new folder with the second new name
-                                # move the files to the new folder
-                                # update lists with the renamed and new scene: scene names, scene states
-                                # delete the original thumbnail
-                                # create new thumbnails for both scenes
-                                # update the thumbnail list with the renamed and new scene
-                                gr.Button("Split Scene " + SimpleIcons.CONSTRUCTION, variant="primary").style(full_width=True)
-                            with gr.Tab(label="Fuse Scenes " + SimpleIcons.CONSTRUCTION):
-                                # first scene ID
-                                # last scene ID
-                                # - go through the range of scenes
-                                # - compute the new label based on the scene labels
-                                # - rename the scene directory to the new name
-                                # - go through the remaining scene directories
-                                # - move the files to the first directory and delete the directory
-                                # - update lists with the renamed and deleted scenes: scene names, scene states
-                                # - delete all of the original thumbnails
-                                # - create a new thumbnail from the new consolidated scene
-                                # - update the thumbnail list with the renamed and deleted scenes
-                                gr.Markdown("**Fuse Scenes**\r\n- Combine range of scenes into one scene")
-                                gr.Button("Fuse Scenes " + SimpleIcons.CONSTRUCTION, variant="primary").style(full_width=True)
-                            with gr.Tab("Purge Scene " + SimpleIcons.CONSTRUCTION):
-                                # scene ID
-                                # moves the scene to dropped frames
-                                # sets the scene dropped
-                                # deletes the scene from:
-                                # - resized, resynthesized, inflated, upscaled, audio clips
-                                gr.Markdown("**Purge Scene**\r\n- Drop a scene after processing has been compeleted")
-                                gr.Button("Purge Scene ", variant="primary").style(full_width=True)
-
 
                     # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     #     WebuiTips.video_remixer_save.render()
@@ -518,6 +477,8 @@ class VideoRemixer(TabBase):
                         outputs=message_box61)
 
         back_button61.click(self.back_button6, outputs=tabs_video_remixer)
+
+        drop_button710.click(self.drop_button710, inputs=scene_id_710, outputs=message_box710)
 
     def empty_args(self, num):
         return [None for _ in range(num)]
@@ -1117,3 +1078,22 @@ class VideoRemixer(TabBase):
 
     def back_button6(self):
         return gr.update(selected=5)
+
+    def drop_button710(self, scene_index):
+        if isinstance(scene_index, (int, float)):
+            scene_index = int(scene_index)
+            if 0 <= scene_index < len(self.state.scene_names):
+                removed = self.state.force_drop_processed_scene(scene_index)
+                self.log(f"removed files: {removed}")
+
+                self.log(
+            f"saving project after using force_drop_processed_scene for scene index {scene_index}")
+                self.state.save()
+
+                removed = "\r\n".join(removed)
+                message = f"Removed:\r\n{removed}"
+            else:
+                message = f"Please enter a Scene Index from 0 to {len(self.state.scene_names)-1}"
+        else:
+            message = f"Please enter a Scene Index to get started"
+        return gr.update(visible=True, value=message)

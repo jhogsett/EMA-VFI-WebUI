@@ -118,6 +118,17 @@ def get_files(path : str, extension : list | str | None=None) -> list:
     else:
         raise ValueError("'path' must be a string")
 
+def get_matching_files(path : str, filespec : str) -> list:
+    """Get a list of files in path matching 'filespec', which can be a filename or wildcard"""
+    if isinstance(path, str):
+        if isinstance(filespec, str):
+            full_path = os.path.join(path, filespec)
+            return _get_files(full_path)
+        else:
+            raise ValueError("'filespec' must be a string")
+    else:
+        raise ValueError("'path' must be a string")
+
 def get_directories(path : str) -> list:
     """Get a list of directories in the path"""
     if isinstance(path, str):
