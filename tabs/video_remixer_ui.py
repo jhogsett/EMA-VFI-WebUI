@@ -276,7 +276,7 @@ class VideoRemixer(TabBase):
 
                 ## Remix Extra
                 with gr.Tab("Remix Extra", id=7):
-                    with gr.Tab(label="Expert"):
+                    with gr.Tab(label="Utilities"):
                         with gr.Tabs():
                             with gr.Tab("Drop Processed Scene"):
                                 gr.Markdown("**Drop Processed Scene** - Drop a scene after processing has been compeleted")
@@ -284,7 +284,7 @@ class VideoRemixer(TabBase):
                                 message_box710 = gr.Textbox(show_label=False, interactive=False)
                                 drop_button710 = gr.Button("Drop Scene", variant="stop").style(full_width=True)
 
-                    with gr.Tab(label="Project Clean Up " + SimpleIcons.CONSTRUCTION):
+                    with gr.Tab(label="Reduce Footprint " + SimpleIcons.CONSTRUCTION):
                         with gr.Tabs():
                             with gr.Tab(label="Remove Soft-Deleted Content"):
                                 gr.Markdown("**_Delete content that has been moved to the_** `purged_content` **_directory_**")
