@@ -281,7 +281,8 @@ class VideoRemixer(TabBase):
                             with gr.Tab("Drop Processed Scene"):
                                 gr.Markdown("**Drop Processed Scene** - Drop a scene after processing has been compeleted")
                                 scene_id_710 = gr.Number(value=-1, label="Scene Index")
-                                message_box710 = gr.Textbox(show_label=False, interactive=False)
+                                with gr.Row():
+                                    message_box710 = gr.Textbox(show_label=False, interactive=False)
                                 drop_button710 = gr.Button("Drop Scene", variant="stop").style(full_width=True)
 
                     with gr.Tab(label="Reduce Footprint " + SimpleIcons.CONSTRUCTION):
