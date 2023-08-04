@@ -904,6 +904,7 @@ class VideoRemixer(TabBase):
         if self.state.upscale_option != None and self.state.upscale_option != upscale_option:
             upscale_option_changed = True
         self.state.upscale_option = upscale_option
+        self.state.setup_processing_paths()
         self.log("saving project after storing processing choices")
         self.state.save()
 

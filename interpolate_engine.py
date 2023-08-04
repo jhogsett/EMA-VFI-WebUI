@@ -60,8 +60,11 @@ class InterpolateEngine:
                 F = 32,
                 depth = [2, 2, 2, 4, 4]
             )
-        model = Model(-1)
-        model.load_model()
-        model.eval()
-        model.device()
-        return {"model" : model, "TTA" : TTA}
+        try:
+            model = Model(-1)
+            model.load_model()
+            model.eval()
+            model.device()
+            return {"model" : model, "TTA" : TTA}
+        except AssertionError as error:
+            raise RuntimeError(f"Error initializing EMA-VFI model: {error}")

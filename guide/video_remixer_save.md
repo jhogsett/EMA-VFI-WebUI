@@ -31,15 +31,15 @@ _Disclaimer: these are proofs of concept, but not necessarily great recommendati
 
 | Output Type | Custom Video Output | Custom Audio Output | Filename | Results |
 | :- | :- | :- | :- | :- |
-| MP4 | -c:v libx264 -crf _CRF Value_ | -c:a aac | video.mp4 | Options used for standard MP4 remix output |
-| MPG | (left blank) | -codec: a mp3 | video.mpg | Video with sound played great |
-| MPEG-PS | -c:v mpeg2video -pix_fmt yuv422p -bf 2 -b:v 10M -maxrate 10M -minrate 10M -s 640x480 -aspect 4:3 | -c:a pcm_s16be -f vob | video.vob | Video+sound played great (with VLC)* |
+| MP4 | `-c:v libx264 -crf 32` | `-c:a aac` | video.mp4 | Options used for standard MP4 remix output |
+| MPG | (left blank) | `-codec: a mp3` | video.mpg | Video with sound played great |
+| MPEG-PS | `-c:v mpeg2video -pix_fmt yuv422p -bf 2 -b:v 10M -maxrate 10M -minrate 10M -s 640x480 -aspect 4:3` | `-c:a pcm_s16be -f vob` | video.vob | Video+sound played great (with VLC)* |
 | WMV | (left blank) | (left blank) | video.wmv | Video+sound played but was very low quality** |
 | AVI | (left blank) | (left blank) | video.avi | Video+sound played but was very low quality** |
-| MP4 | -vf "drawtext=text='<SCENE_NAME>':x=(w-text_w)/2:y=h-(text_h*2):fontsize=32:fontcolor=yellow:fontfile='fonts/trim.ttf'" -c:v libx264 -crf 23 | -c:a aac | video.mp4 | Standard MP4 remix video with scene name label*** |
+| MP4 | `-vf "drawtext=text='<SCENE_INFO>':x=(w-text_w)/2:y=h-(text_h*2):fontsize=22:fontcolor=yellow:fontfile='fonts/trim.ttf'" -c:v libx264 -crf 23` | `-c:a aac` | video.mp4 | Standard MP4 remix video with scene name label*** |
 
 _* The console showed many buffer underrun errors while concatenating into remix video_
 
 _** Likely there are 'quality' command line switches that would fix this_
 
-_*** The text "<SCENE_NAME>" is substituted for the clip scene name at render time_
+_*** The text "<SCENE_INFO>" is substituted for scene information at render time including_ scene ID, scene name, start time, duration. _The text "<SCENE_NAME>" can also be used to show just the the scene name._

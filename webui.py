@@ -46,7 +46,13 @@ class WebUI:
         model = self.config.engine_settings["model"]
         gpu_ids = self.config.engine_settings["gpu_ids"]
         use_time_step = self.config.engine_settings["use_time_step"]
-        engine = InterpolateEngine(model, gpu_ids, use_time_step=use_time_step)
+
+        try:
+            engine = InterpolateEngine(model, gpu_ids, use_time_step=use_time_step)
+        except RuntimeError as error:
+            print(f"Error loading interpolation engine: {error}")
+            engine = None
+
         while True:
             print()
             if self.config.user_interface["mtqdm_use_color"]:

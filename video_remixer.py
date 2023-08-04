@@ -582,7 +582,7 @@ class VideoRemixerState():
         create_directory(purged_root_path)
         purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory("purged")
         for path in path_list:
-            if path: # some paths may not currently exist
+            if path and os.path.exists(path):
                 shutil.move(path, purged_path)
 
     def purge_processed_content(self, purge_from):
@@ -625,6 +625,17 @@ class VideoRemixerState():
             clean_directories([
                 self.clips_path])
             self.clips = []
+
+    RESIZE_PATH = "SCENES-RC"
+    RESYNTH_PATH = "SCENES-RE"
+    INFLATE_PATH = "SCENES-IN"
+    UPSCALE_PATH = "SCENES-UP"
+
+    def setup_processing_paths(self):
+        self.resize_path = os.path.join(self.project_path, self.RESIZE_PATH)
+        self.resynthesis_path = os.path.join(self.project_path, self.RESYNTH_PATH)
+        self.inflation_path = os.path.join(self.project_path, self.INFLATE_PATH)
+        self.upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
 
     def processed_content_present(self, present_at):
         if present_at == self.RESIZE_STEP:
@@ -731,13 +742,9 @@ class VideoRemixerState():
 
         return processing_path
 
-    RESIZE_PATH = "SCENES-RC"
-
     def resize_scenes(self, log_fn, kept_scenes, remixer_settings):
         scenes_base_path = self.scenes_source_path(self.RESIZE_STEP)
-        self.resize_path = os.path.join(self.project_path, self.RESIZE_PATH)
         create_directory(self.resize_path)
-        self.save()
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Resize") as bar:
             for scene_name in kept_scenes:
@@ -770,8 +777,6 @@ class VideoRemixerState():
                             crop_offset_y=crop_offset).resize()
                 Mtqdm().update_bar(bar)
 
-    RESYNTH_PATH = "SCENES-RE"
-
     def resynthesize_scenes(self, log_fn, kept_scenes, engine, engine_settings):
         interpolater = Interpolate(engine.model, log_fn)
         use_time_step = engine_settings["use_time_step"]
@@ -779,9 +784,7 @@ class VideoRemixerState():
         series_interpolater = InterpolateSeries(deep_interpolater, log_fn)
 
         scenes_base_path = self.scenes_source_path(self.RESYNTH_STEP)
-        self.resynthesis_path = os.path.join(self.project_path, self.RESYNTH_PATH)
         create_directory(self.resynthesis_path)
-        self.save()
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Resynth") as bar:
             for scene_name in kept_scenes:
@@ -808,8 +811,6 @@ class VideoRemixerState():
                                 log_fn).resequence()
                 Mtqdm().update_bar(bar)
 
-    INFLATE_PATH = "SCENES-IN"
-
     def inflate_scenes(self, log_fn, kept_scenes, engine, engine_settings):
         interpolater = Interpolate(engine.model, log_fn)
         use_time_step = engine_settings["use_time_step"]
@@ -817,9 +818,7 @@ class VideoRemixerState():
         series_interpolater = InterpolateSeries(deep_interpolater, log_fn)
 
         scenes_base_path = self.scenes_source_path(self.INFLATE_STEP)
-        self.inflation_path = os.path.join(self.project_path, self.INFLATE_PATH)
         create_directory(self.inflation_path)
-        self.save()
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Inflate") as bar:
             for scene_name in kept_scenes:
@@ -845,8 +844,6 @@ class VideoRemixerState():
                                 log_fn).resequence()
                 Mtqdm().update_bar(bar)
 
-    UPSCALE_PATH = "SCENES-UP"
-
     def upscale_scenes(self, log_fn, kept_scenes, realesrgan_settings, remixer_settings):
         model_name = realesrgan_settings["model_name"]
         gpu_ids = realesrgan_settings["gpu_ids"]
@@ -861,10 +858,7 @@ class VideoRemixerState():
         upscaler = UpscaleSeries(model_name, gpu_ids, fp32, tiling, tile_pad, log_fn)
 
         scenes_base_path = self.scenes_source_path(self.UPSCALE_STEP)
-        self.upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
         create_directory(self.upscale_path)
-        # save the project now to preserve the newly established path
-        self.save()
 
         if self.upscale_option == "1X":
             upscale_factor = 1.0
@@ -1104,7 +1098,7 @@ class VideoRemixerState():
             create_directory(path)
 
         path_files = get_files(path)
-        file_count = len(files)
+        file_count = len(files) if files else 0
         path_file_count = len(path_files)
 
         if not files and not path_files:
@@ -1199,6 +1193,7 @@ class VideoRemixerState():
                 state.thumbnails = sorted(state.thumbnails) if state.thumbnails else []
                 state.audio_clips = sorted(state.audio_clips) if state.audio_clips else []
                 state.video_clips = sorted(state.video_clips) if state.video_clips else []
+                state.setup_processing_paths()
 
                 # Compatibility
                 # state.current_scene was originally a string
