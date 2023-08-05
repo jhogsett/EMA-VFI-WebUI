@@ -847,7 +847,7 @@ class VideoRemixer(TabBase):
     def scene_chooser_details(self, scene_index):
         if not self.state.thumbnails:
             self.log(f"thumbnails don't exist yet in scene_chooser_details()")
-            return self.empty_args(6)
+            return self.empty_args(5)
         try:
             scene_name, thumbnail_path, scene_state, scene_info = \
                 self.state.scene_chooser_details(scene_index)
@@ -1156,8 +1156,12 @@ class VideoRemixer(TabBase):
             removed.append(self.state.delete_path(self.state.dropped_scenes_path))
         if delete_thumbs:
             removed.append(self.state.delete_path(self.state.thumbnail_path))
-        removed = "\r\n".join(removed)
-        message = f"Removed:\r\n{removed}"
+        removed = [_ for _ in removed if _]
+        if removed:
+            removed_str = "\r\n".join(removed)
+            message = f"Removed:\r\n{removed_str}"
+        else:
+            message = f"Removed: None"
         return gr.update(visible=True, value=message)
 
     def select_all_button711(self):
@@ -1188,8 +1192,12 @@ class VideoRemixer(TabBase):
             removed.append(self.state.delete_path(self.state.video_clips_path))
         if delete_clips:
             removed.append(self.state.delete_path(self.state.clips_path))
-        removed = "\r\n".join(removed)
-        message = f"Removed:\r\n{removed}"
+        removed = [_ for _ in removed if _]
+        if removed:
+            removed_str = "\r\n".join(removed)
+            message = f"Removed:\r\n{removed_str}"
+        else:
+            message = f"Removed: None"
         return gr.update(visible=True, value=message)
 
     def select_all_button712(self):
