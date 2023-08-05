@@ -721,14 +721,14 @@ class VideoRemixer(TabBase):
     def scene_chooser_details(self, scene_index):
         if not self.state.thumbnails:
             self.log(f"thumbnails don't exist yet in scene_chooser_details()")
-            return self.empty_args(6)
+            return self.empty_args(5)
         try:
             scene_name, thumbnail_path, scene_state, scene_info = \
                 self.state.scene_chooser_details(scene_index)
             return scene_index, scene_name, thumbnail_path, scene_state, scene_info
         except ValueError as error:
             self.log(error)
-            return self.empty_args(6)
+            return self.empty_args(5)
 
     # User has clicked Done Choosing Scenes from Scene Chooser
     def next_button3(self):
