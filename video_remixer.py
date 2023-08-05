@@ -963,11 +963,14 @@ class VideoRemixerState():
     def delete_processed_clip(self, path, scene_name):
         removed = []
         if path and os.path.exists(path):
-            filespec = f"{scene_name}.*"
-            files = get_matching_files(path, filespec)
+            files = get_files(path)
+            # some clips are formatted like "original_namee[000-999].ext",
+            # and some like "000-000.ext"
+            # TODO resequence audio clips and thumbnails to make the naming consistent
             for file in files:
-                os.remove(file)
-                removed.append(file)
+                if file.find(scene_name) != -1:
+                    os.remove(file)
+                    removed.append(file)
         return removed
 
     # drop an already-processed scene to cut it from the remix video
