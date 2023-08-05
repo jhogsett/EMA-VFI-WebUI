@@ -728,7 +728,7 @@ class VideoRemixer(TabBase):
             return scene_index, scene_name, thumbnail_path, scene_state, scene_info
         except ValueError as error:
             self.log(error)
-            return self.empty_args(5)
+            return self.empty_args(6)
 
     # User has clicked Done Choosing Scenes from Scene Chooser
     def next_button3(self):
