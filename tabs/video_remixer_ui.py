@@ -228,7 +228,7 @@ class VideoRemixer(TabBase):
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                         WebuiTips.video_remixer_processing.render()
 
-                ## REMIX VIDEOS
+                ## SAVE REMIX
                 with gr.Tab("Save Remix", id=6):
                     gr.Markdown("**Ready to Finalize Scenes and Save Remixed Video**")
                     with gr.Row():
@@ -273,6 +273,100 @@ class VideoRemixer(TabBase):
 
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                         WebuiTips.video_remixer_save.render()
+
+                ## Remix Extra
+                with gr.Tab("Remix Extra", id=7):
+                    with gr.Tab(label="Utilities"):
+                        with gr.Tabs():
+                            with gr.Tab("Drop Processed Scene"):
+                                gr.Markdown("**_Drop a scene after processing has been already been done_**")
+                                scene_id_700 = gr.Number(value=-1, label="Scene Index")
+                                with gr.Row():
+                                    message_box700 = gr.Textbox(show_label=False, interactive=False)
+                                drop_button700 = gr.Button("Drop Scene", variant="stop").style(full_width=True)
+
+                    with gr.Tab(label="Reduce Footprint"):
+                        with gr.Tabs():
+                            with gr.Tab(label="Remove Soft-Deleted Content"):
+                                gr.Markdown("**_Delete content set aside when remix processing selections are changed_**")
+                                with gr.Row():
+                                    delete_purged_710 = gr.Checkbox(label="Permanently Delete Purged Content")
+                                    with gr.Box():
+                                        gr.Markdown("Delete the contents of the 'purged_content' project directory.")
+                                with gr.Row():
+                                    message_box710 = gr.Textbox(show_label=False)
+                                gr.Markdown("*Progress can be tracked in the console*")
+                                with gr.Row():
+                                    delete_button710 = gr.Button(value="Delete Purged Content " + SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                    select_all_button710 = gr.Button(value="Select All").style(full_width=False)
+                                    select_none_button710 = gr.Button(value="Select None").style(full_width=False)
+
+                            with gr.Tab(label="Remove Scene Chooser Content"):
+                                gr.Markdown("**_Delete source PNG frame files, thumbnails and dropped scenes_**")
+                                with gr.Row():
+                                    delete_source_711 = gr.Checkbox(label="Remove Source Video Frames")
+                                    with gr.Box():
+                                        gr.Markdown("Delete source video PNG frame files used to split content into scenes.")
+                                with gr.Row():
+                                    delete_dropped_711 = gr.Checkbox(label="Remove Dropped Scenes")
+                                    with gr.Box():
+                                        gr.Markdown("Delete Dropped Scene files used when compiling scenes after making scene choices.")
+                                with gr.Row():
+                                    delete_thumbs_711 = gr.Checkbox(label="Remove Thumbnails")
+                                    with gr.Box():
+                                        gr.Markdown("Delete Thumbnails used to display scenes in Scene Chooser.")
+                                with gr.Row():
+                                    message_box711 = gr.Textbox(show_label=False)
+                                gr.Markdown("*Progress can be tracked in the console*")
+                                with gr.Row():
+                                    delete_button711 = gr.Button(value="Delete Selected Content " + SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                    select_all_button711 = gr.Button(value="Select All").style(full_width=False)
+                                    select_none_button711 = gr.Button(value="Select None").style(full_width=False)
+
+                            with gr.Tab(label="Remove Remix Video Source Content"):
+                                gr.Markdown("**_Clear space after final Remix Videos have been saved_**")
+                                with gr.Row():
+                                    delete_kept_712 = gr.Checkbox(label="Remove Kept Scenes")
+                                    with gr.Box():
+                                        gr.Markdown("Delete Kept Scene files used when compiling scenes after making scene choices.")
+                                with gr.Row():
+                                    delete_resized_712 = gr.Checkbox(label="Remove Resized Frames")
+                                    with gr.Box():
+                                        gr.Markdown("Delete Resized PNG frame files used as inputs for processing and creating remix video clips.")
+                                with gr.Row():
+                                    delete_resynth_712 = gr.Checkbox(label="Remove Resynthesized Frames")
+                                    with gr.Box():
+                                        gr.Markdown("Delete Resynthesized PNG frame files used as inputs for processing and creating remix video clips.")
+                                with gr.Row():
+                                    delete_inflated_712 = gr.Checkbox(label="Remove Inflated Frames")
+                                    with gr.Box():
+                                        gr.Markdown("Delete Inflated PNG frame files used as inputs for processing and creating remix video clips.")
+                                with gr.Row():
+                                    delete_upscaled_712 = gr.Checkbox(label="Remove Upscaled Frames")
+                                    with gr.Box():
+                                        gr.Markdown("Delete Upscaled PNG frame files used as inputs for processing and creating remix video clips.")
+                                with gr.Row():
+                                    delete_audio_712 = gr.Checkbox(label="Delete Audio Clips")
+                                    with gr.Box():
+                                        gr.Markdown("Delete Audio WAV/MP3 files used as inputs for creating remix video clips.")
+                                with gr.Row():
+                                    delete_video_712 = gr.Checkbox(label="Delete Video Clips")
+                                    with gr.Box():
+                                        gr.Markdown("Delete Video MP4 files used as inputs for creating remix video clips.")
+                                with gr.Row():
+                                    delete_clips_712 = gr.Checkbox(label="Delete Remix Video Clips")
+                                    with gr.Box():
+                                        gr.Markdown("Delete Video+Audio MP4 files used as inputs to concatentate into the final Remix Video.")
+                                with gr.Row():
+                                    message_box712 = gr.Textbox(show_label=False)
+                                gr.Markdown("*Progress can be tracked in the console*")
+                                with gr.Row():
+                                    delete_button712 = gr.Button(value="Delete Selected Content " + SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                    select_all_button712 = gr.Button(value="Select All").style(full_width=False)
+                                    select_none_button712 = gr.Button(value="Select None").style(full_width=False)
+
+                    # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                    #     WebuiTips.video_remixer_save.render()
 
         next_button00.click(self.next_button00,
                            inputs=video_path,
@@ -390,6 +484,38 @@ class VideoRemixer(TabBase):
                         outputs=message_box61)
 
         back_button61.click(self.back_button6, outputs=tabs_video_remixer)
+
+        drop_button700.click(self.drop_button700, inputs=scene_id_700, outputs=message_box700)
+
+        delete_button710.click(self.delete_button710,
+                               inputs=delete_purged_710,
+                               outputs=message_box710)
+        select_all_button710.click(self.select_all_button710, show_progress=False,
+                                outputs=[delete_purged_710])
+        select_none_button710.click(self.select_none_button710, show_progress=False,
+                                outputs=[delete_purged_710])
+
+        delete_button711.click(self.delete_button711,
+                               inputs=[delete_source_711, delete_dropped_711, delete_thumbs_711],
+                               outputs=message_box711)
+        select_all_button711.click(self.select_all_button711, show_progress=False,
+                                outputs=[delete_source_711, delete_dropped_711, delete_thumbs_711])
+        select_none_button711.click(self.select_none_button711, show_progress=False,
+                                outputs=[delete_source_711, delete_dropped_711, delete_thumbs_711])
+
+        delete_button712.click(self.delete_button712,
+                               inputs=[delete_kept_712, delete_resized_712, delete_resynth_712,
+                                       delete_inflated_712, delete_upscaled_712, delete_audio_712,
+                                       delete_video_712, delete_clips_712],
+                                outputs=message_box712)
+        select_all_button712.click(self.select_all_button712, show_progress=False,
+                                outputs=[delete_kept_712, delete_resized_712, delete_resynth_712,
+                                         delete_inflated_712, delete_upscaled_712, delete_audio_712,
+                                         delete_video_712, delete_clips_712])
+        select_none_button712.click(self.select_none_button712, show_progress=False,
+                                outputs=[delete_kept_712, delete_resized_712, delete_resynth_712,
+                                         delete_inflated_712, delete_upscaled_712,
+                                         delete_audio_712, delete_video_712, delete_clips_712])
 
     def empty_args(self, num):
         return [None for _ in range(num)]
@@ -989,3 +1115,107 @@ class VideoRemixer(TabBase):
 
     def back_button6(self):
         return gr.update(selected=5)
+
+    def drop_button700(self, scene_index):
+        if isinstance(scene_index, (int, float)):
+            scene_index = int(scene_index)
+            if 0 <= scene_index < len(self.state.scene_names):
+                removed = self.state.force_drop_processed_scene(scene_index)
+                self.log(f"removed files: {removed}")
+
+                self.log(
+            f"saving project after using force_drop_processed_scene for scene index {scene_index}")
+                self.state.save()
+
+                removed = "\r\n".join(removed)
+                message = f"Removed:\r\n{removed}"
+            else:
+                message = f"Please enter a Scene Index from 0 to {len(self.state.scene_names)-1}"
+        else:
+            message = f"Please enter a Scene Index to get started"
+        return gr.update(visible=True, value=message)
+
+    def delete_button710(self, delete_purged):
+        if delete_purged:
+            self.log("about to remove content from 'purged_content' directory")
+            removed = self.state.delete_purged_content()
+            message = f"Removed: {removed}"
+            return gr.update(visible=True, value=message)
+
+    def select_all_button710(self):
+        return gr.update(value=True)
+
+    def select_none_button710(self):
+        return gr.update(value=False)
+
+    def delete_button711(self, delete_source, delete_dropped, delete_thumbs):
+        removed = []
+        if delete_source:
+            removed.append(self.state.delete_path(self.state.frames_path))
+        if delete_dropped:
+            removed.append(self.state.delete_path(self.state.dropped_scenes_path))
+        if delete_thumbs:
+            removed.append(self.state.delete_path(self.state.thumbnail_path))
+        removed = [_ for _ in removed if _]
+        if removed:
+            removed_str = "\r\n".join(removed)
+            message = f"Removed:\r\n{removed_str}"
+        else:
+            message = f"Removed: None"
+        return gr.update(visible=True, value=message)
+
+    def select_all_button711(self):
+        return gr.update(value=True), \
+                gr.update(value=True), \
+                gr.update(value=True)
+
+    def select_none_button711(self):
+        return gr.update(value=False), \
+                gr.update(value=False), \
+                gr.update(value=False)
+
+    def delete_button712(self, delete_kept, delete_resized, delete_resynth, delete_inflated, delete_upscaled, delete_audio, delete_video, delete_clips):
+        removed = []
+        if delete_kept:
+            removed.append(self.state.delete_path(self.state.scenes_path))
+        if delete_resized:
+            removed.append(self.state.delete_path(self.state.resize_path))
+        if delete_resynth:
+            removed.append(self.state.delete_path(self.state.resynthesis_path))
+        if delete_inflated:
+            removed.append(self.state.delete_path(self.state.inflation_path))
+        if delete_upscaled:
+            removed.append(self.state.delete_path(self.state.upscale_path))
+        if delete_audio:
+            removed.append(self.state.delete_path(self.state.audio_clips_path))
+        if delete_video:
+            removed.append(self.state.delete_path(self.state.video_clips_path))
+        if delete_clips:
+            removed.append(self.state.delete_path(self.state.clips_path))
+        removed = [_ for _ in removed if _]
+        if removed:
+            removed_str = "\r\n".join(removed)
+            message = f"Removed:\r\n{removed_str}"
+        else:
+            message = f"Removed: None"
+        return gr.update(visible=True, value=message)
+
+    def select_all_button712(self):
+        return gr.update(value=True), \
+                gr.update(value=True), \
+                gr.update(value=True), \
+                gr.update(value=True), \
+                gr.update(value=True), \
+                gr.update(value=True), \
+                gr.update(value=True), \
+                gr.update(value=True)
+
+    def select_none_button712(self):
+        return gr.update(value=False), \
+                gr.update(value=False), \
+                gr.update(value=False), \
+                gr.update(value=False), \
+                gr.update(value=False), \
+                gr.update(value=False), \
+                gr.update(value=False), \
+                gr.update(value=False)

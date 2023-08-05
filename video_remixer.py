@@ -4,7 +4,7 @@ import shutil
 import yaml
 from yaml import Loader, YAMLError
 from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
-from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files, clean_directories, clean_filename
+from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files, clean_directories, clean_filename, get_matching_files
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom
@@ -577,13 +577,36 @@ class VideoRemixerState():
     INFLATE_STEP = "inflate"
     UPSCALE_STEP = "upscale"
 
+    PURGED_CONTENT = "purged_content"
+
     def purge_paths(self, path_list : list):
-        purged_root_path = os.path.join(self.project_path, "purged_content")
+        purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
         create_directory(purged_root_path)
         purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory("purged")
         for path in path_list:
             if path and os.path.exists(path):
                 shutil.move(path, purged_path)
+
+    def delete_purged_content(self):
+        purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
+        if os.path.exists(purged_root_path):
+            with Mtqdm().open_bar(total=1, desc="Deleting") as bar:
+                Mtqdm().message(bar, "Removing purged content - No ETA")
+                shutil.rmtree(purged_root_path)
+                Mtqdm().update_bar(bar)
+            return purged_root_path
+        else:
+            return None
+
+    def delete_path(self, path):
+        if os.path.exists(path):
+            with Mtqdm().open_bar(total=1, desc="Deleting") as bar:
+                Mtqdm().message(bar, "Removing project content - No ETA")
+                shutil.rmtree(path)
+                Mtqdm().update_bar(bar)
+            return path
+        else:
+            return None
 
     def purge_processed_content(self, purge_from):
         if purge_from == self.RESIZE_STEP:
@@ -893,6 +916,19 @@ class VideoRemixerState():
         suffix = self.remix_filename_suffix()
         return os.path.join(self.project_path, f"{filename}-{suffix}.mp4")
 
+    # drop a kept scene after scene compiling has already been done
+    # used for dropping empty processed scenes, and force dropping processed scenes
+    def drop_kept_scene(self, scene_name):
+        self.scene_states[scene_name] = "Drop"
+        current_path = os.path.join(self.scenes_path, scene_name)
+        dropped_path = os.path.join(self.dropped_scenes_path, scene_name)
+        if os.path.exists(current_path):
+            if not os.path.exists(dropped_path):
+                shutil.move(current_path, dropped_path)
+            else:
+                raise ValueError(
+                    f"cannot move {current_path} to {dropped_path} which already exists")
+
     # find scenes that are empty now after processing and should be automatically dropped
     # this can happen when resynthesis and/or inflation are used on scenes with only a few frames
     def drop_empty_processed_scenes(self, kept_scenes):
@@ -912,11 +948,47 @@ class VideoRemixerState():
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 files = get_files(scene_input_path)
                 if len(files) == 0:
-                    self.scene_states[scene_name] = "Drop"
-                    current_path = os.path.join(self.scenes_path, scene_name)
-                    dropped_path = os.path.join(self.dropped_scenes_path, scene_name)
-                    shutil.move(current_path, dropped_path)
+                    self.drop_kept_scene(scene_name)
                 Mtqdm().update_bar(bar)
+
+    def delete_processed_scene(self, path, scene_name):
+        removed = []
+        if path and os.path.exists(path):
+            full_path = os.path.join(path, scene_name)
+            if os.path.exists(full_path):
+                shutil.rmtree(full_path)
+                removed.append(full_path)
+        return removed
+
+    def delete_processed_clip(self, path, scene_name):
+        removed = []
+        if path and os.path.exists(path):
+            filespec = f"{scene_name}.*"
+            files = get_matching_files(path, filespec)
+            for file in files:
+                os.remove(file)
+                removed.append(file)
+        return removed
+
+    # drop an already-processed scene to cut it from the remix video
+    def force_drop_processed_scene(self, scene_index):
+        scene_name = self.scene_names[scene_index]
+        self.drop_kept_scene(scene_name)
+        removed = []
+        for path in [
+            self.resize_path,
+            self.resynthesis_path,
+            self.inflation_path,
+            self.upscale_path
+        ]:
+            removed += self.delete_processed_scene(path, scene_name)
+        for path in [
+            self.audio_clips_path,
+            self.video_clips_path,
+            self.clips_path
+        ]:
+            removed += self.delete_processed_clip(path, scene_name)
+        return removed
 
     AUDIO_CLIPS_PATH = "AUDIO"
 
