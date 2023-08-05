@@ -589,7 +589,24 @@ class VideoRemixerState():
 
     def delete_purged_content(self):
         purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
-        shutil.rmtree(purged_root_path)
+        if os.path.exists(purged_root_path):
+            with Mtqdm().open_bar(total=1, desc="Deleting") as bar:
+                Mtqdm().message(bar, "Removing purged content - No ETA")
+                shutil.rmtree(purged_root_path)
+                Mtqdm().update_bar(bar)
+            return purged_root_path
+        else:
+            return None
+
+    def delete_path(self, path):
+        if os.path.exists(path):
+            with Mtqdm().open_bar(total=1, desc="Deleting") as bar:
+                Mtqdm().message(bar, "Removing project content - No ETA")
+                shutil.rmtree(path)
+                Mtqdm().update_bar(bar)
+            return path
+        else:
+            return None
 
     def purge_processed_content(self, purge_from):
         if purge_from == self.RESIZE_STEP:
