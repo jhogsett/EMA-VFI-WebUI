@@ -3,7 +3,7 @@
 The _Processed Content_ box shows a summary of the completed processing.
 
 ## How To Use
-1. Choose either _Create MP4 Remix_ or _Create Custom Remix_
+1. Choose _Create MP4 Remix, Create Custom Remix_ or _Create Marked Remix_
     - If **Create MP4 Remix**
         - Choose _Video Quality_
             - Lower values mean higher quality videos
@@ -19,7 +19,19 @@ The _Processed Content_ box shows a summary of the completed processing.
             - It's passed to FFMpeg as options for the audio+video output files
         - **_Tip: See below for custom remix examples_**
         - Enter an _Output Filepath_ for the remix video
-1. Click _Save Remix_
+    - If **Create Marked Remix**
+        - Leave _Marked FFmpeg Video Output options_ set _as_is_
+            - Optionally, customize the FFmpeg _drawtext_ filter settings
+                - For example, to move the text to the bottom,
+                    - Change: `y=(text_h*1)`
+                    - To: `y=h-(text_h*2)`
+            - The entered value is used when creating video clips from the processed PNG frames files
+            - It's passed to FFMpeg as options for the video-only output files
+        - Leave _Marked FFmpeg Audio Output options_
+            - Optionally, customize the FFmpeg audio output settings
+            - The entered value is used when combining video clips with original WAV audio
+            - It's passed to FFMpeg as options for the audio+video output files
+1. Click _Save Remix, Save Custom Remix_ or _Save Marked Remix_
     - The previously processed video and audio clips are merged
     - The final video is concatenated from the clips (without re-encoding)
 
