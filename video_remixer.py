@@ -491,7 +491,7 @@ class VideoRemixerState():
                 first_index / self.project_fps,
                 self.project_fps)
             scene_duration = seconds_to_hmsf(
-                (last_index - first_index) / self.project_fps,
+                ((last_index + 1) - first_index) / self.project_fps,
                 self.project_fps)
             keep_state = True if scene_state == "Keep" else False
             return scene_name, thumbnail_path, scene_state, scene_position, scene_start, scene_duration, keep_state
