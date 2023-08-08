@@ -991,6 +991,8 @@ class VideoRemixerState():
             self.clips_path
         ]:
             removed += self.delete_processed_clip(path, scene_name)
+        if self.audio_clips_path:
+            self.audio_clips = sorted(get_files(self.audio_clips_path))
         return removed
 
     AUDIO_CLIPS_PATH = "AUDIO"
