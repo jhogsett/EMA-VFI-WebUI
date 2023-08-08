@@ -102,6 +102,8 @@ remixer_settings:
   default_gif_fps: 10
   gif_end_delay: 1.0
   gif_factor: 10
+  marked_ffmpeg_video: -vf "drawtext=text='<SCENE_INFO>':x=(w-text_w)/2:y=(text_h*1):fontsize=(h/22):fontcolor=white@0.9:fontfile='fonts/trim.ttf':box=1:boxcolor=black@0.5:boxborderw=5" -c:v libx264 -crf 28
+  marked_ffmpeg_audio: -c:a aac
   max_project_fps: 60.0
   max_thumb_size: 512
   maximum_crf: 28
