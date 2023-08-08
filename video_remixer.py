@@ -903,17 +903,18 @@ class VideoRemixerState():
                                                     output_basename, "png")
                 Mtqdm().update_bar(bar)
 
-    def remix_filename_suffix(self):
+    def remix_filename_suffix(self, extra_suffix):
         label = "remix"
         label += "-rc" if self.resize else "-or"
         label += "-re" if self.resynthesize else ""
         label += "-in" if self.inflate else ""
         label += "-up" + self.upscale_option[0] if self.upscale else ""
+        label += "-" + extra_suffix if extra_suffix else ""
         return label
 
-    def default_remix_filepath(self):
+    def default_remix_filepath(self, extra_suffix=""):
         _, filename, _ = split_filepath(self.source_video)
-        suffix = self.remix_filename_suffix()
+        suffix = self.remix_filename_suffix(extra_suffix)
         return os.path.join(self.project_path, f"{filename}-{suffix}.mp4")
 
     # drop a kept scene after scene compiling has already been done

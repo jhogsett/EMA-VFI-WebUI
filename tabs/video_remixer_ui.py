@@ -33,7 +33,8 @@ class VideoRemixer(TabBase):
         default_crf = self.config.remixer_settings["default_crf"]
         max_thumb_size = self.config.remixer_settings["max_thumb_size"]
         def_min_frames = self.config.remixer_settings["min_frames_per_scene"]
-
+        marked_ffmpeg_video = self.config.remixer_settings["marked_ffmpeg_video"]
+        marked_ffmpeg_audio = self.config.remixer_settings["marked_ffmpeg_audio"]
         with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Video Remixer"):
             gr.Markdown(
                 SimpleIcons.VULCAN_HAND + "Restore & Remix Videos with Audio")
@@ -234,7 +235,10 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         summary_info6 = gr.Textbox(label="Processed Content", lines=6,
                                                 interactive=False)
+
                     with gr.Tabs():
+
+                        ### CREATE MP4 REMIX
                         with gr.Tab(label="Create MP4 Remix"):
                             quality_slider = gr.Slider(minimum=minimum_crf, maximum=maximum_crf,
                                 step=1, value=default_crf, label="Video Quality",
@@ -251,6 +255,8 @@ class VideoRemixer(TabBase):
                                 next_button60 = gr.Button(
                                     value="Save Remix " + SimpleIcons.SLOW_SYMBOL,
                                     variant="primary", elem_id="highlightbutton")
+
+                        ### CREATE CUSTOM REMIX
                         with gr.Tab(label="Create Custom Remix"):
                             custom_video_options = gr.Textbox(
                                 label="Custom FFmpeg Video Output Options",
@@ -269,6 +275,27 @@ class VideoRemixer(TabBase):
                                     style(full_width=False)
                                 next_button61 = gr.Button(
                                     value="Save Custom Remix " + SimpleIcons.SLOW_SYMBOL,
+                                    variant="primary", elem_id="highlightbutton")
+
+                        ### CREATE MARKED REMIX
+                        with gr.Tab(label="Create Marked Remix"):
+                            marked_video_options = gr.Textbox(value=marked_ffmpeg_video,
+                                label="Marked FFmpeg Video Output Options",
+                        info="Passed to FFmpeg as output video settings when converting PNG frames")
+                            marked_audio_options = gr.Textbox(value=marked_ffmpeg_audio,
+                                label="Marked FFmpeg Audio Output Options",
+                        info="Passed to FFmpeg as output audio settings when combining with video")
+                            output_filepath_marked = gr.Textbox(label="Output Filepath", max_lines=1,
+                                    info="Enter a path and filename for the remixed video")
+                            with gr.Row():
+                                message_box62 = gr.Textbox(value=None, show_label=False,
+                                                          interactive=False)
+                            gr.Markdown("*Progress can be tracked in the console*")
+                            with gr.Row():
+                                back_button62 = gr.Button(value="< Back", variant="secondary").\
+                                    style(full_width=False)
+                                next_button62 = gr.Button(
+                                    value="Save Marked Remix " + SimpleIcons.SLOW_SYMBOL,
                                     variant="primary", elem_id="highlightbutton")
 
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -470,7 +497,7 @@ class VideoRemixer(TabBase):
         next_button5.click(self.next_button5,
                     inputs=[resynthesize, inflate, resize, upscale, upscale_option],
                     outputs=[tabs_video_remixer, message_box5, summary_info6, output_filepath,
-                             message_box61])
+                             message_box61, output_filepath_custom, output_filepath_marked])
 
         back_button5.click(self.back_button5, outputs=tabs_video_remixer)
 
@@ -484,6 +511,12 @@ class VideoRemixer(TabBase):
                         outputs=message_box61)
 
         back_button61.click(self.back_button6, outputs=tabs_video_remixer)
+
+        next_button62.click(self.next_button62,
+                        inputs=[marked_video_options, marked_audio_options, output_filepath_marked],
+                        outputs=message_box62)
+
+        back_button62.click(self.back_button6, outputs=tabs_video_remixer)
 
         drop_button700.click(self.drop_button700, inputs=scene_id_700, outputs=message_box700)
 
@@ -972,6 +1005,8 @@ class VideoRemixer(TabBase):
 
             self.state.summary_info6 = jot.grab()
             self.state.output_filepath = self.state.default_remix_filepath()
+            output_filepath_custom = self.state.default_remix_filepath("CUSTOM")
+            output_filepath_marked = self.state.default_remix_filepath("MARKED")
             self.state.save()
 
             # user will expect to return to the save remix tab on reopening
@@ -982,12 +1017,15 @@ class VideoRemixer(TabBase):
                    gr.update(visible=True), \
                    jot.grab(), \
                    self.state.output_filepath, \
-                   None
+                   None, \
+                   output_filepath_custom, \
+                   output_filepath_marked
+
         else:
             return gr.update(selected=5), \
                    gr.update(
                 value="At least one scene must be set to 'Keep' before processing can proceed"), \
-                   None, None, None
+                   None, None, None, None, None
 
     def back_button5(self):
         return gr.update(selected=4)
@@ -1110,7 +1148,69 @@ class VideoRemixer(TabBase):
         self.log("saving project after creating remix video")
         self.state.save()
 
-        return gr.update(value=f"Remixed video {output_filepath} is complete.",
+        return gr.update(value=f"Remixed custom video {output_filepath} is complete.",
+                         visible=True)
+
+    # User has clicked Save Marked Remix from Save Remix
+    # TODO DRY this code
+    def next_button62(self, marked_video_options, marked_audio_options, output_filepath):
+        global_options = self.config.ffmpeg_settings["global_options"]
+
+        if not output_filepath:
+            return gr.update(value="Enter a path for the remixed video to proceed", visible=True)
+
+        kept_scenes = self.state.kept_scenes()
+        if not kept_scenes:
+            return gr.update(value="No kept scenes were found", visible=True)
+
+        self.log("about to check and drop empty scenes")
+        self.state.drop_empty_processed_scenes(kept_scenes)
+        self.log("saving after dropping empty scenes")
+        self.state.save()
+
+        # get this again in case scenes have been auto-dropped
+        kept_scenes = self.state.kept_scenes()
+        if not kept_scenes:
+            return gr.update(value="No kept scenes were found", visible=True)
+
+        if self.state.video_details["has_audio"] and not self.state.processed_content_present("audio"):
+            self.log("about to create audio clips")
+            audio_format = self.config.remixer_settings["audio_format"]
+            self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
+            self.log("saving project after creating audio clips")
+            self.state.save()
+
+        # grab file type of output file for use in creating scene videos and remix clips
+        _, _, output_ext = split_filepath(output_filepath)
+        output_ext = output_ext[1:]
+
+        # always recreate video and scene clips
+        self.state.clean_remix_content(purge_from="video_clips")
+
+        self.log(f"about to create video clips")
+        self.state.create_custom_video_clips(self.log, kept_scenes, global_options,
+                                             custom_video_options=marked_video_options,
+                                             custom_ext=output_ext)
+        self.log("saving project after creating video clips")
+        self.state.save()
+
+        self.log("about to create scene clips")
+        self.state.create_custom_scene_clips(kept_scenes, global_options,
+                                             custom_audio_options=marked_audio_options,
+                                             custom_ext=output_ext)
+        self.log("saving project after creating scene clips")
+        self.state.save()
+
+        if not self.state.clips:
+            return gr.update(value="No processed video clips were found", visible=True)
+
+        self.log("about to create remix viedeo")
+        ffcmd = self.state.create_remix_video(global_options, output_filepath)
+        self.log(f"FFmpeg command: {ffcmd}")
+        self.log("saving project after creating remix video")
+        self.state.save()
+
+        return gr.update(value=f"Remixed marked video {output_filepath} is complete.",
                          visible=True)
 
     def back_button6(self):
