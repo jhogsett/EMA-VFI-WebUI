@@ -37,7 +37,7 @@ class VideoRemixer(TabBase):
         marked_ffmpeg_audio = self.config.remixer_settings["marked_ffmpeg_audio"]
         with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Video Remixer"):
             gr.Markdown(
-                SimpleIcons.VULCAN_HAND + "Restore & Remix Videos with Audio")
+                SimpleIcons.MOVIE + "Restore & Remix Videos with Audio")
             with gr.Tabs() as tabs_video_remixer:
 
                 ### NEW PROJECT
@@ -310,7 +310,21 @@ class VideoRemixer(TabBase):
                                 scene_id_700 = gr.Number(value=-1, label="Scene Index")
                                 with gr.Row():
                                     message_box700 = gr.Textbox(show_label=False, interactive=False)
-                                drop_button700 = gr.Button("Drop Scene", variant="stop").style(full_width=True)
+                                drop_button700 = gr.Button("Drop Scene", variant="stop").style(full_width=False)
+
+                            with gr.Tab("Choose Scene Range"):
+                                gr.Markdown("**_Keep or Drop a range of scenes_**")
+                                with gr.Row():
+                                    first_scene_id_701 = gr.Number(value=-1,
+                                                                    label="Starting Scene Index")
+                                    last_scene_id_701 = gr.Number(value=-1,
+                                                                    label="Ending Scene Index")
+                                with gr.Row():
+                                    scene_state_701 = gr.Radio(label="Scenes Choice", value=None,
+                                                                    choices=["Keep", "Drop"])
+                                with gr.Row():
+                                    message_box701 = gr.Textbox(show_label=False, interactive=False)
+                                choose_button701 = gr.Button("Choose Scene Range", variant="stop").style(full_width=False)
 
                     with gr.Tab(label="Reduce Footprint"):
                         with gr.Tabs():
@@ -531,6 +545,10 @@ class VideoRemixer(TabBase):
         back_button62.click(self.back_button6, outputs=tabs_video_remixer)
 
         drop_button700.click(self.drop_button700, inputs=scene_id_700, outputs=message_box700)
+
+        choose_button701.click(self.choose_button701,
+                               inputs=[first_scene_id_701, last_scene_id_701, scene_state_701],
+                               outputs=message_box701)
 
         delete_button710.click(self.delete_button710,
                                inputs=delete_purged_710,
@@ -1231,22 +1249,64 @@ class VideoRemixer(TabBase):
         return gr.update(selected=5)
 
     def drop_button700(self, scene_index):
-        if isinstance(scene_index, (int, float)):
-            scene_index = int(scene_index)
-            if 0 <= scene_index < len(self.state.scene_names):
-                removed = self.state.force_drop_processed_scene(scene_index)
-                self.log(f"removed files: {removed}")
+        num_scenes = len(self.state.scene_names)
+        last_scene = num_scenes - 1
 
-                self.log(
-            f"saving project after using force_drop_processed_scene for scene index {scene_index}")
-                self.state.save()
-
-                removed = "\r\n".join(removed)
-                message = f"Removed:\r\n{removed}"
-            else:
-                message = f"Please enter a Scene Index from 0 to {len(self.state.scene_names)-1}"
-        else:
+        if not isinstance(scene_index, (int, float)):
             message = f"Please enter a Scene Index to get started"
+            return gr.update(visible=True, value=message)
+
+        scene_index = int(scene_index)
+        if scene_index < 0 or scene_index > last_scene:
+            message = f"Please enter a Scene Index from 0 to {last_scene}"
+            return gr.update(visible=True, value=message)
+
+        removed = self.state.force_drop_processed_scene(scene_index)
+        self.log(f"removed files: {removed}")
+        self.log(
+            f"saving project after using force_drop_processed_scene for scene index {scene_index}")
+        self.state.save()
+        removed = "\r\n".join(removed)
+        message = f"Removed:\r\n{removed}"
+        return gr.update(visible=True, value=message)
+
+    def choose_button701(self, first_scene_index, last_scene_index, scene_state):
+        num_scenes = len(self.state.scene_names)
+        last_scene = num_scenes - 1
+
+        if not isinstance(first_scene_index, (int, float)) \
+                or not isinstance(last_scene_index, (int, float)):
+            message = "Please enter Scene Indexes to get started"
+            return gr.update(visible=True, value=message)
+
+        first_scene_index = int(first_scene_index)
+        last_scene_index = int(last_scene_index)
+        if first_scene_index < 0 \
+                or first_scene_index > last_scene \
+                or last_scene_index < 0 \
+                or last_scene_index > last_scene:
+            message = f"Please enter valid Scene Indexes between 0 and {last_scene} to get started"
+            return gr.update(visible=True, value=message)
+
+        if first_scene_index >= last_scene_index:
+            message = f"'Ending Scene Index' must be higher than 'Starting Scene Index''"
+            return gr.update(visible=True, value=message)
+
+        if scene_state not in ["Keep", "Drop"]:
+            message = "Please make a Scenes Choice to get started"
+            return gr.update(visible=True, value=message)
+
+        for scene_index in range(first_scene_index, last_scene_index + 1):
+            scene_name = self.state.scene_names[scene_index]
+            self.state.scene_states[scene_name] = scene_state
+
+        first_scene_name = self.state.scene_names[first_scene_index]
+        last_scene_name = self.state.scene_names[last_scene_index]
+
+        message = f"Scenes {first_scene_name} through {last_scene_name} set to '{scene_state}'"
+        self.log(f"saving project after {message}")
+        self.state.save()
+
         return gr.update(visible=True, value=message)
 
     def delete_button710(self, delete_purged):
