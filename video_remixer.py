@@ -467,7 +467,7 @@ class VideoRemixerState():
                         gif_fps,
                         gif_end_delay,
                         log_fn,
-                        global_options=global_options).slice()
+                        global_options=global_options).slice(ignore_errors=True)
         else:
             raise ValueError(f"thumbnail type '{self.thumbnail_type}' is not implemented")
 

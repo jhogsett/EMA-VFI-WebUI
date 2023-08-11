@@ -6,6 +6,7 @@ from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import create_directory, is_safe_path
 from webui_utils.video_utils import validate_input_path, details_from_group_name, slice_video
 from webui_utils.mtqdm import Mtqdm
+from ffmpy import FFRuntimeError
 
 def main():
     """Use the Slice Video feature from the command line"""
@@ -103,7 +104,7 @@ class SliceVideo:
         if self.gif_factor < 1:
             raise ValueError(f"'gif_factor' must be >= 1")
 
-    def slice(self):
+    def slice(self, ignore_errors=False):
         group_names = validate_input_path(self.group_path, -1)
         if self.output_path:
             self.log(f"Creating output path {self.output_path}")
@@ -111,6 +112,7 @@ class SliceVideo:
 
         self.log("using slice_video (may cause long delay while processing request)")
         pbar_desc = f"Slice {self.type}"
+        errors = []
         with Mtqdm().open_bar(total=len(group_names), desc=pbar_desc) as bar:
             for group_name in group_names:
                 first_index, last_index, num_width = details_from_group_name(group_name)
@@ -126,22 +128,31 @@ class SliceVideo:
                 if last_index <= first_index:
                     last_index = first_index + 1
 
-                ffmpeg_cmd = slice_video(self.input_path,
-                            self.fps,
-                            output_path,
-                            num_width,
-                            first_index,
-                            last_index,
-                            self.type,
-                            self.mp4_quality,
-                            self.gif_factor,
-                            self.output_scale,
-                            self.gif_high_quality,
-                            self.gif_fps,
-                            self.gif_end_delay,
-                            global_options=self.global_options)
-                self.log(f"FFmpeg command line: '{ffmpeg_cmd}'")
-                Mtqdm().update_bar(bar)
+                try:
+                    ffmpeg_cmd = slice_video(self.input_path,
+                                self.fps,
+                                output_path,
+                                num_width,
+                                first_index,
+                                last_index,
+                                self.type,
+                                self.mp4_quality,
+                                self.gif_factor,
+                                self.output_scale,
+                                self.gif_high_quality,
+                                self.gif_fps,
+                                self.gif_end_delay,
+                                global_options=self.global_options)
+                    self.log(f"FFmpeg command line: '{ffmpeg_cmd}'")
+                except FFRuntimeError as error:
+                    message = f"FFRuntimeError {error}"
+                    self.log(message)
+                    errors.append({group_name : message})
+                    if not ignore_errors:
+                        raise RuntimeError(message)
+                finally:
+                    Mtqdm().update_bar(bar)
+        return errors
 
     def log(self, message : str) -> None:
         """Logging"""
