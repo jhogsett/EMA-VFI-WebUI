@@ -392,6 +392,18 @@ class VideoRemixer(TabBase):
                                     select_all_button712 = gr.Button(value="Select All").style(full_width=False)
                                     select_none_button712 = gr.Button(value="Select None").style(full_width=False)
 
+                            with gr.Tab(label="Remove All Processed Content"):
+                                gr.Markdown("**_Delete all processed project content (except videos)_**")
+                                with gr.Row():
+                                    delete_all_713 = gr.Checkbox(label="Permanently Delete Processed Content")
+                                    with gr.Box():
+                                        gr.Markdown("Deletes all created project content. **Does not delete original and remixed videos.**")
+                                with gr.Row():
+                                    message_box713 = gr.Textbox(show_label=False)
+                                gr.Markdown("*Progress can be tracked in the console*")
+                                with gr.Row():
+                                    delete_button713 = gr.Button(value="Delete Processed Content " + SimpleIcons.SLOW_SYMBOL, variant="stop")
+
                     # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     #     WebuiTips.video_remixer_save.render()
 
@@ -549,6 +561,8 @@ class VideoRemixer(TabBase):
                                 outputs=[delete_kept_712, delete_resized_712, delete_resynth_712,
                                          delete_inflated_712, delete_upscaled_712,
                                          delete_audio_712, delete_video_712, delete_clips_712])
+
+        delete_button713.click(self.delete_button713, inputs=delete_all_713, outputs=message_box713)
 
     def empty_args(self, num):
         return [None for _ in range(num)]
@@ -1319,3 +1333,26 @@ class VideoRemixer(TabBase):
                 gr.update(value=False), \
                 gr.update(value=False), \
                 gr.update(value=False)
+
+    def delete_button713(self, delete_all):
+        removed = []
+        if delete_all:
+            removed.append(self.state.delete_purged_content())
+            removed.append(self.state.delete_path(self.state.frames_path))
+            removed.append(self.state.delete_path(self.state.dropped_scenes_path))
+            removed.append(self.state.delete_path(self.state.thumbnail_path))
+            removed.append(self.state.delete_path(self.state.scenes_path))
+            removed.append(self.state.delete_path(self.state.resize_path))
+            removed.append(self.state.delete_path(self.state.resynthesis_path))
+            removed.append(self.state.delete_path(self.state.inflation_path))
+            removed.append(self.state.delete_path(self.state.upscale_path))
+            removed.append(self.state.delete_path(self.state.audio_clips_path))
+            removed.append(self.state.delete_path(self.state.video_clips_path))
+            removed.append(self.state.delete_path(self.state.clips_path))
+        removed = [_ for _ in removed if _]
+        if removed:
+            removed_str = "\r\n".join(removed)
+            message = f"Removed:\r\n{removed_str}"
+        else:
+            message = f"Removed: None"
+        return gr.update(visible=True, value=message)
