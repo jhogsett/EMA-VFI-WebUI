@@ -599,7 +599,7 @@ class VideoRemixerState():
             return None
 
     def delete_path(self, path):
-        if os.path.exists(path):
+        if path and os.path.exists(path):
             with Mtqdm().open_bar(total=1, desc="Deleting") as bar:
                 Mtqdm().message(bar, "Removing project content - No ETA")
                 shutil.rmtree(path)
