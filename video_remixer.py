@@ -4,10 +4,12 @@ import shutil
 import yaml
 from yaml import Loader, YAMLError
 from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
-from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files, clean_directories, clean_filename, get_matching_files
+from webui_utils.file_utils import split_filepath, remove_directories, create_directory, \
+    get_directories, get_files, clean_directories, clean_filename, get_matching_files
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink
-from webui_utils.video_utils import details_from_group_name, get_essential_video_details, MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom
+from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
+    MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom
 from webui_utils.jot import Jot
 from webui_utils.mtqdm import Mtqdm
 from split_scenes import SplitScenes

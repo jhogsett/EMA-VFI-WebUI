@@ -104,6 +104,43 @@ class SliceVideo:
         if self.gif_factor < 1:
             raise ValueError(f"'gif_factor' must be >= 1")
 
+    def _slice_group(self, group_name):
+        first_index, last_index, num_width = details_from_group_name(group_name)
+        output_path = self.output_path or os.path.join(self.group_path, group_name)
+
+        first_index += self.edge_trim
+        if first_index < 0:
+            first_index = 0
+        last_index -= self.edge_trim
+
+        # With edge trim this can end up with a zero or negative duration
+        # render at least one frame's worth so a valid file is produced.
+        # The combine_video_audio() function will trim to the shortest stream
+        if last_index <= first_index:
+            last_index = first_index + 1
+
+        try:
+            ffmpeg_cmd = slice_video(self.input_path,
+                        self.fps,
+                        output_path,
+                        num_width,
+                        first_index,
+                        last_index,
+                        self.type,
+                        self.mp4_quality,
+                        self.gif_factor,
+                        self.output_scale,
+                        self.gif_high_quality,
+                        self.gif_fps,
+                        self.gif_end_delay,
+                        global_options=self.global_options)
+            self.log(f"FFmpeg command line: '{ffmpeg_cmd}'")
+            return None
+        except FFRuntimeError as error:
+            message = f"FFRuntimeError {error}"
+            self.log(message)
+            return message
+
     def slice(self, ignore_errors=False):
         group_names = validate_input_path(self.group_path, -1)
         if self.output_path:
@@ -115,43 +152,30 @@ class SliceVideo:
         errors = []
         with Mtqdm().open_bar(total=len(group_names), desc=pbar_desc) as bar:
             for group_name in group_names:
-                first_index, last_index, num_width = details_from_group_name(group_name)
-                output_path = self.output_path or os.path.join(self.group_path, group_name)
-                first_index += self.edge_trim
-                if first_index < 0:
-                    first_index = 0
-                last_index -= self.edge_trim
-
-                # With edge trim this can end up with a zero or negative duration
-                # render at least one frame's worth so a valid file is produced.
-                # The combine_video_audio() function will trim to the shortest stream
-                if last_index <= first_index:
-                    last_index = first_index + 1
-
-                try:
-                    ffmpeg_cmd = slice_video(self.input_path,
-                                self.fps,
-                                output_path,
-                                num_width,
-                                first_index,
-                                last_index,
-                                self.type,
-                                self.mp4_quality,
-                                self.gif_factor,
-                                self.output_scale,
-                                self.gif_high_quality,
-                                self.gif_fps,
-                                self.gif_end_delay,
-                                global_options=self.global_options)
-                    self.log(f"FFmpeg command line: '{ffmpeg_cmd}'")
-                except FFRuntimeError as error:
-                    message = f"FFRuntimeError {error}"
-                    self.log(message)
-                    errors.append({group_name : message})
+                error = self._slice_group(group_name)
+                if error:
+                    errors.append({group_name : error})
                     if not ignore_errors:
-                        raise RuntimeError(message)
-                finally:
-                    Mtqdm().update_bar(bar)
+                        raise RuntimeError(error)
+                Mtqdm().update_bar(bar)
+        return errors
+
+    def slice_group(self, group_name, ignore_errors=False):
+        validate_input_path(self.group_path, -1)
+        if self.output_path:
+            self.log(f"Creating output path {self.output_path}")
+            create_directory(self.output_path)
+
+        self.log("using slice_video (may cause long delay while processing request)")
+        pbar_desc = f"Slice {self.type}"
+        errors = []
+        with Mtqdm().open_bar(total=1, desc=pbar_desc) as bar:
+            error = self._slice_group(group_name)
+            if error:
+                errors.append({group_name : error})
+                if not ignore_errors:
+                    raise RuntimeError(error)
+            Mtqdm().update_bar(bar)
         return errors
 
     def log(self, message : str) -> None:
