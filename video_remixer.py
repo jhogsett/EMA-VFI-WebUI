@@ -1320,9 +1320,9 @@ class VideoRemixerState():
         original_project_path_escaped = original_project_path.replace("\\", "\\\\")
         new_path_escaped = new_path.replace("\\", "\\\\")
         for line in lines:
-            if line.find(new_path_escaped) != -1:
+            if line.find(original_project_path_escaped) != -1:
                 new_line = line.replace(original_project_path_escaped, new_path_escaped)
-            elif line.find(new_path) != -1:
+            elif line.find(original_project_path) != -1:
                 new_line = line.replace(original_project_path, new_path)
             else:
                 new_line = line
@@ -1332,16 +1332,6 @@ class VideoRemixerState():
             file.writelines(new_lines)
 
         state = VideoRemixerState.load(ported_project_file)
-
-        # fix up the skipped lines
-        if state.video_info1:
-            state.video_info1 = state.video_info1.replace(original_project_path, new_path)
-        if state.project_info2:
-            state.project_info2 = state.project_info2.replace(original_project_path, new_path)
-        if state.project_info4:
-            state.project_info4 = state.project_info4.replace(original_project_path, new_path)
-        if state.summary_info6:
-            state.summary_info6 = state.summary_info6.replace(original_project_path, new_path)
         state.save()
 
         return state
