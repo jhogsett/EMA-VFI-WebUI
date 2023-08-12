@@ -4,10 +4,12 @@ import shutil
 import yaml
 from yaml import Loader, YAMLError
 from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
-from webui_utils.file_utils import split_filepath, remove_directories, create_directory, get_directories, get_files, clean_directories, clean_filename, get_matching_files
+from webui_utils.file_utils import split_filepath, remove_directories, create_directory, \
+    get_directories, get_files, clean_directories, clean_filename, get_matching_files
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink
-from webui_utils.video_utils import details_from_group_name, get_essential_video_details, MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom
+from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
+    MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom
 from webui_utils.jot import Jot
 from webui_utils.mtqdm import Mtqdm
 from split_scenes import SplitScenes
@@ -477,7 +479,7 @@ class VideoRemixerState():
     def drop_all_scenes(self):
         self.scene_states = {scene_name : "Drop" for scene_name in self.scene_names}
 
-    GAP = " " * 6
+    GAP = " " * 5
 
     def scene_chooser_data(self, scene_index):
         try:
@@ -1293,7 +1295,7 @@ class VideoRemixerState():
     @staticmethod
     def load_ported(original_project_path, ported_project_file : str):
         original_project_path, _ = os.path.split(original_project_path)
-        new_path, filename, ext = split_filepath(ported_project_file)
+        new_path, _, _ = split_filepath(ported_project_file)
 
         # save the original YAML file
         backup_path = os.path.join(new_path, "ported_project_files")
@@ -1304,7 +1306,6 @@ class VideoRemixerState():
 
         # lose the last path segement, that's the actual project directory
         new_path, _ = os.path.split(new_path)
-        original_project_path
 
         if new_path[-1] != "\\":
             new_path += "\\"
@@ -1316,25 +1317,15 @@ class VideoRemixerState():
             lines = file.readlines()
         new_lines = []
 
-        # Some values are saved within double-doubles, causing them to appear in the .yaml file
-        # with properly esscaped backslashes, for example the info fields and file paths.
-        # Some values are saved raw with no quotes, and no esscaping is needed by the yaml parser
-        # When reading the .yaml file as a text file and attempting to update all the old paths,
-        # both representations are presented the same way, so there's no way to separately update
-        # the escaped ones from the non-escaped ones
-        skip_lines = ["video_info1", "project_info2", "project_info4", "summary_info6"]
-        # this fix only happens to work because on the first line when these have multiple lines
-
+        original_project_path_escaped = original_project_path.replace("\\", "\\\\")
+        new_path_escaped = new_path.replace("\\", "\\\\")
         for line in lines:
-            skip = False
-            for skip_line in skip_lines:
-                if line.startswith(skip_line):
-                    skip = True
-                    break
-            if skip:
-                new_line = line
-            else:
+            if line.find(new_path_escaped) != -1:
+                new_line = line.replace(original_project_path_escaped, new_path_escaped)
+            elif line.find(new_path) != -1:
                 new_line = line.replace(original_project_path, new_path)
+            else:
+                new_line = line
             new_lines.append(new_line)
 
         with open(ported_project_file, "w", encoding="UTF-8") as file:

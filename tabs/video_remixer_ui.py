@@ -523,7 +523,8 @@ class VideoRemixer(TabBase):
         next_button5.click(self.next_button5,
                     inputs=[resynthesize, inflate, resize, upscale, upscale_option],
                     outputs=[tabs_video_remixer, message_box5, summary_info6, output_filepath,
-                             message_box61, output_filepath_custom, output_filepath_marked])
+                             output_filepath_custom, output_filepath_marked, message_box60,
+                             message_box61, message_box62])
 
         back_button5.click(self.back_button5, outputs=tabs_video_remixer)
 
@@ -1049,15 +1050,14 @@ class VideoRemixer(TabBase):
                    gr.update(visible=True), \
                    jot.grab(), \
                    self.state.output_filepath, \
-                   None, \
                    output_filepath_custom, \
-                   output_filepath_marked
-
+                   output_filepath_marked, \
+                   None, None, None
         else:
             return gr.update(selected=5), \
                    gr.update(
                 value="At least one scene must be set to 'Keep' before processing can proceed"), \
-                   None, None, None, None, None
+                   None, None, None, None, None, None, None
 
     def back_button5(self):
         return gr.update(selected=4)
