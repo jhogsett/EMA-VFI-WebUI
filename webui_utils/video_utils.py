@@ -236,6 +236,8 @@ def get_essential_video_details(input_path : str, count_frames=False) -> dict:
         raise RuntimeError(message)
     else:
         video_essentials = {}
+        video_essentials["has_audio"] = False
+
         format_data = video_details["format"]
         file_size = f"{int(format_data.get('size', 0)):,d}"
         video_essentials["file_size"] = file_size
