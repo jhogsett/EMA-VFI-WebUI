@@ -1090,15 +1090,14 @@ class VideoRemixer(TabBase):
         if not kept_scenes:
             return gr.update(value="No kept scenes were found", visible=True)
 
-        if self.state.video_details["has_audio"] and not self.state.processed_content_present("audio"):
-            self.log("about to create audio clips")
-            audio_format = self.config.remixer_settings["audio_format"]
-            self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
-            self.log("saving project after creating audio clips")
-            self.state.save()
+        # always recreate audio, video and scene clips
+        self.state.clean_remix_content(purge_from="audio_clips")
 
-        # always recreate video and scene clips
-        self.state.clean_remix_content(purge_from="video_clips")
+        self.log("about to create audio clips")
+        audio_format = self.config.remixer_settings["audio_format"]
+        self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
+        self.log("saving project after creating audio clips")
+        self.state.save()
 
         self.log(f"about to create video clips")
         self.state.create_video_clips(self.log, kept_scenes, global_options)
@@ -1143,19 +1142,18 @@ class VideoRemixer(TabBase):
         if not kept_scenes:
             return gr.update(value="No kept scenes were found", visible=True)
 
-        if self.state.video_details["has_audio"] and not self.state.processed_content_present("audio"):
-            self.log("about to create audio clips")
-            audio_format = self.config.remixer_settings["audio_format"]
-            self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
-            self.log("saving project after creating audio clips")
-            self.state.save()
+        # always recreate audio, video and scene clips
+        self.state.clean_remix_content(purge_from="audio_clips")
+
+        self.log("about to create audio clips")
+        audio_format = self.config.remixer_settings["audio_format"]
+        self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
+        self.log("saving project after creating audio clips")
+        self.state.save()
 
         # grab file type of output file for use in creating scene videos and remix clips
         _, _, output_ext = split_filepath(output_filepath)
         output_ext = output_ext[1:]
-
-        # always recreate video and scene clips
-        self.state.clean_remix_content(purge_from="video_clips")
 
         self.log(f"about to create video clips")
         self.state.create_custom_video_clips(self.log, kept_scenes, global_options,
@@ -1205,19 +1203,18 @@ class VideoRemixer(TabBase):
         if not kept_scenes:
             return gr.update(value="No kept scenes were found", visible=True)
 
-        if self.state.video_details["has_audio"] and not self.state.processed_content_present("audio"):
-            self.log("about to create audio clips")
-            audio_format = self.config.remixer_settings["audio_format"]
-            self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
-            self.log("saving project after creating audio clips")
-            self.state.save()
+        # always recreate audio, video and scene clips
+        self.state.clean_remix_content(purge_from="audio_clips")
+
+        self.log("about to create audio clips")
+        audio_format = self.config.remixer_settings["audio_format"]
+        self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
+        self.log("saving project after creating audio clips")
+        self.state.save()
 
         # grab file type of output file for use in creating scene videos and remix clips
         _, _, output_ext = split_filepath(output_filepath)
         output_ext = output_ext[1:]
-
-        # always recreate video and scene clips
-        self.state.clean_remix_content(purge_from="video_clips")
 
         self.log(f"about to create video clips")
         self.state.create_custom_video_clips(self.log, kept_scenes, global_options,
