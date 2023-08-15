@@ -945,6 +945,11 @@ class VideoRemixer(TabBase):
         self.log("moving dropped scenes to dropped scenes directory")
         self.state.compile_scenes()
 
+        # scene choice changes are what invalidate previously made audio clips,
+        # so clear them now along with dependent remix content
+        self.log("purging now-stale remix content")
+        self.state.clean_remix_content(purge_from="audio_clips")
+
         # user will expect to return to the processing tab on reopening
         self.log("saving project after compiling scenes")
         self.state.save_progress("process")
@@ -1064,21 +1069,13 @@ class VideoRemixer(TabBase):
 
     ### SAVE REMIX EVENT HANDLERS
 
-    # User has clicked Save Remix from Save Remix
-    def next_button60(self, output_filepath, quality):
-        global_options = self.config.ffmpeg_settings["global_options"]
-
+    def prepare_save_remix(self, output_filepath):
         if not output_filepath:
-            return gr.update(value="Enter a path for the remixed video to proceed", visible=True)
-
-        self.state.output_filepath = output_filepath
-        self.state.output_quality = quality
-        self.log("saving after storing remix output choices")
-        self.state.save()
+            raise ValueError("Enter a path for the remixed video to proceed")
 
         kept_scenes = self.state.kept_scenes()
         if not kept_scenes:
-            return gr.update(value="No kept scenes were found", visible=True)
+            raise ValueError("No kept scenes were found")
 
         self.log("about to check and drop empty scenes")
         self.state.drop_empty_processed_scenes(kept_scenes)
@@ -1088,17 +1085,24 @@ class VideoRemixer(TabBase):
         # get this again in case scenes have been auto-dropped
         kept_scenes = self.state.kept_scenes()
         if not kept_scenes:
-            return gr.update(value="No kept scenes were found", visible=True)
+            raise ValueError("No kept scenes after removing empties")
 
-        # always recreate audio, video and scene clips
-        self.state.clean_remix_content(purge_from="audio_clips")
+        global_options = self.config.ffmpeg_settings["global_options"]
 
-        self.log("about to create audio clips")
-        audio_format = self.config.remixer_settings["audio_format"]
-        self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
-        self.log("saving project after creating audio clips")
-        self.state.save()
+        # create audio clips only if they do not already exist
+        # this depends on the audio clips being purged at the time the scene selection are compiled
+        if self.state.video_details["has_audio"] and not self.state.processed_content_present("audio"):
+            self.log("about to create audio clips")
+            audio_format = self.config.remixer_settings["audio_format"]
+            self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
+            self.log("saving project after creating audio clips")
+            self.state.save()
 
+        # always recreate video and scene clips
+        self.state.clean_remix_content(purge_from="video_clips")
+        return global_options, kept_scenes
+
+    def save_remix(self, global_options, kept_scenes):
         self.log(f"about to create video clips")
         self.state.create_video_clips(self.log, kept_scenes, global_options)
         self.log("saving project after creating video clips")
@@ -1118,59 +1122,31 @@ class VideoRemixer(TabBase):
         self.log("saving project after creating remix video")
         self.state.save()
 
-        return gr.update(value=f"Remixed video {output_filepath} is complete.",
-                         visible=True)
-
-    # User has clicked Save Custom Remix from Save Remix
-    def next_button61(self, custom_video_options, custom_audio_options, output_filepath):
-        global_options = self.config.ffmpeg_settings["global_options"]
-
-        if not output_filepath:
-            return gr.update(value="Enter a path for the remixed video to proceed", visible=True)
-
-        kept_scenes = self.state.kept_scenes()
-        if not kept_scenes:
-            return gr.update(value="No kept scenes were found", visible=True)
-
-        self.log("about to check and drop empty scenes")
-        self.state.drop_empty_processed_scenes(kept_scenes)
-        self.log("saving after dropping empty scenes")
-        self.state.save()
-
-        # get this again in case scenes have been auto-dropped
-        kept_scenes = self.state.kept_scenes()
-        if not kept_scenes:
-            return gr.update(value="No kept scenes were found", visible=True)
-
-        # always recreate audio, video and scene clips
-        self.state.clean_remix_content(purge_from="audio_clips")
-
-        self.log("about to create audio clips")
-        audio_format = self.config.remixer_settings["audio_format"]
-        self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
-        self.log("saving project after creating audio clips")
-        self.state.save()
-
-        # grab file type of output file for use in creating scene videos and remix clips
+    def save_custom_remix(self,
+                          output_filepath,
+                          global_options,
+                          kept_scenes,
+                          custom_video_options,
+                          custom_audio_options):
         _, _, output_ext = split_filepath(output_filepath)
         output_ext = output_ext[1:]
 
-        self.log(f"about to create video clips")
+        self.log(f"about to create custom video clips")
         self.state.create_custom_video_clips(self.log, kept_scenes, global_options,
                                              custom_video_options=custom_video_options,
                                              custom_ext=output_ext)
-        self.log("saving project after creating video clips")
+        self.log("saving project after creating custom video clips")
         self.state.save()
 
-        self.log("about to create scene clips")
+        self.log("about to create custom scene clips")
         self.state.create_custom_scene_clips(kept_scenes, global_options,
                                              custom_audio_options=custom_audio_options,
                                              custom_ext=output_ext)
-        self.log("saving project after creating scene clips")
+        self.log("saving project after creating custom scene clips")
         self.state.save()
 
         if not self.state.clips:
-            return gr.update(value="No processed video clips were found", visible=True)
+            raise ValueError("No processed video clips were found")
 
         self.log("about to create remix viedeo")
         ffcmd = self.state.create_remix_video(global_options, output_filepath)
@@ -1178,69 +1154,224 @@ class VideoRemixer(TabBase):
         self.log("saving project after creating remix video")
         self.state.save()
 
-        return gr.update(value=f"Remixed custom video {output_filepath} is complete.",
-                         visible=True)
+
+    # User has clicked Save Remix from Save Remix
+    def next_button60(self, output_filepath, quality):
+        self.state.output_filepath = output_filepath
+        self.state.output_quality = quality
+        self.log("saving after storing remix output choices")
+        self.state.save()
+
+        try:
+            global_options, kept_scenes = self.prepare_save_remix(output_filepath)
+            self.save_remix(global_options, kept_scenes)
+            return gr.update(value=f"Remixed video {output_filepath} is complete.",
+                            visible=True)
+
+        except ValueError as error:
+            return gr.update(value=error, visible=True)
+
+        # if not output_filepath:
+        #     return gr.update(value="Enter a path for the remixed video to proceed", visible=True)
+        # global_options = self.config.ffmpeg_settings["global_options"]
+
+        # self.state.output_filepath = output_filepath
+        # self.state.output_quality = quality
+        # self.log("saving after storing remix output choices")
+        # self.state.save()
+
+        # kept_scenes = self.state.kept_scenes()
+        # if not kept_scenes:
+        #     return gr.update(value="No kept scenes were found", visible=True)
+
+        # self.log("about to check and drop empty scenes")
+        # self.state.drop_empty_processed_scenes(kept_scenes)
+        # self.log("saving after dropping empty scenes")
+        # self.state.save()
+
+        # # get this again in case scenes have been auto-dropped
+        # kept_scenes = self.state.kept_scenes()
+        # if not kept_scenes:
+        #     return gr.update(value="No kept scenes were found", visible=True)
+
+        # # create audio clips only if they do not already exist
+        # # this depends on the audio clips being purged at the time the scene selection are compiled
+        # if self.state.video_details["has_audio"] and not self.state.processed_content_present("audio"):
+        #     self.log("about to create audio clips")
+        #     audio_format = self.config.remixer_settings["audio_format"]
+        #     self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
+        #     self.log("saving project after creating audio clips")
+        #     self.state.save()
+
+        # # always recreate video and scene clips
+        # self.state.clean_remix_content(purge_from="video_clips")
+
+        # self.log(f"about to create video clips")
+        # self.state.create_video_clips(self.log, kept_scenes, global_options)
+        # self.log("saving project after creating video clips")
+        # self.state.save()
+
+        # self.log("about to create scene clips")
+        # self.state.create_scene_clips(kept_scenes, global_options)
+        # self.log("saving project after creating scene clips")
+        # self.state.save()
+
+        # if not self.state.clips:
+        #     return gr.update(value="No processed video clips were found", visible=True)
+
+        # self.log("about to create remix viedeo")
+        # ffcmd = self.state.create_remix_video(global_options, self.state.output_filepath)
+        # self.log(f"FFmpeg command: {ffcmd}")
+        # self.log("saving project after creating remix video")
+        # self.state.save()
+
+        # return gr.update(value=f"Remixed video {output_filepath} is complete.",
+        #                  visible=True)
+
+    # User has clicked Save Custom Remix from Save Remix
+    def next_button61(self, custom_video_options, custom_audio_options, output_filepath):
+        try:
+            global_options, kept_scenes = self.prepare_save_remix(output_filepath)
+            self.save_custom_remix(output_filepath, global_options, kept_scenes,
+                                   custom_video_options, custom_audio_options)
+            return gr.update(value=f"Remixed custom video {output_filepath} is complete.",
+                            visible=True)
+        except ValueError as error:
+            return gr.update(value=error, visible=True)
+
+        # global_options = self.config.ffmpeg_settings["global_options"]
+
+        # if not output_filepath:
+        #     return gr.update(value="Enter a path for the remixed video to proceed", visible=True)
+
+        # kept_scenes = self.state.kept_scenes()
+        # if not kept_scenes:
+        #     return gr.update(value="No kept scenes were found", visible=True)
+
+        # self.log("about to check and drop empty scenes")
+        # self.state.drop_empty_processed_scenes(kept_scenes)
+        # self.log("saving after dropping empty scenes")
+        # self.state.save()
+
+        # # get this again in case scenes have been auto-dropped
+        # kept_scenes = self.state.kept_scenes()
+        # if not kept_scenes:
+        #     return gr.update(value="No kept scenes were found", visible=True)
+
+        # # create audio clips only if they do not already exist
+        # # this depends on the audio clips being purged at the time the scene selection are compiled
+        # if self.state.video_details["has_audio"] and not self.state.processed_content_present("audio"):
+        #     self.log("about to create audio clips")
+        #     audio_format = self.config.remixer_settings["audio_format"]
+        #     self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
+        #     self.log("saving project after creating audio clips")
+        #     self.state.save()
+
+        # # always recreate video and scene clips
+        # self.state.clean_remix_content(purge_from="video_clips")
+
+        # grab file type of output file for use in creating scene videos and remix clips
+        # _, _, output_ext = split_filepath(output_filepath)
+        # output_ext = output_ext[1:]
+
+        # self.log(f"about to create video clips")
+        # self.state.create_custom_video_clips(self.log, kept_scenes, global_options,
+        #                                      custom_video_options=custom_video_options,
+        #                                      custom_ext=output_ext)
+        # self.log("saving project after creating video clips")
+        # self.state.save()
+
+        # self.log("about to create scene clips")
+        # self.state.create_custom_scene_clips(kept_scenes, global_options,
+        #                                      custom_audio_options=custom_audio_options,
+        #                                      custom_ext=output_ext)
+        # self.log("saving project after creating scene clips")
+        # self.state.save()
+
+        # if not self.state.clips:
+        #     return gr.update(value="No processed video clips were found", visible=True)
+
+        # self.log("about to create remix viedeo")
+        # ffcmd = self.state.create_remix_video(global_options, output_filepath)
+        # self.log(f"FFmpeg command: {ffcmd}")
+        # self.log("saving project after creating remix video")
+        # self.state.save()
+
+        # return gr.update(value=f"Remixed custom video {output_filepath} is complete.",
+        #                  visible=True)
 
     # User has clicked Save Marked Remix from Save Remix
     # TODO DRY this code
     def next_button62(self, marked_video_options, marked_audio_options, output_filepath):
-        global_options = self.config.ffmpeg_settings["global_options"]
+        try:
+            global_options, kept_scenes = self.prepare_save_remix(output_filepath)
+            self.save_custom_remix(output_filepath, global_options, kept_scenes,
+                                   marked_video_options, marked_audio_options)
+            return gr.update(value=f"Remixed marked video {output_filepath} is complete.",
+                            visible=True)
+        except ValueError as error:
+            return gr.update(value=error, visible=True)
 
-        if not output_filepath:
-            return gr.update(value="Enter a path for the remixed video to proceed", visible=True)
+        # global_options = self.config.ffmpeg_settings["global_options"]
 
-        kept_scenes = self.state.kept_scenes()
-        if not kept_scenes:
-            return gr.update(value="No kept scenes were found", visible=True)
+        # if not output_filepath:
+        #     return gr.update(value="Enter a path for the remixed video to proceed", visible=True)
 
-        self.log("about to check and drop empty scenes")
-        self.state.drop_empty_processed_scenes(kept_scenes)
-        self.log("saving after dropping empty scenes")
-        self.state.save()
+        # kept_scenes = self.state.kept_scenes()
+        # if not kept_scenes:
+        #     return gr.update(value="No kept scenes were found", visible=True)
 
-        # get this again in case scenes have been auto-dropped
-        kept_scenes = self.state.kept_scenes()
-        if not kept_scenes:
-            return gr.update(value="No kept scenes were found", visible=True)
+        # self.log("about to check and drop empty scenes")
+        # self.state.drop_empty_processed_scenes(kept_scenes)
+        # self.log("saving after dropping empty scenes")
+        # self.state.save()
 
-        # always recreate audio, video and scene clips
-        self.state.clean_remix_content(purge_from="audio_clips")
+        # # get this again in case scenes have been auto-dropped
+        # kept_scenes = self.state.kept_scenes()
+        # if not kept_scenes:
+        #     return gr.update(value="No kept scenes were found", visible=True)
 
-        self.log("about to create audio clips")
-        audio_format = self.config.remixer_settings["audio_format"]
-        self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
-        self.log("saving project after creating audio clips")
-        self.state.save()
+        # # create audio clips only if they do not already exist
+        # # this depends on the audio clips being purged at the time the scene selection are compiled
+        # if self.state.video_details["has_audio"] and not self.state.processed_content_present("audio"):
+        #     self.log("about to create audio clips")
+        #     audio_format = self.config.remixer_settings["audio_format"]
+        #     self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
+        #     self.log("saving project after creating audio clips")
+        #     self.state.save()
+
+        # # always recreate video and scene clips
+        # self.state.clean_remix_content(purge_from="video_clips")
 
         # grab file type of output file for use in creating scene videos and remix clips
-        _, _, output_ext = split_filepath(output_filepath)
-        output_ext = output_ext[1:]
+        # _, _, output_ext = split_filepath(output_filepath)
+        # output_ext = output_ext[1:]
 
-        self.log(f"about to create video clips")
-        self.state.create_custom_video_clips(self.log, kept_scenes, global_options,
-                                             custom_video_options=marked_video_options,
-                                             custom_ext=output_ext)
-        self.log("saving project after creating video clips")
-        self.state.save()
+        # self.log(f"about to create video clips")
+        # self.state.create_custom_video_clips(self.log, kept_scenes, global_options,
+        #                                      custom_video_options=marked_video_options,
+        #                                      custom_ext=output_ext)
+        # self.log("saving project after creating video clips")
+        # self.state.save()
 
-        self.log("about to create scene clips")
-        self.state.create_custom_scene_clips(kept_scenes, global_options,
-                                             custom_audio_options=marked_audio_options,
-                                             custom_ext=output_ext)
-        self.log("saving project after creating scene clips")
-        self.state.save()
+        # self.log("about to create scene clips")
+        # self.state.create_custom_scene_clips(kept_scenes, global_options,
+        #                                      custom_audio_options=marked_audio_options,
+        #                                      custom_ext=output_ext)
+        # self.log("saving project after creating scene clips")
+        # self.state.save()
 
-        if not self.state.clips:
-            return gr.update(value="No processed video clips were found", visible=True)
+        # if not self.state.clips:
+        #     return gr.update(value="No processed video clips were found", visible=True)
 
-        self.log("about to create remix viedeo")
-        ffcmd = self.state.create_remix_video(global_options, output_filepath)
-        self.log(f"FFmpeg command: {ffcmd}")
-        self.log("saving project after creating remix video")
-        self.state.save()
+        # self.log("about to create remix viedeo")
+        # ffcmd = self.state.create_remix_video(global_options, output_filepath)
+        # self.log(f"FFmpeg command: {ffcmd}")
+        # self.log("saving project after creating remix video")
+        # self.state.save()
 
-        return gr.update(value=f"Remixed marked video {output_filepath} is complete.",
-                         visible=True)
+        # return gr.update(value=f"Remixed marked video {output_filepath} is complete.",
+        #                  visible=True)
 
     def back_button6(self):
         return gr.update(selected=5)
