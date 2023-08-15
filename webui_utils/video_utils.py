@@ -628,6 +628,27 @@ f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_widt
                     f"-ss {start_time} -to {end_time} -vf 'setpts=PTS/{gif_speed},fps={gif_fps},scale=iw*{scale_factor}:-2' -loop 0 {final_delay}"},
                 global_options="-y " + global_options)
 
+        try:
+            cmd = ffcmd.cmd
+            ffcmd.run()
+            return cmd
+        except FFRuntimeError:
+            # try again as a static gif at the mid frame
+            mid_frame = int((last_frame + first_frame) / 2)
+            start_second = mid_frame / (fps * 1.0)
+            start_time = seconds_to_hms(start_second)
+
+            if gif_high_quality:
+                ffcmd = FFmpeg(inputs= {input_path : None},
+                                        outputs={output_filepath :
+                        f"-ss {start_time} -vf 'scale=iw*{scale_factor}:-2,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -vframes 1"},
+                    global_options="-y " + global_options)
+            else:
+                ffcmd = FFmpeg(inputs= {input_path : None},
+                                        outputs={output_filepath :
+                        f"-ss {start_time} -vf 'scale=iw*{scale_factor}:-2' -vframes 1"},
+                    global_options="-y " + global_options)
+
     elif type == "wav" or type == "mp3":
         ffcmd = FFmpeg(inputs= {input_path : None},
                                 outputs={output_filepath :
