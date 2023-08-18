@@ -126,6 +126,7 @@ class VideoRemixerState():
         self.inflate = self.UI_SAFETY_DEFAULTS["inflate"]
         self.upscale = self.UI_SAFETY_DEFAULTS["upscale"]
         self.upscale_option = self.UI_SAFETY_DEFAULTS["upscale_option"]
+        self.min_frames_per_scene = self.UI_SAFETY_DEFAULTS["min_frames_per_scene"]
 
     # how far progressed into project and the tab ID to return to on re-opening
     PROGRESS_STEPS = {
