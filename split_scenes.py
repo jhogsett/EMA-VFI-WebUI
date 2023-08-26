@@ -75,7 +75,7 @@ class SplitScenes:
         num_width = len(str(num_files))
         self.log(f"calling `get_detected_scenes` with input path '{self.input_path}'" +\
                  f" threshold '{self.scene_threshold}'")
-        scenes = get_detected_scenes(self.input_path, self.scene_threshold)
+        scenes = get_detected_scenes(self.input_path, float(self.scene_threshold))
         # add one more final fake detection past the end to include frames past the last detection
         scenes.append(num_files+1)
         ranges = scene_list_to_ranges(scenes, num_files)
