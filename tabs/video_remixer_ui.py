@@ -1,15 +1,19 @@
 """Video Remixer feature UI and event handlers"""
 import os
+import shutil
+import math
 from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.file_utils import get_files, create_directory, get_directories, split_filepath
+from webui_utils.video_utils import details_from_group_name
 from webui_utils.jot import Jot
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
 from video_remixer import VideoRemixerState
+from slice_video import SliceVideo
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -326,6 +330,13 @@ class VideoRemixer(TabBase):
                                     message_box701 = gr.Textbox(show_label=False, interactive=False)
                                 choose_button701 = gr.Button("Choose Scene Range", variant="stop").style(full_width=False)
 
+                            with gr.Tab("Split Scene"):
+                                gr.Markdown("**_Split a Scene in two_**")
+                                scene_id_702 = gr.Number(value=-1, label="Scene Index")
+                                with gr.Row():
+                                    message_box702 = gr.Textbox(show_label=False, interactive=False)
+                                split_button702 = gr.Button("Split Scene", variant="stop").style(full_width=False)
+
                     with gr.Tab(label="Reduce Footprint"):
                         with gr.Tabs():
                             with gr.Tab(label="Remove Soft-Deleted Content"):
@@ -550,6 +561,10 @@ class VideoRemixer(TabBase):
         choose_button701.click(self.choose_button701,
                                inputs=[first_scene_id_701, last_scene_id_701, scene_state_701],
                                outputs=message_box701)
+
+        split_button702.click(self.split_button702, inputs=scene_id_702,
+                              outputs=[tabs_video_remixer, message_box702, scene_index, scene_label,
+                                       scene_image, scene_state, scene_info])
 
         delete_button710.click(self.delete_button710,
                                inputs=delete_purged_710,
@@ -1154,7 +1169,6 @@ class VideoRemixer(TabBase):
         self.log("saving project after creating remix video")
         self.state.save()
 
-
     # User has clicked Save Remix from Save Remix
     def next_button60(self, output_filepath, quality):
         self.state.output_filepath = output_filepath
@@ -1256,6 +1270,121 @@ class VideoRemixer(TabBase):
         self.state.save()
 
         return gr.update(visible=True, value=message)
+
+    def split_button702(self, scene_index):
+        global_options = self.config.ffmpeg_settings["global_options"]
+        split_point = 0.5 # make variable later
+
+        if not isinstance(scene_index, (int, float)):
+            message = f"Please enter a Scene Index to get started"
+            return gr.update(selected=7), gr.update(visible=True, value=message), *self.empty_args(5)
+
+        num_scenes = len(self.state.scene_names)
+        last_scene = num_scenes - 1
+        scene_index = int(scene_index)
+        if scene_index < 0 or scene_index > last_scene:
+            message = f"Please enter a Scene Index from 0 to {last_scene}"
+            return gr.update(selected=7), gr.update(visible=True, value=message), *self.empty_args(5)
+
+        scene_name = self.state.scene_names[scene_index]
+        first_frame, last_frame, num_width = details_from_group_name(scene_name)
+        num_frames = (last_frame - first_frame) + 1
+        if num_frames < 2:
+            message = f"Scene must have at least two frames to be split"
+            return gr.update(selected=7), gr.update(visible=True, value=message), *self.empty_args(5)
+
+        # ensure the split is at least at the 50% point
+        split_frame = math.ceil(num_frames * split_point)
+        self.log(f"setting split frame to {split_frame}")
+
+        new_lower_first_frame = first_frame
+        new_lower_last_frame = first_frame + (split_frame - 1)
+        new_lower_scene_name = VideoRemixerState.encode_scene_label(num_width, new_lower_first_frame, new_lower_last_frame, 0, 0)
+        self.log(f"new lower scene name: {new_lower_scene_name}")
+
+        new_upper_first_frame = first_frame + split_frame
+        new_upper_last_frame = last_frame
+        new_upper_scene_name = VideoRemixerState.encode_scene_label(num_width, new_upper_first_frame, new_upper_last_frame, 0, 0)
+        self.log(f"new upper scene name: {new_upper_scene_name}")
+
+        original_scene_path = os.path.join(self.state.scenes_path, scene_name)
+        new_lower_scene_path = os.path.join(self.state.scenes_path, new_lower_scene_name)
+        new_upper_scene_path = os.path.join(self.state.scenes_path, new_upper_scene_name)
+        self.log(f"new lower scene path: {new_lower_scene_path}")
+        self.log(f"new upper scene path: {new_upper_scene_path}")
+
+        self.state.uncompile_scenes()
+
+        frame_files = sorted(get_files(original_scene_path))
+        num_frame_files = len(frame_files)
+        if num_frame_files != num_frames:
+            message = f"Mismatch between expected frames ({num_frames}) and found frames ({num_frame_files}) in scene path '{original_scene_path}'"
+            return gr.update(selected=7), gr.update(visible=True, value=message), *self.empty_args(5)
+
+        messages = Jot()
+
+        self.log(f"about to create directory '{new_upper_scene_path}'")
+        create_directory(new_upper_scene_path)
+        messages.add(f"Created directory {new_upper_scene_path}")
+
+# about to move
+# 'C:\CONTENT\REMIX-xvideos.com_7ffd6f7637c7242730150e5ab2e5ab3f\SCENES\00114-07361\source_07361.png' to
+# 'C:\CONTENT\REMIX-xvideos.com_7ffd6f7637c7242730150e5ab2e5ab3f\SCENES\00114-07361\source_07361.png'
+
+        move_count = 0
+        for index, frame_file in enumerate(frame_files):
+            if index < split_frame:
+                continue
+            frame_path = os.path.join(original_scene_path, frame_file)
+            _, filename, ext = split_filepath(frame_path)
+            new_frame_path = os.path.join(new_upper_scene_path, filename + ext)
+
+            self.log(f"about to move '{frame_path}' to '{new_frame_path}'")
+            shutil.move(frame_path, new_frame_path)
+            move_count += 1
+        messages.add(f"Moved {move_count} frames to {new_frame_path}")
+
+        self.log(f"about to rename '{original_scene_path}' to '{new_lower_scene_path}'")
+        os.replace(original_scene_path, new_lower_scene_path)
+        messages.add(f"Renamed {original_scene_path} to {new_lower_scene_path}")
+
+        self.log(f"about to rename scene name '{scene_name}' to '{new_lower_scene_name}'")
+        self.state.scene_names[scene_index] = new_lower_scene_name
+        self.log(f"about to add new scene name '{new_upper_scene_name}'")
+        self.state.scene_names.append(new_upper_scene_name)
+        self.log(f"sorting scene names")
+        self.state.scene_names = sorted(self.state.scene_names)
+
+        scene_state = self.state.scene_states[scene_name]
+        self.log(f"about to delete the original scene state for scene '{scene_name}'")
+        del self.state.scene_states[scene_name]
+        self.log(f"adding scene state for new lower scene '{new_lower_scene_name}'")
+        self.state.scene_states[new_lower_scene_name] = scene_state
+        messages.add(f"Set scene {new_lower_scene_name} to {scene_state}")
+        self.log(f"adding scene state for new upper scene '{new_upper_scene_name}'")
+        self.state.scene_states[new_upper_scene_name] = scene_state
+        messages.add(f"Set scene {new_upper_scene_name} to {scene_state}")
+        self.state.current_scene = scene_index
+
+        thumbnail_file = self.state.thumbnails[scene_index]
+        self.log(f"about to delete original thumbnail file '{thumbnail_file}'")
+        os.remove(thumbnail_file)
+        messages.add(f"Deleted thumbnail {thumbnail_file}")
+        self.log(f"about to create thumbnail for new lower scene {new_lower_scene_name}")
+        self.state.create_thumbnail(new_lower_scene_name, self.log, global_options, self.config.remixer_settings)
+        messages.add(f"Created thumbnail for scene {new_lower_scene_name}")
+        self.log(f"about to create thumbnail for new upper scene {new_upper_scene_name}")
+        self.state.create_thumbnail(new_upper_scene_name, self.log, global_options, self.config.remixer_settings)
+        self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
+        messages.add(f"Created thumbnail for scene {new_upper_scene_name}")
+
+        self.log("saving project after completing scene split")
+        self.state.save()
+
+        message = messages.report()
+        return gr.update(selected=3), \
+            gr.update(visible=True, value=message), \
+            *self.scene_chooser_details(self.state.current_scene)
 
     def delete_button710(self, delete_purged):
         if delete_purged:
