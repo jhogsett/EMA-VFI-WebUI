@@ -1327,10 +1327,6 @@ class VideoRemixer(TabBase):
         create_directory(new_upper_scene_path)
         messages.add(f"Created directory {new_upper_scene_path}")
 
-# about to move
-# 'C:\CONTENT\REMIX-xvideos.com_7ffd6f7637c7242730150e5ab2e5ab3f\SCENES\00114-07361\source_07361.png' to
-# 'C:\CONTENT\REMIX-xvideos.com_7ffd6f7637c7242730150e5ab2e5ab3f\SCENES\00114-07361\source_07361.png'
-
         move_count = 0
         for index, frame_file in enumerate(frame_files):
             if index < split_frame:
