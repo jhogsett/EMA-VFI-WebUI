@@ -130,7 +130,7 @@ class VideoRemixer(TabBase):
         value="Next: Create Scenes, Thumbnails and Audio Clips (takes from minutes to hours)",
                                     show_label=False, visible=True, interactive=False)
 
-                    gr.Markdown("*Progress can be tracked in the console*")
+                    gr.Markdown("⚠️**Important: Redoing this step will purge and recreate content!** *Progress can be tracked in the console*")
                     with gr.Row():
                         back_button2 = gr.Button(value="< Back", variant="secondary").\
                             style(full_width=False)
