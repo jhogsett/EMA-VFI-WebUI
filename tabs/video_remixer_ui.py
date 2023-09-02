@@ -79,7 +79,7 @@ class VideoRemixer(TabBase):
                     with gr.Box():
                         video_info1 = gr.Markdown("Video Details")
                     with gr.Row():
-                        project_path = gr.Textbox(label="Project Path",
+                        project_path = gr.Textbox(label="Set Project Path",
                                             placeholder="Path on this server to store project data")
                     with gr.Row():
                         project_fps = gr.Slider(label="Remix Frame Rate", value=def_project_fps,
