@@ -245,12 +245,17 @@ class VideoRemixerState():
             self.source_video = project_video_path
             Mtqdm().update_bar(bar)
 
+    def copy_project_file(self, copy_path):
+        project_file = self.determine_project_filepath(self.project_path)
+        saved_project_file = os.path.join(copy_path, self.DEF_FILENAME)
+        shutil.copy(project_file, saved_project_file)
+
     # when advancing forward from the Set Up Project step
     # the user may be redoing the project from this step
     # need to purge anything created based on old settings
     # TODO make purging on backing up smarter
     def reset_at_project_settings(self):
-        remove_directories([
+        purge_path = self.purge_paths([
             self.scenes_path,
             self.dropped_scenes_path,
             self.thumbnail_path,
@@ -259,6 +264,7 @@ class VideoRemixerState():
             self.resynthesis_path,
             self.inflation_path,
             self.upscale_path])
+        self.copy_project_file(purge_path)
         self.scene_names = []
         self.current_scene = 0
         self.thumbnails = []
@@ -382,7 +388,8 @@ class VideoRemixerState():
         path = state["path"]
         num_width = state["num_width"]
         first, last, _ = VideoRemixerState.decode_scene_label(scene_label)
-        new_scene_label = VideoRemixerState.encode_scene_label(num_width, first, last, 0, new_contents)
+        new_scene_label = VideoRemixerState.encode_scene_label(num_width, first, last, 0,
+                                                               new_contents)
         scene_label_path = os.path.join(path, scene_label)
         new_scene_label_path = os.path.join(path, new_scene_label)
         log_fn(f"renaming {scene_label_path} to {new_scene_label_path}")
@@ -407,7 +414,10 @@ class VideoRemixerState():
                  "log_fn" : log_fn}
         with Mtqdm().open_bar(total=1, desc="Shrink") as bar:
             Mtqdm().message(bar, "Shrinking small scenes - no ETA")
-            shrunk_container_data = shrink(container_data, self.min_frames_per_scene, VideoRemixerState.move_frames, VideoRemixerState.remove_scene, VideoRemixerState.rename_scene, state)
+            shrunk_container_data = shrink(container_data, self.min_frames_per_scene,
+                                           VideoRemixerState.move_frames,
+                                           VideoRemixerState.remove_scene,
+                                           VideoRemixerState.rename_scene, state)
             Mtqdm().update_bar(bar)
         log_fn(f"shrunk container data: {shrunk_container_data}")
 
@@ -556,7 +566,8 @@ class VideoRemixerState():
                 ((last_index + 1) - first_index) / self.project_fps,
                 self.project_fps)
             keep_state = True if scene_state == "Keep" else False
-            return scene_name, thumbnail_path, scene_state, scene_position, scene_start, scene_duration, keep_state
+            return scene_name, thumbnail_path, scene_state, scene_position, scene_start, \
+                scene_duration, keep_state
         except ValueError as error:
             raise ValueError(
                 f"ValueError encountered while computing scene chooser details: {error}")
@@ -648,6 +659,7 @@ class VideoRemixerState():
         for path in path_list:
             if path and os.path.exists(path):
                 shutil.move(path, purged_path)
+        return purged_path
 
     def delete_purged_content(self):
         purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
@@ -672,23 +684,24 @@ class VideoRemixerState():
 
     def purge_processed_content(self, purge_from):
         if purge_from == self.RESIZE_STEP:
-            self.purge_paths([
+            purge_path = self.purge_paths([
                 self.resize_path,
                 self.resynthesis_path,
                 self.inflation_path,
                 self.upscale_path])
         elif purge_from == self.RESYNTH_STEP:
-            self.purge_paths([
+            purge_path = self.purge_paths([
                 self.resynthesis_path,
                 self.inflation_path,
                 self.upscale_path])
         elif purge_from == self.INFLATE_STEP:
-            self.purge_paths([
+            purge_path = self.purge_paths([
                 self.inflation_path,
                 self.upscale_path])
         elif purge_from == self.UPSCALE_STEP:
-            self.purge_paths([
+            purge_path = self.purge_paths([
                 self.upscale_path])
+        self.copy_project_file(purge_path)
         self.clean_remix_content(purge_from="audio_clips")
 
     def clean_remix_content(self, purge_from):
@@ -757,7 +770,8 @@ class VideoRemixerState():
             self.purge_processed_content(self.RESYNTH_STEP)
         if self.processed_content_present(self.INFLATE_STEP) and not self.inflate:
             self.purge_processed_content(self.INFLATE_STEP)
-        if self.processed_content_present(self.UPSCALE_STEP) and (not self.upscale or purge_upscale):
+        if self.processed_content_present(self.UPSCALE_STEP) and \
+                (not self.upscale or purge_upscale):
             self.purge_processed_content(self.UPSCALE_STEP)
 
     def processed_content_incomplete(self, present_at):
@@ -1142,7 +1156,12 @@ class VideoRemixerState():
         else:
             self.clips = sorted(get_files(self.video_clips_path))
 
-    def create_custom_video_clips(self, log_fn, kept_scenes, global_options, custom_video_options, custom_ext):
+    def create_custom_video_clips(self,
+                                  log_fn,
+                                  kept_scenes,
+                                  global_options,
+                                  custom_video_options,
+                                  custom_ext):
         self.video_clips_path = os.path.join(self.clips_path, self.VIDEO_CLIPS_PATH)
         create_directory(self.video_clips_path)
 
@@ -1162,7 +1181,8 @@ class VideoRemixerState():
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
-                scene_output_filepath = os.path.join(self.video_clips_path, f"{scene_name}.{custom_ext}")
+                scene_output_filepath = os.path.join(self.video_clips_path,
+                                                     f"{scene_name}.{custom_ext}")
 
                 use_custom_video_options = custom_video_options
                 # handle some custom text substitutions
@@ -1203,13 +1223,18 @@ class VideoRemixerState():
                 Mtqdm().update_bar(bar)
         self.video_clips = sorted(get_files(self.video_clips_path))
 
-    def create_custom_scene_clips(self, kept_scenes, global_options, custom_audio_options, custom_ext):
+    def create_custom_scene_clips(self,
+                                  kept_scenes,
+                                  global_options,
+                                  custom_audio_options,
+                                  custom_ext):
         if self.video_details["has_audio"]:
             with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
                 for index, scene_name in enumerate(kept_scenes):
                     scene_video_path = self.video_clips[index]
                     scene_audio_path = self.audio_clips[index]
-                    scene_output_filepath = os.path.join(self.clips_path, f"{scene_name}.{custom_ext}")
+                    scene_output_filepath = os.path.join(self.clips_path,
+                                                         f"{scene_name}.{custom_ext}")
                     combine_video_audio(scene_video_path, scene_audio_path,
                                         scene_output_filepath, global_options=global_options,
                                         output_options=custom_audio_options)
@@ -1245,14 +1270,17 @@ class VideoRemixerState():
             return path, [], messages.report()
 
         if not files and path_files:
-            messages.add(f"{description} path '{path}' has {path_file_count} files unknown to the project. The files are being ignored (safe to delete).")
+            messages.add(f"{description} path '{path}' has {path_file_count} files unknown " +
+                         " to the project. The files are being ignored (safe to delete).")
             return path, [], messages.report()
 
         if path_file_count != file_count:
-            messages.add(f"{description} path '{path}' should have {file_count} files but has {path_file_count}. The files are being ignored (safe to delete).")
+            messages.add(f"{description} path '{path}' should have {file_count} files" +
+                    f" but has {path_file_count}. The files are being ignored (safe to delete).")
             return path, [], messages.report()
 
-        # TODO further possible checks: files have bytes, files are found to be the right binary type, etc
+        # TODO further possible checks: files have bytes,
+        # files are found to be the right binary type, etc
 
         return path, files, messages.report()
 
@@ -1271,23 +1299,28 @@ class VideoRemixerState():
     def post_load_integrity_check(self):
         messages = Jot()
 
-        self.thumbnail_path, self.thumbnails, message = self.ensure_valid_populated_path("Thumbnails", self.thumbnail_path, self.thumbnails)
+        self.thumbnail_path, self.thumbnails, message = self.ensure_valid_populated_path(
+            "Thumbnails", self.thumbnail_path, self.thumbnails)
         if message:
             messages.add(message)
 
-        self.clips_path, self.clips, message = self.ensure_valid_populated_path("Clips", self.clips_path, self.clips)
+        self.clips_path, self.clips, message = self.ensure_valid_populated_path(
+            "Clips", self.clips_path, self.clips)
         if message:
             messages.add(message)
 
-        self.audio_clips_path, self.audio_clips, message = self.ensure_valid_populated_path("Audio Clips", self.audio_clips_path, self.audio_clips)
+        self.audio_clips_path, self.audio_clips, message = self.ensure_valid_populated_path(
+            "Audio Clips", self.audio_clips_path, self.audio_clips)
         if message:
             messages.add(message)
 
-        self.video_clips_path, self.video_clips, message = self.ensure_valid_populated_path("Video Clips", self.video_clips_path, self.video_clips)
+        self.video_clips_path, self.video_clips, message = self.ensure_valid_populated_path(
+            "Video Clips", self.video_clips_path, self.video_clips)
         if message:
             messages.add(message)
 
-        self.dropped_scenes_path, message = self.ensure_valid_path("Dropped Scenes", self.dropped_scenes_path)
+        self.dropped_scenes_path, message = self.ensure_valid_path(
+            "Dropped Scenes", self.dropped_scenes_path)
         if message:
             messages.add(message)
 
@@ -1307,7 +1340,8 @@ class VideoRemixerState():
         if message:
             messages.add(message)
 
-        self.resynthesis_path, message = self.ensure_valid_path("Resynthesis Path", self.resynthesis_path)
+        self.resynthesis_path, message = self.ensure_valid_path(
+            "Resynthesis Path", self.resynthesis_path)
         if message:
             messages.add(message)
 
@@ -1347,7 +1381,8 @@ class VideoRemixerState():
             except YAMLError as error:
                 if hasattr(error, 'problem_mark'):
                     mark = error.problem_mark
-                    message = f"Error loading project file on line {mark.line+1} column {mark.column+1}: {error}"
+                    message = \
+                f"Error loading project file on line {mark.line+1} column {mark.column+1}: {error}"
                 else:
                     message = error
                 raise ValueError(message)
