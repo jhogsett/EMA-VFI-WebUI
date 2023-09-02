@@ -572,7 +572,8 @@ class VideoRemixer(TabBase):
 
         choose_button701.click(self.choose_button701,
                                inputs=[first_scene_id_701, last_scene_id_701, scene_state_701],
-                               outputs=message_box701)
+                               outputs=[tabs_video_remixer, message_box701, scene_index, scene_label,
+                                       scene_image, scene_state, scene_info])
 
         split_button702.click(self.split_button702, inputs=scene_id_702,
                               outputs=[tabs_video_remixer, message_box702, scene_index, scene_label,
@@ -1280,14 +1281,17 @@ class VideoRemixer(TabBase):
             scene_name = self.state.scene_names[scene_index]
             self.state.scene_states[scene_name] = scene_state
 
+        self.state.current_scene = first_scene_index
+
         first_scene_name = self.state.scene_names[first_scene_index]
         last_scene_name = self.state.scene_names[last_scene_index]
-
         message = f"Scenes {first_scene_name} through {last_scene_name} set to '{scene_state}'"
         self.log(f"saving project after {message}")
         self.state.save()
 
-        return gr.update(visible=True, value=message)
+        return gr.update(selected=3), \
+            gr.update(visible=True, value=message), \
+            *self.scene_chooser_details(self.state.current_scene)
 
     def split_button702(self, scene_index):
         global_options = self.config.ffmpeg_settings["global_options"]
