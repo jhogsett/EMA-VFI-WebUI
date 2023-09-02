@@ -245,12 +245,17 @@ class VideoRemixerState():
             self.source_video = project_video_path
             Mtqdm().update_bar(bar)
 
+    def copy_project_file(self, copy_path):
+        project_file = self.determine_project_filepath(self.project_path)
+        saved_project_file = os.path.join(copy_path, self.DEF_FILENAME)
+        shutil.copy(project_file, saved_project_file)
+
     # when advancing forward from the Set Up Project step
     # the user may be redoing the project from this step
     # need to purge anything created based on old settings
     # TODO make purging on backing up smarter
     def reset_at_project_settings(self):
-        remove_directories([
+        purge_path = self.purge_paths([
             self.scenes_path,
             self.dropped_scenes_path,
             self.thumbnail_path,
@@ -259,6 +264,7 @@ class VideoRemixerState():
             self.resynthesis_path,
             self.inflation_path,
             self.upscale_path])
+        self.copy_project_file(purge_path)
         self.scene_names = []
         self.current_scene = 0
         self.thumbnails = []
@@ -648,6 +654,7 @@ class VideoRemixerState():
         for path in path_list:
             if path and os.path.exists(path):
                 shutil.move(path, purged_path)
+        return purged_path
 
     def delete_purged_content(self):
         purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
@@ -672,23 +679,24 @@ class VideoRemixerState():
 
     def purge_processed_content(self, purge_from):
         if purge_from == self.RESIZE_STEP:
-            self.purge_paths([
+            purge_path = self.purge_paths([
                 self.resize_path,
                 self.resynthesis_path,
                 self.inflation_path,
                 self.upscale_path])
         elif purge_from == self.RESYNTH_STEP:
-            self.purge_paths([
+            purge_path = self.purge_paths([
                 self.resynthesis_path,
                 self.inflation_path,
                 self.upscale_path])
         elif purge_from == self.INFLATE_STEP:
-            self.purge_paths([
+            purge_path = self.purge_paths([
                 self.inflation_path,
                 self.upscale_path])
         elif purge_from == self.UPSCALE_STEP:
-            self.purge_paths([
+            purge_path = self.purge_paths([
                 self.upscale_path])
+        self.copy_project_file(purge_path)
         self.clean_remix_content(purge_from="audio_clips")
 
     def clean_remix_content(self, purge_from):
