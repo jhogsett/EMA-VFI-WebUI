@@ -104,9 +104,9 @@ def create_ui(config : SimpleConfig,
             ChangeFPS(config, engine, log.log).render_tab()
             GIFtoMP4(config, engine, log.log).render_tab()
             with gr.Tab(SimpleIcons.GEAR + "Application"):
-                Options(config, engine, log.log, restart_fn).render_tab()
-                Resources(config, engine, log.log).render_tab()
                 LogViewer(config, engine, log.log, log).render_tab()
+                Resources(config, engine, log.log).render_tab()
+                Options(config, engine, log.log, restart_fn).render_tab()
 
         if config.user_interface["show_header"]:
             app_footer.render()
