@@ -53,9 +53,7 @@ class VideoRemixer(TabBase):
                                 video_path = gr.Textbox(label="Video Path",
                                     placeholder="Path on this server to the video to be remixed")
                             with gr.Row():
-                                message_box00 = gr.Textbox(
-                        value="Next: Inspect Video and Count Frames (takes a minute or more)",
-                                            show_label=False, visible=True, interactive=False)
+                                message_box00 = gr.Markdown(self.format_markdown("Click New Project to: Inspect Video and Count Frames (takes a minute or more)"))
                             gr.Markdown("*Progress can be tracked in the console*")
                             next_button00 = gr.Button(value="New Project > " +
                                 SimpleIcons.SLOW_SYMBOL, variant="primary", elem_id="actionbutton")
@@ -65,9 +63,8 @@ class VideoRemixer(TabBase):
                                 project_load_path = gr.Textbox(label="Project Path",
                 placeholder="Path on this server to the Video Remixer project directory or file")
                             with gr.Row():
-                                message_box01 = gr.Textbox(value=None,
-                                            show_label=False, visible=True, interactive=False)
-                            gr.Markdown("*The Scene Chooser will be shown after loading project*")
+                                message_box01 = gr.Markdown(value=self.format_markdown("Click Open Project to: Resume Editing an Existing Project"))
+                            gr.Markdown("*The last used tab will be shown after loading project*")
                             next_button01 = gr.Button(value="Open Project >",
                                                     variant="primary")
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -671,8 +668,23 @@ class VideoRemixer(TabBase):
 
         delete_button713.click(self.delete_button713, inputs=delete_all_713, outputs=message_box713)
 
+    ### UTILITY FUNCTIONS
+
     def empty_args(self, num):
         return [None for _ in range(num)]
+
+    def format_markdown(self, text, format="info"):
+        style = "font-weight:bold;"
+        if format == "plain":
+            return f"<p style=\"{style}\">{text}</p>"
+        elif format == "info":
+            return f"<p style=\"color:hsl(120 100% 65%);{style}\">{text}</p>"
+        elif format == "warning":
+            return f"<p style=\"color:hsl(60 100% 65%);{style}\">{text}</p>"
+        elif format == "error":
+            return f"<p style=\"color:hsl(0 100% 65%);{style}\">{text}</p>"
+        else:
+            return text
 
     ### REMIX HOME EVENT HANDLERS
 
@@ -680,14 +692,12 @@ class VideoRemixer(TabBase):
     def next_button00(self, video_path):
         if not video_path:
             return gr.update(selected=0), \
-                   gr.update(visible=True,
-                             value="Enter a path to a video on this server to get started"), \
+                   gr.update(value=self.format_markdown("Enter a path to a video on this server to get started", "warning")), \
                    *self.empty_args(6)
 
         if not os.path.exists(video_path):
             return gr.update(selected=0), \
-                   gr.update(visible=True,
-                             value=f"File {video_path} was not found"), \
+                   gr.update(value=self.format_markdown(f"File '{video_path}' was not found", "error")), \
                    *self.empty_args(6)
 
         self.new_project()
@@ -696,15 +706,14 @@ class VideoRemixer(TabBase):
             self.state.video_info1 = self.state.ingested_video_report()
         except ValueError as error:
             return gr.update(selected=0), \
-                   gr.update(visible=True,
-                             value=error), \
+                   gr.update(value=self.format_markdown(error, "error")), \
                    *self.empty_args(6)
 
         # don't save yet, user may change project path next
         self.state.save_progress("settings", save_project=False)
 
         return gr.update(selected=1), \
-            gr.update(visible=True), \
+            gr.update(value=self.format_markdown("Click New Project to: Inspect Video and Count Frames (takes a minute or more)")), \
             gr.update(value=self.state.video_info1), \
             self.state.project_path, \
             self.state.resize_w, \
@@ -716,31 +725,28 @@ class VideoRemixer(TabBase):
     def next_button01(self, project_path):
         if not project_path:
             return gr.update(selected=0), \
-                   gr.update(visible=True,
-        value="Enter a path to a Video Remixer project directory on this server to get started"), \
+                   gr.update(value=self.format_markdown("Enter a path to a Video Remixer project directory on this server to get started", "warning")), \
                    *self.empty_args(28)
 
         if not os.path.exists(project_path):
             return gr.update(selected=0), \
-                   gr.update(visible=True,
-                             value=f"Directory {project_path} was not found"), \
+                   gr.update(value=self.format_markdown(f"Directory '{project_path}' was not found", "error")), \
                    *self.empty_args(28)
 
         try:
             project_file = self.state.determine_project_filepath(project_path)
         except ValueError as error:
             return gr.update(selected=0), \
-                   gr.update(visible=True,
-                             value=error), \
+                   gr.update(value=self.format_markdown(error, "error")), \
                    *self.empty_args(28)
 
         try:
             self.state = VideoRemixerState.load(project_file)
         except ValueError as error:
             self.log(f"error opening project: {error}")
-            error_lines = len(str(error).splitlines())
+            # error_lines = len(str(error).splitlines())
             return gr.update(selected=0), \
-                   gr.update(visible=True, value=error, lines=error_lines), \
+                   gr.update(value=self.format_markdown(error, "error")), \
                    *self.empty_args(28)
 
         if self.state.project_ported(project_file):
@@ -748,19 +754,19 @@ class VideoRemixer(TabBase):
                 self.state = VideoRemixerState.load_ported(self.state.project_path, project_file)
             except ValueError as error:
                 self.log(f"error opening ported project at {project_file}: {error}")
-                error_lines = len(str(error).splitlines())
+                # error_lines = len(str(error).splitlines())
                 return gr.update(selected=0), \
-                    gr.update(visible=True, value=error, lines=error_lines), \
+                    gr.update(value=self.format_markdown(error, "error")), \
                     *self.empty_args(28)
 
         messages = self.state.post_load_integrity_check()
-        messages_lines = len(messages.splitlines())
+        # messages_lines = len(messages.splitlines())
 
         return_to_tab = self.state.get_progress_tab()
         scene_details = self.scene_chooser_details(self.state.tryattr("current_scene"))
 
         return gr.update(selected=return_to_tab), \
-            gr.update(value=messages, visible=True, lines=messages_lines), \
+            gr.update(value=self.format_markdown(messages, "warning")), \
             self.state.tryattr("video_info1"), \
             self.state.tryattr("project_path"), \
             self.state.tryattr("project_fps", self.config.remixer_settings["def_project_fps"]), \

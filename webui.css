@@ -14,6 +14,9 @@
     --feature-output-highlight: #72308A;
     --frame-chooser-action-dim: #004d26;
     --main-output-highlight-dim: hsl(29, 100%, 30%);
+    --message-box-text-info: #0aff85;
+    --message-box-text-warn: #ffff0a;
+    --message-box-text-error: #ff0a0a;
 }
 
 #sideimage {
