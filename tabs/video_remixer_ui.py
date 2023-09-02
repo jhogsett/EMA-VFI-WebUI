@@ -130,7 +130,9 @@ class VideoRemixer(TabBase):
         value="Next: Create Scenes, Thumbnails and Audio Clips (takes from minutes to hours)",
                                     show_label=False, visible=True, interactive=False)
 
-                    gr.Markdown("⚠️**Important: Redoing this step will purge and recreate content!** *Progress can be tracked in the console*")
+                    gr.Markdown(
+                        "⚠️**Important: Redoing this step will purge and recreate content!**" +
+                        " *Progress can be tracked in the console*")
                     with gr.Row():
                         back_button2 = gr.Button(value="< Back", variant="secondary").\
                             style(full_width=False)
@@ -211,21 +213,29 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         resize = gr.Checkbox(label="Fix Aspect Ratio", value=True)
                         with gr.Box():
-                            gr.Markdown("Frames are resized then cropped according to project settings")
+                            gr.Markdown(
+                                "Frames are resized then cropped according to project settings")
                     with gr.Row():
                         resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True)
                         with gr.Box():
-                            gr.Markdown("Frames are recreated by AI interpolation of neighboring frames\r\n- Scene outermost frames are lost during resynthesis\r\n- Audio clips are adjusted to compensate for lost frames")
+                            gr.Markdown(
+                            "Frames are recreated by AI interpolation of neighboring frames\r\n" +
+                            "- Scene outermost frames are lost during resynthesis\r\n" +
+                            "- Audio clips are adjusted to compensate for lost frames")
                     with gr.Row():
                         inflate = gr.Checkbox(label="Inflate New Frames",value=True)
                         with gr.Box():
-                            gr.Markdown("New frames are inserted by AI interpolation for smooth motion\r\n- Project FPS is doubled when inflation is used\r\n- Audio clips do not need adjusting for inflation")
+                            gr.Markdown(
+                            "New frames are inserted by AI interpolation for smooth motion\r\n" +
+                            "- Project FPS is doubled when inflation is used\r\n" +
+                            "- Audio clips do not need adjusting for inflation")
                     with gr.Row():
                         upscale = gr.Checkbox(label="Upscale Frames", value=True)
                         upscale_option = gr.Radio(label="Upscale By", value="2X",
                                                   choices=["1X", "2X", "4X"])
                         with gr.Box():
-                            gr.Markdown("Frames are cleansed and enlarged using AI - Real-ESRGAN 4x+\r\n")
+                            gr.Markdown(
+                                "Frames are cleansed and enlarged using AI - Real-ESRGAN 4x+\r\n")
                     message_box5 = gr.Textbox(
                         value="Next: Perform all Processing Steps (takes from hours to days)",
                                               show_label=False, interactive=False)
@@ -273,8 +283,9 @@ class VideoRemixer(TabBase):
                             custom_audio_options = gr.Textbox(
                                 label="Custom FFmpeg Audio Output Options",
                         info="Passed to FFmpeg as output audio settings when combining with video")
-                            output_filepath_custom = gr.Textbox(label="Output Filepath", max_lines=1,
-                                    info="Enter a path and filename for the remixed video")
+                            output_filepath_custom = gr.Textbox(label="Output Filepath",
+                                                                max_lines=1,
+                                            info="Enter a path and filename for the remixed video")
                             with gr.Row():
                                 message_box61 = gr.Textbox(value=None, show_label=False,
                                                           interactive=False)
@@ -294,8 +305,9 @@ class VideoRemixer(TabBase):
                             marked_audio_options = gr.Textbox(value=marked_ffmpeg_audio,
                                 label="Marked FFmpeg Audio Output Options",
                         info="Passed to FFmpeg as output audio settings when combining with video")
-                            output_filepath_marked = gr.Textbox(label="Output Filepath", max_lines=1,
-                                    info="Enter a path and filename for the remixed video")
+                            output_filepath_marked = gr.Textbox(label="Output Filepath",
+                                                                max_lines=1,
+                                            info="Enter a path and filename for the remixed video")
                             with gr.Row():
                                 message_box62 = gr.Textbox(value=None, show_label=False,
                                                           interactive=False)
@@ -316,124 +328,172 @@ class VideoRemixer(TabBase):
                         with gr.Tab(label="Utilities", id=0):
                             with gr.Tabs() as tabs_remix_extra_utils:
                                 with gr.Tab("Drop Processed Scene", id=0):
-                                    gr.Markdown("**_Drop a scene after processing has been already been done_**")
+                                    gr.Markdown(
+                                "**_Drop a scene after processing has been already been done_**")
                                     scene_id_700 = gr.Number(value=-1, label="Scene Index")
                                     with gr.Row():
-                                        message_box700 = gr.Textbox(show_label=False, interactive=False)
-                                    drop_button700 = gr.Button("Drop Scene", variant="stop").style(full_width=False)
+                                        message_box700 = gr.Textbox(show_label=False,
+                                                                    interactive=False)
+                                    drop_button700 = gr.Button("Drop Scene", variant="stop").\
+                                        style(full_width=False)
 
                                 with gr.Tab("Choose Scene Range", id=1):
                                     gr.Markdown("**_Keep or Drop a range of scenes_**")
                                     with gr.Row():
                                         first_scene_id_701 = gr.Number(value=-1,
-                                                                        label="Starting Scene Index")
+                                                                    label="Starting Scene Index")
                                         last_scene_id_701 = gr.Number(value=-1,
-                                                                        label="Ending Scene Index")
+                                                                    label="Ending Scene Index")
                                     with gr.Row():
-                                        scene_state_701 = gr.Radio(label="Scenes Choice", value=None,
-                                                                        choices=["Keep", "Drop"])
+                                        scene_state_701 = gr.Radio(label="Scenes Choice",
+                                                                   value=None,
+                                                                   choices=["Keep", "Drop"])
                                     with gr.Row():
-                                        message_box701 = gr.Textbox(show_label=False, interactive=False)
-                                    choose_button701 = gr.Button("Choose Scene Range", variant="stop").style(full_width=False)
+                                        message_box701 = gr.Textbox(show_label=False,
+                                                                    interactive=False)
+                                    choose_button701 = gr.Button("Choose Scene Range",
+                                                            variant="stop").style(full_width=False)
 
                                 with gr.Tab("Split Scene", id=2):
                                     gr.Markdown("**_Split a Scene in two at the 50% point_**")
                                     scene_id_702 = gr.Number(value=-1, label="Scene Index")
                                     with gr.Row():
-                                        message_box702 = gr.Textbox(show_label=False, interactive=False)
-                                    split_button702 = gr.Button("Split Scene", variant="stop").style(full_width=False)
+                                        message_box702 = gr.Textbox(show_label=False,
+                                                                    interactive=False)
+                                    split_button702 = gr.Button("Split Scene", variant="stop").\
+                                        style(full_width=False)
 
                         with gr.Tab(label="Reduce Footprint", id=1):
                             with gr.Tabs():
                                 with gr.Tab(label="Remove Soft-Deleted Content"):
-                                    gr.Markdown("**_Delete content set aside when remix processing selections are changed_**")
+                                    gr.Markdown(
+                    "**_Delete content set aside when remix processing selections are changed_**")
                                     with gr.Row():
-                                        delete_purged_710 = gr.Checkbox(label="Permanently Delete Purged Content")
+                                        delete_purged_710 = gr.Checkbox(
+                                            label="Permanently Delete Purged Content")
                                         with gr.Box():
-                                            gr.Markdown("Delete the contents of the 'purged_content' project directory.")
+                                            gr.Markdown(
+                                "Delete the contents of the 'purged_content' project directory.")
                                     with gr.Row():
                                         message_box710 = gr.Textbox(show_label=False)
                                     gr.Markdown("*Progress can be tracked in the console*")
                                     with gr.Row():
-                                        delete_button710 = gr.Button(value="Delete Purged Content " + SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                        select_all_button710 = gr.Button(value="Select All").style(full_width=False)
-                                        select_none_button710 = gr.Button(value="Select None").style(full_width=False)
+                                        delete_button710 = gr.Button(value="Delete Purged Content "\
+                                                        + SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                        select_all_button710 = gr.Button(value="Select All").\
+                                            style(full_width=False)
+                                        select_none_button710 = gr.Button(value="Select None").\
+                                            style(full_width=False)
 
                                 with gr.Tab(label="Remove Scene Chooser Content"):
-                                    gr.Markdown("**_Delete source PNG frame files, thumbnails and dropped scenes_**")
+                                    gr.Markdown(
+                            "**_Delete source PNG frame files, thumbnails and dropped scenes_**")
                                     with gr.Row():
-                                        delete_source_711 = gr.Checkbox(label="Remove Source Video Frames")
+                                        delete_source_711 = gr.Checkbox(
+                                            label="Remove Source Video Frames")
                                         with gr.Box():
-                                            gr.Markdown("Delete source video PNG frame files used to split content into scenes.")
+                                            gr.Markdown(
+                        "Delete source video PNG frame files used to split content into scenes.")
                                     with gr.Row():
-                                        delete_dropped_711 = gr.Checkbox(label="Remove Dropped Scenes")
+                                        delete_dropped_711 = gr.Checkbox(
+                                            label="Remove Dropped Scenes")
                                         with gr.Box():
-                                            gr.Markdown("Delete Dropped Scene files used when compiling scenes after making scene choices.")
+                                            gr.Markdown(
+                "Delete Dropped Scene files used when compiling scenes after making scene choices.")
                                     with gr.Row():
                                         delete_thumbs_711 = gr.Checkbox(label="Remove Thumbnails")
                                         with gr.Box():
-                                            gr.Markdown("Delete Thumbnails used to display scenes in Scene Chooser.")
+                                            gr.Markdown(
+                                    "Delete Thumbnails used to display scenes in Scene Chooser.")
                                     with gr.Row():
                                         message_box711 = gr.Textbox(show_label=False)
                                     gr.Markdown("*Progress can be tracked in the console*")
                                     with gr.Row():
-                                        delete_button711 = gr.Button(value="Delete Selected Content " + SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                        select_all_button711 = gr.Button(value="Select All").style(full_width=False)
-                                        select_none_button711 = gr.Button(value="Select None").style(full_width=False)
+                                        delete_button711 = gr.Button(
+                                            value="Delete Selected Content " +\
+                                                SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                        select_all_button711 = gr.Button(value="Select All").\
+                                            style(full_width=False)
+                                        select_none_button711 = gr.Button(value="Select None").\
+                                            style(full_width=False)
 
                                 with gr.Tab(label="Remove Remix Video Source Content"):
-                                    gr.Markdown("**_Clear space after final Remix Videos have been saved_**")
+                                    gr.Markdown(
+                                    "**_Clear space after final Remix Videos have been saved_**")
                                     with gr.Row():
                                         delete_kept_712 = gr.Checkbox(label="Remove Kept Scenes")
                                         with gr.Box():
-                                            gr.Markdown("Delete Kept Scene files used when compiling scenes after making scene choices.")
+                                            gr.Markdown(
+                "Delete Kept Scene files used when compiling scenes after making scene choices.")
                                     with gr.Row():
-                                        delete_resized_712 = gr.Checkbox(label="Remove Resized Frames")
+                                        delete_resized_712 = gr.Checkbox(
+                                            label="Remove Resized Frames")
                                         with gr.Box():
-                                            gr.Markdown("Delete Resized PNG frame files used as inputs for processing and creating remix video clips.")
+                                            gr.Markdown(
+    "Delete Resized PNG frame files used as inputs for processing and creating remix video clips.")
                                     with gr.Row():
-                                        delete_resynth_712 = gr.Checkbox(label="Remove Resynthesized Frames")
+                                        delete_resynth_712 = gr.Checkbox(
+                                            label="Remove Resynthesized Frames")
                                         with gr.Box():
-                                            gr.Markdown("Delete Resynthesized PNG frame files used as inputs for processing and creating remix video clips.")
+                                            gr.Markdown(
+                                        "Delete Resynthesized PNG frame files used as inputs " +\
+                                        "for processing and creating remix video clips.")
                                     with gr.Row():
-                                        delete_inflated_712 = gr.Checkbox(label="Remove Inflated Frames")
+                                        delete_inflated_712 = gr.Checkbox(
+                                            label="Remove Inflated Frames")
                                         with gr.Box():
-                                            gr.Markdown("Delete Inflated PNG frame files used as inputs for processing and creating remix video clips.")
+                                            gr.Markdown(
+    "Delete Inflated PNG frame files used as inputs for processing and creating remix video clips.")
                                     with gr.Row():
-                                        delete_upscaled_712 = gr.Checkbox(label="Remove Upscaled Frames")
+                                        delete_upscaled_712 = gr.Checkbox(
+                                            label="Remove Upscaled Frames")
                                         with gr.Box():
-                                            gr.Markdown("Delete Upscaled PNG frame files used as inputs for processing and creating remix video clips.")
+                                            gr.Markdown(
+    "Delete Upscaled PNG frame files used as inputs for processing and creating remix video clips.")
                                     with gr.Row():
                                         delete_audio_712 = gr.Checkbox(label="Delete Audio Clips")
                                         with gr.Box():
-                                            gr.Markdown("Delete Audio WAV/MP3 files used as inputs for creating remix video clips.")
+                                            gr.Markdown(
+                        "Delete Audio WAV/MP3 files used as inputs for creating remix video clips.")
                                     with gr.Row():
                                         delete_video_712 = gr.Checkbox(label="Delete Video Clips")
                                         with gr.Box():
-                                            gr.Markdown("Delete Video MP4 files used as inputs for creating remix video clips.")
+                                            gr.Markdown(
+                            "Delete Video MP4 files used as inputs for creating remix video clips.")
                                     with gr.Row():
-                                        delete_clips_712 = gr.Checkbox(label="Delete Remix Video Clips")
+                                        delete_clips_712 = gr.Checkbox(
+                                            label="Delete Remix Video Clips")
                                         with gr.Box():
-                                            gr.Markdown("Delete Video+Audio MP4 files used as inputs to concatentate into the final Remix Video.")
+                                            gr.Markdown(
+        "Delete Video+Audio MP4 files used as inputs to concatentate into the final Remix Video.")
                                     with gr.Row():
                                         message_box712 = gr.Textbox(show_label=False)
                                     gr.Markdown("*Progress can be tracked in the console*")
                                     with gr.Row():
-                                        delete_button712 = gr.Button(value="Delete Selected Content " + SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                        select_all_button712 = gr.Button(value="Select All").style(full_width=False)
-                                        select_none_button712 = gr.Button(value="Select None").style(full_width=False)
+                                        delete_button712 = gr.Button(
+                                            value="Delete Selected Content " +\
+                                                SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                        select_all_button712 = gr.Button(value="Select All").\
+                                            style(full_width=False)
+                                        select_none_button712 = gr.Button(value="Select None").\
+                                            style(full_width=False)
 
                                 with gr.Tab(label="Remove All Processed Content"):
-                                    gr.Markdown("**_Delete all processed project content (except videos)_**")
+                                    gr.Markdown(
+                                    "**_Delete all processed project content (except videos)_**")
                                     with gr.Row():
-                                        delete_all_713 = gr.Checkbox(label="Permanently Delete Processed Content")
+                                        delete_all_713 = gr.Checkbox(
+                                            label="Permanently Delete Processed Content")
                                         with gr.Box():
-                                            gr.Markdown("Deletes all created project content. **Does not delete original and remixed videos.**")
+                                            gr.Markdown(
+            "Deletes all created project content. **Does not delete original and remixed videos.**")
                                     with gr.Row():
                                         message_box713 = gr.Textbox(show_label=False)
                                     gr.Markdown("*Progress can be tracked in the console*")
                                     with gr.Row():
-                                        delete_button713 = gr.Button(value="Delete Processed Content " + SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                        delete_button713 = gr.Button(
+                                            value="Delete Processed Content " +\
+                                                SimpleIcons.SLOW_SYMBOL, variant="stop")
 
                     # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     #     WebuiTips.video_remixer_save.render()
@@ -572,8 +632,8 @@ class VideoRemixer(TabBase):
 
         choose_button701.click(self.choose_button701,
                                inputs=[first_scene_id_701, last_scene_id_701, scene_state_701],
-                               outputs=[tabs_video_remixer, message_box701, scene_index, scene_label,
-                                       scene_image, scene_state, scene_info])
+                               outputs=[tabs_video_remixer, message_box701, scene_index,
+                                        scene_label, scene_image, scene_state, scene_info])
 
         split_button702.click(self.split_button702, inputs=scene_id_702,
                               outputs=[tabs_video_remixer, message_box702, scene_index, scene_label,
@@ -706,7 +766,8 @@ class VideoRemixer(TabBase):
             self.state.tryattr("project_fps", self.config.remixer_settings["def_project_fps"]), \
             self.state.tryattr("deinterlace", self.state.UI_SAFETY_DEFAULTS["deinterlace"]), \
             self.state.tryattr("split_type", self.state.UI_SAFETY_DEFAULTS["split_type"]), \
-            self.state.tryattr("scene_threshold", self.state.UI_SAFETY_DEFAULTS["scene_threshold"]), \
+            self.state.tryattr("scene_threshold", \
+                               self.state.UI_SAFETY_DEFAULTS["scene_threshold"]), \
             self.state.tryattr("break_duration", self.state.UI_SAFETY_DEFAULTS["break_duration"]), \
             self.state.tryattr("break_ratio", self.state.UI_SAFETY_DEFAULTS["break_ratio"]), \
             self.state.tryattr("resize_w"), \
@@ -715,7 +776,8 @@ class VideoRemixer(TabBase):
             self.state.tryattr("crop_h"), \
             self.state.tryattr("project_info2"), \
             self.state.tryattr("thumbnail_type", self.state.UI_SAFETY_DEFAULTS["thumbnail_type"]), \
-            self.state.tryattr("min_frames_per_scene", self.state.UI_SAFETY_DEFAULTS["min_frames_per_scene"]), \
+            self.state.tryattr("min_frames_per_scene", \
+                               self.state.UI_SAFETY_DEFAULTS["min_frames_per_scene"]), \
             *scene_details, \
             self.state.tryattr("project_info4"), \
             self.state.tryattr("resize", self.state.UI_SAFETY_DEFAULTS["resize"]), \
@@ -1041,7 +1103,8 @@ class VideoRemixer(TabBase):
 
             if self.state.resynthesize:
                 if self.state.processed_content_present(self.state.RESYNTH_STEP):
-                    jot.down(f"Using processed resynthesized scenes in {self.state.resynthesis_path}")
+                    jot.down(
+                        f"Using processed resynthesized scenes in {self.state.resynthesis_path}")
                 else:
                     self.state.resynthesize_scenes(self.log,
                                                 kept_scenes,
@@ -1125,7 +1188,8 @@ class VideoRemixer(TabBase):
 
         # create audio clips only if they do not already exist
         # this depends on the audio clips being purged at the time the scene selection are compiled
-        if self.state.video_details["has_audio"] and not self.state.processed_content_present("audio"):
+        if self.state.video_details["has_audio"] and not \
+                self.state.processed_content_present("audio"):
             self.log("about to create audio clips")
             audio_format = self.config.remixer_settings["audio_format"]
             self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
@@ -1299,21 +1363,27 @@ class VideoRemixer(TabBase):
 
         if not isinstance(scene_index, (int, float)):
             message = f"Please enter a Scene Index to get started"
-            return gr.update(selected=7), gr.update(visible=True, value=message), *self.empty_args(5)
+            return gr.update(selected=7), \
+                gr.update(visible=True, value=message), \
+                *self.empty_args(5)
 
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
         scene_index = int(scene_index)
         if scene_index < 0 or scene_index > last_scene:
             message = f"Please enter a Scene Index from 0 to {last_scene}"
-            return gr.update(selected=7), gr.update(visible=True, value=message), *self.empty_args(5)
+            return gr.update(selected=7), \
+                gr.update(visible=True, value=message), \
+                *self.empty_args(5)
 
         scene_name = self.state.scene_names[scene_index]
         first_frame, last_frame, num_width = details_from_group_name(scene_name)
         num_frames = (last_frame - first_frame) + 1
         if num_frames < 2:
             message = f"Scene must have at least two frames to be split"
-            return gr.update(selected=7), gr.update(visible=True, value=message), *self.empty_args(5)
+            return gr.update(selected=7), \
+                gr.update(visible=True, value=message), \
+                *self.empty_args(5)
 
         # ensure the split is at least at the 50% point
         split_frame = math.ceil(num_frames * split_point)
@@ -1321,12 +1391,14 @@ class VideoRemixer(TabBase):
 
         new_lower_first_frame = first_frame
         new_lower_last_frame = first_frame + (split_frame - 1)
-        new_lower_scene_name = VideoRemixerState.encode_scene_label(num_width, new_lower_first_frame, new_lower_last_frame, 0, 0)
+        new_lower_scene_name = VideoRemixerState.encode_scene_label(num_width,
+                                                new_lower_first_frame, new_lower_last_frame, 0, 0)
         self.log(f"new lower scene name: {new_lower_scene_name}")
 
         new_upper_first_frame = first_frame + split_frame
         new_upper_last_frame = last_frame
-        new_upper_scene_name = VideoRemixerState.encode_scene_label(num_width, new_upper_first_frame, new_upper_last_frame, 0, 0)
+        new_upper_scene_name = VideoRemixerState.encode_scene_label(num_width,
+                                                new_upper_first_frame, new_upper_last_frame, 0, 0)
         self.log(f"new upper scene name: {new_upper_scene_name}")
 
         original_scene_path = os.path.join(self.state.scenes_path, scene_name)
@@ -1340,8 +1412,11 @@ class VideoRemixer(TabBase):
         frame_files = sorted(get_files(original_scene_path))
         num_frame_files = len(frame_files)
         if num_frame_files != num_frames:
-            message = f"Mismatch between expected frames ({num_frames}) and found frames ({num_frame_files}) in scene path '{original_scene_path}'"
-            return gr.update(selected=7), gr.update(visible=True, value=message), *self.empty_args(5)
+            message = f"Mismatch between expected frames ({num_frames}) and found frames " + \
+                f"({num_frame_files}) in scene path '{original_scene_path}'"
+            return gr.update(selected=7), \
+                gr.update(visible=True, value=message), \
+                    *self.empty_args(5)
 
         messages = Jot()
 
@@ -1389,10 +1464,12 @@ class VideoRemixer(TabBase):
         os.remove(thumbnail_file)
         messages.add(f"Deleted thumbnail {thumbnail_file}")
         self.log(f"about to create thumbnail for new lower scene {new_lower_scene_name}")
-        self.state.create_thumbnail(new_lower_scene_name, self.log, global_options, self.config.remixer_settings)
+        self.state.create_thumbnail(new_lower_scene_name, self.log, global_options,
+                                    self.config.remixer_settings)
         messages.add(f"Created thumbnail for scene {new_lower_scene_name}")
         self.log(f"about to create thumbnail for new upper scene {new_upper_scene_name}")
-        self.state.create_thumbnail(new_upper_scene_name, self.log, global_options, self.config.remixer_settings)
+        self.state.create_thumbnail(new_upper_scene_name, self.log, global_options,
+                                    self.config.remixer_settings)
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
         messages.add(f"Created thumbnail for scene {new_upper_scene_name}")
 
@@ -1443,7 +1520,15 @@ class VideoRemixer(TabBase):
                 gr.update(value=False), \
                 gr.update(value=False)
 
-    def delete_button712(self, delete_kept, delete_resized, delete_resynth, delete_inflated, delete_upscaled, delete_audio, delete_video, delete_clips):
+    def delete_button712(self,
+                         delete_kept,
+                         delete_resized,
+                         delete_resynth,
+                         delete_inflated,
+                         delete_upscaled,
+                         delete_audio,
+                         delete_video,
+                         delete_clips):
         removed = []
         if delete_kept:
             removed.append(self.state.delete_path(self.state.scenes_path))
