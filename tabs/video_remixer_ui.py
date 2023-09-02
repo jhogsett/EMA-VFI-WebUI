@@ -124,7 +124,7 @@ class VideoRemixer(TabBase):
                                     info="Choose 'GIF' for whole-scene animations (slow to render)")
                         min_frames_per_scene = gr.Number(label="Minimum Frames Per Scene",
                                     precision=0, value=def_min_frames,
-                        info="consolidates very small scenes info the next (0 to disable)")
+                        info="Consolidates very small scenes info the next (0 to disable)")
                     with gr.Row():
                         message_box2 = gr.Textbox(
         value="Next: Create Scenes, Thumbnails and Audio Clips (takes from minutes to hours)",
