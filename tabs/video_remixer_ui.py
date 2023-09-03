@@ -208,7 +208,7 @@ class VideoRemixer(TabBase):
                     with gr.Box():
                         project_info4 = gr.Markdown("Chosen Scene Details")
                     with gr.Row():
-                        message_box4 = gr.Markdown(value=self.format_markdown("Click Compile Scenes to: Assemble Kept Scenes for Processing"))
+                        message_box4 = gr.Markdown(value=self.format_markdown("Click Compile Scenes to: Assemble Kept Scenes for Processing (can take a few seconds)"))
                     with gr.Row():
                         back_button4 = gr.Button(value="< Back", variant="secondary").\
                             style(full_width=False)
@@ -1086,7 +1086,7 @@ class VideoRemixer(TabBase):
         self.log("saving project after compiling scenes")
         self.state.save_progress("process")
 
-        tab4_restore_message = self.format_markdown("Click Compile Scenes to: Assemble Kept Scenes for Processing")
+        tab4_restore_message = self.format_markdown("Click Compile Scenes to: Assemble Kept Scenes for Processing (can take a few seconds)")
         tab5_restore_message = self.format_markdown("Click Process Remix to: Perform all Processing Steps (can take from hours to days)")
 
         return gr.update(selected=self.TAB_PROC_OPTIONS),  \
