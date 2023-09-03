@@ -689,20 +689,23 @@ class VideoRemixer(TabBase):
     def noop_args(self, num):
         return [gr.update(visible=True) for _ in range(num)]
 
-    def format_markdown(self, text, format="info"):
-        style = "font-weight:bold;"
-        if format == "plain":
-            return f"<p style=\"{style}\">{text}</p>"
-        elif format == "info":
-            return f"<p style=\"color:hsl(120 100% 65%);{style}\">{text}</p>"
-        elif format == "warning":
-            return f"<p style=\"color:hsl(60 100% 65%);{style}\">{text}</p>"
-        elif format == "error":
-            return f"<p style=\"color:hsl(0 100% 65%);{style}\">{text}</p>"
-        elif format == "highlight":
-            return f"<p style=\"color:hsl(284 100% 65%);{style}\">{text}</p>"
-        else:
-            return text
+    def _format_markdown_line(self, text, style):
+        return f"<p style=\"{style}\">{text}</p>"
+
+    def format_markdown(self, text, color="info", bold=True):
+        font_style = "font-weight:bold" if bold else ""
+        color_style = {
+            "info" : "color:hsl(120 100% 65%)",
+            "warning" : "color:hsl(60 100% 65%)",
+            "error" : "color:hsl(0 100% 65%)",
+            "highlight" : "color:hsl(284 100% 65%)",
+        }.get(color, "")
+        style = ";".join([color_style, font_style])
+
+        result = []
+        for line in text.splitlines():
+            result.append(self._format_markdown_line(line, style))
+        return "\r\n".join(result)
 
     ### REMIX HOME EVENT HANDLERS
 
