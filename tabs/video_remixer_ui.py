@@ -208,8 +208,7 @@ class VideoRemixer(TabBase):
                     with gr.Box():
                         project_info4 = gr.Markdown("Chosen Scene Details")
                     with gr.Row():
-                        message_box4 = gr.Textbox(show_label=False, interactive=False,
-                                        value="Next: Compile 'Keep' and 'Drop' scenes")
+                        message_box4 = gr.Markdown(value=self.format_markdown("Click Compile Scenes to: Assemble Kept Scenes for Processing"))
                     with gr.Row():
                         back_button4 = gr.Button(value="< Back", variant="secondary").\
                             style(full_width=False)
@@ -247,9 +246,7 @@ class VideoRemixer(TabBase):
                         with gr.Box():
                             gr.Markdown(
                                 "Frames are cleansed and enlarged using AI - Real-ESRGAN 4x+\r\n")
-                    message_box5 = gr.Textbox(
-                        value="Next: Perform all Processing Steps (takes from hours to days)",
-                                              show_label=False, interactive=False)
+                    message_box5 = gr.Markdown(value=self.format_markdown("Click Process Remix to: Perform all Processing Steps (can take from hours to days)"))
                     with gr.Row():
                         back_button5 = gr.Button(value="< Back", variant="secondary").\
                             style(full_width=False)
@@ -274,8 +271,7 @@ class VideoRemixer(TabBase):
                             output_filepath = gr.Textbox(label="Output Filepath", max_lines=1,
                                     info="Enter a path and filename for the remixed video")
                             with gr.Row():
-                                message_box60 = gr.Textbox(value=None, show_label=False,
-                                                          interactive=False)
+                                message_box60 = gr.Markdown(value=self.format_markdown("Click Save Remix to: Combine Processed Content with Audio Clips and Save Remix Video"))
                             gr.Markdown("*Progress can be tracked in the console*")
                             with gr.Row():
                                 back_button60 = gr.Button(value="< Back", variant="secondary").\
@@ -296,8 +292,7 @@ class VideoRemixer(TabBase):
                                                                 max_lines=1,
                                             info="Enter a path and filename for the remixed video")
                             with gr.Row():
-                                message_box61 = gr.Textbox(value=None, show_label=False,
-                                                          interactive=False)
+                                message_box61 = gr.Markdown(value=self.format_markdown("Click Save Custom Remix to: Apply Custom Options and save Custom Remix Video"))
                             gr.Markdown("*Progress can be tracked in the console*")
                             with gr.Row():
                                 back_button61 = gr.Button(value="< Back", variant="secondary").\
@@ -318,8 +313,7 @@ class VideoRemixer(TabBase):
                                                                 max_lines=1,
                                             info="Enter a path and filename for the remixed video")
                             with gr.Row():
-                                message_box62 = gr.Textbox(value=None, show_label=False,
-                                                          interactive=False)
+                                message_box62 = gr.Markdown(value=self.format_markdown("Click Save Marked Remix to: Apply Marking Options and save Marked Remix Video"))
                             gr.Markdown("*Progress can be tracked in the console*")
                             with gr.Row():
                                 back_button62 = gr.Button(value="< Back", variant="secondary").\
@@ -695,6 +689,8 @@ class VideoRemixer(TabBase):
             return f"<p style=\"color:hsl(60 100% 65%);{style}\">{text}</p>"
         elif format == "error":
             return f"<p style=\"color:hsl(0 100% 65%);{style}\">{text}</p>"
+        elif format == "highlight":
+            return f"<p style=\"color:hsl(284 100% 65%);{style}\">{text}</p>"
         else:
             return text
 
@@ -1080,9 +1076,12 @@ class VideoRemixer(TabBase):
         self.log("saving project after compiling scenes")
         self.state.save_progress("process")
 
+        tab4_restore_message = self.format_markdown("Click Compile Scenes to: Assemble Kept Scenes for Processing")
+        tab5_restore_message = self.format_markdown("Click Process Remix to: Perform all Processing Steps (can take from hours to days)")
+
         return gr.update(selected=self.TAB_PROC_OPTIONS),  \
-               gr.update(visible=True), \
-               "Next: Perform all Processing Steps (takes from hours to days)"
+               gr.update(value=tab4_restore_message), \
+               gr.update(value=tab5_restore_message)
 
     def back_button4(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
@@ -1178,18 +1177,24 @@ class VideoRemixer(TabBase):
             self.log("saving project after completing processing steps")
             self.state.save_progress("save")
 
+            tab5_restore_message = self.format_markdown("Click Process Remix to: Perform all Processing Steps (can take from hours to days)")
+            tab60_restore_message = self.format_markdown("Click Save Remix to: Combine Processed Content with Audio Clips and Save Remix Video")
+            tab61_restore_message = self.format_markdown("Click Save Custom Remix to: Apply Custom Options and save Custom Remix Video")
+            tab62_restore_message = self.format_markdown("Click Save Marked Remix to: Apply Marking Options and save Marked Remix Video")
+
             return gr.update(selected=self.TAB_SAVE_REMIX), \
-                   gr.update(visible=True), \
+                   gr.update(value=tab5_restore_message), \
                    jot.grab(), \
                    self.state.output_filepath, \
                    output_filepath_custom, \
                    output_filepath_marked, \
-                   None, None, None
+                   gr.update(value=tab60_restore_message), \
+                   gr.update(value=tab61_restore_message), \
+                   gr.update(value=tab62_restore_message)
         else:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
-                   gr.update(
-                value="At least one scene must be set to 'Keep' before processing can proceed"), \
-                   None, None, None, None, None, None, None
+                   gr.update(value=self.format_markdown("At least one scene must be set to 'Keep' before processing can proceed", "error")), \
+                   *self.empty_args(7)
 
     def back_button5(self):
         return gr.update(selected=self.TAB_COMPILE_SCENES)
@@ -1292,11 +1297,10 @@ class VideoRemixer(TabBase):
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             self.save_remix(global_options, kept_scenes)
-            return gr.update(value=f"Remixed video {output_filepath} is complete.",
-                            visible=True)
+            return gr.update(value=self.format_markdown(f"Remixed video {output_filepath} is complete.", "highlight"))
 
         except ValueError as error:
-            return gr.update(value=error, visible=True)
+            return gr.update(value=self.format_markdown(str(error), "error"))
 
     # User has clicked Save Custom Remix from Save Remix
     def next_button61(self, custom_video_options, custom_audio_options, output_filepath):
@@ -1304,10 +1308,9 @@ class VideoRemixer(TabBase):
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             self.save_custom_remix(output_filepath, global_options, kept_scenes,
                                    custom_video_options, custom_audio_options)
-            return gr.update(value=f"Remixed custom video {output_filepath} is complete.",
-                            visible=True)
+            return gr.update(value=self.format_markdown(f"Remixed custom video {output_filepath} is complete.", "highlight"))
         except ValueError as error:
-            return gr.update(value=error, visible=True)
+            return gr.update(value=self.format_markdown(str(error), "error"))
 
     # User has clicked Save Marked Remix from Save Remix
     def next_button62(self, marked_video_options, marked_audio_options, output_filepath):
@@ -1315,10 +1318,9 @@ class VideoRemixer(TabBase):
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             self.save_custom_remix(output_filepath, global_options, kept_scenes,
                                    marked_video_options, marked_audio_options)
-            return gr.update(value=f"Remixed marked video {output_filepath} is complete.",
-                            visible=True)
+            return gr.update(value=self.format_markdown(f"Remixed marked video {output_filepath} is complete.", "highlight"))
         except ValueError as error:
-            return gr.update(value=error, visible=True)
+            return gr.update(value=self.format_markdown(str(error), "error"))
 
     def back_button6(self):
         return gr.update(selected=self.TAB_PROC_OPTIONS)

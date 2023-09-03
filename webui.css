@@ -11,12 +11,13 @@
 :root {
     --frame-chooser-action: #008542;
     --main-output-highlight: #ee7400;
-    --feature-output-highlight: #72308A;
+    --feature-output-highlight: #72308a;
     --frame-chooser-action-dim: #004d26;
     --main-output-highlight-dim: hsl(29, 100%, 30%);
-    --message-box-text-info: #0aff85;
-    --message-box-text-warn: #ffff0a;
-    --message-box-text-error: #ff0a0a;
+    --message-box-text-info: hsl(120, 100%, 65%);
+    --message-box-text-warn: hsl(60, 100%, 65%);
+    --message-box-text-error: hsl(0, 100%, 65%);
+    --message-box-text-highlight: hsl(284, 100%, 65%);
 }
 
 #sideimage {
