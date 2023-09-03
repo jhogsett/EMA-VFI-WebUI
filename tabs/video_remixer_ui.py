@@ -335,8 +335,7 @@ class VideoRemixer(TabBase):
                                 "**_Drop a scene after processing has been already been done_**")
                                     scene_id_700 = gr.Number(value=-1, label="Scene Index")
                                     with gr.Row():
-                                        message_box700 = gr.Textbox(show_label=False,
-                                                                    interactive=False)
+                                        message_box700 = gr.Markdown(self.format_markdown("Click Drop Scene to: Remove all Processed Content for the specified scene"))
                                     drop_button700 = gr.Button("Drop Scene", variant="stop").\
                                         style(full_width=False)
 
@@ -352,8 +351,7 @@ class VideoRemixer(TabBase):
                                                                    value=None,
                                                                    choices=["Keep", "Drop"])
                                     with gr.Row():
-                                        message_box701 = gr.Textbox(show_label=False,
-                                                                    interactive=False)
+                                        message_box701 = gr.Markdown(self.format_markdown("Click Choose Scene Range to: Set the Scene Range to the specified state"))
                                     choose_button701 = gr.Button("Choose Scene Range",
                                                             variant="stop").style(full_width=False)
 
@@ -361,8 +359,7 @@ class VideoRemixer(TabBase):
                                     gr.Markdown("**_Split a Scene in two at the 50% point_**")
                                     scene_id_702 = gr.Number(value=-1, label="Scene Index")
                                     with gr.Row():
-                                        message_box702 = gr.Textbox(show_label=False,
-                                                                    interactive=False)
+                                        message_box702 = gr.Markdown(self.format_markdown("Click Split Scene to: Split the scenes into Two Scenes at the Halfway Point"))
                                     split_button702 = gr.Button("Split Scene", variant="stop").\
                                         style(full_width=False)
 
@@ -378,7 +375,7 @@ class VideoRemixer(TabBase):
                                             gr.Markdown(
                                 "Delete the contents of the 'purged_content' project directory.")
                                     with gr.Row():
-                                        message_box710 = gr.Textbox(show_label=False)
+                                        message_box710 = gr.Markdown(self.format_markdown("Click Delete Purged Content to: Permanently Remove soft-deleted content"))
                                     gr.Markdown("*Progress can be tracked in the console*")
                                     with gr.Row():
                                         delete_button710 = gr.Button(value="Delete Purged Content "\
@@ -409,7 +406,7 @@ class VideoRemixer(TabBase):
                                             gr.Markdown(
                                     "Delete Thumbnails used to display scenes in Scene Chooser.")
                                     with gr.Row():
-                                        message_box711 = gr.Textbox(show_label=False)
+                                        message_box711 = gr.Markdown(self.format_markdown("Click Delete Selected Content to: Permanently Remove the selected content"))
                                     gr.Markdown("*Progress can be tracked in the console*")
                                     with gr.Row():
                                         delete_button711 = gr.Button(
@@ -470,7 +467,7 @@ class VideoRemixer(TabBase):
                                             gr.Markdown(
         "Delete Video+Audio MP4 files used as inputs to concatentate into the final Remix Video.")
                                     with gr.Row():
-                                        message_box712 = gr.Textbox(show_label=False)
+                                        message_box712 = gr.Markdown(self.format_markdown("Click Delete Selected Content to: Permanently Remove the selected content"))
                                     gr.Markdown("*Progress can be tracked in the console*")
                                     with gr.Row():
                                         delete_button712 = gr.Button(
@@ -491,7 +488,7 @@ class VideoRemixer(TabBase):
                                             gr.Markdown(
             "Deletes all created project content. **Does not delete original and remixed videos.**")
                                     with gr.Row():
-                                        message_box713 = gr.Textbox(show_label=False)
+                                        message_box713 = gr.Markdown(self.format_markdown("Click Delete Processed Content to: Permanently Remove all processed content"))
                                     gr.Markdown("*Progress can be tracked in the console*")
                                     with gr.Row():
                                         delete_button713 = gr.Button(
@@ -679,6 +676,9 @@ class VideoRemixer(TabBase):
     def empty_args(self, num):
         return [None for _ in range(num)]
 
+    def noop_args(self, num):
+        return [gr.update(visible=True) for _ in range(num)]
+
     def format_markdown(self, text, format="info"):
         style = "font-weight:bold;"
         if format == "plain":
@@ -847,7 +847,7 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_SETTINGS), \
                 gr.update(value=self.format_markdown(str(error), "error")), \
-                *self.empty_args(3)
+                *self.noop_args(3)
 
     def back_button1(self):
         return gr.update(selected=self.TAB_REMIX_HOME)
@@ -857,6 +857,11 @@ class VideoRemixer(TabBase):
     # User has clicked Set Up Project from Set Up Project
     def next_button2(self, thumbnail_type, min_frames_per_scene):
         global_options = self.config.ffmpeg_settings["global_options"]
+
+        if not self.state.project_path:
+            return gr.update(selected=self.TAB_SET_UP_PROJECT), \
+                   gr.update(value=self.format_markdown(f"Project settings have not yet been saved on the previous tab", "error")), \
+                   *self.empty_args(5)
 
         self.state.thumbnail_type = thumbnail_type
         self.state.min_frames_per_scene = min_frames_per_scene
@@ -1061,6 +1066,11 @@ class VideoRemixer(TabBase):
 
     # User has clicked Compile Scenes from Compile Scenes
     def next_button4(self):
+        if not self.state.project_path:
+            return gr.update(selected=self.TAB_COMPILE_SCENES), \
+                   gr.update(value=self.format_markdown(f"The project has not yet been set up from the Set Up Project tab.", "error")), \
+                   *self.empty_args(5)
+
         self.log("moving previously dropped scenes back to scenes directory")
         self.state.uncompile_scenes()
 
@@ -1194,7 +1204,7 @@ class VideoRemixer(TabBase):
         else:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
                    gr.update(value=self.format_markdown("At least one scene must be set to 'Keep' before processing can proceed", "error")), \
-                   *self.empty_args(7)
+                   *self.noop_args(7)
 
     def back_button5(self):
         return gr.update(selected=self.TAB_COMPILE_SCENES)
@@ -1330,13 +1340,11 @@ class VideoRemixer(TabBase):
         last_scene = num_scenes - 1
 
         if not isinstance(scene_index, (int, float)):
-            message = f"Please enter a Scene Index to get started"
-            return gr.update(visible=True, value=message)
+            return gr.update(value=self.format_markdown(f"Please enter a Scene Index to get started", "warning"))
 
         scene_index = int(scene_index)
         if scene_index < 0 or scene_index > last_scene:
-            message = f"Please enter a Scene Index from 0 to {last_scene}"
-            return gr.update(visible=True, value=message)
+            return gr.update(value=self.format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning"))
 
         removed = self.state.force_drop_processed_scene(scene_index)
         self.log(f"removed files: {removed}")
@@ -1344,8 +1352,7 @@ class VideoRemixer(TabBase):
             f"saving project after using force_drop_processed_scene for scene index {scene_index}")
         self.state.save()
         removed = "\r\n".join(removed)
-        message = f"Removed:\r\n{removed}"
-        return gr.update(visible=True, value=message)
+        return gr.update(value=self.format_markdown(f"Removed:\r\n{removed}"))
 
     def choose_button701(self, first_scene_index, last_scene_index, scene_state):
         num_scenes = len(self.state.scene_names)
@@ -1353,8 +1360,9 @@ class VideoRemixer(TabBase):
 
         if not isinstance(first_scene_index, (int, float)) \
                 or not isinstance(last_scene_index, (int, float)):
-            message = "Please enter Scene Indexes to get started"
-            return gr.update(visible=True, value=message)
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+    gr.update(value=self.format_markdown("Please enter Scene Indexes to get started", "warning")), \
+                *self.empty_args(5)
 
         first_scene_index = int(first_scene_index)
         last_scene_index = int(last_scene_index)
@@ -1362,16 +1370,19 @@ class VideoRemixer(TabBase):
                 or first_scene_index > last_scene \
                 or last_scene_index < 0 \
                 or last_scene_index > last_scene:
-            message = f"Please enter valid Scene Indexes between 0 and {last_scene} to get started"
-            return gr.update(visible=True, value=message)
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                gr.update(value=self.format_markdown(f"Please enter valid Scene Indexes between 0 and {last_scene} to get started", "warning")), \
+                *self.empty_args(5)
 
         if first_scene_index >= last_scene_index:
-            message = f"'Ending Scene Index' must be higher than 'Starting Scene Index''"
-            return gr.update(visible=True, value=message)
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                gr.update(value=self.format_markdown(f"'Ending Scene Index' must be higher than 'Starting Scene Index'", "warning")), \
+                *self.empty_args(5)
 
         if scene_state not in ["Keep", "Drop"]:
-            message = "Please make a Scenes Choice to get started"
-            return gr.update(visible=True, value=message)
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+    gr.update(value=self.format_markdown("Please make a Scenes Choice to get started", "warning")), \
+                *self.empty_args(5)
 
         for scene_index in range(first_scene_index, last_scene_index + 1):
             scene_name = self.state.scene_names[scene_index]
@@ -1386,7 +1397,7 @@ class VideoRemixer(TabBase):
         self.state.save()
 
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-            gr.update(visible=True, value=message), \
+            gr.update(value=self.format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
 
     def split_button702(self, scene_index):
@@ -1394,27 +1405,24 @@ class VideoRemixer(TabBase):
         split_point = 0.5 # make variable later
 
         if not isinstance(scene_index, (int, float)):
-            message = f"Please enter a Scene Index to get started"
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                gr.update(visible=True, value=message), \
+                gr.update(value=self.format_markdown("Please enter a Scene Index to get started", "warning")), \
                 *self.empty_args(5)
 
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
         scene_index = int(scene_index)
         if scene_index < 0 or scene_index > last_scene:
-            message = f"Please enter a Scene Index from 0 to {last_scene}"
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                gr.update(visible=True, value=message), \
+                gr.update(value=self.format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning")), \
                 *self.empty_args(5)
 
         scene_name = self.state.scene_names[scene_index]
         first_frame, last_frame, num_width = details_from_group_name(scene_name)
         num_frames = (last_frame - first_frame) + 1
         if num_frames < 2:
-            message = f"Scene must have at least two frames to be split"
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                gr.update(visible=True, value=message), \
+                gr.update(value=self.format_markdown("Scene must have at least two frames to be split", "error")), \
                 *self.empty_args(5)
 
         # ensure the split is at least at the 50% point
@@ -1447,7 +1455,7 @@ class VideoRemixer(TabBase):
             message = f"Mismatch between expected frames ({num_frames}) and found frames " + \
                 f"({num_frame_files}) in scene path '{original_scene_path}'"
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                gr.update(visible=True, value=message), \
+                gr.update(value=self.format_markdown(message, "error")), \
                     *self.empty_args(5)
 
         messages = Jot()
@@ -1510,15 +1518,16 @@ class VideoRemixer(TabBase):
 
         message = messages.report()
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-            gr.update(visible=True, value=message), \
+            gr.update(value=self.format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
 
     def delete_button710(self, delete_purged):
         if delete_purged:
             self.log("about to remove content from 'purged_content' directory")
             removed = self.state.delete_purged_content()
-            message = f"Removed: {removed}"
-            return gr.update(visible=True, value=message)
+            return gr.update(value=self.format_markdown(f"Removed: {removed}"))
+        else:
+            return gr.update(value=self.format_markdown(f"Removed: None"))
 
     def select_all_button710(self):
         return gr.update(value=True)
@@ -1540,7 +1549,7 @@ class VideoRemixer(TabBase):
             message = f"Removed:\r\n{removed_str}"
         else:
             message = f"Removed: None"
-        return gr.update(visible=True, value=message)
+        return gr.update(value=self.format_markdown(message))
 
     def select_all_button711(self):
         return gr.update(value=True), \
@@ -1584,7 +1593,7 @@ class VideoRemixer(TabBase):
             message = f"Removed:\r\n{removed_str}"
         else:
             message = f"Removed: None"
-        return gr.update(visible=True, value=message)
+        return gr.update(value=self.format_markdown(message))
 
     def select_all_button712(self):
         return gr.update(value=True), \
@@ -1627,4 +1636,4 @@ class VideoRemixer(TabBase):
             message = f"Removed:\r\n{removed_str}"
         else:
             message = f"Removed: None"
-        return gr.update(visible=True, value=message)
+        return gr.update(value=self.format_markdown(message))
