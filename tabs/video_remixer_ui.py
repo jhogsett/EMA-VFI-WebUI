@@ -242,8 +242,8 @@ class VideoRemixer(TabBase):
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                         WebuiTips.video_remixer_compile.render()
 
-                ## PROCESSING OPTIONS
-                with gr.Tab(SimpleIcons.SIX + " Processing Options", id=self.TAB_PROC_OPTIONS):
+                ## PROCESS REMIX
+                with gr.Tab(SimpleIcons.SIX + " Process Remix", id=self.TAB_PROC_OPTIONS):
                     gr.Markdown("**Ready to Process Content for Remix Video**")
                     with gr.Row():
                         resize = gr.Checkbox(label="Fix Aspect Ratio", value=True)
@@ -849,6 +849,8 @@ class VideoRemixer(TabBase):
                 gr.update(value=self.format_markdown(f"Scene Split Seconds should be >= 1", "warning")),\
                 *self.empty_args(3)
 
+        # TODO validate the other entries
+
         try:
             # this is first project write
             self.log(f"creating project path {project_path}")
@@ -1126,9 +1128,9 @@ class VideoRemixer(TabBase):
     def back_button4(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
 
-    ### PROCESSING OPTIONS EVENT HANDLERS
+    ### PROCESS REMIX EVENT HANDLERS
 
-    # User has clicked Process Remix from Processing Options
+    # User has clicked Process Remix from Process Remix
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option):
         self.state.resynthesize = resynthesize
         self.state.inflate = inflate
