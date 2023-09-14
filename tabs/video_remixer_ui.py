@@ -47,7 +47,7 @@ class VideoRemixer(TabBase):
 
     TAB00_DEFAULT_MESSAGE = "Click New Project to: Inspect Video and Count Frames (can take a minute or more)"
     TAB01_DEFAULT_MESSAGE = "Click Open Project to: Resume Editing an Existing Project"
-    TAB1_DEFAULT_MESSAGE = "Click Next to: Confirm Project Settings and Choose Thumbnail Type"
+    TAB1_DEFAULT_MESSAGE = "Click Next to: Save Project Settings and Choose Thumbnail Type"
     TAB2_DEFAULT_MESSAGE = "Click Set Up Project to: Create Scenes and Thumbnails (can take from minutes to hours)"
     TAB4_DEFAULT_MESSAGE = "Click Compile Scenes to: Assemble Kept Scenes for Processing (can take a few seconds)"
     TAB5_DEFAULT_MESSAGE = "Click Process Remix to: Perform all Processing Steps (can take from hours to days)"
@@ -72,7 +72,7 @@ class VideoRemixer(TabBase):
             with gr.Tabs() as tabs_video_remixer:
 
                 ### NEW PROJECT
-                with gr.Tab("Remix Home", id=self.TAB_REMIX_HOME):
+                with gr.Tab(SimpleIcons.ONE + " Remix Home", id=self.TAB_REMIX_HOME):
                     with gr.Row():
                         with gr.Column():
                             gr.Markdown("**Input a video to get started remixing**")
@@ -98,7 +98,7 @@ class VideoRemixer(TabBase):
                         WebuiTips.video_remixer_home.render()
 
                 ### REMIX SETTINGS
-                with gr.Tab("Remix Settings", id=self.TAB_REMIX_SETTINGS):
+                with gr.Tab(SimpleIcons.TWO + " Remix Settings", id=self.TAB_REMIX_SETTINGS):
                     gr.Markdown("**Confirm Remixer Settings**")
                     with gr.Box():
                         video_info1 = gr.Markdown("Video Details")
@@ -137,7 +137,7 @@ class VideoRemixer(TabBase):
                         WebuiTips.video_remixer_settings.render()
 
                 ## SET UP PROJECT
-                with gr.Tab("Set Up Project", id=self.TAB_SET_UP_PROJECT):
+                with gr.Tab(SimpleIcons.THREE + " Set Up Project", id=self.TAB_SET_UP_PROJECT):
                     gr.Markdown("**Ready to Set Up Video Remixer Project**")
                     with gr.Box():
                         project_info2 = gr.Markdown("Project Details")
@@ -163,7 +163,7 @@ class VideoRemixer(TabBase):
                         WebuiTips.video_remixer_setup.render()
 
                 ## CHOOSE SCENES
-                with gr.Tab("Choose Scenes", id=self.TAB_CHOOSE_SCENES):
+                with gr.Tab(SimpleIcons.FOUR + " Choose Scenes", id=self.TAB_CHOOSE_SCENES):
                     with gr.Row():
                         with gr.Column():
                             with gr.Row():
@@ -214,7 +214,7 @@ class VideoRemixer(TabBase):
                         WebuiTips.video_remixer_choose.render()
 
                 ## COMPILE SCENES
-                with gr.Tab("Compile Scenes", id=self.TAB_COMPILE_SCENES):
+                with gr.Tab(SimpleIcons.FIVE + " Compile Scenes", id=self.TAB_COMPILE_SCENES):
                     with gr.Box():
                         project_info4 = gr.Markdown("Chosen Scene Details")
                     with gr.Row():
@@ -228,7 +228,7 @@ class VideoRemixer(TabBase):
                         WebuiTips.video_remixer_compile.render()
 
                 ## PROCESSING OPTIONS
-                with gr.Tab("Processing Options", id=self.TAB_PROC_OPTIONS):
+                with gr.Tab(SimpleIcons.SIX + " Processing Options", id=self.TAB_PROC_OPTIONS):
                     gr.Markdown("**Ready to Process Content for Remix Video**")
                     with gr.Row():
                         resize = gr.Checkbox(label="Fix Aspect Ratio", value=True)
@@ -267,7 +267,7 @@ class VideoRemixer(TabBase):
                         WebuiTips.video_remixer_processing.render()
 
                 ## SAVE REMIX
-                with gr.Tab("Save Remix", id=self.TAB_SAVE_REMIX):
+                with gr.Tab(SimpleIcons.FINISH_FLAG + " Save Remix", id=self.TAB_SAVE_REMIX):
                     gr.Markdown("**Ready to Finalize Scenes and Save Remixed Video**")
                     with gr.Row():
                         summary_info6 = gr.Textbox(label="Processed Content", lines=6,
@@ -336,11 +336,11 @@ class VideoRemixer(TabBase):
                         WebuiTips.video_remixer_save.render()
 
                 ## REMIX EXTRA
-                with gr.Tab("Remix Extra", id=self.TAB_REMIX_EXTRA):
+                with gr.Tab(SimpleIcons.COCKTAIL + " Remix Extra", id=self.TAB_REMIX_EXTRA):
                     with gr.Tabs() as tabs_remix_extra:
-                        with gr.Tab(label="Utilities", id=self.TAB_EXTRA_UTILITIES):
+                        with gr.Tab(SimpleIcons.TOOLBOX + " Utilities", id=self.TAB_EXTRA_UTILITIES):
                             with gr.Tabs() as tabs_remix_extra_utils:
-                                with gr.Tab("Drop Processed Scene", id=self.TAB_EXTRA_UTIL_DROP_PROCESSED):
+                                with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene", id=self.TAB_EXTRA_UTIL_DROP_PROCESSED):
                                     gr.Markdown(
                                 "**_Drop a scene after processing has been already been done_**")
                                     scene_id_700 = gr.Number(value=-1, label="Scene Index")
@@ -349,7 +349,7 @@ class VideoRemixer(TabBase):
                                     drop_button700 = gr.Button("Drop Scene", variant="stop").\
                                         style(full_width=False)
 
-                                with gr.Tab("Choose Scene Range", id=self.TAB_EXTRA_UTIL_CHOOSE_RANGE):
+                                with gr.Tab(SimpleIcons.HEART_HANDS + " Choose Scene Range", id=self.TAB_EXTRA_UTIL_CHOOSE_RANGE):
                                     gr.Markdown("**_Keep or Drop a range of scenes_**")
                                     with gr.Row():
                                         first_scene_id_701 = gr.Number(value=-1,
@@ -365,7 +365,7 @@ class VideoRemixer(TabBase):
                                     choose_button701 = gr.Button("Choose Scene Range",
                                                             variant="stop").style(full_width=False)
 
-                                with gr.Tab("Split Scene", id=self.TAB_EXTRA_UTIL_SPLIT_SCENE):
+                                with gr.Tab(SimpleIcons.AXE + " Split Scene", id=self.TAB_EXTRA_UTIL_SPLIT_SCENE):
                                     gr.Markdown("**_Split a Scene in two at the 50% point_**")
                                     scene_id_702 = gr.Number(value=-1, label="Scene Index")
                                     with gr.Row():
@@ -373,9 +373,9 @@ class VideoRemixer(TabBase):
                                     split_button702 = gr.Button("Split Scene", variant="stop").\
                                         style(full_width=False)
 
-                        with gr.Tab(label="Reduce Footprint", id=self.TAB_EXTRA_REDUCE):
+                        with gr.Tab(SimpleIcons.WASTE_BASKET +" Reduce Footprint", id=self.TAB_EXTRA_REDUCE):
                             with gr.Tabs():
-                                with gr.Tab(label="Remove Soft-Deleted Content"):
+                                with gr.Tab(SimpleIcons.CROSSMARK + " Remove Soft-Deleted Content"):
                                     gr.Markdown(
                     "**_Delete content set aside when remix processing selections are changed_**")
                                     with gr.Row():
@@ -395,7 +395,7 @@ class VideoRemixer(TabBase):
                                         select_none_button710 = gr.Button(value="Select None").\
                                             style(full_width=False)
 
-                                with gr.Tab(label="Remove Scene Chooser Content"):
+                                with gr.Tab(SimpleIcons.CROSSMARK + " Remove Scene Chooser Content"):
                                     gr.Markdown(
                             "**_Delete source PNG frame files, thumbnails and dropped scenes_**")
                                     with gr.Row():
@@ -427,7 +427,7 @@ class VideoRemixer(TabBase):
                                         select_none_button711 = gr.Button(value="Select None").\
                                             style(full_width=False)
 
-                                with gr.Tab(label="Remove Remix Video Source Content"):
+                                with gr.Tab(SimpleIcons.CROSSMARK + " Remove Remix Video Source Content"):
                                     gr.Markdown(
                                     "**_Clear space after final Remix Videos have been saved_**")
                                     with gr.Row():
@@ -488,7 +488,7 @@ class VideoRemixer(TabBase):
                                         select_none_button712 = gr.Button(value="Select None").\
                                             style(full_width=False)
 
-                                with gr.Tab(label="Remove All Processed Content"):
+                                with gr.Tab(SimpleIcons.BOMB + " Remove All Processed Content"):
                                     gr.Markdown(
                                     "**_Delete all processed project content (except videos)_**")
                                     with gr.Row():

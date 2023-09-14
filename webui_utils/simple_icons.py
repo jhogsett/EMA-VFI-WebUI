@@ -11,6 +11,8 @@ class SimpleIcons:
     OPEN_FOLDER = "📂"
 
     DIVIDE = "➗"
+    FAST_DOWN = "⏬"
+    FIVE = "5️⃣"
     FOUR = "4️⃣"
     GEAR = "⚙️"
     INFO = "ℹ️"
@@ -22,10 +24,12 @@ class SimpleIcons:
     RECYCLE = "♻️"
     RIGHT_ARROW = "➡️"
     SCISSORS = "✂️"
+    SIX = "6️⃣"
     THREE = "3️⃣"
     TOOLBOX = "🧰"
     TWO = "2️⃣"
     UP_DOWN_ARROW = "↕️"
+    WASTE_BASKET = "🗑️"
     WHITE_QUESTION = "❔"
     WRENCH = "🔧"
 
@@ -64,18 +68,23 @@ class SimpleIcons:
     VULCAN_HAND = "🖖"
 
     COPYRIGHT = "©️"
+    CROSSMARK = "❌"
     NO_ENTRY = "⛔"
     PROHIBITED = "🚫"
     WARNING = "⚠️"
 
+    AXE = "🪓"
     BALLOON = "🎈"
     BABY = "👶"
     BANDAGE = "🩹"
     BOMB = "💣"
+    BROKEN_HEART = "💔"
     CHERRY_BLOSSOM = "🌸"
+    COCKTAIL = "🍸"
     COOL = "🆒"
     EGGPLANT = "🍆"
     EYES = "👀"
+    FINISH_FLAG = "🏁"
     FLASHLIGHT ="🔦"
     GEMSTONE = "💎"
     GHOST = "👻"
@@ -84,6 +93,7 @@ class SimpleIcons:
     HAMMER = "🔨"
     HAMMER_WRENCH = "🛠️"
     HEART = "❤️"
+    HEART_HANDS = "🫶"
     INCREASING = "📈"
     LABCOAT = "🥼"
     MAGIC_WAND = "🪄"
@@ -91,6 +101,7 @@ class SimpleIcons:
     PACKAGE = "📦"
     ROBOT = "🤖"
     ROCKET = "🚀"
+
     SCROLL = "📜"
     SEEDLING = "🌱"
     SOAP = "🧼"
@@ -122,21 +133,29 @@ class SimpleIcons:
     ]
 
     APP_ICONS = [
+        AXE,
         BALLOON,
         BANDAGE,
         BAR_CHART,
+        BOMB,
+        BROKEN_HEART,
         CLAPPER,
+        COCKTAIL,
         CONTROLS,
         COPYRIGHT,
+        CROSSMARK,
         DIVIDE,
         DOCUMENT,
         FILM,
+        FINISH_FLAG,
+        FIVE,
         FOUR,
         GEAR,
         GEMSTONE,
         GLOBE,
         HAMMER,
         HAMMER_WRENCH,
+        HEART_HANDS,
         INCREASING,
         INFO,
         LABCOAT,
@@ -153,14 +172,17 @@ class SimpleIcons:
         ROCKET,
         SCROLL,
         SEEDLING,
+        SIX,
         SPONGE,
         STETHOSCOPE,
         STILL,
         TELEVISION,
         THREE,
+        TOOLBOX,
         TWO,
         TWO_HEARTS,
         VULCAN_HAND,
         WARNING,
+        WASTE_BASKET,
         WATCH,
 ]
