@@ -111,7 +111,7 @@ class VideoRemixer(TabBase):
                         deinterlace = gr.Checkbox(label="Deinterlace Soure Video")
                     with gr.Row():
                         split_type = gr.Radio(label="Split Type", value="Scene",
-                                                    choices=["Scene", "Break", "Minute"])
+                                                    choices=["Scene", "Break", "Minute", "None"])
                         scene_threshold = gr.Slider(value=0.6, minimum=0.0, maximum=1.0,
                                                     step=0.01, label="Scene Detection Threshold",
                                 info="Value between 0.0 and 1.0 (higher = fewer scenes detected)")
@@ -863,7 +863,7 @@ class VideoRemixer(TabBase):
     def back_button1(self):
         return gr.update(selected=self.TAB_REMIX_HOME)
 
-    ### REMIX SETUP EVENT HANDLERS
+    ### SET UP PROJECT EVENT HANDLERS
 
     # User has clicked Set Up Project from Set Up Project
     def next_button2(self, thumbnail_type, min_frames_per_scene):

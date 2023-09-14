@@ -4,8 +4,8 @@ import shutil
 import yaml
 from yaml import Loader, YAMLError
 from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
-from webui_utils.file_utils import split_filepath, remove_directories, create_directory, \
-    get_directories, get_files, clean_directories, clean_filename, get_matching_files
+from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
+    clean_directories, clean_filename
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
@@ -322,8 +322,8 @@ class VideoRemixerState():
                                 float(self.break_ratio),
                                 log_fn).split()
                     Mtqdm().update_bar(bar)
-
-            else: # split by minute
+            elif self.split_type == "Minute":
+                # split by minute
                 SplitFrames(
                     self.frames_path,
                     self.scenes_path,
@@ -331,6 +331,18 @@ class VideoRemixerState():
                     "precise",
                     0,
                     self.frames_per_minute,
+                    "copy",
+                    False,
+                    log_fn).split()
+            else:
+                # single split
+                SplitFrames(
+                    self.frames_path,
+                    self.scenes_path,
+                    "png",
+                    "precise",
+                    1,
+                    0,
                     "copy",
                     False,
                     log_fn).split()

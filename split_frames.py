@@ -92,8 +92,8 @@ class SplitFrames:
             self.num_groups = needed_groups
             self.log(f"overriding 'num_groups' with computed value {needed_groups}")
         else:
-            if self.num_groups < 2:
-                raise ValueError("'num_groups' must be >= 2")
+            if self.num_groups < 1:
+                raise ValueError("'num_groups' must be >= 1")
             files_per_group = int(math.ceil(num_files / self.num_groups))
         self.log(f"Splitting files to {self.num_groups} groups of {files_per_group} files")
 
