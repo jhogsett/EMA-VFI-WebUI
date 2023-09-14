@@ -103,29 +103,44 @@ class VideoRemixer(TabBase):
                     with gr.Box():
                         video_info1 = gr.Markdown("Video Details")
                     with gr.Row():
-                        project_path = gr.Textbox(label="Set Project Path",
-                                            placeholder="Path on this server to store project data")
+                        with gr.Column():
+                            project_path = gr.Textbox(label="Set Project Path",
+                                                placeholder="Path on this server to store project data")
+                        with gr.Column():
+                            split_type = gr.Radio(label="Split Type", value="Scene",
+                                                        choices=["Scene", "Break", "Time", "None"])
                     with gr.Row():
-                        project_fps = gr.Slider(label="Remix Frame Rate", value=def_project_fps,
-                                                minimum=1.0, maximum=max_project_fps, step=0.01)
-                        deinterlace = gr.Checkbox(label="Deinterlace Soure Video")
+                        with gr.Column():
+                            with gr.Row():
+                                project_fps = gr.Slider(label="Remix Frame Rate", value=def_project_fps,
+                                                        minimum=1.0, maximum=max_project_fps, step=0.01)
+                                deinterlace = gr.Checkbox(label="Deinterlace Soure Video")
+                        with gr.Column():
+                            with gr.Tabs():
+                                with gr.Tab("Scene Settings"):
+                                    scene_threshold = gr.Slider(value=0.6, minimum=0.0, maximum=1.0,
+                                                                step=0.01, label="Scene Detection Threshold",
+                                            info="Value between 0.0 and 1.0 (higher = fewer scenes detected)")
+                                with gr.Tab("Break Settings"):
+                                    with gr.Row():
+                                        break_duration = gr.Slider(value=2.0, minimum=0.0, maximum=30.0,
+                                                                    step=0.25, label="Break Minimum Duration",
+                                                                    info="Choose a duration in seconds")
+                                        break_ratio = gr.Slider(value=0.98, minimum=0.0, maximum=1.0, step=0.01,
+                                                                    label="Break Black Frame Ratio",
+                                                                    info="Choose a value between 0.0 and 1.0")
+                                with gr.Tab("Time Settings"):
+                                    split_time = gr.Number(value=60, precision=0, label="Scene Split Seconds",
+                                                           info="Seconds for each split scene")
                     with gr.Row():
-                        split_type = gr.Radio(label="Split Type", value="Scene",
-                                                    choices=["Scene", "Break", "Minute", "None"])
-                        scene_threshold = gr.Slider(value=0.6, minimum=0.0, maximum=1.0,
-                                                    step=0.01, label="Scene Detection Threshold",
-                                info="Value between 0.0 and 1.0 (higher = fewer scenes detected)")
-                        break_duration = gr.Slider(value=2.0, minimum=0.0, maximum=30.0,
-                                                    step=0.25, label="Break Minimum Duration",
-                                                    info="Choose a duration in seconds")
-                        break_ratio = gr.Slider(value=0.98, minimum=0.0, maximum=1.0, step=0.01,
-                                                    label="Break Black Frame Ratio",
-                                                    info="Choose a value between 0.0 and 1.0")
-                    with gr.Row():
-                        resize_w = gr.Number(label="Resize Width")
-                        resize_h = gr.Number(label="Resize Height")
-                        crop_w = gr.Number(label="Crop Width")
-                        crop_h = gr.Number(label="Crop Height")
+                        with gr.Column():
+                            with gr.Row():
+                                resize_w = gr.Number(label="Resize Width")
+                                resize_h = gr.Number(label="Resize Height")
+                        with gr.Column():
+                            with gr.Row():
+                                crop_w = gr.Number(label="Crop Width")
+                                crop_h = gr.Number(label="Crop Height")
 
                     message_box1 = gr.Markdown(value=self.format_markdown(self.TAB1_DEFAULT_MESSAGE))
                     with gr.Row():
@@ -516,7 +531,7 @@ class VideoRemixer(TabBase):
         next_button01.click(self.next_button01,
                            inputs=project_load_path,
                            outputs=[tabs_video_remixer, message_box01, video_info1, project_path,
-                                project_fps, deinterlace, split_type, scene_threshold,
+                                project_fps, deinterlace, split_type, split_time, scene_threshold,
                                 break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
                                 project_info2, thumbnail_type, min_frames_per_scene,
                                 scene_index, scene_label, scene_image, scene_state, scene_info,
@@ -526,7 +541,7 @@ class VideoRemixer(TabBase):
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold,
                                 break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
-                                deinterlace],
+                                deinterlace, split_time],
                            outputs=[tabs_video_remixer, message_box1, project_info2, message_box2,
                                 project_load_path])
 
@@ -744,22 +759,23 @@ class VideoRemixer(TabBase):
 
     # User has clicked Open Project > from Remix Home
     def next_button01(self, project_path):
+        empty_args = self.empty_args(29)
         if not project_path:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=self.format_markdown("Enter a path to a Video Remixer project directory on this server to get started", "warning")), \
-                   *self.empty_args(28)
+                   *empty_args
 
         if not os.path.exists(project_path):
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=self.format_markdown(f"Directory '{project_path}' was not found", "error")), \
-                   *self.empty_args(28)
+                   *empty_args
 
         try:
             project_file = self.state.determine_project_filepath(project_path)
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=self.format_markdown(str(error), "error")), \
-                   *self.empty_args(28)
+                   *empty_args
 
         try:
             self.state = VideoRemixerState.load(project_file)
@@ -767,7 +783,7 @@ class VideoRemixer(TabBase):
             self.log(f"error opening project: {error}")
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=self.format_markdown(str(error), "error")), \
-                   *self.empty_args(28)
+                   *empty_args
 
         if self.state.project_ported(project_file):
             try:
@@ -776,7 +792,7 @@ class VideoRemixer(TabBase):
                 self.log(f"error opening ported project at {project_file}: {error}")
                 return gr.update(selected=self.TAB_REMIX_HOME), \
                     gr.update(value=self.format_markdown(str(error), "error")), \
-                    *self.empty_args(28)
+                   *empty_args
 
         messages = self.state.post_load_integrity_check()
         if messages:
@@ -793,6 +809,7 @@ class VideoRemixer(TabBase):
             self.state.tryattr("project_fps", self.config.remixer_settings["def_project_fps"]), \
             self.state.tryattr("deinterlace", self.state.UI_SAFETY_DEFAULTS["deinterlace"]), \
             self.state.tryattr("split_type", self.state.UI_SAFETY_DEFAULTS["split_type"]), \
+            self.state.tryattr("split_time", self.state.UI_SAFETY_DEFAULTS["split_time"]), \
             self.state.tryattr("scene_threshold", \
                                self.state.UI_SAFETY_DEFAULTS["scene_threshold"]), \
             self.state.tryattr("break_duration", self.state.UI_SAFETY_DEFAULTS["break_duration"]), \
@@ -819,12 +836,17 @@ class VideoRemixer(TabBase):
 
     # User has clicked Next > from Remix Settings
     def next_button1(self, project_path, project_fps, split_type, scene_threshold, break_duration, \
-                     break_ratio, resize_w, resize_h, crop_w, crop_h, deinterlace):
+                     break_ratio, resize_w, resize_h, crop_w, crop_h, deinterlace, split_time):
         self.state.project_path = project_path
 
         if not is_safe_path(project_path):
             return gr.update(selected=self.TAB_REMIX_SETTINGS), \
                 gr.update(value=self.format_markdown(f"The project path is not valid", "warning")),\
+                *self.empty_args(3)
+
+        if split_time < 1:
+            return gr.update(selected=self.TAB_REMIX_SETTINGS), \
+                gr.update(value=self.format_markdown(f"Scene Split Seconds should be >= 1", "warning")),\
                 *self.empty_args(3)
 
         try:
@@ -842,6 +864,7 @@ class VideoRemixer(TabBase):
             self.state.crop_w = int(crop_w)
             self.state.crop_h = int(crop_h)
             self.state.deinterlace = deinterlace
+            self.state.split_time = split_time
             self.state.project_info2 = self.state.project_settings_report()
 
             # this is the first time project progress advances

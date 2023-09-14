@@ -46,9 +46,10 @@ class VideoRemixerState():
         self.crop_h = None
         self.deinterlace = None
         self.min_frames_per_scene = None
+        self.split_time = None
 
         # set on confirming set up options
-        self.frames_per_minute = None
+        self.split_frames = None
         self.project_info2 = None # re-set on re-opening project
 
         # set on confirming project setup
@@ -108,7 +109,8 @@ class VideoRemixerState():
         "inflate" : True,
         "upscale" : True,
         "upscale_option" : "2X",
-        "min_frames_per_scene" : 10
+        "min_frames_per_scene" : 10,
+        "split_time" : 60,
     }
 
     # set project settings UI defaults in case the project is reopened
@@ -127,6 +129,7 @@ class VideoRemixerState():
         self.upscale = self.UI_SAFETY_DEFAULTS["upscale"]
         self.upscale_option = self.UI_SAFETY_DEFAULTS["upscale_option"]
         self.min_frames_per_scene = self.UI_SAFETY_DEFAULTS["min_frames_per_scene"]
+        self.split_time = self.UI_SAFETY_DEFAULTS["split_time"]
 
     # how far progressed into project and the tab ID to return to on re-opening
     PROGRESS_STEPS = {
@@ -207,6 +210,9 @@ class VideoRemixerState():
             raise ValueError(f"Project file {project_file} was not found")
         return project_file
 
+    def calc_split_frames(self, fps, seconds):
+        return round(float(fps) * float(seconds))
+
     def project_settings_report(self):
         with Jot() as jot:
             jot.down(f"Project Path: {self.project_path}")
@@ -218,11 +224,15 @@ class VideoRemixerState():
                 jot.down(f"| Frame Rate | Deinterlace | Resize To | Crop To | Split Type | Minimum Duration | Black Ratio |")
                 jot.down(f"| :-: | :-: | :-: | :-: | :-: | :-: | :-: |")
                 jot.down(f"| {float(self.project_fps):.2f} | {self.deinterlace} | {self.resize_w} x {self.resize_h} | {self.crop_w} x {self.crop_h} | {self.split_type} | {self.break_duration} | {self.break_ratio} |")
-            else:
-                self.frames_per_minute = int(float(self.project_fps) * 60)
-                jot.down(f"| Frame Rate | Deinterlace | Resize To | Crop To | Split Type | Frames Per Minute |")
-                jot.down(f"| :-: | :-: | :-: | :-: | :-: | :-: |")
-                jot.down(f"| {float(self.project_fps):.2f} | {self.deinterlace} | {self.resize_w} x {self.resize_h} | {self.crop_w} x {self.crop_h} | {self.split_type} | {self.frames_per_minute} |")
+            elif self.split_type == "Time":
+                self.split_frames = self.calc_split_frames(self.project_fps, self.split_time)
+                jot.down(f"| Frame Rate | Deinterlace | Resize To | Crop To | Split Type | Split Time | Split Frames |")
+                jot.down(f"| :-: | :-: | :-: | :-: | :-: | :-: | :-: |")
+                jot.down(f"| {float(self.project_fps):.2f} | {self.deinterlace} | {self.resize_w} x {self.resize_h} | {self.crop_w} x {self.crop_h} | {self.split_type} | {self.split_time} | {self.split_frames} |")
+            else: # "None"
+                jot.down(f"| Frame Rate | Deinterlace | Resize To | Crop To | Split Type |")
+                jot.down(f"| :-: | :-: | :-: | :-: | :-: |")
+                jot.down(f"| {float(self.project_fps):.2f} | {self.deinterlace} | {self.resize_w} x {self.resize_h} | {self.crop_w} x {self.crop_h} | {self.split_type} |")
         return jot.grab()
 
     # keep project's own copy of original video
@@ -322,15 +332,15 @@ class VideoRemixerState():
                                 float(self.break_ratio),
                                 log_fn).split()
                     Mtqdm().update_bar(bar)
-            elif self.split_type == "Minute":
-                # split by minute
+            elif self.split_type == "Time":
+                # split by seconds
                 SplitFrames(
                     self.frames_path,
                     self.scenes_path,
                     "png",
                     "precise",
                     0,
-                    self.frames_per_minute,
+                    self.split_frames,
                     "copy",
                     False,
                     log_fn).split()
@@ -1381,13 +1391,18 @@ class VideoRemixerState():
                 state.video_clips = sorted(state.video_clips) if state.video_clips else []
                 state.setup_processing_paths()
 
-                # Compatibility
+                ## Compatibility
                 # state.current_scene was originally a string
                 if isinstance(state.current_scene, str):
                     try:
                         state.current_scene = state.scene_names.index(state.current_scene)
                     except IndexError:
                         state.current_scene = 0
+                # originally implied only a 60 second split
+                if state.split_type == "Minute":
+                    state.split_type = "Time"
+                    state.split_time = 60
+                    state.split_frames = state.calc_split_frames(state.project_fps, state.split_time)
 
                 return state
             except YAMLError as error:
