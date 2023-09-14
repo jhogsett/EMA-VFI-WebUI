@@ -868,6 +868,7 @@ class VideoRemixer(TabBase):
             self.state.deinterlace = deinterlace
             self.state.split_time = split_time
             self.state.project_info2 = self.state.project_settings_report()
+            self.state.processed_content_invalid = True
 
             # this is the first time project progress advances
             # user will expect to return to the setup tab on reopening
@@ -1147,10 +1148,15 @@ class VideoRemixer(TabBase):
         jot = Jot()
         kept_scenes = self.state.kept_scenes()
         if kept_scenes:
-            self.log("purging stale content")
-            self.state.purge_stale_processed_content(upscale_option_changed)
-            self.log("purging incomplete content")
-            self.state.purge_incomplete_processed_content()
+            if self.state.processed_content_invalid:
+                self.log("setup options changed, purging all processed content")
+                self.state.purge_processed_content(self.state.RESIZE_STEP)
+                self.state.processed_content_invalid = False
+            else:
+                self.log("purging stale content")
+                self.state.purge_stale_processed_content(upscale_option_changed)
+                self.log("purging incomplete content")
+                self.state.purge_incomplete_processed_content()
             self.log("saving project after purging stale and incomplete content")
             self.state.save()
 

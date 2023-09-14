@@ -51,6 +51,7 @@ class VideoRemixerState():
         # set on confirming set up options
         self.split_frames = None
         self.project_info2 = None # re-set on re-opening project
+        self.processed_content_invalid = False # ensure processed content is purged on redo
 
         # set on confirming project setup
         self.thumbnail_type = None
