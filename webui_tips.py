@@ -71,3 +71,4 @@ class WebuiTips:
     video_remixer_processing = gr.Markdown(load_markdown(tips_path, "video_remixer_processing"))
     video_remixer_home = gr.Markdown(load_markdown(tips_path, "video_remixer_home"))
     video_remixer_save = gr.Markdown(load_markdown(tips_path, "video_remixer_save"))
+    video_remixer_extra = gr.Markdown(load_markdown(tips_path, "video_remixer_extra"))

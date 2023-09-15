@@ -520,8 +520,8 @@ class VideoRemixer(TabBase):
                                             value="Delete Processed Content " +\
                                                 SimpleIcons.SLOW_SYMBOL, variant="stop")
 
-                    # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-                    #     WebuiTips.video_remixer_save.render()
+                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                        WebuiTips.video_remixer_extra.render()
 
         next_button00.click(self.next_button00,
                            inputs=video_path,
