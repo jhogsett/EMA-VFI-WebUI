@@ -3,10 +3,10 @@
 ### _Utilities_
 
 #### Split Scene
-Split a Scene in two at the 50% point
+Split a Scene in two at a set percentage
 - **Used For:** Splitting up a scene without redoing project setup
-- _Enter the scene ID to split_
-- _Splits the scene into two scenes at the 50% point, and creates replacement thumbnails_
+- _Enter the scene ID to split and a percentage of the scene for the split point_
+- _Splits the scene into two scenes at the set point in time, and creates replacement thumbnails_
 
 #### Drop Processed Scene
 Drop a scene after processing has been already been done

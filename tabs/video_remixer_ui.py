@@ -356,13 +356,13 @@ class VideoRemixer(TabBase):
                         with gr.Tab(SimpleIcons.TOOLBOX + " Utilities", id=self.TAB_EXTRA_UTILITIES):
                             with gr.Tabs() as tabs_remix_extra_utils:
                                 with gr.Tab(SimpleIcons.AXE + " Split Scene", id=self.TAB_EXTRA_UTIL_SPLIT_SCENE):
-                                    gr.Markdown("**_Split a Scene in two at the 50% point_**")
+                                    gr.Markdown("**_Split a Scene in two at a set point_**")
                                     with gr.Row():
                                         scene_id_702 = gr.Number(value=-1, label="Scene Index")
                                         split_percent_702 = gr.Slider(value=50.0,
                                     label="Split Position", minimum=1.0, maximum=99.0, step=1.0, info="A lower value splits earlier in the scene")
                                     with gr.Row():
-                                        message_box702 = gr.Markdown(self.format_markdown("Click Split Scene to: Split the scenes into Two Scenes at the Halfway Point"))
+                                        message_box702 = gr.Markdown(self.format_markdown("Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
                                     split_button702 = gr.Button("Split Scene" + SimpleIcons.SLOW_SYMBOL, variant="stop").\
                                         style(full_width=False)
 
