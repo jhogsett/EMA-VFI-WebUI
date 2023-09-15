@@ -229,7 +229,7 @@ class VideoRemixerState():
                 self.split_frames = self.calc_split_frames(self.project_fps, self.split_time)
                 jot.down(f"| Frame Rate | Deinterlace | Resize To | Crop To | Split Type | Split Time | Split Frames |")
                 jot.down(f"| :-: | :-: | :-: | :-: | :-: | :-: | :-: |")
-                jot.down(f"| {float(self.project_fps):.2f} | {self.deinterlace} | {self.resize_w} x {self.resize_h} | {self.crop_w} x {self.crop_h} | {self.split_type} | {self.split_time} | {self.split_frames} |")
+                jot.down(f"| {float(self.project_fps):.2f} | {self.deinterlace} | {self.resize_w} x {self.resize_h} | {self.crop_w} x {self.crop_h} | {self.split_type} | {self.split_time}s | {self.split_frames} |")
             else: # "None"
                 jot.down(f"| Frame Rate | Deinterlace | Resize To | Crop To | Split Type |")
                 jot.down(f"| :-: | :-: | :-: | :-: | :-: |")
