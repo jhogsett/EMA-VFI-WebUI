@@ -1,4 +1,4 @@
-**Video Remixer Processing Options** - Choose processing options for the remixed video
+**Video Remixer Process Remix** - Choose processing options and process remix content
 
 ## How To Use
 1. Check _Fix Aspect Ratio_ to apply the _Resize_ and _Crop_ settings from the _Remix Settings_ tab

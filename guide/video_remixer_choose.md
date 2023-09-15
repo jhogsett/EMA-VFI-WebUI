@@ -14,6 +14,9 @@ The _Keep All Scenes_ and _Drop All Scenes_ buttons (inside the _Danger Zone_ ac
 - **Destructively** _Keep_ or _Drop_ all scenes (there is no undo)
 - Save the project
 
+The _Split Scene_ and _Drop Processed Scene_ buttons (inside the _Danger Zone_ accordion)
+- Shortcuts that take you to the corresponding _Remix Extra_ tabs with pre-filled scene IDs
+
 The remaining buttons are navigation-related, except for:
 
 Click the _Done Choosing Scenes_ button when all _Keep_ or _Drop_ selections have been made
@@ -23,7 +26,7 @@ Other Buttons
 - _< Prev Scene_ and _Next Scene >_ - step through all scenes
 - _< Prev Keep_ and _Next Keep >_ - step through only kept scenes
 - _<< First Scene_ and _Last Scene >>_ - jump to the first or last scene
-- _Danger Zone_ - expands the accordion to reveal _Keep All Scenes_ and _Drop All Scenes_ buttons
+- _Danger Zone_ - expands the accordion to reveal various rare-use buttons
 
 ## Important
 - `ffmpeg.exe` must be available on the system path

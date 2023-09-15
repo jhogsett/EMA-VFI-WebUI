@@ -39,10 +39,8 @@ Real-ESRGAN must be installed locally to use
     - If **Batch Processing**
         - Set _Input Path_ to a directory on this server containing PNG frame groups to be upscaled
         - Set _Output Path_ to a directory on this server for the upscaled PNG frame groups
-
 1. Click _Upscale Frames_ or _Upscale Batch_
-- Progress can be checked in the console
-
+    - Progress can be checked in the console
 1. _Real-ESRGAN_ is used on each frame in the input path
     - Frames are cleaned up, and enlarged if necessary
     - The new frames are copied to the output path
