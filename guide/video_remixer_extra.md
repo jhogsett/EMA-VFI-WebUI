@@ -2,6 +2,12 @@
 
 ### _Utilities_
 
+#### Split Scene
+Split a Scene in two at the 50% point
+- **Used For:** Splitting up a scene without redoing project setup
+- _Enter the scene ID to split_
+- _Splits the scene into two scenes at the 50% point, and creates replacement thumbnails_
+
 #### Drop Processed Scene
 Drop a scene after processing has been already been done
 - **Used For:** Removing a scene and resaving the remix video without reprocessing content
@@ -13,12 +19,6 @@ Keep or Drop a range of scenes
 - **Used For:** Quickly Keeping or Dropping a series of scenes
 - _Enter the starting and ending scene IDs, and whether to Keep or Drop_
 - _All scenes from starting to ending scene ID are set to the chosen state_
-
-#### Split Scene
-Split a Scene in two at the 50% point
-- **Used For:** Splitting up a scene without redoing project setup
-- _Enter the scene ID to split_
-- _Splits the scene into two scenes at the 50% point, and creates replacement thumbnails_
 
 ### _Reduce Footprint_
 

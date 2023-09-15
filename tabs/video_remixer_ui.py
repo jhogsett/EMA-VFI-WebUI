@@ -355,13 +355,24 @@ class VideoRemixer(TabBase):
                     with gr.Tabs() as tabs_remix_extra:
                         with gr.Tab(SimpleIcons.TOOLBOX + " Utilities", id=self.TAB_EXTRA_UTILITIES):
                             with gr.Tabs() as tabs_remix_extra_utils:
+                                with gr.Tab(SimpleIcons.AXE + " Split Scene", id=self.TAB_EXTRA_UTIL_SPLIT_SCENE):
+                                    gr.Markdown("**_Split a Scene in two at the 50% point_**")
+                                    with gr.Row():
+                                        scene_id_702 = gr.Number(value=-1, label="Scene Index")
+                                        split_percent_702 = gr.Slider(value=50.0,
+                                    label="Split Position", minimum=1.0, maximum=99.0, step=1.0, info="A lower value splits earlier in the scene")
+                                    with gr.Row():
+                                        message_box702 = gr.Markdown(self.format_markdown("Click Split Scene to: Split the scenes into Two Scenes at the Halfway Point"))
+                                    split_button702 = gr.Button("Split Scene" + SimpleIcons.SLOW_SYMBOL, variant="stop").\
+                                        style(full_width=False)
+
                                 with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene", id=self.TAB_EXTRA_UTIL_DROP_PROCESSED):
                                     gr.Markdown(
                                 "**_Drop a scene after processing has been already been done_**")
                                     scene_id_700 = gr.Number(value=-1, label="Scene Index")
                                     with gr.Row():
                                         message_box700 = gr.Markdown(self.format_markdown("Click Drop Scene to: Remove all Processed Content for the specified scene"))
-                                    drop_button700 = gr.Button("Drop Scene", variant="stop").\
+                                    drop_button700 = gr.Button("Drop Processed Scene" + SimpleIcons.SLOW_SYMBOL, variant="stop").\
                                         style(full_width=False)
 
                                 with gr.Tab(SimpleIcons.HEART_HANDS + " Choose Scene Range", id=self.TAB_EXTRA_UTIL_CHOOSE_RANGE):
@@ -380,17 +391,9 @@ class VideoRemixer(TabBase):
                                     choose_button701 = gr.Button("Choose Scene Range",
                                                             variant="stop").style(full_width=False)
 
-                                with gr.Tab(SimpleIcons.AXE + " Split Scene", id=self.TAB_EXTRA_UTIL_SPLIT_SCENE):
-                                    gr.Markdown("**_Split a Scene in two at the 50% point_**")
-                                    scene_id_702 = gr.Number(value=-1, label="Scene Index")
-                                    with gr.Row():
-                                        message_box702 = gr.Markdown(self.format_markdown("Click Split Scene to: Split the scenes into Two Scenes at the Halfway Point"))
-                                    split_button702 = gr.Button("Split Scene", variant="stop").\
-                                        style(full_width=False)
-
-                        with gr.Tab(SimpleIcons.WASTE_BASKET +" Reduce Footprint", id=self.TAB_EXTRA_REDUCE):
+                        with gr.Tab(SimpleIcons.HERB +" Reduce Footprint", id=self.TAB_EXTRA_REDUCE):
                             with gr.Tabs():
-                                with gr.Tab(SimpleIcons.CROSSMARK + " Remove Soft-Deleted Content"):
+                                with gr.Tab(SimpleIcons.WASTE_BASKET + " Remove Soft-Deleted Content"):
                                     gr.Markdown(
                     "**_Delete content set aside when remix processing selections are changed_**")
                                     with gr.Row():
@@ -503,7 +506,7 @@ class VideoRemixer(TabBase):
                                         select_none_button712 = gr.Button(value="Select None").\
                                             style(full_width=False)
 
-                                with gr.Tab(SimpleIcons.BOMB + " Remove All Processed Content"):
+                                with gr.Tab(SimpleIcons.COLLISION + " Remove All Processed Content"):
                                     gr.Markdown(
                                     "**_Delete all processed project content (except videos)_**")
                                     with gr.Row():
@@ -660,7 +663,7 @@ class VideoRemixer(TabBase):
                                outputs=[tabs_video_remixer, message_box701, scene_index,
                                         scene_label, scene_image, scene_state, scene_info])
 
-        split_button702.click(self.split_button702, inputs=scene_id_702,
+        split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
                               outputs=[tabs_video_remixer, message_box702, scene_index, scene_label,
                                        scene_image, scene_state, scene_info])
 
@@ -1433,9 +1436,9 @@ class VideoRemixer(TabBase):
             gr.update(value=self.format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
 
-    def split_button702(self, scene_index):
+    def split_button702(self, scene_index, split_percent):
         global_options = self.config.ffmpeg_settings["global_options"]
-        split_point = 0.5 # make variable later
+        split_point = split_percent / 100.0
 
         if not isinstance(scene_index, (int, float)):
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
@@ -1458,8 +1461,15 @@ class VideoRemixer(TabBase):
                 gr.update(value=self.format_markdown("Scene must have at least two frames to be split", "error")), \
                 *self.empty_args(5)
 
-        # ensure the split is at least at the 50% point
+        # use ceil to ensure the split is at least at the requested position
         split_frame = math.ceil(num_frames * split_point)
+
+        # ensure at least one frame remains in the lower scene
+        split_frame = 1 if split_frame == 0 else split_frame
+
+        # ensure at least one frame remains in the upper scene
+        split_frame = num_frames-1 if split_frame == num_frames else split_frame
+
         self.log(f"setting split frame to {split_frame}")
 
         new_lower_first_frame = first_frame
@@ -1508,7 +1518,7 @@ class VideoRemixer(TabBase):
             self.log(f"about to move '{frame_path}' to '{new_frame_path}'")
             shutil.move(frame_path, new_frame_path)
             move_count += 1
-        messages.add(f"Moved {move_count} frames to {new_frame_path}")
+        messages.add(f"Moved {move_count} frames to {new_upper_scene_path}")
 
         self.log(f"about to rename '{original_scene_path}' to '{new_lower_scene_path}'")
         os.replace(original_scene_path, new_lower_scene_path)

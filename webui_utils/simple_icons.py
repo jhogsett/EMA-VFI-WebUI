@@ -10,6 +10,7 @@ class SimpleIcons:
     FOLDER = "📁"
     OPEN_FOLDER = "📂"
 
+    COLLISION = "💥"
     DIVIDE = "➗"
     FAST_DOWN = "⏬"
     FIVE = "5️⃣"
@@ -94,6 +95,7 @@ class SimpleIcons:
     HAMMER_WRENCH = "🛠️"
     HEART = "❤️"
     HEART_HANDS = "🫶"
+    HERB = "🌿"
     INCREASING = "📈"
     LABCOAT = "🥼"
     MAGIC_WAND = "🪄"
@@ -137,10 +139,10 @@ class SimpleIcons:
         BALLOON,
         BANDAGE,
         BAR_CHART,
-        BOMB,
         BROKEN_HEART,
         CLAPPER,
         COCKTAIL,
+        COLLISION,
         CONTROLS,
         COPYRIGHT,
         CROSSMARK,
@@ -156,6 +158,7 @@ class SimpleIcons:
         HAMMER,
         HAMMER_WRENCH,
         HEART_HANDS,
+        HERB,
         INCREASING,
         INFO,
         LABCOAT,
