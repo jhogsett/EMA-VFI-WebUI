@@ -1417,7 +1417,6 @@ class VideoRemixerState():
 
     @staticmethod
     def load_ported(original_project_path, ported_project_file : str):
-        original_project_path, _ = os.path.split(original_project_path)
         new_path, _, _ = split_filepath(ported_project_file)
 
         # save the original YAML file
@@ -1426,9 +1425,6 @@ class VideoRemixerState():
         backup_filepath = \
             AutoIncrementBackupFilename(ported_project_file, backup_path).next_filepath()
         shutil.copy(ported_project_file, backup_filepath)
-
-        # lose the last path segement, that's the actual project directory
-        new_path, _ = os.path.split(new_path)
 
         if new_path[-1] != "\\":
             new_path += "\\"
@@ -1442,9 +1438,13 @@ class VideoRemixerState():
 
         original_project_path_escaped = original_project_path.replace("\\", "\\\\")
         new_path_escaped = new_path.replace("\\", "\\\\")
+        original_project_path_trimmed = original_project_path[:-1]
+        new_path_trimmed = new_path[:-1]
         for line in lines:
             if line.find(original_project_path_escaped) != -1:
                 new_line = line.replace(original_project_path_escaped, new_path_escaped)
+            if line.find(original_project_path_trimmed) != -1:
+                new_line = line.replace(original_project_path_trimmed, new_path_trimmed)
             elif line.find(original_project_path) != -1:
                 new_line = line.replace(original_project_path, new_path)
             else:
@@ -1455,7 +1455,7 @@ class VideoRemixerState():
             file.writelines(new_lines)
 
         state = VideoRemixerState.load(ported_project_file)
-        state.save()
+        state.save(ported_project_file)
 
         return state
 
