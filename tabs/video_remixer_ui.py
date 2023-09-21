@@ -44,6 +44,7 @@ class VideoRemixer(TabBase):
     TAB_EXTRA_UTIL_DROP_PROCESSED = 0
     TAB_EXTRA_UTIL_CHOOSE_RANGE = 1
     TAB_EXTRA_UTIL_SPLIT_SCENE = 2
+    TAB_EXTRA_UTIL_EXPORT_SCENES = 3
 
     TAB00_DEFAULT_MESSAGE = "Click New Project to: Inspect Video and Count Frames (can take a minute or more)"
     TAB01_DEFAULT_MESSAGE = "Click Open Project to: Resume Editing an Existing Project"
@@ -353,6 +354,7 @@ class VideoRemixer(TabBase):
                 ## REMIX EXTRA
                 with gr.Tab(SimpleIcons.COCKTAIL + " Remix Extra", id=self.TAB_REMIX_EXTRA):
                     with gr.Tabs() as tabs_remix_extra:
+
                         with gr.Tab(SimpleIcons.TOOLBOX + " Utilities", id=self.TAB_EXTRA_UTILITIES):
                             with gr.Tabs() as tabs_remix_extra_utils:
                                 with gr.Tab(SimpleIcons.AXE + " Split Scene", id=self.TAB_EXTRA_UTIL_SPLIT_SCENE):
@@ -389,6 +391,18 @@ class VideoRemixer(TabBase):
                                     with gr.Row():
                                         message_box701 = gr.Markdown(self.format_markdown("Click Choose Scene Range to: Set the Scene Range to the specified state"))
                                     choose_button701 = gr.Button("Choose Scene Range",
+                                                            variant="stop").style(full_width=False)
+
+                                with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_UTIL_EXPORT_SCENES):
+                                    gr.Markdown("**_Save Kept Scenes as a New Project_**")
+                                    with gr.Row():
+                                        export_path_703 = gr.Textbox(label="Exported Project Path", max_lines=1,
+                                                info="Enter a path on this server for the new project")
+                                        project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
+                                                info="Enter a name for the new project")
+                                    with gr.Row():
+                                        message_box703 = gr.Markdown(self.format_markdown("Click Export Project to: Save the kept scenes as a new project"))
+                                    export_project_703 = gr.Button("Export Project",
                                                             variant="stop").style(full_width=False)
 
                         with gr.Tab(SimpleIcons.HERB +" Reduce Footprint", id=self.TAB_EXTRA_REDUCE):
@@ -666,6 +680,9 @@ class VideoRemixer(TabBase):
         split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
                               outputs=[tabs_video_remixer, message_box702, scene_index, scene_label,
                                        scene_image, scene_state, scene_info])
+
+        export_project_703.click(self.export_project_703,
+                                 inputs=[export_path_703, project_name_703], outputs=message_box703)
 
         delete_button710.click(self.delete_button710,
                                inputs=delete_purged_710,
@@ -1563,6 +1580,35 @@ class VideoRemixer(TabBase):
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
             gr.update(value=self.format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
+
+    def export_project_703(self, new_project_path, new_project_name):
+        if not new_project_path:
+            return gr.update(value=self.format_markdown("Please enter a Project Path for the new project", "warning"))
+        if not is_safe_path(new_project_path):
+            return gr.update(value=self.format_markdown("The entered Project Path is not valid", "warning"))
+        if not new_project_name:
+            return gr.update(value=self.format_markdown("Please enter a Project Name for the new project", "warning"))
+
+        # uncompile the original project scenes
+
+        # duplicate the original project state to a new one
+        # update the project path and related to the new path and name (project_path, source_video)
+        # recompute all the project paths (audio_clips_path, clips_path, dropped_scenes_path,
+        # frames_path, inflation_path, resize_path, resynthesis_path, scenes_path, thumbnail_path,
+        # upscale_path, video_clips_path,  )
+        # clear some paths (ouput_filepath)
+        # remove processed content from the state (rc, re, in, up)
+        # remove dropped scenes from the scene names
+        # remove droped scenes from the scene states
+        # remove dropped thumbnails
+        # reset the project reentry point to scene chooser (progress)
+        # clear certain message box entries post-scene chooser (summary_info6)
+        # remove audio clips, video clips, remix clips
+        # reset current scene to the first (kept) scene
+        # reset processed_content_invalid
+
+        # re-compile the original project scenes
+
 
     def delete_button710(self, delete_purged):
         if delete_purged:
