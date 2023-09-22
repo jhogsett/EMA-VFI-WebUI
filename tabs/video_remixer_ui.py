@@ -396,14 +396,17 @@ class VideoRemixer(TabBase):
                                 with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_UTIL_EXPORT_SCENES):
                                     gr.Markdown("**_Save Kept Scenes as a New Project_**")
                                     with gr.Row():
-                                        export_path_703 = gr.Textbox(label="Exported Project Path", max_lines=1,
-                                                info="Enter a path on this server for the new project")
-                                        project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
-                                                info="Enter a name for the new project")
+                                        export_path_703 = gr.Textbox(label="Exported Project Root Directory", max_lines=1,
+                                                info="Enter a path on this server for the root directory of the new project")
+                                        project_name_703 = gr.Textbox(label="Exported Project Direcotry Name", max_lines=1,
+                                                info="Enter a directory name for the new project")
                                     with gr.Row():
                                         message_box703 = gr.Markdown(self.format_markdown("Click Export Project to: Save the kept scenes as a new project"))
-                                    export_project_703 = gr.Button("Export Project",
+                                    export_project_703 = gr.Button("Export Project" + SimpleIcons.SLOW_SYMBOL,
                                                             variant="stop").style(full_width=False)
+                                    with gr.Row():
+                                        result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
+                                        open_result703 = gr.Button("Open New Project", visible=False).style(full_width=False)
 
                         with gr.Tab(SimpleIcons.HERB +" Reduce Footprint", id=self.TAB_EXTRA_REDUCE):
                             with gr.Tabs():
@@ -682,7 +685,11 @@ class VideoRemixer(TabBase):
                                        scene_image, scene_state, scene_info])
 
         export_project_703.click(self.export_project_703,
-                                 inputs=[export_path_703, project_name_703], outputs=message_box703)
+                                 inputs=[export_path_703, project_name_703],
+                                 outputs=[message_box703, result_box703, open_result703])
+
+        open_result703.click(self.open_result703, inputs=result_box703,
+                                outputs=[tabs_video_remixer, project_load_path])
 
         delete_button710.click(self.delete_button710,
                                inputs=delete_purged_710,
@@ -1582,19 +1589,19 @@ class VideoRemixer(TabBase):
             *self.scene_chooser_details(self.state.current_scene)
 
     def export_project_703(self, new_project_path, new_project_name):
+        empty_args = [gr.update(visible=False), gr.update(visible=False)]
         if not new_project_path:
-            return gr.update(value=self.format_markdown("Please enter a Project Path for the new project", "warning"))
+            return gr.update(value=self.format_markdown("Please enter a Project Path for the new project", "warning")), *empty_args
         if not is_safe_path(new_project_path):
-            return gr.update(value=self.format_markdown("The entered Project Path is not valid", "warning"))
+            return gr.update(value=self.format_markdown("The entered Project Path is not valid", "warning")), *empty_args
         if not new_project_name:
-            return gr.update(value=self.format_markdown("Please enter a Project Name for the new project", "warning"))
+            return gr.update(value=self.format_markdown("Please enter a Project Name for the new project", "warning")), *empty_args
 
         kept_scenes = self.state.kept_scenes()
         if not kept_scenes:
-            return gr.update(value=self.format_markdown("No kept scenes were found", "warning"))
+            return gr.update(value=self.format_markdown("No kept scenes were found", "warning")), *empty_args
 
         full_new_project_path = os.path.join(new_project_path, new_project_name)
-
         try:
             create_directory(full_new_project_path)
             new_profile_filepath = self.state.copy_project_file(full_new_project_path)
@@ -1627,7 +1634,6 @@ class VideoRemixer(TabBase):
             for index, scene_name in enumerate(self.state.scene_names):
                 state = self.state.scene_states[scene_name]
                 if state == "Keep":
-                    # this scene should exist in the new project
                     scene_name = self.state.scene_names[index]
                     new_state.scene_states[scene_name] = "Keep"
 
@@ -1651,10 +1657,15 @@ class VideoRemixer(TabBase):
 
             new_state.save()
 
-            return gr.update(value=self.format_markdown(f"Kept scenes saved as new project: {new_profile_filepath} "))
+            return gr.update(value=self.format_markdown(f"Kept scenes saved as new project: {full_new_project_path} ")), \
+                gr.update(visible=True, value=full_new_project_path), \
+                gr.update(visible=True)
 
         except ValueError as error:
-            return gr.update(value=self.format_markdown(str(error), "error"))
+            return gr.update(value=self.format_markdown(str(error), "error")), *empty_args
+
+    def open_result703(self, new_project_path):
+        return gr.update(selected=self.TAB_REMIX_HOME), gr.update(value=new_project_path)
 
     def delete_button710(self, delete_purged):
         if delete_purged:
