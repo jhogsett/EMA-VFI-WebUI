@@ -94,11 +94,13 @@ class SimpleIcons:
     HAMMER = "🔨"
     HAMMER_WRENCH = "🛠️"
     HEART = "❤️"
+    HEART_EXCLAMATION = "❣️"
     HEART_HANDS = "🫶"
     HERB = "🌿"
     INCREASING = "📈"
     LABCOAT = "🥼"
     MAGIC_WAND = "🪄"
+    MEAT = "🥩"
     MICROSCOPE = "🔬"
     PACKAGE = "📦"
     ROBOT = "🤖"
@@ -157,6 +159,7 @@ class SimpleIcons:
         GLOBE,
         HAMMER,
         HAMMER_WRENCH,
+        HEART_EXCLAMATION,
         HEART_HANDS,
         HERB,
         INCREASING,
