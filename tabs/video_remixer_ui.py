@@ -14,7 +14,7 @@ from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
 from video_remixer import VideoRemixerState
-from slice_video import SliceVideo
+from webui_utils.mtqdm import Mtqdm
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -1589,59 +1589,72 @@ class VideoRemixer(TabBase):
         if not new_project_name:
             return gr.update(value=self.format_markdown("Please enter a Project Name for the new project", "warning"))
 
-        # TODO check that there are kept scenes
+        kept_scenes = self.state.kept_scenes()
+        if not kept_scenes:
+            return gr.update(value=self.format_markdown("No kept scenes were found", "warning"))
 
         full_new_project_path = os.path.join(new_project_path, new_project_name)
-        # new_project_filepath = os.path.join(full_new_project_path, )
 
         try:
             create_directory(full_new_project_path)
-
-            # save the current project to the new path
             new_profile_filepath = self.state.copy_project_file(full_new_project_path)
 
-            # open the new project file and port it to the new path
+            # load the copied project file
             new_state = VideoRemixerState.load(new_profile_filepath)
-            new_state = VideoRemixerState.load_ported(new_state.project_path, new_profile_filepath, save_original=False)
-            new_state.save()
 
-            # ensure scenes path contains all and only kept scenes
+            # update project paths to the new one
+            new_state = VideoRemixerState.load_ported(new_state.project_path, new_profile_filepath, save_original=False)
+
+            # ensure the project directories exist
+            new_state.post_load_integrity_check()
+
+            # copy the source video
+            with Mtqdm().open_bar(total=1, desc="Copying") as bar:
+                Mtqdm().message(bar, "Copying source video - no ETA")
+                shutil.copy(self.state.source_video, new_state.source_video)
+                Mtqdm().update_bar(bar)
+
+            # ensure scenes path contains all / only kept scenes
             self.state.uncompile_scenes()
             self.state.compile_scenes()
 
-            # duplicate_dirs =
+            # prepare to rebuild scene_states dict, and scene_names, thumbnails lists
+            # in the new project
+            new_state.scene_states = {}
+            new_state.scene_names = []
+            new_state.thumbnails = []
 
+            for index, scene_name in enumerate(self.state.scene_names):
+                state = self.state.scene_states[scene_name]
+                if state == "Keep":
+                    # this scene should exist in the new project
+                    scene_name = self.state.scene_names[index]
+                    new_state.scene_states[scene_name] = "Keep"
 
-            # duplicate_directory()
+                    new_state.scene_names.append(scene_name)
+                    scene_dir = os.path.join(self.state.scenes_path, scene_name)
+                    new_scene_dir = os.path.join(new_state.scenes_path, scene_name)
+                    duplicate_directory(scene_dir, new_scene_dir)
 
+                    scene_thumbnail = self.state.thumbnails[index]
+                    _, filename, ext = split_filepath(scene_thumbnail)
+                    new_thumbnail = os.path.join(new_state.thumbnail_path, filename + ext)
+                    new_state.thumbnails.append(new_thumbnail)
+                    shutil.copy(scene_thumbnail, new_thumbnail)
 
-            print(new_state)
+            # reset some things
+            new_state.current_scene = 0
+            new_state.audio_clips = []
+            new_state.clips = []
+            new_state.processed_content_invalid = False
+            new_state.progress = "choose"
+
+            new_state.save()
+
+            return gr.update(value=self.format_markdown(f"Kept scenes saved as new project: {new_profile_filepath} "))
 
         except ValueError as error:
             return gr.update(value=self.format_markdown(str(error), "error"))
-
-
-
-        # uncompile the original project scenes
-
-        # duplicate the original project state to a new one
-        # update the project path and related to the new path and name (project_path, source_video)
-        # recompute all the project paths (audio_clips_path, clips_path, dropped_scenes_path,
-        # frames_path, inflation_path, resize_path, resynthesis_path, scenes_path, thumbnail_path,
-        # upscale_path, video_clips_path,  )
-        # clear some paths (ouput_filepath)
-        # remove processed content from the state (rc, re, in, up)
-        # remove dropped scenes from the scene names
-        # remove droped scenes from the scene states
-        # remove dropped thumbnails
-        # reset the project reentry point to scene chooser (progress)
-        # clear certain message box entries post-scene chooser (summary_info6)
-        # remove audio clips, video clips, remix clips
-        # reset current scene to the first (kept) scene
-        # reset processed_content_invalid
-
-        # re-compile the original project scenes
-
 
     def delete_button710(self, delete_purged):
         if delete_purged:
