@@ -201,7 +201,8 @@ class VideoRemixerState():
         self.crop_w = crop_w
         self.crop_h = crop_h
 
-    def determine_project_filepath(self, project_path):
+    @staticmethod
+    def determine_project_filepath(project_path):
         if os.path.isdir(project_path):
             project_file = os.path.join(project_path, VideoRemixerState.DEF_FILENAME)
         else:
@@ -257,9 +258,10 @@ class VideoRemixerState():
             Mtqdm().update_bar(bar)
 
     def copy_project_file(self, copy_path):
-        project_file = self.determine_project_filepath(self.project_path)
+        project_file = VideoRemixerState.determine_project_filepath(self.project_path)
         saved_project_file = os.path.join(copy_path, self.DEF_FILENAME)
         shutil.copy(project_file, saved_project_file)
+        return saved_project_file
 
     # when advancing forward from the Set Up Project step
     # the user may be redoing the project from this step
@@ -1418,15 +1420,15 @@ class VideoRemixerState():
                 raise ValueError(message)
 
     @staticmethod
-    def load_ported(original_project_path, ported_project_file : str):
+    def load_ported(original_project_path, ported_project_file : str, save_original = True):
         new_path, _, _ = split_filepath(ported_project_file)
 
-        # save the original YAML file
-        backup_path = os.path.join(new_path, "ported_project_files")
-        create_directory(backup_path)
-        backup_filepath = \
-            AutoIncrementBackupFilename(ported_project_file, backup_path).next_filepath()
-        shutil.copy(ported_project_file, backup_filepath)
+        if save_original:
+            backup_path = os.path.join(new_path, "ported_project_files")
+            create_directory(backup_path)
+            backup_filepath = \
+                AutoIncrementBackupFilename(ported_project_file, backup_path).next_filepath()
+            shutil.copy(ported_project_file, backup_filepath)
 
         if new_path[-1] != "\\":
             new_path += "\\"

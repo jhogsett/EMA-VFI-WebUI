@@ -7,7 +7,7 @@ import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.file_utils import get_files, create_directory, get_directories, split_filepath, \
-    is_safe_path
+    is_safe_path, duplicate_directory
 from webui_utils.video_utils import details_from_group_name
 from webui_utils.jot import Jot
 from webui_tips import WebuiTips
@@ -791,7 +791,7 @@ class VideoRemixer(TabBase):
                    *empty_args
 
         try:
-            project_file = self.state.determine_project_filepath(project_path)
+            project_file = VideoRemixerState.determine_project_filepath(project_path)
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=self.format_markdown(str(error), "error")), \
@@ -1588,6 +1588,39 @@ class VideoRemixer(TabBase):
             return gr.update(value=self.format_markdown("The entered Project Path is not valid", "warning"))
         if not new_project_name:
             return gr.update(value=self.format_markdown("Please enter a Project Name for the new project", "warning"))
+
+        # TODO check that there are kept scenes
+
+        full_new_project_path = os.path.join(new_project_path, new_project_name)
+        # new_project_filepath = os.path.join(full_new_project_path, )
+
+        try:
+            create_directory(full_new_project_path)
+
+            # save the current project to the new path
+            new_profile_filepath = self.state.copy_project_file(full_new_project_path)
+
+            # open the new project file and port it to the new path
+            new_state = VideoRemixerState.load(new_profile_filepath)
+            new_state = VideoRemixerState.load_ported(new_state.project_path, new_profile_filepath, save_original=False)
+            new_state.save()
+
+            # ensure scenes path contains all and only kept scenes
+            self.state.uncompile_scenes()
+            self.state.compile_scenes()
+
+            # duplicate_dirs =
+
+
+            # duplicate_directory()
+
+
+            print(new_state)
+
+        except ValueError as error:
+            return gr.update(value=self.format_markdown(str(error), "error"))
+
+
 
         # uncompile the original project scenes
 
