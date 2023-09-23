@@ -702,7 +702,10 @@ def combine_video_audio(video_path : str,
     return cmd
 
 # combine videos that have the same code,dimensions,etc
-def combine_videos(input_paths : list, output_filepath : str, global_options : str=""):
+def combine_videos(input_paths : list,
+                   output_filepath : str,
+                   global_options : str="",
+                   keep_concat_file : bool=False):
 # ffmpeg -y -f concat -i file.txt -c copy final.mp4
 # file 'output1.mp4'
 # file 'output2.mp4'
@@ -723,4 +726,6 @@ def combine_videos(input_paths : list, output_filepath : str, global_options : s
         global_options="-y " + global_options)
     cmd = ffcmd.cmd
     ffcmd.run()
+    if not keep_concat_file:
+        os.remove(concat_file)
     return cmd
