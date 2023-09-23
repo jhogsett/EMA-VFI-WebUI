@@ -1407,6 +1407,11 @@ class VideoRemixer(TabBase):
             return gr.update(value=self.format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning"))
 
         removed = self.state.force_drop_processed_scene(scene_index)
+
+        # audio clips aren't cleaned each time a remix is saved
+        # clean now to ensure the dropped scene audio clip is removed
+        self.state.clean_remix_content(purge_from="audio_clips")
+
         self.log(f"removed files: {removed}")
         self.log(
             f"saving project after using force_drop_processed_scene for scene index {scene_index}")
