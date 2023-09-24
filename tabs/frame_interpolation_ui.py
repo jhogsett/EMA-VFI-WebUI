@@ -62,7 +62,7 @@ class FrameInterpolation(TabBase):
 
         if not img_before_file or not img_after_file:
             return None, None, gr.update(value=format_markdown(
-                "Please choose a Before Frame and After After to begin", "warning"))
+                "Please choose a Before Frame and After Frame to begin", "warning"))
 
         interpolater = Interpolate(self.engine.model, self.log_fn)
         use_time_step = self.config.engine_settings["use_time_step"]
