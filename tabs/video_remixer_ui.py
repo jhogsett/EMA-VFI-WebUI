@@ -1177,7 +1177,7 @@ class VideoRemixer(TabBase):
         if kept_scenes:
             if self.state.processed_content_invalid:
                 self.log("setup options changed, purging all processed content")
-                self.state.purge_processed_content(self.state.RESIZE_STEP)
+                self.state.purge_processed_content(purge_from=self.state.RESIZE_STEP)
                 self.state.processed_content_invalid = False
             else:
                 self.log("purging stale content")
@@ -1194,7 +1194,7 @@ class VideoRemixer(TabBase):
                 jot.down(f"Using original source content in {self.state.scenes_path}")
 
             if self.state.resize:
-                if self.state.processed_content_present(self.state.RESIZE_STEP):
+                if self.state.processed_content_complete(self.state.RESIZE_STEP):
                     jot.down(f"Using processed resized scenes in {self.state.resize_path}")
                 else:
                     self.log("about to resize scenes")
@@ -1206,7 +1206,7 @@ class VideoRemixer(TabBase):
                     jot.down(f"Resized scenes created in {self.state.resize_path}")
 
             if self.state.resynthesize:
-                if self.state.processed_content_present(self.state.RESYNTH_STEP):
+                if self.state.processed_content_complete(self.state.RESYNTH_STEP):
                     jot.down(
                         f"Using processed resynthesized scenes in {self.state.resynthesis_path}")
                 else:
@@ -1219,7 +1219,7 @@ class VideoRemixer(TabBase):
                     jot.down(f"Resynthesized scenes created in {self.state.resynthesis_path}")
 
             if self.state.inflate:
-                if self.state.processed_content_present(self.state.INFLATE_STEP):
+                if self.state.processed_content_complete(self.state.INFLATE_STEP):
                     jot.down(f"Using processed inflated scenes in {self.state.inflation_path}")
                 else:
                     self.state.inflate_scenes(self.log,
@@ -1231,7 +1231,7 @@ class VideoRemixer(TabBase):
                     jot.down(f"Inflated scenes created in {self.state.inflation_path}")
 
             if self.state.upscale:
-                if self.state.processed_content_present(self.state.UPSCALE_STEP):
+                if self.state.processed_content_complete(self.state.UPSCALE_STEP):
                     jot.down(f"Using processed upscaled scenes in {self.state.upscale_path}")
                 else:
                     self.state.upscale_scenes(self.log,
@@ -1294,7 +1294,7 @@ class VideoRemixer(TabBase):
         # create audio clips only if they do not already exist
         # this depends on the audio clips being purged at the time the scene selection are compiled
         if self.state.video_details["has_audio"] and not \
-                self.state.processed_content_present("audio"):
+                self.state.processed_content_complete(self.state.AUDIO_STEP):
             self.log("about to create audio clips")
             audio_format = self.config.remixer_settings["audio_format"]
             self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
@@ -1407,6 +1407,11 @@ class VideoRemixer(TabBase):
             return gr.update(value=self.format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning"))
 
         removed = self.state.force_drop_processed_scene(scene_index)
+
+        # audio clips aren't cleaned each time a remix is saved
+        # clean now to ensure the dropped scene audio clip is removed
+        self.state.clean_remix_content(purge_from="audio_clips")
+
         self.log(f"removed files: {removed}")
         self.log(
             f"saving project after using force_drop_processed_scene for scene index {scene_index}")

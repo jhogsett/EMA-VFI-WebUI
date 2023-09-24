@@ -277,7 +277,8 @@ class VideoRemixerState():
             self.resynthesis_path,
             self.inflation_path,
             self.upscale_path])
-        self.copy_project_file(purge_path)
+        if purge_path:
+            self.copy_project_file(purge_path)
         self.scene_names = []
         self.current_scene = 0
         self.thumbnails = []
@@ -674,16 +675,26 @@ class VideoRemixerState():
     RESYNTH_STEP = "resynth"
     INFLATE_STEP = "inflate"
     UPSCALE_STEP = "upscale"
+    AUDIO_STEP = "audio"
+    VIDEO_STEP = "video"
 
     PURGED_CONTENT = "purged_content"
 
+    # returns auto-generated purge path or None if nothing to purge
     def purge_paths(self, path_list : list):
+        paths_to_purge = []
+        for path in path_list:
+            if path and os.path.exists(path):
+                paths_to_purge.append(path)
+        if not paths_to_purge:
+            return None
+
         purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
         create_directory(purged_root_path)
         purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory("purged")
-        for path in path_list:
-            if path and os.path.exists(path):
-                shutil.move(path, purged_path)
+
+        for path in paths_to_purge:
+            shutil.move(path, purged_path)
         return purged_path
 
     def delete_purged_content(self):
@@ -726,7 +737,8 @@ class VideoRemixerState():
         elif purge_from == self.UPSCALE_STEP:
             purge_path = self.purge_paths([
                 self.upscale_path])
-        self.copy_project_file(purge_path)
+        if purge_path:
+            self.copy_project_file(purge_path)
         self.clean_remix_content(purge_from="audio_clips")
 
     def clean_remix_content(self, purge_from):
@@ -760,75 +772,61 @@ class VideoRemixerState():
         self.inflation_path = os.path.join(self.project_path, self.INFLATE_PATH)
         self.upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
 
-    def processed_content_present(self, present_at):
-        if present_at == self.RESIZE_STEP:
-            resize_path = os.path.join(self.project_path, self.RESIZE_PATH)
-            return True if os.path.exists(resize_path) and \
-                get_directories(resize_path) else False
-        elif present_at == self.RESYNTH_STEP:
-            resynth_path = os.path.join(self.project_path, self.RESYNTH_PATH)
-            return True if os.path.exists(resynth_path) and \
-                get_directories(resynth_path) else False
-        elif present_at == self.INFLATE_STEP:
-            inflate_path = os.path.join(self.project_path, self.INFLATE_PATH)
-            return True if os.path.exists(inflate_path) and \
-                get_directories(inflate_path) else False
-        elif present_at == self.UPSCALE_STEP:
-            upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
-            return True if os.path.exists(upscale_path) and \
-                get_directories(upscale_path) else False
-        elif present_at == "audio":
-            audio_clips_path = os.path.join(self.clips_path, self.AUDIO_CLIPS_PATH)
-            return True if os.path.exists(audio_clips_path) and \
-                get_files(audio_clips_path) else False
-        elif present_at == "video":
-            video_clips_path = os.path.join(self.clips_path, self.VIDEO_CLIPS_PATH)
-            return True if os.path.exists(video_clips_path) and \
-                get_files(video_clips_path) else False
+    def _processed_content_complete(self, path, expected_dirs = 0, expected_files = 0):
+        if not path or not os.path.exists(path):
+            return False
+        if expected_dirs:
+            return len(get_directories(path)) == expected_dirs
+        if expected_files:
+            return len(get_files(path)) == expected_files
+        return True
 
+    def processed_content_complete(self, processing_step):
+        expected_items = len(self.kept_scenes())
+        if processing_step == self.RESIZE_STEP:
+            return self._processed_content_complete(self.resize_path, expected_dirs=expected_items)
+        elif processing_step == self.RESYNTH_STEP:
+            return self._processed_content_complete(self.resynthesis_path, expected_dirs=expected_items)
+        elif processing_step == self.INFLATE_STEP:
+            return self._processed_content_complete(self.inflation_path, expected_dirs=expected_items)
+        elif processing_step == self.UPSCALE_STEP:
+            return self._processed_content_complete(self.upscale_path, expected_dirs=expected_items)
+        elif processing_step == self.AUDIO_STEP:
+            return self._processed_content_complete(self.audio_clips_path, expected_files=expected_items)
+        elif processing_step == self.VIDEO_STEP:
+            return self._processed_content_complete(self.video_clips_path, expected_files=expected_items)
+        else:
+            raise RuntimeError(f"'processing_step' {processing_step} is unrecognized")
+
+    # content is stale if it is present on disk but not currently selected
+    # stale content and its derivative content should be purged
     def purge_stale_processed_content(self, purge_upscale):
-        # content is stale if it is present on disk but currently deselected
-        # its presence indicates it and dependent content is now stale
-        if self.processed_content_present(self.RESIZE_STEP) and not self.resize:
-            self.purge_processed_content(self.RESIZE_STEP)
-        if self.processed_content_present(self.RESYNTH_STEP) and not self.resynthesize:
-            self.purge_processed_content(self.RESYNTH_STEP)
-        if self.processed_content_present(self.INFLATE_STEP) and not self.inflate:
-            self.purge_processed_content(self.INFLATE_STEP)
-        if self.processed_content_present(self.UPSCALE_STEP) and \
-                (not self.upscale or purge_upscale):
-            self.purge_processed_content(self.UPSCALE_STEP)
+        if not self.resize:
+            self.purge_processed_content(purge_from=self.RESIZE_STEP)
 
-    def processed_content_incomplete(self, present_at):
-        expected_dirs = len(self.kept_scenes())
-        if present_at == self.RESIZE_STEP:
-            resize_path = os.path.join(self.project_path, self.RESIZE_PATH)
-            return True if os.path.exists(resize_path) and \
-                len(get_directories(resize_path)) != expected_dirs else False
-        elif present_at == self.RESYNTH_STEP:
-            resynth_path = os.path.join(self.project_path, self.RESYNTH_PATH)
-            return True if os.path.exists(resynth_path) and \
-                len(get_directories(resynth_path)) != expected_dirs else False
-        elif present_at == self.INFLATE_STEP:
-            inflate_path = os.path.join(self.project_path, self.INFLATE_PATH)
-            return True if os.path.exists(inflate_path) and \
-                len(get_directories(inflate_path)) != expected_dirs else False
-        elif present_at == self.UPSCALE_STEP:
-            upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
-            return True if os.path.exists(upscale_path) and \
-                len(get_directories(upscale_path)) != expected_dirs else False
+        if not self.resynthesize:
+            self.purge_processed_content(purge_from=self.RESYNTH_STEP)
+
+        if not self.inflate:
+            self.purge_processed_content(purge_from=self.INFLATE_STEP)
+
+        if not self.upscale or purge_upscale:
+            self.purge_processed_content(purge_from=self.UPSCALE_STEP)
 
     def purge_incomplete_processed_content(self):
         # content is incomplete if the wrong number of scene directories are present
         # if it is currently selected and incomplete, it should be purged
-        if self.processed_content_incomplete(self.RESIZE_STEP) and self.resize:
-            self.purge_processed_content(self.RESIZE_STEP)
-        if self.processed_content_incomplete(self.RESYNTH_STEP) and self.resynthesize:
-            self.purge_processed_content(self.RESYNTH_STEP)
-        if self.processed_content_incomplete(self.INFLATE_STEP) and self.inflate:
-            self.purge_processed_content(self.INFLATE_STEP)
-        if self.processed_content_incomplete(self.UPSCALE_STEP) and self.upscale:
-            self.purge_processed_content(self.UPSCALE_STEP)
+        if self.resize and not self.processed_content_complete(self.RESIZE_STEP):
+            self.purge_processed_content(purge_from=self.RESIZE_STEP)
+
+        if self.resynthesize and not self.processed_content_complete(self.RESYNTH_STEP):
+            self.purge_processed_content(purge_from=self.RESYNTH_STEP)
+
+        if self.inflate and not self.processed_content_complete(self.INFLATE_STEP):
+            self.purge_processed_content(purge_from=self.INFLATE_STEP)
+
+        if self.upscale and not self.processed_content_complete(self.UPSCALE_STEP):
+            self.purge_processed_content(purge_from=self.UPSCALE_STEP)
 
     def scenes_source_path(self, processing_step):
         processing_path = self.scenes_path
