@@ -277,7 +277,8 @@ class VideoRemixerState():
             self.resynthesis_path,
             self.inflation_path,
             self.upscale_path])
-        self.copy_project_file(purge_path)
+        if purge_path:
+            self.copy_project_file(purge_path)
         self.scene_names = []
         self.current_scene = 0
         self.thumbnails = []
@@ -679,13 +680,21 @@ class VideoRemixerState():
 
     PURGED_CONTENT = "purged_content"
 
+    # returns auto-generated purge path or None if nothing to purge
     def purge_paths(self, path_list : list):
+        paths_to_purge = []
+        for path in path_list:
+            if path and os.path.exists(path):
+                paths_to_purge.append(path)
+        if not paths_to_purge:
+            return None
+
         purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
         create_directory(purged_root_path)
         purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory("purged")
-        for path in path_list:
-            if path and os.path.exists(path):
-                shutil.move(path, purged_path)
+
+        for path in paths_to_purge:
+            shutil.move(path, purged_path)
         return purged_path
 
     def delete_purged_content(self):
@@ -728,7 +737,8 @@ class VideoRemixerState():
         elif purge_from == self.UPSCALE_STEP:
             purge_path = self.purge_paths([
                 self.upscale_path])
-        self.copy_project_file(purge_path)
+        if purge_path:
+            self.copy_project_file(purge_path)
         self.clean_remix_content(purge_from="audio_clips")
 
     def clean_remix_content(self, purge_from):
@@ -763,9 +773,7 @@ class VideoRemixerState():
         self.upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
 
     def _processed_content_complete(self, path, expected_dirs = 0, expected_files = 0):
-        if not path:
-            raise RuntimeError("'path' is empty in _processed_content_present()")
-        if not os.path.exists(path):
+        if not path or not os.path.exists(path):
             return False
         if expected_dirs:
             return len(get_directories(path)) == expected_dirs
@@ -790,19 +798,6 @@ class VideoRemixerState():
         else:
             raise RuntimeError(f"'processing_step' {processing_step} is unrecognized")
 
-    # def purge_stale_processed_content(self, purge_upscale):
-    #     # content is stale if it is present on disk but currently deselected
-    #     # its presence indicates it and dependent content is now stale
-    #     if self.processed_content_present(self.RESIZE_STEP) and not self.resize:
-    #         self.purge_processed_content(self.RESIZE_STEP)
-    #     if self.processed_content_present(self.RESYNTH_STEP) and not self.resynthesize:
-    #         self.purge_processed_content(self.RESYNTH_STEP)
-    #     if self.processed_content_present(self.INFLATE_STEP) and not self.inflate:
-    #         self.purge_processed_content(self.INFLATE_STEP)
-    #     if self.processed_content_present(self.UPSCALE_STEP) and \
-    #             (not self.upscale or purge_upscale):
-    #         self.purge_processed_content(self.UPSCALE_STEP)
-
     # content is stale if it is present on disk but not currently selected
     # stale content and its derivative content should be purged
     def purge_stale_processed_content(self, purge_upscale):
@@ -817,24 +812,6 @@ class VideoRemixerState():
 
         if not self.upscale or purge_upscale:
             self.purge_processed_content(purge_from=self.UPSCALE_STEP)
-
-    # def _processed_content_incomplete(self, path, expected_dirs):
-    #     if not path:
-    #         raise RuntimeError("'path' is empty in _processed_content_incomplete()")
-    #     if not os.path.exists(path) or not get_directories(path):
-    #         return True
-    #     return len(get_directories(path)) != expected_dirs
-
-    # def processed_content_incomplete(self, processing_step):
-    #     expected_dirs = len(self.kept_scenes())
-    #     if processing_step == self.RESIZE_STEP:
-    #         return self._processed_content_incomplete(self.resize_path, expected_dirs)
-    #     elif processing_step == self.RESYNTH_STEP:
-    #         return self._processed_content_incomplete(self.resynthesis_path, expected_dirs)
-    #     elif processing_step == self.INFLATE_STEP:
-    #         return self._processed_content_incomplete(self.inflation_path, expected_dirs)
-    #     elif processing_step == self.UPSCALE_STEP:
-    #         return self._processed_content_incomplete(self.upscale_path, expected_dirs)
 
     def purge_incomplete_processed_content(self):
         # content is incomplete if the wrong number of scene directories are present
