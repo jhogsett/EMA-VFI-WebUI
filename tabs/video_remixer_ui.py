@@ -398,7 +398,7 @@ class VideoRemixer(TabBase):
                                     with gr.Row():
                                         export_path_703 = gr.Textbox(label="Exported Project Root Directory", max_lines=1,
                                                 info="Enter a path on this server for the root directory of the new project")
-                                        project_name_703 = gr.Textbox(label="Exported Project Direcotry Name", max_lines=1,
+                                        project_name_703 = gr.Textbox(label="Exported Project Directory Name", max_lines=1,
                                                 info="Enter a directory name for the new project")
                                     with gr.Row():
                                         message_box703 = gr.Markdown(self.format_markdown("Click Export Project to: Save the kept scenes as a new project"))
