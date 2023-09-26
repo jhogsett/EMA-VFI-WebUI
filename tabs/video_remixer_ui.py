@@ -1330,14 +1330,16 @@ class VideoRemixer(TabBase):
                           global_options,
                           kept_scenes,
                           custom_video_options,
-                          custom_audio_options):
+                          custom_audio_options,
+                          draw_text_options=None):
         _, _, output_ext = split_filepath(output_filepath)
         output_ext = output_ext[1:]
 
         self.log(f"about to create custom video clips")
         self.state.create_custom_video_clips(self.log, kept_scenes, global_options,
                                              custom_video_options=custom_video_options,
-                                             custom_ext=output_ext)
+                                             custom_ext=output_ext,
+                                             draw_text_options=draw_text_options)
         self.log("saving project after creating custom video clips")
         self.state.save()
 
@@ -1386,8 +1388,27 @@ class VideoRemixer(TabBase):
     def next_button62(self, marked_video_options, marked_audio_options, output_filepath):
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
+            draw_text_options = {}
+            draw_text_options["font_size"] = self.config.remixer_settings["marked_font_size"]
+            draw_text_options["font_color"] = self.config.remixer_settings["marked_font_color"]
+            draw_text_options["font_file"] = self.config.remixer_settings["marked_font_file"]
+            draw_text_options["draw_box"] = self.config.remixer_settings["marked_draw_box"]
+            draw_text_options["box_color"] = self.config.remixer_settings["marked_box_color"]
+            draw_text_options["border_size"] = self.config.remixer_settings["marked_border_size"]
+            draw_text_options["marked_at_top"] = self.config.remixer_settings["marked_at_top"]
+
+            # account for upscaling
+            upscale_factor = 1
+            if self.state.upscale:
+                if self.state.upscale_option == "2X":
+                    upscale_factor = 2
+                elif self.state.upscale_option == "4X":
+                    upscale_factor = 4
+            draw_text_options["crop_width"] = self.state.crop_w * upscale_factor
+            draw_text_options["crop_height"] = self.state.crop_h * upscale_factor
+
             self.save_custom_remix(output_filepath, global_options, kept_scenes,
-                                   marked_video_options, marked_audio_options)
+                                   marked_video_options, marked_audio_options, draw_text_options)
             return gr.update(value=self.format_markdown(f"Remixed marked video {output_filepath} is complete.", "highlight"))
         except ValueError as error:
             return gr.update(value=self.format_markdown(str(error), "error"))
