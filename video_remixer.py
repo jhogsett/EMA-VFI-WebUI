@@ -1184,7 +1184,8 @@ class VideoRemixerState():
                                   kept_scenes,
                                   global_options,
                                   custom_video_options,
-                                  custom_ext):
+                                  custom_ext,
+                                  draw_text_options=None):
         self.video_clips_path = os.path.join(self.clips_path, self.VIDEO_CLIPS_PATH)
         create_directory(self.video_clips_path)
 
@@ -1208,21 +1209,36 @@ class VideoRemixerState():
                                                      f"{scene_name}.{custom_ext}")
 
                 use_custom_video_options = custom_video_options
-                # handle some custom text substitutions
-                if use_custom_video_options.find("<SCENE_NAME>"):
-                    use_custom_video_options = use_custom_video_options\
-                        .replace("<SCENE_NAME>", f"[{scene_name}]")
-
                 if use_custom_video_options.find("<SCENE_INFO>"):
+                    if not draw_text_options:
+                        raise RuntimeError("'draw_text_options' is None at create_custom_video_clips()")
+                    font_factor = draw_text_options["font_size"]
+                    font_color = draw_text_options["font_color"]
+                    font_file = draw_text_options["font_file"]
+                    draw_box = draw_text_options["draw_box"]
+                    box_color = draw_text_options["box_color"]
+                    border_factor = draw_text_options["border_size"]
+                    marked_at_top = draw_text_options["marked_at_top"]
+                    crop_width = draw_text_options["crop_width"]
+                    # crop_height = draw_text_options["crop_height"]
+
+                    font_size = crop_width / float(font_factor)
+                    border_size = font_size / float(border_factor)
+
+                    box_x = "(w-text_w)/2"
+                    box_y = "(text_h*1)" if marked_at_top else f"h-(text_h*2)-({2*int(border_size)})"
+                    box = "1" if draw_box else "0"
+
                     try:
                         scene_index = self.scene_names.index(scene_name)
                         _, _, _, _, scene_start, scene_duration, _ = \
                             self.scene_chooser_data(scene_index)
-                        scene_info = f"{scene_index} {scene_name} {scene_start} +{scene_duration}"
+                        scene_info = f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]"
                         # FFmpeg needs the colons escaped
                         scene_info = scene_info.replace(":", "\:")
+                        draw_text = f"text='{scene_info}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}':box={box}:boxcolor={box_color}:boxborderw={border_size}"
                         use_custom_video_options = use_custom_video_options\
-                            .replace("<SCENE_INFO>", f"[{scene_info}]")
+                            .replace("<SCENE_INFO>", draw_text)
                     except IndexError as error:
                         use_custom_video_options = use_custom_video_options\
                             .replace("<SCENE_INFO>", f"[{error}]")

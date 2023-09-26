@@ -399,8 +399,8 @@ class VideoRemixer(TabBase):
                                     with gr.Row():
                                         export_path_703 = gr.Textbox(label="Exported Project Root Directory", max_lines=1,
                                                 info="Enter a path on this server for the root directory of the new project")
-                                        project_name_703 = gr.Textbox(label="Exported Project Direcotry Name", max_lines=1,
-                                                info="Enter a directory name for the new project")
+                                        project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
+                                                info="Enter a name for the new project")
                                     with gr.Row():
                                         message_box703 = gr.Markdown(format_markdown("Click Export Project to: Save the kept scenes as a new project"))
                                     export_project_703 = gr.Button("Export Project" + SimpleIcons.SLOW_SYMBOL,
@@ -1331,14 +1331,16 @@ class VideoRemixer(TabBase):
                           global_options,
                           kept_scenes,
                           custom_video_options,
-                          custom_audio_options):
+                          custom_audio_options,
+                          draw_text_options=None):
         _, _, output_ext = split_filepath(output_filepath)
         output_ext = output_ext[1:]
 
         self.log(f"about to create custom video clips")
         self.state.create_custom_video_clips(self.log, kept_scenes, global_options,
                                              custom_video_options=custom_video_options,
-                                             custom_ext=output_ext)
+                                             custom_ext=output_ext,
+                                             draw_text_options=draw_text_options)
         self.log("saving project after creating custom video clips")
         self.state.save()
 
@@ -1387,8 +1389,27 @@ class VideoRemixer(TabBase):
     def next_button62(self, marked_video_options, marked_audio_options, output_filepath):
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
+            draw_text_options = {}
+            draw_text_options["font_size"] = self.config.remixer_settings["marked_font_size"]
+            draw_text_options["font_color"] = self.config.remixer_settings["marked_font_color"]
+            draw_text_options["font_file"] = self.config.remixer_settings["marked_font_file"]
+            draw_text_options["draw_box"] = self.config.remixer_settings["marked_draw_box"]
+            draw_text_options["box_color"] = self.config.remixer_settings["marked_box_color"]
+            draw_text_options["border_size"] = self.config.remixer_settings["marked_border_size"]
+            draw_text_options["marked_at_top"] = self.config.remixer_settings["marked_at_top"]
+
+            # account for upscaling
+            upscale_factor = 1
+            if self.state.upscale:
+                if self.state.upscale_option == "2X":
+                    upscale_factor = 2
+                elif self.state.upscale_option == "4X":
+                    upscale_factor = 4
+            draw_text_options["crop_width"] = self.state.crop_w * upscale_factor
+            draw_text_options["crop_height"] = self.state.crop_h * upscale_factor
+
             self.save_custom_remix(output_filepath, global_options, kept_scenes,
-                                   marked_video_options, marked_audio_options)
+                                   marked_video_options, marked_audio_options, draw_text_options)
             return gr.update(value=format_markdown(f"Remixed marked video {output_filepath} is complete.", "highlight"))
         except ValueError as error:
             return gr.update(value=format_markdown(str(error), "error"))
@@ -1637,22 +1658,24 @@ class VideoRemixer(TabBase):
             new_state.scene_names = []
             new_state.thumbnails = []
 
-            for index, scene_name in enumerate(self.state.scene_names):
-                state = self.state.scene_states[scene_name]
-                if state == "Keep":
-                    scene_name = self.state.scene_names[index]
-                    new_state.scene_states[scene_name] = "Keep"
+            with Mtqdm().open_bar(total=len(self.state.scene_names), desc="Duplicating") as bar:
+                for index, scene_name in enumerate(self.state.scene_names):
+                    state = self.state.scene_states[scene_name]
+                    if state == "Keep":
+                        scene_name = self.state.scene_names[index]
+                        new_state.scene_states[scene_name] = "Keep"
 
-                    new_state.scene_names.append(scene_name)
-                    scene_dir = os.path.join(self.state.scenes_path, scene_name)
-                    new_scene_dir = os.path.join(new_state.scenes_path, scene_name)
-                    duplicate_directory(scene_dir, new_scene_dir)
+                        new_state.scene_names.append(scene_name)
+                        scene_dir = os.path.join(self.state.scenes_path, scene_name)
+                        new_scene_dir = os.path.join(new_state.scenes_path, scene_name)
+                        duplicate_directory(scene_dir, new_scene_dir)
 
-                    scene_thumbnail = self.state.thumbnails[index]
-                    _, filename, ext = split_filepath(scene_thumbnail)
-                    new_thumbnail = os.path.join(new_state.thumbnail_path, filename + ext)
-                    new_state.thumbnails.append(new_thumbnail)
-                    shutil.copy(scene_thumbnail, new_thumbnail)
+                        scene_thumbnail = self.state.thumbnails[index]
+                        _, filename, ext = split_filepath(scene_thumbnail)
+                        new_thumbnail = os.path.join(new_state.thumbnail_path, filename + ext)
+                        new_state.thumbnails.append(new_thumbnail)
+                        shutil.copy(scene_thumbnail, new_thumbnail)
+                    Mtqdm().update_bar(bar)
 
             # reset some things
             new_state.current_scene = 0
