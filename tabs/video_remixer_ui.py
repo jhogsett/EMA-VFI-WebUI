@@ -1657,22 +1657,24 @@ class VideoRemixer(TabBase):
             new_state.scene_names = []
             new_state.thumbnails = []
 
-            for index, scene_name in enumerate(self.state.scene_names):
-                state = self.state.scene_states[scene_name]
-                if state == "Keep":
-                    scene_name = self.state.scene_names[index]
-                    new_state.scene_states[scene_name] = "Keep"
+            with Mtqdm().open_bar(total=len(self.state.scene_names), desc="Duplicating") as bar:
+                for index, scene_name in enumerate(self.state.scene_names):
+                    state = self.state.scene_states[scene_name]
+                    if state == "Keep":
+                        scene_name = self.state.scene_names[index]
+                        new_state.scene_states[scene_name] = "Keep"
 
-                    new_state.scene_names.append(scene_name)
-                    scene_dir = os.path.join(self.state.scenes_path, scene_name)
-                    new_scene_dir = os.path.join(new_state.scenes_path, scene_name)
-                    duplicate_directory(scene_dir, new_scene_dir)
+                        new_state.scene_names.append(scene_name)
+                        scene_dir = os.path.join(self.state.scenes_path, scene_name)
+                        new_scene_dir = os.path.join(new_state.scenes_path, scene_name)
+                        duplicate_directory(scene_dir, new_scene_dir)
 
-                    scene_thumbnail = self.state.thumbnails[index]
-                    _, filename, ext = split_filepath(scene_thumbnail)
-                    new_thumbnail = os.path.join(new_state.thumbnail_path, filename + ext)
-                    new_state.thumbnails.append(new_thumbnail)
-                    shutil.copy(scene_thumbnail, new_thumbnail)
+                        scene_thumbnail = self.state.thumbnails[index]
+                        _, filename, ext = split_filepath(scene_thumbnail)
+                        new_thumbnail = os.path.join(new_state.thumbnail_path, filename + ext)
+                        new_state.thumbnails.append(new_thumbnail)
+                        shutil.copy(scene_thumbnail, new_thumbnail)
+                    Mtqdm().update_bar(bar)
 
             # reset some things
             new_state.current_scene = 0
