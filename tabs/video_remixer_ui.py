@@ -1657,7 +1657,7 @@ class VideoRemixer(TabBase):
             new_state.scene_names = []
             new_state.thumbnails = []
 
-            with Mtqdm().open_bar(total=len(self.state.scene_names), desc="Duplicating") as bar:
+            with Mtqdm().open_bar(total=len(kept_scenes), desc="Exporting") as bar:
                 for index, scene_name in enumerate(self.state.scene_names):
                     state = self.state.scene_states[scene_name]
                     if state == "Keep":
