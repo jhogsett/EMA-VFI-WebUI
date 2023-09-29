@@ -578,9 +578,14 @@ class VideoRemixerState():
     GAP = " " * 5
 
     def scene_chooser_data(self, scene_index):
+        # prevent an error if the thumbnails have been purged
+        try:
+            thumbnail_path = self.thumbnails[scene_index]
+        except IndexError:
+            thumbnail_path = None
+
         try:
             scene_name = self.scene_names[scene_index]
-            thumbnail_path = self.thumbnails[scene_index]
             scene_state = self.scene_states[scene_name]
             scene_position = f"{scene_index+1} of {len(self.scene_names)}"
 
