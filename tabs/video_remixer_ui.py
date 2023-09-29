@@ -1674,7 +1674,7 @@ class VideoRemixer(TabBase):
                         new_thumbnail = os.path.join(new_state.thumbnail_path, filename + ext)
                         new_state.thumbnails.append(new_thumbnail)
                         shutil.copy(scene_thumbnail, new_thumbnail)
-                    Mtqdm().update_bar(bar)
+                        Mtqdm().update_bar(bar)
 
             # reset some things
             new_state.current_scene = 0
