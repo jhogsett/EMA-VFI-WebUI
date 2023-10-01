@@ -247,31 +247,35 @@ class VideoRemixer(TabBase):
                 with gr.Tab(SimpleIcons.SIX + " Process Remix", id=self.TAB_PROC_OPTIONS):
                     gr.Markdown("**Ready to Process Content for Remix Video**")
                     with gr.Row():
-                        resize = gr.Checkbox(label="Fix Aspect Ratio", value=True)
+                        resize = gr.Checkbox(label="Resize / Crop Frames", value=True)
                         with gr.Box():
                             gr.Markdown(
-                                "Frames are resized then cropped according to project settings")
+                                "Frames are resized then cropped according to project settings\r\n"+
+                                "- Fixes aspect ratio\r\n" +
+                                "- Removes letter/pillar boxes")
                     with gr.Row():
                         resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True)
                         with gr.Box():
                             gr.Markdown(
                             "Frames are recreated by AI interpolation of neighboring frames\r\n" +
-                            "- Scene outermost frames are lost during resynthesis\r\n" +
-                            "- Audio clips are adjusted to compensate for lost frames")
+                            "- Smoothes shaky motion in videos\r\n" +
+                            "- Reduces compression artifacts")
                     with gr.Row():
                         inflate = gr.Checkbox(label="Inflate New Frames",value=True)
                         with gr.Box():
                             gr.Markdown(
                             "New frames are inserted by AI interpolation for smooth motion\r\n" +
-                            "- Project FPS is doubled when inflation is used\r\n" +
-                            "- Audio clips do not need adjusting for inflation")
+                            "- Creates smooth motion\r\n" +
+                            "- Doubles the frame rate")
                     with gr.Row():
                         upscale = gr.Checkbox(label="Upscale Frames", value=True)
                         upscale_option = gr.Radio(label="Upscale By", value="2X",
                                                   choices=["1X", "2X", "4X"])
                         with gr.Box():
                             gr.Markdown(
-                                "Frames are cleansed and enlarged using AI - Real-ESRGAN 4x+\r\n")
+                                "Frames are cleansed and enlarged using Real-ESRGAN 4x+\r\n" +
+                                "- Removes dirt and grime\r\n" +
+                                "- Enlarges frames according to project settings")
                     message_box5 = gr.Markdown(value=self.format_markdown(self.TAB5_DEFAULT_MESSAGE))
                     with gr.Row():
                         back_button5 = gr.Button(value="< Back", variant="secondary").\
