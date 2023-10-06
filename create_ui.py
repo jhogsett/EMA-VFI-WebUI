@@ -35,6 +35,7 @@ from tabs.split_scenes_ui import SplitScenes
 from tabs.slice_video_ui import SliceVideo
 from tabs.strip_scenes_ui import StripScenes
 from tabs.video_remixer_ui import VideoRemixer
+from tabs.assemble_video_ui import AssembleVideo
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
@@ -77,6 +78,7 @@ def create_ui(config : SimpleConfig,
                 DuplicateTuning(config, engine, log.log).render_tab()
                 DedupeFrames(config, engine, log.log).render_tab()
                 AutofillFrames(config, engine, log.log).render_tab()
+
             with gr.Tab("Split & Merge"):
                 gr.HTML(SimpleIcons.SPLIT_MERGE_SYMBOL +
                         "Split, Merge & Process PNG Frame Groups",
@@ -88,6 +90,7 @@ def create_ui(config : SimpleConfig,
                 StripScenes(config, engine, log.log).render_tab()
         VideoBlender(config, engine, log.log).render_tab()
         VideoRemixer(config, engine, log.log).render_tab()
+
         with gr.Tab(SimpleIcons.LABCOAT + "Tools"):
             VideoDetails(config, engine, log.log).render_tab()
             ResequenceFiles(config, engine, log.log).render_tab()
@@ -101,6 +104,7 @@ def create_ui(config : SimpleConfig,
                 GIFtoPNG(config, engine, log.log).render_tab()
                 PNGtoGIF(config, engine, log.log).render_tab()
                 SimplifyPngFiles(config, engine, log.log).render_tab()
+                AssembleVideo(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             GIFtoMP4(config, engine, log.log).render_tab()
             with gr.Tab(SimpleIcons.GEAR + "Application"):
@@ -111,6 +115,3 @@ def create_ui(config : SimpleConfig,
         if config.user_interface["show_header"]:
             app_footer.render()
     return app
-
-
-

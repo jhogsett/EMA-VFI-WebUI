@@ -49,6 +49,7 @@ class SimpleIcons:
 
     CAMERA = "📷"
     CASSETTE = "📼"
+    CINEMA = "🎦"
     CLAPPER = "🎬"
     FILM = "🎞️"
     MICROPHONE = "🎤"
@@ -142,6 +143,7 @@ class SimpleIcons:
         BANDAGE,
         BAR_CHART,
         BROKEN_HEART,
+        CINEMA,
         CLAPPER,
         COCKTAIL,
         COLLISION,

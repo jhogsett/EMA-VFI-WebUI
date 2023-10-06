@@ -239,3 +239,21 @@ def shrink(container_data, minimum, move_fn, remove_fn, rename_fn, state):
             container_data, _ = \
                 _shrink_merge(container_data, prev_key, key, move_fn, remove_fn, rename_fn, state)
     return container_data
+
+def _format_markdown_line(text, style):
+    return f"<p style=\"{style}\">{text}</p>"
+
+def format_markdown(text, color="info", bold=True):
+    font_style = "font-weight:bold" if bold else ""
+    color_style = {
+        "info" : "color:hsl(120 100% 65%)",
+        "warning" : "color:hsl(60 100% 65%)",
+        "error" : "color:hsl(0 100% 65%)",
+        "highlight" : "color:hsl(284 100% 65%)",
+    }.get(color, "")
+    style = ";".join([color_style, font_style])
+
+    result = []
+    for line in text.splitlines():
+        result.append(_format_markdown_line(line, style))
+    return "\r\n".join(result)
