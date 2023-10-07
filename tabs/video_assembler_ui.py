@@ -8,12 +8,11 @@ from webui_utils.video_utils import combine_videos
 from webui_utils.file_utils import get_files, get_directories, split_filepath
 from webui_utils.simple_utils import format_markdown
 from webui_utils.mtqdm import Mtqdm
-# from webui_tips import WebuiTips
+from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
-# from simplify_png_files import SimplifyPngFiles as _SimplifyPngFiles
 
-class AssembleVideo(TabBase):
+class VideoAssembler(TabBase):
     """Encapsulates UI elements and events for the Assemble Video feature"""
     def __init__(self,
                     config : SimpleConfig,
@@ -21,14 +20,14 @@ class AssembleVideo(TabBase):
                     log_fn : Callable):
         TabBase.__init__(self, config, engine, log_fn)
 
-    DEFAULT_MESSAGE_SINGLE = "Click Assemble Clips to: Combine video clips into a single video file (can take from seconds to minutes)"
+    DEFAULT_MESSAGE_SINGLE = "Click Assemble Video to: Combine video clips into a single video file (can take from seconds to minutes)"
     DEFAULT_MESSAGE_BATCH = "Click Assemble Batch to: Combine video clips in batch directories (can take from minutes to hours)"
 
     def render_tab(self):
         """Render tab into UI"""
         with gr.Tab("Video Assembler"):
             gr.Markdown(
-                SimpleIcons.CINEMA + "Combine video clips of the same dimensions and rate",
+                SimpleIcons.CINEMA + "Combine multiple video clips into a single video",
                 elem_id="tabheading")
             with gr.Tabs():
                 with gr.Tab(label="Individual Path"):
@@ -39,7 +38,7 @@ class AssembleVideo(TabBase):
                         placeholder="Leave blank to use input path name as default")
                     message_box = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_SINGLE))
                     gr.Markdown("*Progress can be tracked in the console*")
-                    assemble_button = gr.Button("Assemble Clips " + SimpleIcons.SLOW_SYMBOL, variant="primary")
+                    assemble_button = gr.Button("Assemble Video " + SimpleIcons.SLOW_SYMBOL, variant="primary")
 
                 with gr.Tab(label="Batch Processing"):
                     input_path_batch = gr.Text(max_lines=1, label="Video Clip Directories Path",
@@ -47,8 +46,8 @@ class AssembleVideo(TabBase):
                     message_batch = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_BATCH))
                     gr.Markdown("*Progress can be tracked in the console*")
                     assemble_batch = gr.Button("Assemble Batch " + SimpleIcons.SLOW_SYMBOL, variant="primary")
-            # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-            #     WebuiTips.simplify_png_files.render()
+            with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                WebuiTips.video_assembler.render()
         assemble_button.click(self.assemble_clips, inputs=[input_path, output_path], outputs=message_box)
         assemble_batch.click(self.assemble_batch, inputs=input_path_batch, outputs=message_batch)
 
@@ -99,7 +98,7 @@ class AssembleVideo(TabBase):
             return gr.update(value=format_markdown(self.DEFAULT_MESSAGE_BATCH))
 
     def assemble_clips(self, input_path : str, output_filepath : str="", interactive=True):
-        """Assemble Clips button handler"""
+        """Assemble Video button handler"""
         if not input_path:
             if interactive:
                 return gr.update(value=format_markdown("Enter a path to video clips on this server to get started", "warning"))

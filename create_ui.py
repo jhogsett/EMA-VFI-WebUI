@@ -35,7 +35,7 @@ from tabs.split_scenes_ui import SplitScenes
 from tabs.slice_video_ui import SliceVideo
 from tabs.strip_scenes_ui import StripScenes
 from tabs.video_remixer_ui import VideoRemixer
-from tabs.assemble_video_ui import AssembleVideo
+from tabs.video_assembler_ui import VideoAssembler
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
@@ -104,7 +104,7 @@ def create_ui(config : SimpleConfig,
                 GIFtoPNG(config, engine, log.log).render_tab()
                 PNGtoGIF(config, engine, log.log).render_tab()
                 SimplifyPngFiles(config, engine, log.log).render_tab()
-                AssembleVideo(config, engine, log.log).render_tab()
+                VideoAssembler(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
             GIFtoMP4(config, engine, log.log).render_tab()
             with gr.Tab(SimpleIcons.GEAR + "Application"):
