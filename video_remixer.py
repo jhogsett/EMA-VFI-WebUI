@@ -159,7 +159,7 @@ class VideoRemixerState():
     def save(self, filepath : str=None):
         filepath = filepath or self.project_filepath()
         with open(filepath, "w", encoding="UTF-8") as file:
-            yaml.dump(self, file)
+            yaml.dump(self, file, width=1024)
 
     def project_filepath(self, filename : str=DEF_FILENAME):
         return os.path.join(self.project_path, filename)
