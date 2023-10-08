@@ -369,7 +369,7 @@ class VideoRemixer(TabBase):
                                     label="Split Position", minimum=1.0, maximum=99.0, step=1.0, info="A lower value splits earlier in the scene")
                                     with gr.Row():
                                         message_box702 = gr.Markdown(self.format_markdown("Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
-                                    split_button702 = gr.Button("Split Scene" + SimpleIcons.SLOW_SYMBOL, variant="stop").\
+                                    split_button702 = gr.Button("Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop").\
                                         style(full_width=False)
 
                                 with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene", id=self.TAB_EXTRA_UTIL_DROP_PROCESSED):
@@ -378,7 +378,7 @@ class VideoRemixer(TabBase):
                                     scene_id_700 = gr.Number(value=-1, label="Scene Index")
                                     with gr.Row():
                                         message_box700 = gr.Markdown(self.format_markdown("Click Drop Scene to: Remove all Processed Content for the specified scene"))
-                                    drop_button700 = gr.Button("Drop Processed Scene" + SimpleIcons.SLOW_SYMBOL, variant="stop").\
+                                    drop_button700 = gr.Button("Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop").\
                                         style(full_width=False)
 
                                 with gr.Tab(SimpleIcons.HEART_HANDS + " Choose Scene Range", id=self.TAB_EXTRA_UTIL_CHOOSE_RANGE):
@@ -406,7 +406,7 @@ class VideoRemixer(TabBase):
                                                 info="Enter a name for the new project")
                                     with gr.Row():
                                         message_box703 = gr.Markdown(self.format_markdown("Click Export Project to: Save the kept scenes as a new project"))
-                                    export_project_703 = gr.Button("Export Project" + SimpleIcons.SLOW_SYMBOL,
+                                    export_project_703 = gr.Button("Export Project " + SimpleIcons.SLOW_SYMBOL,
                                                             variant="stop").style(full_width=False)
                                     with gr.Row():
                                         result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)

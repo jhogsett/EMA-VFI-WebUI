@@ -80,7 +80,7 @@ class ChangeFPS(TabBase):
                             placeholder="Where to place the converted frame groups",
                             label="Output Path")
                     gr.Markdown("*Progress can be tracked in the console*")
-                    convert_batch = gr.Button("Convert Batch" + SimpleIcons.SLOW_SYMBOL,
+                    convert_batch = gr.Button("Convert Batch " + SimpleIcons.SLOW_SYMBOL,
                                                 variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.change_fps.render()

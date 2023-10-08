@@ -7,7 +7,7 @@ from fractions import Fraction
 from ffmpy import FFmpeg, FFprobe, FFRuntimeError
 from .image_utils import gif_frame_count
 from .file_utils import split_filepath, get_directories
-from .simple_utils import seconds_to_hms, clean_dict, get_frac_str_as_float
+from .simple_utils import seconds_to_hms, get_frac_str_as_float
 from .jot import Jot
 
 QUALITY_NEAR_LOSSLESS = 17
@@ -725,7 +725,10 @@ def combine_videos(input_paths : list,
         outputs={output_filepath : "-c: copy"},
         global_options="-y " + global_options)
     cmd = ffcmd.cmd
-    ffcmd.run()
-    if not keep_concat_file:
-        os.remove(concat_file)
-    return cmd
+    try:
+        ffcmd.run()
+        if not keep_concat_file:
+            os.remove(concat_file)
+        return cmd
+    except FFRuntimeError as error:
+        raise ValueError(f"combine_video() received an error using FFmpeg: {str(error)}")
