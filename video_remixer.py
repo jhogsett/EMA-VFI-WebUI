@@ -877,12 +877,20 @@ class VideoRemixerState():
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_path = os.path.join(self.resize_path, scene_name)
+                content_width = self.video_details["content_width"]
+                content_height = self.video_details["content_height"]
 
-                if self.resize_w == self.video_details["content_width"] and \
-                        self.resize_h == self.video_details["content_height"]:
+                if self.resize_w == content_width and self.resize_h == content_height:
                     scale_type = "none"
                 else:
-                    scale_type = remixer_settings["scale_type"]
+                    if self.resize_w <= content_width and self.resize_h <= content_height:
+                        # use the down scaling type if there are only reductions
+                        # the default "area" type preserves details better on reducing
+                        scale_type = remixer_settings["scale_type_down"]
+                    else:
+                        # otherwise use the upscaling type
+                        # the default "lanczos" type preserves details better on enlarging
+                        scale_type = remixer_settings["scale_type_up"]
 
                 if self.crop_w == self.resize_w and \
                         self.crop_h == self.resize_h:
