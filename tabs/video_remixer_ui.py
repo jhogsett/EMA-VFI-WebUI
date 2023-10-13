@@ -248,31 +248,35 @@ class VideoRemixer(TabBase):
                 with gr.Tab(SimpleIcons.SIX + " Process Remix", id=self.TAB_PROC_OPTIONS):
                     gr.Markdown("**Ready to Process Content for Remix Video**")
                     with gr.Row():
-                        resize = gr.Checkbox(label="Fix Aspect Ratio", value=True)
+                        resize = gr.Checkbox(label="Resize / Crop Frames", value=True)
                         with gr.Box():
                             gr.Markdown(
-                                "Frames are resized then cropped according to project settings")
+                                "Frames are resized then cropped according to project settings\r\n"+
+                                "- Fixes aspect ratio\r\n" +
+                                "- Removes letter/pillar boxes")
                     with gr.Row():
                         resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True)
                         with gr.Box():
                             gr.Markdown(
                             "Frames are recreated by AI interpolation of neighboring frames\r\n" +
-                            "- Scene outermost frames are lost during resynthesis\r\n" +
-                            "- Audio clips are adjusted to compensate for lost frames")
+                            "- Smoothes shaky motion in videos\r\n" +
+                            "- Reduces compression artifacts")
                     with gr.Row():
                         inflate = gr.Checkbox(label="Inflate New Frames",value=True)
                         with gr.Box():
                             gr.Markdown(
                             "New frames are inserted by AI interpolation for smooth motion\r\n" +
-                            "- Project FPS is doubled when inflation is used\r\n" +
-                            "- Audio clips do not need adjusting for inflation")
+                            "- Creates smooth motion\r\n" +
+                            "- Doubles the frame rate")
                     with gr.Row():
                         upscale = gr.Checkbox(label="Upscale Frames", value=True)
                         upscale_option = gr.Radio(label="Upscale By", value="2X",
                                                   choices=["1X", "2X", "4X"])
                         with gr.Box():
                             gr.Markdown(
-                                "Frames are cleansed and enlarged using AI - Real-ESRGAN 4x+\r\n")
+                                "Frames are cleansed and enlarged using Real-ESRGAN 4x+\r\n" +
+                                "- Removes dirt and grime\r\n" +
+                                "- Enlarges frames according to project settings")
                     message_box5 = gr.Markdown(value=format_markdown(self.TAB5_DEFAULT_MESSAGE))
                     with gr.Row():
                         back_button5 = gr.Button(value="< Back", variant="secondary").\
@@ -366,7 +370,7 @@ class VideoRemixer(TabBase):
                                     label="Split Position", minimum=1.0, maximum=99.0, step=1.0, info="A lower value splits earlier in the scene")
                                     with gr.Row():
                                         message_box702 = gr.Markdown(format_markdown("Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
-                                    split_button702 = gr.Button("Split Scene" + SimpleIcons.SLOW_SYMBOL, variant="stop").\
+                                    split_button702 = gr.Button("Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop").\
                                         style(full_width=False)
 
                                 with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene", id=self.TAB_EXTRA_UTIL_DROP_PROCESSED):
@@ -375,7 +379,7 @@ class VideoRemixer(TabBase):
                                     scene_id_700 = gr.Number(value=-1, label="Scene Index")
                                     with gr.Row():
                                         message_box700 = gr.Markdown(format_markdown("Click Drop Scene to: Remove all Processed Content for the specified scene"))
-                                    drop_button700 = gr.Button("Drop Processed Scene" + SimpleIcons.SLOW_SYMBOL, variant="stop").\
+                                    drop_button700 = gr.Button("Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop").\
                                         style(full_width=False)
 
                                 with gr.Tab(SimpleIcons.HEART_HANDS + " Choose Scene Range", id=self.TAB_EXTRA_UTIL_CHOOSE_RANGE):
@@ -403,7 +407,7 @@ class VideoRemixer(TabBase):
                                                 info="Enter a name for the new project")
                                     with gr.Row():
                                         message_box703 = gr.Markdown(format_markdown("Click Export Project to: Save the kept scenes as a new project"))
-                                    export_project_703 = gr.Button("Export Project" + SimpleIcons.SLOW_SYMBOL,
+                                    export_project_703 = gr.Button("Export Project " + SimpleIcons.SLOW_SYMBOL,
                                                             variant="stop").style(full_width=False)
                                     with gr.Row():
                                         result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)

@@ -159,7 +159,7 @@ class VideoRemixerState():
     def save(self, filepath : str=None):
         filepath = filepath or self.project_filepath()
         with open(filepath, "w", encoding="UTF-8") as file:
-            yaml.dump(self, file)
+            yaml.dump(self, file, width=1024)
 
     def project_filepath(self, filename : str=DEF_FILENAME):
         return os.path.join(self.project_path, filename)
@@ -578,9 +578,14 @@ class VideoRemixerState():
     GAP = " " * 5
 
     def scene_chooser_data(self, scene_index):
+        # prevent an error if the thumbnails have been purged
+        try:
+            thumbnail_path = self.thumbnails[scene_index]
+        except IndexError:
+            thumbnail_path = None
+
         try:
             scene_name = self.scene_names[scene_index]
-            thumbnail_path = self.thumbnails[scene_index]
             scene_state = self.scene_states[scene_name]
             scene_position = f"{scene_index+1} of {len(self.scene_names)}"
 
@@ -872,12 +877,20 @@ class VideoRemixerState():
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_path = os.path.join(self.resize_path, scene_name)
+                content_width = self.video_details["content_width"]
+                content_height = self.video_details["content_height"]
 
-                if self.resize_w == self.video_details["content_width"] and \
-                        self.resize_h == self.video_details["content_height"]:
+                if self.resize_w == content_width and self.resize_h == content_height:
                     scale_type = "none"
                 else:
-                    scale_type = remixer_settings["scale_type"]
+                    if self.resize_w <= content_width and self.resize_h <= content_height:
+                        # use the down scaling type if there are only reductions
+                        # the default "area" type preserves details better on reducing
+                        scale_type = remixer_settings["scale_type_down"]
+                    else:
+                        # otherwise use the upscaling type
+                        # the default "lanczos" type preserves details better on enlarging
+                        scale_type = remixer_settings["scale_type_up"]
 
                 if self.crop_w == self.resize_w and \
                         self.crop_h == self.resize_h:

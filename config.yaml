@@ -116,7 +116,8 @@ remixer_settings:
   maximum_crf: 28
   min_frames_per_scene: 10
   minimum_crf: 17
-  scale_type: "lanczos"
+  scale_type_up: "lanczos"
+  scale_type_down: "area"
   thumb_scale: 0.5
   use_tiling: False
 restoration_settings:
