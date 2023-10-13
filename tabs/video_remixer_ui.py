@@ -736,24 +736,6 @@ class VideoRemixer(TabBase):
     def noop_args(self, num):
         return [gr.update(visible=True) for _ in range(num)]
 
-    # def _format_markdown_line(self, text, style):
-    #     return f"<p style=\"{style}\">{text}</p>"
-
-    # def format_markdown(self, text, color="info", bold=True):
-    #     font_style = "font-weight:bold" if bold else ""
-    #     color_style = {
-    #         "info" : "color:hsl(120 100% 65%)",
-    #         "warning" : "color:hsl(60 100% 65%)",
-    #         "error" : "color:hsl(0 100% 65%)",
-    #         "highlight" : "color:hsl(284 100% 65%)",
-    #     }.get(color, "")
-    #     style = ";".join([color_style, font_style])
-
-    #     result = []
-    #     for line in text.splitlines():
-    #         result.append(self._format_markdown_line(line, style))
-    #     return "\r\n".join(result)
-
     ### REMIX HOME EVENT HANDLERS
 
     # User has clicked New Project > from Remix Home
