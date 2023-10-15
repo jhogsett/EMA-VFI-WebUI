@@ -343,7 +343,8 @@ class VideoRemixer(TabBase):
                                                                 max_lines=1,
                                             info="Enter a path and filename for the remixed video")
                             with gr.Row():
-                                message_box62 = gr.Markdown(value=self.format_markdown(self.TAB62_DEFAULT_MESSAGE))
+                                message_box62 = gr.Markdown(value=
+                                                self.format_markdown(self.TAB62_DEFAULT_MESSAGE))
                             gr.Markdown("*Progress can be tracked in the console*")
                             with gr.Row():
                                 back_button62 = gr.Button(value="< Back", variant="secondary").\
@@ -361,18 +362,34 @@ class VideoRemixer(TabBase):
 
                         with gr.Tab(SimpleIcons.TOOLBOX + " Utilities", id=self.TAB_EXTRA_UTILITIES):
                             with gr.Tabs() as tabs_remix_extra_utils:
-                                with gr.Tab(SimpleIcons.AXE + " Split Scene", id=self.TAB_EXTRA_UTIL_SPLIT_SCENE):
+                                with gr.Tab(SimpleIcons.AXE + " Split Scene",
+                                            id=self.TAB_EXTRA_UTIL_SPLIT_SCENE):
                                     gr.Markdown("**_Split a Scene in two at a set point_**")
                                     with gr.Row():
-                                        scene_id_702 = gr.Number(value=-1, label="Scene Index")
-                                        split_percent_702 = gr.Slider(value=50.0,
-                                    label="Split Position", minimum=1.0, maximum=99.0, step=1.0, info="A lower value splits earlier in the scene")
+                                        with gr.Column():
+                                            with gr.Row():
+                                                scene_id_702 = gr.Number(value=-1,
+                                                                         label="Scene Index")
+                                            with gr.Row():
+                                                split_percent_702 = gr.Slider(value=50.0,
+                                                    label="Split Position", minimum=0.0,
+                                                    maximum=100.0, step=0.1,
+                                                info="A lower value splits earlier in the scene")
+                                        with gr.Column():
+                                            preview_image702 = gr.Image(type="filepath",
+                                                            label="Split Frame Preview", tool=None)\
+                                                                .style(height=400)
+                                            preview_button702 = gr.Button(value=
+                                                                          "Refresh Preview")
                                     with gr.Row():
-                                        message_box702 = gr.Markdown(self.format_markdown("Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
-                                    split_button702 = gr.Button("Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop").\
-                                        style(full_width=False)
+                                        message_box702 = gr.Markdown(self.format_markdown(
+                    "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
+                                    split_button702 = gr.Button(
+                                        "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop")\
+                                            .style(full_width=False)
 
-                                with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene", id=self.TAB_EXTRA_UTIL_DROP_PROCESSED):
+                                with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene",
+                                            id=self.TAB_EXTRA_UTIL_DROP_PROCESSED):
                                     gr.Markdown(
                                 "**_Drop a scene after processing has been already been done_**")
                                     scene_id_700 = gr.Number(value=-1, label="Scene Index")
@@ -687,6 +704,11 @@ class VideoRemixer(TabBase):
         split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
                               outputs=[tabs_video_remixer, message_box702, scene_index, scene_label,
                                        scene_image, scene_state, scene_info])
+
+        preview_button702.click(self.preview_button702, inputs=[scene_id_702, split_percent_702],
+                                outputs=preview_image702)
+        split_percent_702.release(self.preview_button702, inputs=[scene_id_702, split_percent_702],
+                                outputs=preview_image702)
 
         export_project_703.click(self.export_project_703,
                                  inputs=[export_path_703, project_name_703],
@@ -1522,7 +1544,7 @@ class VideoRemixer(TabBase):
         split_frame = 1 if split_frame == 0 else split_frame
 
         # ensure at least one frame remains in the upper scene
-        split_frame = num_frames-1 if split_frame == num_frames else split_frame
+        split_frame = num_frames-2 if split_frame >= num_frames-1 else split_frame
 
         self.log(f"setting split frame to {split_frame}")
 
@@ -1617,6 +1639,42 @@ class VideoRemixer(TabBase):
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
             gr.update(value=self.format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
+
+    # TODO DRY this code
+    def preview_button702(self, scene_index, split_percent):
+        split_point = split_percent / 100.0
+
+        if not isinstance(scene_index, (int, float)):
+            return gr.update(value=None)
+
+        num_scenes = len(self.state.scene_names)
+        last_scene = num_scenes - 1
+        scene_index = int(scene_index)
+        if scene_index < 0 or scene_index > last_scene:
+            return gr.update(value=None)
+
+        scene_name = self.state.scene_names[scene_index]
+        first_frame, last_frame, num_width = details_from_group_name(scene_name)
+        num_frames = (last_frame - first_frame) + 1
+
+        split_frame = math.ceil(num_frames * split_point)
+
+        # ensure at least one frame remains in the lower scene
+        split_frame = 1 if split_frame == 0 else split_frame
+
+        # ensure at least one frame remains in the upper scene
+        split_frame = num_frames-2 if split_frame >= num_frames-1 else split_frame
+
+        original_scene_path = os.path.join(self.state.scenes_path, scene_name)
+        self.state.uncompile_scenes()
+
+        frame_files = sorted(get_files(original_scene_path))
+        num_frame_files = len(frame_files)
+        if num_frame_files != num_frames:
+            return gr.update(value=None)
+
+        display_frame = frame_files[split_frame]
+        return gr.update(value=display_frame)
 
     def export_project_703(self, new_project_path, new_project_name):
         empty_args = [gr.update(visible=False), gr.update(visible=False)]
