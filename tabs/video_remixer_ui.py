@@ -706,9 +706,9 @@ class VideoRemixer(TabBase):
                                        scene_image, scene_state, scene_info])
 
         preview_button702.click(self.preview_button702, inputs=[scene_id_702, split_percent_702],
-                                outputs=preview_image702)
+                                outputs=preview_image702, show_progress=False)
         split_percent_702.release(self.preview_button702, inputs=[scene_id_702, split_percent_702],
-                                outputs=preview_image702)
+                                outputs=preview_image702, show_progress=False)
 
         export_project_703.click(self.export_project_703,
                                  inputs=[export_path_703, project_name_703],
@@ -1512,6 +1512,21 @@ class VideoRemixer(TabBase):
             gr.update(value=self.format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
 
+    def compute_scene_split(self, scene_index : int, split_percent : float):
+        scene_name = self.state.scene_names[scene_index]
+        split_point = split_percent / 100.0
+        first_frame, last_frame, num_width = details_from_group_name(scene_name)
+        num_frames = (last_frame - first_frame) + 1
+        split_frame = math.ceil(num_frames * split_point)
+
+        # ensure at least one frame remains in the lower scene
+        split_frame = 1 if split_frame == 0 else split_frame
+
+        # ensure at least one frame remains in the upper scene
+        split_frame = num_frames-1 if split_frame >= num_frames else split_frame
+
+        return scene_name, num_width, num_frames, first_frame, last_frame, split_frame
+
     def split_button702(self, scene_index, split_percent):
         global_options = self.config.ffmpeg_settings["global_options"]
         split_point = split_percent / 100.0
@@ -1529,22 +1544,13 @@ class VideoRemixer(TabBase):
                 gr.update(value=self.format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning")), \
                 *self.empty_args(5)
 
-        scene_name = self.state.scene_names[scene_index]
-        first_frame, last_frame, num_width = details_from_group_name(scene_name)
-        num_frames = (last_frame - first_frame) + 1
+        scene_name, num_width, num_frames, first_frame, last_frame, split_frame \
+            = self.compute_scene_split(scene_index, split_percent)
+
         if num_frames < 2:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 gr.update(value=self.format_markdown("Scene must have at least two frames to be split", "error")), \
                 *self.empty_args(5)
-
-        # use ceil to ensure the split is at least at the requested position
-        split_frame = math.ceil(num_frames * split_point)
-
-        # ensure at least one frame remains in the lower scene
-        split_frame = 1 if split_frame == 0 else split_frame
-
-        # ensure at least one frame remains in the upper scene
-        split_frame = num_frames-2 if split_frame >= num_frames-1 else split_frame
 
         self.log(f"setting split frame to {split_frame}")
 
@@ -1640,31 +1646,17 @@ class VideoRemixer(TabBase):
             gr.update(value=self.format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
 
-    # TODO DRY this code
     def preview_button702(self, scene_index, split_percent):
-        split_point = split_percent / 100.0
-
         if not isinstance(scene_index, (int, float)):
             return gr.update(value=None)
 
+        scene_index = int(scene_index)
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
-        scene_index = int(scene_index)
         if scene_index < 0 or scene_index > last_scene:
             return gr.update(value=None)
 
-        scene_name = self.state.scene_names[scene_index]
-        first_frame, last_frame, num_width = details_from_group_name(scene_name)
-        num_frames = (last_frame - first_frame) + 1
-
-        split_frame = math.ceil(num_frames * split_point)
-
-        # ensure at least one frame remains in the lower scene
-        split_frame = 1 if split_frame == 0 else split_frame
-
-        # ensure at least one frame remains in the upper scene
-        split_frame = num_frames-2 if split_frame >= num_frames-1 else split_frame
-
+        scene_name, _, num_frames, _, _, split_frame = self.compute_scene_split(scene_index, split_percent)
         original_scene_path = os.path.join(self.state.scenes_path, scene_name)
         self.state.uncompile_scenes()
 
