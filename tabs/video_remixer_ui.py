@@ -1012,7 +1012,13 @@ class VideoRemixer(TabBase):
             self.state.save()
 
         self.state.scene_names = sorted(get_directories(self.state.scenes_path))
-        self.state.drop_all_scenes()
+
+        # if there's only one scene, assume it should be kept to save some time
+        if len(self.state.scene_names) < 2:
+            self.state.keep_all_scenes()
+        else:
+            self.state.drop_all_scenes()
+
         self.state.current_scene = 0
         self.log("saving project after establishing scene names")
         self.state.save()
