@@ -567,7 +567,7 @@ class VideoRemixer(TabBase):
         next_button00.click(self.next_button00,
                            inputs=video_path,
                            outputs=[tabs_video_remixer, message_box00, video_info1, project_path,
-                                    resize_w, resize_h, crop_w, crop_h])
+                                    resize_w, resize_h, crop_w, crop_h, project_fps])
 
         next_button01.click(self.next_button01,
                            inputs=project_load_path,
@@ -779,15 +779,16 @@ class VideoRemixer(TabBase):
 
     # User has clicked New Project > from Remix Home
     def next_button00(self, video_path):
+        empty_args = self.empty_args(7)
         if not video_path:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=self.format_markdown("Enter a path to a video on this server to get started", "warning")), \
-                   *self.empty_args(6)
+                   *empty_args
 
         if not os.path.exists(video_path):
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=self.format_markdown(f"File '{video_path}' was not found", "error")), \
-                   *self.empty_args(6)
+                   *empty_args
 
         self.new_project()
         try:
@@ -796,7 +797,7 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=self.format_markdown(str(error), "error")), \
-                   *self.empty_args(6)
+                   *empty_args
 
         # don't save yet, user may change project path next
         self.state.save_progress("settings", save_project=False)
@@ -808,7 +809,8 @@ class VideoRemixer(TabBase):
             self.state.resize_w, \
             self.state.resize_h, \
             self.state.crop_w, \
-            self.state.crop_h
+            self.state.crop_h, \
+            self.state.project_fps
 
     # User has clicked Open Project > from Remix Home
     def next_button01(self, project_path):

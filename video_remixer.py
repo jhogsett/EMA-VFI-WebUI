@@ -200,6 +200,7 @@ class VideoRemixerState():
         self.resize_h = resize_h
         self.crop_w = crop_w
         self.crop_h = crop_h
+        self.project_fps = video_details['frame_rate']
 
     @staticmethod
     def determine_project_filepath(project_path):
