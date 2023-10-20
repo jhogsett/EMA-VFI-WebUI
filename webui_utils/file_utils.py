@@ -132,16 +132,19 @@ def get_matching_files(path : str, filespec : str) -> list:
 def get_directories(path : str) -> list:
     """Get a list of directories in the path"""
     if isinstance(path, str):
-        if is_safe_path(path):
-            entries = os.listdir(path)
-            directories = []
-            for entry in entries:
-                fullpath = os.path.join(path, entry)
-                if os.path.isdir(fullpath):
-                    directories.append(entry)
-            return directories
+        if os.path.exists(path):
+            if is_safe_path(path):
+                entries = os.listdir(path)
+                directories = []
+                for entry in entries:
+                    fullpath = os.path.join(path, entry)
+                    if os.path.isdir(fullpath):
+                        directories.append(entry)
+                return directories
+            else:
+                raise ValueError("'path' must be a legal path")
         else:
-            raise ValueError("'path' must be a legal path")
+            raise ValueError("'path' does not exist")
     else:
         raise ValueError("'path' must be a string")
 
