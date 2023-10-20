@@ -191,8 +191,8 @@ class VideoRemixerState():
 
         filtered_filename = clean_filename(filename, self.FILENAME_FILTER)
         project_path = os.path.join(path, f"{self.PROJECT_PATH_PREFIX}{filtered_filename}")
-        resize_w = video_details['display_width']
-        resize_h = video_details['display_height']
+        resize_w = int(video_details['display_width'])
+        resize_h = int(video_details['display_height'])
         crop_w, crop_h = resize_w, resize_h
 
         self.project_path = project_path
@@ -200,6 +200,7 @@ class VideoRemixerState():
         self.resize_h = resize_h
         self.crop_w = crop_w
         self.crop_h = crop_h
+        self.project_fps = float(video_details['frame_rate'])
 
     @staticmethod
     def determine_project_filepath(project_path):
