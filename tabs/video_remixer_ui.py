@@ -82,8 +82,10 @@ class VideoRemixer(TabBase):
                                 video_path = gr.Textbox(label="Video Path",
                                     placeholder="Path on this server to the video to be remixed")
                             with gr.Row():
-                                message_box00 = gr.Markdown(format_markdown(self.TAB00_DEFAULT_MESSAGE))
-                            gr.Markdown("*Progress can be tracked in the console*")
+                                message_box00 = gr.Markdown(
+                                    format_markdown(self.TAB00_DEFAULT_MESSAGE))
+                            gr.Markdown(format_markdown("Progress can be tracked in the console",
+                                                        color="none", italic=True, bold=False))
                             next_button00 = gr.Button(value="New Project > " +
                                 SimpleIcons.SLOW_SYMBOL, variant="primary", elem_id="actionbutton")
                         with gr.Column():
@@ -92,8 +94,11 @@ class VideoRemixer(TabBase):
                                 project_load_path = gr.Textbox(label="Project Path",
                 placeholder="Path on this server to the Video Remixer project directory or file")
                             with gr.Row():
-                                message_box01 = gr.Markdown(value=format_markdown(self.TAB01_DEFAULT_MESSAGE))
-                            gr.Markdown("*The last used tab will be shown after loading project*")
+                                message_box01 = gr.Markdown(
+                                    value=format_markdown(self.TAB01_DEFAULT_MESSAGE))
+                            gr.Markdown(format_markdown(
+                                "The last used tab will be shown after loading project",
+                                color="none", italic=True, bold=False))
                             next_button01 = gr.Button(value="Open Project >",
                                                     variant="primary")
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -161,16 +166,20 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         thumbnail_type = gr.Radio(choices=["GIF", "JPG"], value="GIF",
                                                   label="Thumbnail Type",
-                                    info="Choose 'GIF' for whole-scene animations")
+                                    info="Choose 'GIF' for whole scene animation, 'JPG' for mid-scene image")
                         min_frames_per_scene = gr.Number(label="Minimum Frames Per Scene",
                                     precision=0, value=def_min_frames,
                         info="Consolidates very small scenes info the next (0 to disable)")
+
                     with gr.Row():
                         message_box2 = gr.Markdown(value=format_markdown(self.TAB2_DEFAULT_MESSAGE))
+                    gr.Markdown(format_markdown(
+                    "(!) Redoing this step will restart scene detection and recreate thumbnails",
+                    color="warning"))
+                    gr.Markdown(format_markdown(
+                        "Progress can be tracked in the console",
+                        color="none", italic=True, bold=False))
 
-                    gr.Markdown(
-                        SimpleIcons.WARNING + "**Important: Redoing this step will purge and recreate content!**" +
-                        " *Progress can be tracked in the console*")
                     with gr.Row():
                         back_button2 = gr.Button(value="< Back", variant="secondary").\
                             style(full_width=False)
@@ -252,7 +261,7 @@ class VideoRemixer(TabBase):
                         resize = gr.Checkbox(label="Resize / Crop Frames", value=True)
                         with gr.Box():
                             gr.Markdown(format_markdown(
-                                "Resize then crop frames according to project settings\r\n"+
+                                "Resize and Crop Frames according to project settings\r\n"+
                                 "- Adjust aspect ratio\r\n" +
                                 "- Remove unwanted letterboxes or pillarboxes",
                                 color="more", bold_heading_only=True))
@@ -261,16 +270,16 @@ class VideoRemixer(TabBase):
                         resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True)
                         with gr.Box():
                             gr.Markdown(format_markdown(
-                                "Recreate frames using interpolation of adjacent frames\r\n" +
+                                "Recreate Frames using Interpolation of adjacent frames\r\n" +
                                 "- Remove grime and single-frame noise\r\n" +
-                                "- Reduce sprocket shake",
+                                "- Reduce sprocket shake in film-to-digital content",
                                 color="more", bold_heading_only=True))
 
                     with gr.Row():
                         inflate = gr.Checkbox(label="Inflate New Frames",value=True)
                         with gr.Box():
                             gr.Markdown(format_markdown(
-                            "Insert new between frames using interpolation of existing frames\r\n" +
+                            "Insert Between-Frames using Interpolation of existing frames\r\n" +
                             "- Double the frame rate for smooth motion\r\n" +
                             "- Increase content realness and presence",
                             color="more", bold_heading_only=True))
@@ -281,19 +290,21 @@ class VideoRemixer(TabBase):
                                                   choices=["1X", "2X", "4X"])
                         with gr.Box():
                             gr.Markdown(format_markdown(
-                                "Cleanse and enlarge frames using Real-ESRGAN 4x+ Upscaler\r\n" +
+                                "Clean and Enlarge frames using Real-ESRGAN 4x+ upscaler\r\n" +
                                 "- Remove grime, noise, and digital artifacts\r\n" +
-                                "- Enlarge frames according to project settings",
+                                "- Enlarge frames according to upscaling settings",
                                 color="more", bold_heading_only=True))
 
                     with gr.Row():
                         process_all = gr.Checkbox(label="Select All", value=True)
                         with gr.Box():
                             gr.Markdown(format_markdown(
-                                "Deselect all processing options to use original source content",
+                                "Deselect All Steps to use original source content for remix video",
                                 color="more", bold=True))
 
                     message_box5 = gr.Markdown(value=format_markdown(self.TAB5_DEFAULT_MESSAGE))
+                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+
                     with gr.Row():
                         back_button5 = gr.Button(value="< Back", variant="secondary").\
                             style(full_width=False)
@@ -319,7 +330,7 @@ class VideoRemixer(TabBase):
                                     info="Enter a path and filename for the remixed video")
                             with gr.Row():
                                 message_box60 = gr.Markdown(value=format_markdown(self.TAB60_DEFAULT_MESSAGE))
-                            gr.Markdown("*Progress can be tracked in the console*")
+                            gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
                             with gr.Row():
                                 back_button60 = gr.Button(value="< Back", variant="secondary").\
                                     style(full_width=False)
@@ -340,7 +351,7 @@ class VideoRemixer(TabBase):
                                             info="Enter a path and filename for the remixed video")
                             with gr.Row():
                                 message_box61 = gr.Markdown(value=format_markdown(self.TAB61_DEFAULT_MESSAGE))
-                            gr.Markdown("*Progress can be tracked in the console*")
+                            gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
                             with gr.Row():
                                 back_button61 = gr.Button(value="< Back", variant="secondary").\
                                     style(full_width=False)
@@ -362,7 +373,7 @@ class VideoRemixer(TabBase):
                             with gr.Row():
                                 message_box62 = gr.Markdown(value=
                                                 format_markdown(self.TAB62_DEFAULT_MESSAGE))
-                            gr.Markdown("*Progress can be tracked in the console*")
+                            gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
                             with gr.Row():
                                 back_button62 = gr.Button(value="< Back", variant="secondary").\
                                     style(full_width=False)
@@ -459,7 +470,7 @@ class VideoRemixer(TabBase):
                                 "Delete the contents of the 'purged_content' project directory.")
                                     with gr.Row():
                                         message_box710 = gr.Markdown(format_markdown("Click Delete Purged Content to: Permanently Remove soft-deleted content"))
-                                    gr.Markdown("*Progress can be tracked in the console*")
+                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
                                         delete_button710 = gr.Button(value="Delete Purged Content "\
                                                         + SimpleIcons.SLOW_SYMBOL, variant="stop")
@@ -490,7 +501,7 @@ class VideoRemixer(TabBase):
                                     "Delete Thumbnails used to display scenes in Scene Chooser.")
                                     with gr.Row():
                                         message_box711 = gr.Markdown(format_markdown("Click Delete Selected Content to: Permanently Remove the selected content"))
-                                    gr.Markdown("*Progress can be tracked in the console*")
+                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
                                         delete_button711 = gr.Button(
                                             value="Delete Selected Content " +\
@@ -551,7 +562,7 @@ class VideoRemixer(TabBase):
         "Delete Video+Audio MP4 files used as inputs to concatentate into the final Remix Video.")
                                     with gr.Row():
                                         message_box712 = gr.Markdown(format_markdown("Click Delete Selected Content to: Permanently Remove the selected content"))
-                                    gr.Markdown("*Progress can be tracked in the console*")
+                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
                                         delete_button712 = gr.Button(
                                             value="Delete Selected Content " +\
@@ -572,7 +583,7 @@ class VideoRemixer(TabBase):
             "Deletes all created project content. **Does not delete original and remixed videos.**")
                                     with gr.Row():
                                         message_box713 = gr.Markdown(format_markdown("Click Delete Processed Content to: Permanently Remove all processed content"))
-                                    gr.Markdown("*Progress can be tracked in the console*")
+                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
                                         delete_button713 = gr.Button(
                                             value="Delete Processed Content " +\
@@ -604,6 +615,9 @@ class VideoRemixer(TabBase):
                                 project_load_path])
 
         back_button1.click(self.back_button1, outputs=tabs_video_remixer)
+
+        deinterlace.change(self.deinterlace_change, inputs=deinterlace, outputs=project_fps,
+                           show_progress=False)
 
         next_button2.click(self.next_button2, inputs=[thumbnail_type, min_frames_per_scene],
                            outputs=[tabs_video_remixer, message_box2, scene_index, scene_label,
@@ -948,6 +962,13 @@ class VideoRemixer(TabBase):
 
     def back_button1(self):
         return gr.update(selected=self.TAB_REMIX_HOME)
+
+    def deinterlace_change(self, deinterlace):
+        source_frame_rate = float(self.state.video_details['frame_rate'])
+        if deinterlace:
+            return gr.update(value=source_frame_rate / 2.0)
+        else:
+            return gr.update(value=source_frame_rate)
 
     ### SET UP PROJECT EVENT HANDLERS
 
