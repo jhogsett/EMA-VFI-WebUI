@@ -159,9 +159,9 @@ class VideoRemixer(TabBase):
                     with gr.Box():
                         project_info2 = gr.Markdown("Project Details")
                     with gr.Row():
-                        thumbnail_type = gr.Radio(choices=["GIF", "JPG"], value="JPG",
+                        thumbnail_type = gr.Radio(choices=["GIF", "JPG"], value="GIF",
                                                   label="Thumbnail Type",
-                                    info="Choose 'GIF' for whole-scene animations (slow to render)")
+                                    info="Choose 'GIF' for whole-scene animations")
                         min_frames_per_scene = gr.Number(label="Minimum Frames Per Scene",
                                     precision=0, value=def_min_frames,
                         info="Consolidates very small scenes info the next (0 to disable)")
@@ -592,6 +592,8 @@ class VideoRemixer(TabBase):
 
         back_button2.click(self.back_button2, outputs=tabs_video_remixer)
 
+        thumbnail_type.change(self.thumb_change, inputs=thumbnail_type, show_progress=False)
+
         scene_state.change(self.scene_state_button, show_progress=False,
                             inputs=[scene_index, scene_label, scene_state],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
@@ -955,10 +957,11 @@ class VideoRemixer(TabBase):
         self.log("resetting project on rendering for project settings")
         self.state.reset_at_project_settings()
 
-        # split video into raw PNG frames
+        # split video into raw PNG frames, avoid doing again if redoing setup
         self.log("splitting source video into PNG frames")
         global_options = self.config.ffmpeg_settings["global_options"]
-        ffcmd = self.state.render_source_frames(global_options=global_options)
+        ffcmd = self.state.render_source_frames(global_options=global_options,
+                                                prevent_overwrite=True)
         if not ffcmd:
             self.log("rendering source frames skipped")
         else:
@@ -976,8 +979,9 @@ class VideoRemixer(TabBase):
         self.log("saving project after establishing scene paths")
         self.state.save()
 
+        # split frames into scenes, must do again if redoing setup since scenes could differ
         self.log(f"about to split scenes by {self.state.split_type}")
-        error = self.state.split_scenes(self.log)
+        error = self.state.split_scenes(self.log, prevent_overwrite=False)
         if error:
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                    gr.update(value=format_markdown(f"There was an error splitting the source video: {error}", "error")), \
@@ -1030,6 +1034,12 @@ class VideoRemixer(TabBase):
 
     def back_button2(self):
         return gr.update(selected=self.TAB_REMIX_SETTINGS)
+
+    def thumb_change(self, thumbnail_type):
+        self.state.thumbnail_type = thumbnail_type
+        if self.state.project_path:
+            self.log(f"Saving project after hot-setting thumbnail type to {thumbnail_type}")
+            self.state.save()
 
     ### SCENE CHOOSER EVENT HANDLERS
 

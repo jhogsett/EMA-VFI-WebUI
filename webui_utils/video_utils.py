@@ -588,15 +588,20 @@ def slice_video(input_path : str,
                 gif_high_quality : bool=False,
                 gif_fps : float=0.0,
                 gif_end_delay : float=0.0,
-                global_options : str=""):
+                global_options : str="",
+                output_filename : str=""):
     # 153=5.1
     # 203+1=6.8
     # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.mp4
     # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.wav
-    _, filename, ext = split_filepath(input_path)
-    output_filename =\
-f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_width)}].{type}"
-    output_filepath = os.path.join(output_path, output_filename)
+    if output_filename:
+        filename = f"{output_filename}.{type}"
+    else:
+        _, default_filename, _ = split_filepath(input_path)
+        filename =\
+f"{default_filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_width)}].{type}"
+    output_filepath = os.path.join(output_path, filename)
+
     start_second = first_frame / fps
     end_second = (last_frame + 1) / fps
     start_time = seconds_to_hms(start_second)
@@ -667,6 +672,88 @@ f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_widt
     cmd = ffcmd.cmd
     ffcmd.run()
     return cmd
+
+def slice_png_frames(input_path : str,
+                fps : float,
+                output_path : str,
+                num_width : int,
+                first_frame : int,
+                last_frame : int,
+                type : str="mp4",
+                mp4_quality : int=28,
+                gif_speed : int=1,
+                scale_factor : float=0.5,
+                gif_high_quality : bool=False,
+                gif_fps : float=0.0,
+                gif_end_delay : float=0.0,
+                global_options : str="",
+                output_filename : str=""):
+
+    if output_filename:
+        filename = f"{output_filename}.{type}"
+    else:
+        _, default_filename, _ = split_filepath(input_path)
+        filename =\
+f"{default_filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_width)}].{type}"
+    output_filepath = os.path.join(output_path, filename)
+
+    if type == "gif":
+        gif_fps = fps if gif_fps == 0.0 else gif_fps
+
+        # expressed in 1/100th seconds
+        final_delay = f"-final_delay {int(gif_end_delay * 100)}" if gif_end_delay else ""
+
+        if gif_high_quality: # extremely slow
+            ffcmd = FFmpeg(inputs= {input_path : None},
+                                    outputs={output_filepath :
+                    f"-vf 'setpts=PTS/{gif_speed},fps={gif_fps},scale=iw*{scale_factor}:-2,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -loop 0 {final_delay}"},
+                global_options="-y " + global_options)
+        else:
+            ffcmd = FFmpeg(inputs= {input_path : None},
+                                    outputs={output_filepath :
+                    f"-vf 'setpts=PTS/{gif_speed},fps={gif_fps},scale=iw*{scale_factor}:-2' -loop 0 {final_delay}"},
+                global_options="-y " + global_options)
+
+        try:
+            cmd = ffcmd.cmd
+            # errors are common, don't mess up the console output
+            result = ffcmd.run(stderr=subprocess.PIPE)
+            stderr = result[1].decode("UTF-8")
+            return cmd, stderr
+
+        except FFRuntimeError:
+            # TODO could be smarter to locate the middle PNG frame file
+
+            # try again as a static gif at the mid frame
+            mid_frame = int((last_frame + first_frame) / 2)
+            start_second = mid_frame / (fps * 1.0)
+            start_time = seconds_to_hms(start_second)
+
+            if gif_high_quality:
+                ffcmd = FFmpeg(inputs= {input_path : None},
+                                        outputs={output_filepath :
+                        f"-ss {start_time} -vf 'scale=iw*{scale_factor}:-2,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -vframes 1"},
+                    global_options="-y " + global_options)
+            else:
+                ffcmd = FFmpeg(inputs= {input_path : None},
+                                        outputs={output_filepath :
+                        f"-ss {start_time} -vf 'scale=iw*{scale_factor}:-2' -vframes 1"},
+                    global_options="-y " + global_options)
+
+    elif type == "jpg":
+        # TODO could be smarter to locate the middle PNG frame file
+
+        mid_frame = int((last_frame + first_frame) / 2)
+        start_second = mid_frame / (fps * 1.0)
+        start_time = seconds_to_hms(start_second)
+        ffcmd = FFmpeg(inputs= {input_path : f"-ss {start_time}"},
+                                outputs={output_filepath :
+                f"-vf scale=iw*{scale_factor}:-2 -qscale:v 2 -vframes 1"},
+            global_options="-y " + global_options)
+
+    cmd = ffcmd.cmd
+    ffcmd.run()
+    return cmd, None
 
 # input: "40:30"
 # output: 1.2121212121...

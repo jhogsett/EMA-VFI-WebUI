@@ -6,11 +6,11 @@ The _Project Details_ box shows a summary of the remix project about to be creat
 1. Choose a _Thumbnail Type_:
     - **_GIF_**
         - A 10X sped-up animated GIF of the entire scene
-        - GIF thumbnails provide the best experience, but are _slow to render_
-        - They are best used when selecting certain key clips from a video
+        - GIF thumbnails provide the best experience as they show the whole scene
+        - They take a bit more time to render than _JPG_ thumbnails
     - **_JPG_**
-        - A still image at the center of the scene
-        - JPG thumbnails are _fast to render_ but may not provide enough confidence for _keep_ vs. _drop_ decisions
+        - A still image from the middle moment of the scene
+        - JPG thumbnails are _fast to render_ but may obscure some scene details
         - They are best used with the _Break_ split type to identify and remove commercial scenes
 1. Click _Set Up Project_ to begin the setup process
 - Progress can be tracked in the console
