@@ -11,7 +11,7 @@
 :root {
     --frame-chooser-action: #008542;
     --main-output-highlight: #ee7400;
-    --feature-output-highlight: #703088;
+    --feature-output-highlight: #72308a;
     --frame-chooser-action-dim: #004d26;
     --main-output-highlight-dim: hsl(29, 100%, 30%);
     --message-box-text-info: hsl(120, 100%, 65%);
