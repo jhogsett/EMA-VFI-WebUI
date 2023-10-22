@@ -247,7 +247,13 @@ TEXT_TO_HTML = {
     TEXT_TERM : DELETE_TERM,
     "- " : "• "
 }
-
+STYLE_COLORS = {
+    "info" : "color:hsl(120 100% 65%)",
+    "more" : "color:hsl(35 100% 75%)",
+    "warning" : "color:hsl(60 100% 65%)",
+    "error" : "color:hsl(0 100% 65%)",
+    "highlight" : "color:hsl(284 100% 65%)",
+}
 def _format_markdown_line(text : str, style : str):
     terminate = text.find(TEXT_TERM) != -1
     for k,v in TEXT_TO_HTML.items():
@@ -255,22 +261,22 @@ def _format_markdown_line(text : str, style : str):
     term = HTML_TERM + TEXT_TERM if terminate else TEXT_TERM
     return f"<span style=\"{style}\">{text}</span>{term}"
 
-def format_markdown(text, color="info", bold=True):
+def format_markdown(text, color="info", bold=True, bold_heading_only=False):
     font_style = "font-weight:bold" if bold else ""
-    color_style = {
-        "info" : "color:hsl(120 100% 65%)",
-        "warning" : "color:hsl(60 100% 65%)",
-        "error" : "color:hsl(0 100% 65%)",
-        "highlight" : "color:hsl(284 100% 65%)",
-    }.get(color, "")
-    style = ";".join([color_style, font_style])
+    color_style = STYLE_COLORS.get(color, "")
+
+    heading_style = ";".join([color_style, font_style])
+    lines_style = heading_style if not bold_heading_only else color_style
 
     lines = text.splitlines()
-    if lines == 1:
-        return _format_markdown_line(line, style)
+    if len(lines) == 1:
+        return _format_markdown_line(text, heading_style)
     else:
         result = []
-        for line in lines:
+        for index, line in enumerate(lines):
             line += TEXT_TERM
-            result.append(_format_markdown_line(line, style))
+            if index == 0:
+                result.append(_format_markdown_line(line, heading_style))
+            else:
+                result.append(_format_markdown_line(line, lines_style))
         return "\r\n".join(result)

@@ -251,36 +251,36 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         resize = gr.Checkbox(label="Resize / Crop Frames", value=True)
                         with gr.Box():
-                            gr.Markdown(
+                            gr.Markdown(format_markdown(
                                 "Frames are resized then cropped according to project settings\r\n"+
                                 "- Fixes aspect ratio\r\n" +
-                                "- Removes letter/pillar boxes")
+                                "- Removes letter/pillar boxes", color="more", bold_heading_only=True))
 
                     with gr.Row():
                         resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True)
                         with gr.Box():
-                            gr.Markdown(
+                            gr.Markdown(format_markdown(
                             "Frames are recreated by AI interpolation of neighboring frames\r\n" +
                             "- Smoothes shaky motion in videos\r\n" +
-                            "- Reduces compression artifacts")
+                            "- Reduces compression artifacts", color="more", bold_heading_only=True))
 
                     with gr.Row():
                         inflate = gr.Checkbox(label="Inflate New Frames",value=True)
                         with gr.Box():
-                            gr.Markdown(
+                            gr.Markdown(format_markdown(
                             "New frames are inserted by AI interpolation for smooth motion\r\n" +
                             "- Creates smooth motion\r\n" +
-                            "- Doubles the frame rate")
+                            "- Doubles the frame rate", color="more", bold_heading_only=True))
 
                     with gr.Row():
                         upscale = gr.Checkbox(label="Upscale Frames", value=True)
                         upscale_option = gr.Radio(label="Upscale By", value="2X",
                                                   choices=["1X", "2X", "4X"])
                         with gr.Box():
-                            gr.Markdown(
+                            gr.Markdown(format_markdown(
                                 "Frames are cleansed and enlarged using Real-ESRGAN 4x+\r\n" +
                                 "- Removes dirt and grime\r\n" +
-                                "- Enlarges frames according to project settings")
+                                "- Enlarges frames according to project settings", color="more", bold_heading_only=True))
 
                     message_box5 = gr.Markdown(value=format_markdown(self.TAB5_DEFAULT_MESSAGE))
                     with gr.Row():

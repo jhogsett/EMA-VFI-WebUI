@@ -10,11 +10,12 @@
 
 :root {
     --frame-chooser-action: #008542;
-    --main-output-highlight: #ee7400;
-    --feature-output-highlight: #72308a;
+    --main-output-highlight: #f07400;
+    --feature-output-highlight: #703088;
     --frame-chooser-action-dim: #004d26;
-    --main-output-highlight-dim: hsl(29, 100%, 30%);
+    --main-output-highlight-dim: #994a00;
     --message-box-text-info: hsl(120, 100%, 65%);
+    --message-box-text-more: hsl(29, 100%, 65%);
     --message-box-text-warn: hsl(60, 100%, 65%);
     --message-box-text-error: hsl(0, 100%, 65%);
     --message-box-text-highlight: hsl(284, 100%, 65%);
