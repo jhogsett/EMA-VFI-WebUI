@@ -142,6 +142,8 @@ class SliceVideo:
             self.log(message)
             return message
 
+    # TODO this was hacked into this class, but it doesn't slice from a video,
+    #      so perhaps it should be in its own class, despite so much shared functionality
     # slice from a pre-grouped set of PNG frames
     def _slice_png_group(self, group_name, slice_name):
         first_index, last_index, num_width = details_from_group_name(group_name)
@@ -152,6 +154,7 @@ class SliceVideo:
         first_index = 0
 
         first_index += self.edge_trim
+        # TODO confirm why this is necessary
         if first_index < 0:
             first_index = 0
         last_index -= self.edge_trim
