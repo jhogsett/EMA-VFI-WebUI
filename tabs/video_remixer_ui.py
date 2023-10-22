@@ -389,7 +389,10 @@ class VideoRemixer(TabBase):
                     with gr.Tabs() as tabs_remix_extra:
 
                         with gr.Tab(SimpleIcons.TOOLBOX + " Utilities", id=self.TAB_EXTRA_UTILITIES):
+                            gr.Markdown("Special Remix Features for Advanced Use")
                             with gr.Tabs() as tabs_remix_extra_utils:
+
+                                # Split Scene
                                 with gr.Tab(SimpleIcons.AXE + " Split Scene",
                                             id=self.TAB_EXTRA_UTIL_SPLIT_SCENE):
                                     gr.Markdown("**_Split a Scene in two at a set point_**")
@@ -416,6 +419,7 @@ class VideoRemixer(TabBase):
                                         "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop")\
                                             .style(full_width=False)
 
+                                # Drop Processed Scene
                                 with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene",
                                             id=self.TAB_EXTRA_UTIL_DROP_PROCESSED):
                                     gr.Markdown(
@@ -426,6 +430,7 @@ class VideoRemixer(TabBase):
                                     drop_button700 = gr.Button("Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop").\
                                         style(full_width=False)
 
+                                # Choose Scene Range
                                 with gr.Tab(SimpleIcons.HEART_HANDS + " Choose Scene Range", id=self.TAB_EXTRA_UTIL_CHOOSE_RANGE):
                                     gr.Markdown("**_Keep or Drop a range of scenes_**")
                                     with gr.Row():
@@ -442,6 +447,7 @@ class VideoRemixer(TabBase):
                                     choose_button701 = gr.Button("Choose Scene Range",
                                                             variant="stop").style(full_width=False)
 
+                                # Export Kept Scenes
                                 with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_UTIL_EXPORT_SCENES):
                                     gr.Markdown("**_Save Kept Scenes as a New Project_**")
                                     with gr.Row():
@@ -458,7 +464,9 @@ class VideoRemixer(TabBase):
                                         open_result703 = gr.Button("Open New Project", visible=False).style(full_width=False)
 
                         with gr.Tab(SimpleIcons.HERB +" Reduce Footprint", id=self.TAB_EXTRA_REDUCE):
+                            gr.Markdown("Free Disk Space by Removing Unneeded Content")
                             with gr.Tabs():
+
                                 with gr.Tab(SimpleIcons.WASTE_BASKET + " Remove Soft-Deleted Content"):
                                     gr.Markdown(
                     "**_Delete content set aside when remix processing selections are changed_**")
@@ -752,7 +760,7 @@ class VideoRemixer(TabBase):
                                  outputs=[message_box703, result_box703, open_result703])
 
         open_result703.click(self.open_result703, inputs=result_box703,
-                                outputs=[tabs_video_remixer, project_load_path])
+                                outputs=[tabs_video_remixer, project_load_path, message_box01])
 
         delete_button710.click(self.delete_button710,
                                inputs=delete_purged_710,
@@ -1814,7 +1822,9 @@ class VideoRemixer(TabBase):
             return gr.update(value=format_markdown(str(error), "error")), *empty_args
 
     def open_result703(self, new_project_path):
-        return gr.update(selected=self.TAB_REMIX_HOME), gr.update(value=new_project_path)
+        return gr.update(selected=self.TAB_REMIX_HOME), \
+            gr.update(value=new_project_path), \
+            gr.update(value=format_markdown(self.TAB01_DEFAULT_MESSAGE))
 
     def delete_button710(self, delete_purged):
         if delete_purged:
