@@ -252,25 +252,28 @@ class VideoRemixer(TabBase):
                         resize = gr.Checkbox(label="Resize / Crop Frames", value=True)
                         with gr.Box():
                             gr.Markdown(format_markdown(
-                                "Frames are resized then cropped according to project settings\r\n"+
-                                "- Fixes aspect ratio\r\n" +
-                                "- Removes letter/pillar boxes", color="more", bold_heading_only=True))
+                                "Resize then crop frames according to project settings\r\n"+
+                                "- Adjust aspect ratio\r\n" +
+                                "- Remove unwanted letterboxes or pillarboxes",
+                                color="more", bold_heading_only=True))
 
                     with gr.Row():
                         resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True)
                         with gr.Box():
                             gr.Markdown(format_markdown(
-                            "Frames are recreated by AI interpolation of neighboring frames\r\n" +
-                            "- Smoothes shaky motion in videos\r\n" +
-                            "- Reduces compression artifacts", color="more", bold_heading_only=True))
+                                "Recreate frames using interpolation of adjacent frames\r\n" +
+                                "- Remove grime and single-frame noise\r\n" +
+                                "- Reduce sprocket shake",
+                                color="more", bold_heading_only=True))
 
                     with gr.Row():
                         inflate = gr.Checkbox(label="Inflate New Frames",value=True)
                         with gr.Box():
                             gr.Markdown(format_markdown(
-                            "New frames are inserted by AI interpolation for smooth motion\r\n" +
-                            "- Creates smooth motion\r\n" +
-                            "- Doubles the frame rate", color="more", bold_heading_only=True))
+                            "Insert new between frames using interpolation of existing frames\r\n" +
+                            "- Double the frame rate for smooth motion\r\n" +
+                            "- Increase content realness and presence",
+                            color="more", bold_heading_only=True))
 
                     with gr.Row():
                         upscale = gr.Checkbox(label="Upscale Frames", value=True)
@@ -278,9 +281,17 @@ class VideoRemixer(TabBase):
                                                   choices=["1X", "2X", "4X"])
                         with gr.Box():
                             gr.Markdown(format_markdown(
-                                "Frames are cleansed and enlarged using Real-ESRGAN 4x+\r\n" +
-                                "- Removes dirt and grime\r\n" +
-                                "- Enlarges frames according to project settings", color="more", bold_heading_only=True))
+                                "Cleanse and enlarge frames using Real-ESRGAN 4x+ Upscaler\r\n" +
+                                "- Remove grime, noise, and digital artifacts\r\n" +
+                                "- Enlarge frames according to project settings",
+                                color="more", bold_heading_only=True))
+
+                    with gr.Row():
+                        process_all = gr.Checkbox(label="Select All", value=True)
+                        with gr.Box():
+                            gr.Markdown(format_markdown(
+                                "Deselect all processing options to use original source content",
+                                color="more", bold=True))
 
                     message_box5 = gr.Markdown(value=format_markdown(self.TAB5_DEFAULT_MESSAGE))
                     with gr.Row():
@@ -684,6 +695,10 @@ class VideoRemixer(TabBase):
                              message_box61, message_box62])
 
         back_button5.click(self.back_button5, outputs=tabs_video_remixer)
+
+        process_all.change(self.process_all_changed, inputs=process_all,
+                           outputs=[resynthesize, inflate, resize, upscale],
+                           show_progress=False)
 
         next_button60.click(self.next_button60, inputs=[output_filepath, quality_slider],
                            outputs=message_box60)
@@ -1300,6 +1315,12 @@ class VideoRemixer(TabBase):
 
     def back_button5(self):
         return gr.update(selected=self.TAB_COMPILE_SCENES)
+
+    def process_all_changed(self, process_all : bool):
+        return gr.update(value=process_all), \
+            gr.update(value=process_all), \
+            gr.update(value=process_all), \
+            gr.update(value=process_all)
 
     ### SAVE REMIX EVENT HANDLERS
 
