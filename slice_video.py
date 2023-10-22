@@ -5,7 +5,7 @@ from typing import Callable
 from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import create_directory, is_safe_path
 from webui_utils.video_utils import validate_input_path, details_from_group_name, slice_video, \
-    determine_input_pattern
+    determine_input_pattern, slice_png_frames
 from webui_utils.mtqdm import Mtqdm
 from ffmpy import FFRuntimeError
 
@@ -168,7 +168,7 @@ class SliceVideo:
         self.log(f"slicing from frames path {frames_path}")
 
         try:
-            ffmpeg_cmd = slice_video(frames_path,
+            ffmpeg_cmd, errors = slice_png_frames(frames_path,
                         self.fps,
                         output_path,
                         num_width,
@@ -184,6 +184,7 @@ class SliceVideo:
                         global_options=self.global_options,
                         output_filename=slice_name)
             self.log(f"FFmpeg command line: '{ffmpeg_cmd}'")
+            self.log(f"FFmpeg stderr output: '{errors}'")
             return None
         except FFRuntimeError as error:
             message = f"FFRuntimeError {error}"
