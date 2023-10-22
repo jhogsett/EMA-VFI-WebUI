@@ -240,8 +240,20 @@ def shrink(container_data, minimum, move_fn, remove_fn, rename_fn, state):
                 _shrink_merge(container_data, prev_key, key, move_fn, remove_fn, rename_fn, state)
     return container_data
 
-def _format_markdown_line(text, style):
-    return f"<p style=\"{style}\">{text}</p>"
+TEXT_TERM = "\r\n"
+HTML_TERM = "<br/>"
+DELETE_TERM = ""
+TEXT_TO_HTML = {
+    TEXT_TERM : DELETE_TERM,
+    "- " : "• "
+}
+
+def _format_markdown_line(text : str, style : str):
+    terminate = text.find(TEXT_TERM) != -1
+    for k,v in TEXT_TO_HTML.items():
+        text = text.replace(k, v, 1)
+    term = HTML_TERM + TEXT_TERM if terminate else TEXT_TERM
+    return f"<span style=\"{style}\">{text}</span>{term}"
 
 def format_markdown(text, color="info", bold=True):
     font_style = "font-weight:bold" if bold else ""
@@ -253,7 +265,12 @@ def format_markdown(text, color="info", bold=True):
     }.get(color, "")
     style = ";".join([color_style, font_style])
 
-    result = []
-    for line in text.splitlines():
-        result.append(_format_markdown_line(line, style))
-    return "\r\n".join(result)
+    lines = text.splitlines()
+    if lines == 1:
+        return _format_markdown_line(line, style)
+    else:
+        result = []
+        for line in lines:
+            line += TEXT_TERM
+            result.append(_format_markdown_line(line, style))
+        return "\r\n".join(result)
