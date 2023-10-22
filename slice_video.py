@@ -4,7 +4,8 @@ import argparse
 from typing import Callable
 from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import create_directory, is_safe_path
-from webui_utils.video_utils import validate_input_path, details_from_group_name, slice_video
+from webui_utils.video_utils import validate_input_path, details_from_group_name, slice_video, \
+    determine_input_pattern, slice_png_frames
 from webui_utils.mtqdm import Mtqdm
 from ffmpy import FFRuntimeError
 
@@ -141,6 +142,58 @@ class SliceVideo:
             self.log(message)
             return message
 
+    # TODO this was hacked into this class, but it doesn't slice from a video,
+    #      so perhaps it should be in its own class, despite so much shared functionality
+    # slice from a pre-grouped set of PNG frames
+    def _slice_png_group(self, group_name, slice_name):
+        first_index, last_index, num_width = details_from_group_name(group_name)
+        output_path = self.output_path or os.path.join(self.group_path, group_name)
+
+        # offset to zero time - the PNG frames should start at the beginning
+        last_index -= first_index
+        first_index = 0
+
+        first_index += self.edge_trim
+        # TODO confirm why this is necessary
+        if first_index < 0:
+            first_index = 0
+        last_index -= self.edge_trim
+
+        # With edge trim this can end up with a zero or negative duration
+        # render at least one frame's worth so a valid file is produced.
+        # The combine_video_audio() function will trim to the shortest stream
+        if last_index <= first_index:
+            last_index = first_index + 1
+
+        frames_source = os.path.join(self.group_path, group_name)
+        pattern = determine_input_pattern(frames_source)
+        frames_path = os.path.join(frames_source, pattern)
+        self.log(f"slicing from frames path {frames_path}")
+
+        try:
+            ffmpeg_cmd, errors = slice_png_frames(frames_path,
+                        self.fps,
+                        output_path,
+                        num_width,
+                        first_index,
+                        last_index,
+                        self.type,
+                        self.mp4_quality,
+                        self.gif_factor,
+                        self.output_scale,
+                        self.gif_high_quality,
+                        self.gif_fps,
+                        self.gif_end_delay,
+                        global_options=self.global_options,
+                        output_filename=slice_name)
+            self.log(f"FFmpeg command line: '{ffmpeg_cmd}'")
+            self.log(f"FFmpeg stderr output: '{errors}'")
+            return None
+        except FFRuntimeError as error:
+            message = f"FFRuntimeError {error}"
+            self.log(message)
+            return message
+
     def slice(self, ignore_errors=False):
         group_names = validate_input_path(self.group_path, -1)
         if self.output_path:
@@ -171,6 +224,23 @@ class SliceVideo:
         errors = []
         with Mtqdm().open_bar(total=1, desc=pbar_desc) as bar:
             error = self._slice_group(group_name)
+            if error:
+                errors.append({group_name : error})
+                if not ignore_errors:
+                    raise RuntimeError(error)
+            Mtqdm().update_bar(bar)
+        return errors
+
+    def slice_png_group(self, group_name, ignore_errors=False, slice_name=""):
+        validate_input_path(self.group_path, -1)
+        if self.output_path:
+            self.log(f"Creating output path {self.output_path}")
+            create_directory(self.output_path)
+
+        pbar_desc = f"Slice {self.type}"
+        errors = []
+        with Mtqdm().open_bar(total=1, desc=pbar_desc) as bar:
+            error = self._slice_png_group(group_name, slice_name=slice_name)
             if error:
                 errors.append({group_name : error})
                 if not ignore_errors:
