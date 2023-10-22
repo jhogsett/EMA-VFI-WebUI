@@ -588,15 +588,20 @@ def slice_video(input_path : str,
                 gif_high_quality : bool=False,
                 gif_fps : float=0.0,
                 gif_end_delay : float=0.0,
-                global_options : str=""):
+                global_options : str="",
+                output_filename : str=""):
     # 153=5.1
     # 203+1=6.8
     # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.mp4
     # ffmpeg -y -i WINDCHIME.mp4 -ss 0:00:05.100000 -to 0:00:06.800000 -copyts 153-203-WINDCHIME.wav
-    _, filename, ext = split_filepath(input_path)
-    output_filename =\
-f"{filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_width)}].{type}"
-    output_filepath = os.path.join(output_path, output_filename)
+    if output_filename:
+        filename = f"{output_filename}.{type}"
+    else:
+        _, default_filename, _ = split_filepath(input_path)
+        filename =\
+f"{default_filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(num_width)}].{type}"
+    output_filepath = os.path.join(output_path, filename)
+
     start_second = first_frame / fps
     end_second = (last_frame + 1) / fps
     start_time = seconds_to_hms(start_second)

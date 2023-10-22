@@ -287,7 +287,7 @@ class VideoRemixerState():
     FRAMES_PATH = "SOURCE"
 
     # split video into raw PNG frames
-    def render_source_frames(self, global_options, prevent_overwrite=True):
+    def render_source_frames(self, global_options, prevent_overwrite=False):
         self.frames_path = os.path.join(self.project_path, self.FRAMES_PATH)
         if prevent_overwrite:
             if os.path.exists(self.frames_path) and get_files(self.frames_path, "png"):
@@ -310,7 +310,10 @@ class VideoRemixerState():
             Mtqdm().update_bar(bar)
         return ffmpeg_cmd
 
-    def split_scenes(self, log_fn):
+    def split_scenes(self, log_fn, prevent_overwrite=False):
+        if prevent_overwrite:
+            if os.path.exists(self.scenes_path) and get_directories(self.scenes_path):
+                return None
         try:
             if self.split_type == "Scene":
                 with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
@@ -450,9 +453,20 @@ class VideoRemixerState():
 
     THUMBNAILS_PATH = "THUMBNAILS"
 
-    # create a single replacement thumbnail, assumes thumbnail path already exists
+    # create a scene thumbnail, assumes:
+    # - scenes uncompiled
+    # - thumbnail path already exists
     def create_thumbnail(self, scene_name, log_fn, global_options, remixer_settings):
         self.thumbnail_path = os.path.join(self.project_path, self.THUMBNAILS_PATH)
+        frames_source = os.path.join(self.scenes_path, scene_name)
+
+        log_fn(f"auto-resequencing source frames at {frames_source}")
+        index_width = self.video_details["index_width"]
+        ResequenceFiles(frames_source, "png", "scene_frame", 0, 1, 1, 0, index_width, True,
+            log_fn).resequence()
+
+        thumbnail_filename = f"thumbnail[{scene_name}]"
+
         if self.thumbnail_type == "JPG":
             thumb_scale = remixer_settings["thumb_scale"]
             max_thumb_size = remixer_settings["max_thumb_size"]
@@ -476,7 +490,8 @@ class VideoRemixerState():
                         0.0,
                         0.0,
                         log_fn,
-                        global_options=global_options).slice_group(scene_name)
+                        global_options=global_options).slice_png_group(scene_name,
+                            slice_name=thumbnail_filename)
 
         elif self.thumbnail_type == "GIF":
             gif_fps = remixer_settings["default_gif_fps"]
@@ -492,6 +507,7 @@ class VideoRemixerState():
             if thumb_size > max_thumb_size:
                 thumb_scale = max_thumb_size / max_frame_dimension
             self.thumbnail_path = os.path.join(self.project_path, "THUMBNAILS")
+
             SliceVideo(self.source_video,
                         self.project_fps,
                         self.scenes_path,
@@ -505,7 +521,9 @@ class VideoRemixerState():
                         gif_fps,
                         gif_end_delay,
                         log_fn,
-                        global_options=global_options).slice_group(scene_name, ignore_errors=True)
+                        global_options=global_options).slice_png_group(scene_name,
+                                                                    ignore_errors=True,
+                                                                    slice_name=thumbnail_filename)
         else:
             raise ValueError(f"thumbnail type '{self.thumbnail_type}' is not implemented")
 
@@ -513,62 +531,68 @@ class VideoRemixerState():
         self.thumbnail_path = os.path.join(self.project_path, self.THUMBNAILS_PATH)
         create_directory(self.thumbnail_path)
         clean_directories([self.thumbnail_path])
+        self.uncompile_scenes()
 
-        if self.thumbnail_type == "JPG":
-            thumb_scale = remixer_settings["thumb_scale"]
-            max_thumb_size = remixer_settings["max_thumb_size"]
-            video_w = self.video_details['display_width']
-            video_h = self.video_details['display_height']
-            max_frame_dimension = video_w if video_w > video_h else video_h
-            thumb_size = max_frame_dimension * thumb_scale
-            if thumb_size > max_thumb_size:
-                thumb_scale = max_thumb_size / max_frame_dimension
+        with Mtqdm().open_bar(total=len(self.scene_names), desc="Create Thumbnails") as bar:
+            for scene_name in self.scene_names:
+                self.create_thumbnail(scene_name, log_fn, global_options, remixer_settings)
+                Mtqdm().update_bar(bar)
 
-            SliceVideo(self.source_video,
-                        self.project_fps,
-                        self.scenes_path,
-                        self.thumbnail_path,
-                        thumb_scale,
-                        "jpg",
-                        0,
-                        1,
-                        0,
-                        False,
-                        0.0,
-                        0.0,
-                        log_fn,
-                        global_options=global_options).slice()
+        # if self.thumbnail_type == "JPG":
+        #     thumb_scale = remixer_settings["thumb_scale"]
+        #     max_thumb_size = remixer_settings["max_thumb_size"]
+        #     video_w = self.video_details['display_width']
+        #     video_h = self.video_details['display_height']
+        #     max_frame_dimension = video_w if video_w > video_h else video_h
+        #     thumb_size = max_frame_dimension * thumb_scale
+        #     if thumb_size > max_thumb_size:
+        #         thumb_scale = max_thumb_size / max_frame_dimension
 
-        elif self.thumbnail_type == "GIF":
-            gif_fps = remixer_settings["default_gif_fps"]
-            gif_factor = remixer_settings["gif_factor"]
-            gif_end_delay = remixer_settings["gif_end_delay"]
-            thumb_scale = remixer_settings["thumb_scale"]
-            max_thumb_size = remixer_settings["max_thumb_size"]
-            video_w = self.video_details['display_width']
-            video_h = self.video_details['display_height']
+        #     SliceVideo(self.source_video,
+        #                 self.project_fps,
+        #                 self.scenes_path,
+        #                 self.thumbnail_path,
+        #                 thumb_scale,
+        #                 "jpg",
+        #                 0,
+        #                 1,
+        #                 0,
+        #                 False,
+        #                 0.0,
+        #                 0.0,
+        #                 log_fn,
+        #                 global_options=global_options).slice()
 
-            max_frame_dimension = video_w if video_w > video_h else video_h
-            thumb_size = max_frame_dimension * thumb_scale
-            if thumb_size > max_thumb_size:
-                thumb_scale = max_thumb_size / max_frame_dimension
-            self.thumbnail_path = os.path.join(self.project_path, "THUMBNAILS")
-            SliceVideo(self.source_video,
-                        self.project_fps,
-                        self.scenes_path,
-                        self.thumbnail_path,
-                        thumb_scale,
-                        "gif",
-                        0,
-                        gif_factor,
-                        0,
-                        False,
-                        gif_fps,
-                        gif_end_delay,
-                        log_fn,
-                        global_options=global_options).slice(ignore_errors=True)
-        else:
-            raise ValueError(f"thumbnail type '{self.thumbnail_type}' is not implemented")
+        # elif self.thumbnail_type == "GIF":
+        #     gif_fps = remixer_settings["default_gif_fps"]
+        #     gif_factor = remixer_settings["gif_factor"]
+        #     gif_end_delay = remixer_settings["gif_end_delay"]
+        #     thumb_scale = remixer_settings["thumb_scale"]
+        #     max_thumb_size = remixer_settings["max_thumb_size"]
+        #     video_w = self.video_details['display_width']
+        #     video_h = self.video_details['display_height']
+
+        #     max_frame_dimension = video_w if video_w > video_h else video_h
+        #     thumb_size = max_frame_dimension * thumb_scale
+        #     if thumb_size > max_thumb_size:
+        #         thumb_scale = max_thumb_size / max_frame_dimension
+        #     self.thumbnail_path = os.path.join(self.project_path, "THUMBNAILS")
+        #     SliceVideo(self.source_video,
+        #                 self.project_fps,
+        #                 self.scenes_path,
+        #                 self.thumbnail_path,
+        #                 thumb_scale,
+        #                 "gif",
+        #                 0,
+        #                 gif_factor,
+        #                 0,
+        #                 False,
+        #                 gif_fps,
+        #                 gif_end_delay,
+        #                 log_fn,
+        #                 global_options=global_options).slice(ignore_errors=True)
+        # else:
+        #     raise ValueError(f"thumbnail type '{self.thumbnail_type}' is not implemented")
 
     def keep_all_scenes(self):
         self.scene_states = {scene_name : "Keep" for scene_name in self.scene_names}

@@ -973,12 +973,13 @@ class VideoRemixer(TabBase):
         # user may be redoing project set up
         # settings changes could affect already-processed content
         self.log("resetting project on rendering for project settings")
-        self.state.reset_at_project_settings()
+        # TODO self.state.reset_at_project_settings()
 
-        # split video into raw PNG frames
+        # split video into raw PNG frames, avoid doing again if redoing setup
         self.log("splitting source video into PNG frames")
         global_options = self.config.ffmpeg_settings["global_options"]
-        ffcmd = self.state.render_source_frames(global_options=global_options)
+        ffcmd = self.state.render_source_frames(global_options=global_options,
+                                                prevent_overwrite=True)
         if not ffcmd:
             self.log("rendering source frames skipped")
         else:
@@ -996,8 +997,9 @@ class VideoRemixer(TabBase):
         self.log("saving project after establishing scene paths")
         self.state.save()
 
+        # split frames into scenes, must do again if redoing setup since scenes could differ
         self.log(f"about to split scenes by {self.state.split_type}")
-        error = self.state.split_scenes(self.log)
+        error = self.state.split_scenes(self.log, prevent_overwrite=True) # TODO
         if error:
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                    gr.update(value=self.format_markdown(f"There was an error splitting the source video: {error}", "error")), \
