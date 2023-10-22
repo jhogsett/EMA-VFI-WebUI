@@ -1182,6 +1182,9 @@ class VideoRemixer(TabBase):
 
     # User has clicked Done Choosing Scenes from Scene Chooser
     def next_button3(self):
+        if not self.state.project_path:
+            return gr.update(selected=self.TAB_CHOOSE_SCENES), self.state.project_info4
+
         self.state.project_info4 = self.state.chosen_scenes_report()
 
         # user will expect to return to the compilation tab on reopening
@@ -1228,6 +1231,12 @@ class VideoRemixer(TabBase):
 
     # User has clicked Process Remix from Process Remix
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option):
+        if not self.state.project_path:
+            return gr.update(selected=self.TAB_PROC_OPTIONS), \
+                   gr.update(value=format_markdown(
+                    "The project has not yet been set up from the Set Up Project tab.", "error")), \
+                   *self.noop_args(7)
+
         self.state.resynthesize = resynthesize
         self.state.inflate = inflate
         self.state.resize = resize
@@ -1435,6 +1444,10 @@ class VideoRemixer(TabBase):
 
     # User has clicked Save Remix from Save Remix
     def next_button60(self, output_filepath, quality):
+        if not self.state.project_path:
+            return gr.update(value=format_markdown(
+                    "The project has not yet been set up from the Set Up Project tab.", "error"))
+
         self.state.output_filepath = output_filepath
         self.state.output_quality = quality
         self.log("saving after storing remix output choices")
@@ -1450,6 +1463,9 @@ class VideoRemixer(TabBase):
 
     # User has clicked Save Custom Remix from Save Remix
     def next_button61(self, custom_video_options, custom_audio_options, output_filepath):
+        if not self.state.project_path:
+            return gr.update(value=format_markdown(
+                    "The project has not yet been set up from the Set Up Project tab.", "error"))
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             self.save_custom_remix(output_filepath, global_options, kept_scenes,
@@ -1460,6 +1476,9 @@ class VideoRemixer(TabBase):
 
     # User has clicked Save Marked Remix from Save Remix
     def next_button62(self, marked_video_options, marked_audio_options, output_filepath):
+        if not self.state.project_path:
+            return gr.update(value=format_markdown(
+                    "The project has not yet been set up from the Set Up Project tab.", "error"))
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             draw_text_options = {}
