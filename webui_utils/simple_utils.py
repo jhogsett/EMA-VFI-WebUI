@@ -240,20 +240,46 @@ def shrink(container_data, minimum, move_fn, remove_fn, rename_fn, state):
                 _shrink_merge(container_data, prev_key, key, move_fn, remove_fn, rename_fn, state)
     return container_data
 
-def _format_markdown_line(text, style):
-    return f"<p style=\"{style}\">{text}</p>"
+TEXT_TERM = "\r\n"
+HTML_TERM = "<br/>"
+DELETE_TERM = ""
+TEXT_TO_HTML = {
+    TEXT_TERM : DELETE_TERM,
+    "- " : "• ",
+    "(!)" : SimpleIcons.WARNING
+}
+STYLE_COLORS = {
+    "none" : "",
+    "info" : "color:hsl(120 100% 65%)",
+    "more" : "color:hsl(29 100% 75%)",
+    "warning" : "color:hsl(60 100% 65%)",
+    "error" : "color:hsl(0 100% 65%)",
+    "highlight" : "color:hsl(284 100% 65%)",
+}
+def _format_markdown_line(text : str, style : str):
+    terminate = text.find(TEXT_TERM) != -1
+    for k,v in TEXT_TO_HTML.items():
+        text = text.replace(k, v, 1)
+    term = HTML_TERM + TEXT_TERM if terminate else TEXT_TERM
+    return f"<span style=\"{style}\">{text}</span>{term}"
 
-def format_markdown(text, color="info", bold=True):
-    font_style = "font-weight:bold" if bold else ""
-    color_style = {
-        "info" : "color:hsl(120 100% 65%)",
-        "warning" : "color:hsl(60 100% 65%)",
-        "error" : "color:hsl(0 100% 65%)",
-        "highlight" : "color:hsl(284 100% 65%)",
-    }.get(color, "")
-    style = ";".join([color_style, font_style])
+def format_markdown(text, color="info", bold=True, bold_heading_only=False, italic=False):
+    font_weight = "font-weight:bold" if bold else ""
+    font_style = "font-style:italic" if italic else ""
+    color_style = STYLE_COLORS.get(color, "")
 
-    result = []
-    for line in text.splitlines():
-        result.append(_format_markdown_line(line, style))
-    return "\r\n".join(result)
+    heading_style = ";".join([color_style, font_weight, font_style])
+    lines_style = heading_style if not bold_heading_only else ";".join([color_style, font_style])
+
+    lines = text.splitlines()
+    if len(lines) == 1:
+        return _format_markdown_line(text, heading_style)
+    else:
+        result = []
+        for index, line in enumerate(lines):
+            line += TEXT_TERM
+            if index == 0:
+                result.append(_format_markdown_line(line, heading_style))
+            else:
+                result.append(_format_markdown_line(line, lines_style))
+        return "\r\n".join(result)
