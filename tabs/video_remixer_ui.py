@@ -616,8 +616,8 @@ class VideoRemixer(TabBase):
 
         back_button1.click(self.back_button1, outputs=tabs_video_remixer)
 
-        deinterlace.change(self.deinterlace_change, inputs=deinterlace, outputs=project_fps,
-                           show_progress=False)
+        # deinterlace.change(self.deinterlace_change, inputs=deinterlace, outputs=project_fps,
+        #                    show_progress=False)
 
         next_button2.click(self.next_button2, inputs=[thumbnail_type, min_frames_per_scene],
                            outputs=[tabs_video_remixer, message_box2, scene_index, scene_label,
@@ -963,12 +963,12 @@ class VideoRemixer(TabBase):
     def back_button1(self):
         return gr.update(selected=self.TAB_REMIX_HOME)
 
-    def deinterlace_change(self, deinterlace):
-        source_frame_rate = float(self.state.video_details['frame_rate'])
-        if deinterlace:
-            return gr.update(value=source_frame_rate / 2.0)
-        else:
-            return gr.update(value=source_frame_rate)
+    # def deinterlace_change(self, deinterlace):
+    #     source_frame_rate = float(self.state.video_details['frame_rate'])
+    #     if deinterlace:
+    #         return gr.update(value=source_frame_rate / 2.0)
+    #     else:
+    #         return gr.update(value=source_frame_rate)
 
     ### SET UP PROJECT EVENT HANDLERS
 
