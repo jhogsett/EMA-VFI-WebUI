@@ -772,19 +772,29 @@ class VideoRemixerState():
         else:
             raise RuntimeError(f"'processing_step' {processing_step} is unrecognized")
 
+    # processed content is stale if it is not selected and exists
+    def processed_content_stale(self, selected : bool, path : str):
+        if selected:
+            return False
+        if not os.path.exists(path):
+            return False
+        contents = get_directories(path)
+        content_present = len(contents) > 0
+        return content_present
+
     # content is stale if it is present on disk but not currently selected
     # stale content and its derivative content should be purged
     def purge_stale_processed_content(self, purge_upscale):
-        if not self.resize:
+        if self.processed_content_stale(self.resize, self.resize_path):
             self.purge_processed_content(purge_from=self.RESIZE_STEP)
 
-        if not self.resynthesize:
+        if self.processed_content_stale(self.resynthesize, self.resynthesis_path):
             self.purge_processed_content(purge_from=self.RESYNTH_STEP)
 
-        if not self.inflate:
+        if self.processed_content_stale(self.inflate, self.inflation_path):
             self.purge_processed_content(purge_from=self.INFLATE_STEP)
 
-        if not self.upscale or purge_upscale:
+        if self.processed_content_stale(self.upscale, self.upscale_path) or purge_upscale:
             self.purge_processed_content(purge_from=self.UPSCALE_STEP)
 
     def purge_incomplete_processed_content(self):
