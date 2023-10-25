@@ -1738,6 +1738,7 @@ class VideoRemixer(TabBase):
         frame_files = sorted(get_files(original_scene_path))
         num_frame_files = len(frame_files)
         if num_frame_files != num_frames:
+            self.log(f"Frame count mismatch in '{original_scene_path}': expected {num_frames} frames but found {num_frame_files}")
             return gr.update(value=None)
 
         display_frame = frame_files[split_frame]
