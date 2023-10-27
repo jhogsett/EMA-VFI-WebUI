@@ -173,7 +173,7 @@ class VideoRemixer(TabBase):
                         info="Consolidates very small scenes info the next (0 to disable)")
                     with gr.Row():
                         skip_detection = gr.Checkbox(value=False, label="Recreate Thumbnails Only",
-                                        info="Remake thumbnails without doing project setup over again")
+                                        info="Remake thumbnails with existing scenes if present, skipping project setup")
                     with gr.Row():
                         message_box2 = gr.Markdown(value=format_markdown(self.TAB2_DEFAULT_MESSAGE))
                     # gr.Markdown(format_markdown(

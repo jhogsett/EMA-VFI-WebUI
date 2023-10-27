@@ -12,7 +12,7 @@ The _Project Details_ box shows a summary of the remix project about to be creat
         - A still image from the middle moment of the scene
         - JPG thumbnails are _fast to render_ but may obscure some scene details
         - They are best used with the _Break_ split type to identify and remove commercial scenes
-1. (Expert) Check _Recreate Thumbnails Only_ to remake thumbnails without doing project setup over again
+1. (If needed) Check _Recreate Thumbnails Only_ to remake thumbnails without redoing project setup
 1. Click _Set Up Project_ to begin the setup process
 - Progress can be tracked in the console
 
