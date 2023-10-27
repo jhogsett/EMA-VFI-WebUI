@@ -1,4 +1,4 @@
-**Video Remixer Save Remix** - Marge audio with processed content and create remixed video
+**Video Remixer Save Remix** - Merge audio with processed content and create remixed video
 
 The _Processed Content_ box shows a summary of the completed processing.
 
