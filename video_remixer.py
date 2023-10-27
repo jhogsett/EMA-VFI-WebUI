@@ -310,9 +310,12 @@ class VideoRemixerState():
             Mtqdm().update_bar(bar)
         return ffmpeg_cmd
 
+    def scenes_present(self):
+        self.uncompile_scenes()
+        return os.path.exists(self.scenes_path) and get_directories(self.scenes_path)
+
     def split_scenes(self, log_fn, prevent_overwrite=False):
-        if prevent_overwrite:
-            if os.path.exists(self.scenes_path) and get_directories(self.scenes_path):
+        if prevent_overwrite and self.scenes_present():
                 return None
         try:
             if self.split_type == "Scene":

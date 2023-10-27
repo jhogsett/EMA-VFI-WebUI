@@ -171,12 +171,14 @@ class VideoRemixer(TabBase):
                         min_frames_per_scene = gr.Number(label="Minimum Frames Per Scene",
                                     precision=0, value=def_min_frames,
                         info="Consolidates very small scenes info the next (0 to disable)")
-
+                    with gr.Row():
+                        skip_detection = gr.Checkbox(value=False, label="Recreate Thumbnails Only",
+                                        info="Remake thumbnails with existing scenes if present, skipping project setup")
                     with gr.Row():
                         message_box2 = gr.Markdown(value=format_markdown(self.TAB2_DEFAULT_MESSAGE))
-                    gr.Markdown(format_markdown(
-                    "(!) Redoing this step will restart scene detection and recreate thumbnails",
-                    color="warning"))
+                    # gr.Markdown(format_markdown(
+                    # "(!) Redoing this step will restart scene detection and recreate thumbnails",
+                    # color="warning"))
                     gr.Markdown(format_markdown(
                         "Progress can be tracked in the console",
                         color="none", italic=True, bold=False))
@@ -260,7 +262,7 @@ class VideoRemixer(TabBase):
 
                     with gr.Row():
                         resize = gr.Checkbox(label="Resize / Crop Frames", value=True)
-                        with gr.Box():
+                        with gr.Column(variant="compact"):
                             gr.Markdown(format_markdown(
                                 "Resize and Crop Frames according to project settings\r\n"+
                                 "- Adjust aspect ratio\r\n" +
@@ -269,7 +271,7 @@ class VideoRemixer(TabBase):
 
                     with gr.Row():
                         resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True)
-                        with gr.Box():
+                        with gr.Column(variant="compact"):
                             gr.Markdown(format_markdown(
                                 "Recreate Frames using Interpolation of adjacent frames\r\n" +
                                 "- Remove grime and single-frame noise\r\n" +
@@ -278,7 +280,7 @@ class VideoRemixer(TabBase):
 
                     with gr.Row():
                         inflate = gr.Checkbox(label="Inflate New Frames",value=True)
-                        with gr.Box():
+                        with gr.Column(variant="compact"):
                             gr.Markdown(format_markdown(
                             "Insert Between-Frames using Interpolation of existing frames\r\n" +
                             "- Double the frame rate for smooth motion\r\n" +
@@ -289,7 +291,7 @@ class VideoRemixer(TabBase):
                         upscale = gr.Checkbox(label="Upscale Frames", value=True)
                         upscale_option = gr.Radio(label="Upscale By", value="2X",
                                                   choices=["1X", "2X", "4X"])
-                        with gr.Box():
+                        with gr.Column(variant="compact"):
                             gr.Markdown(format_markdown(
                                 "Clean and Enlarge frames using Real-ESRGAN 4x+ upscaler\r\n" +
                                 "- Remove grime, noise, and digital artifacts\r\n" +
@@ -298,7 +300,7 @@ class VideoRemixer(TabBase):
 
                     with gr.Row():
                         process_all = gr.Checkbox(label="Select All", value=True)
-                        with gr.Box():
+                        with gr.Column(variant="compact"):
                             gr.Markdown(format_markdown(
                                 "Deselect All Steps to use original source content for remix video",
                                 color="more", bold=True))
@@ -474,7 +476,7 @@ class VideoRemixer(TabBase):
                                     with gr.Row():
                                         delete_purged_710 = gr.Checkbox(
                                             label="Permanently Delete Purged Content")
-                                        with gr.Box():
+                                        with gr.Column(variant="compact"):
                                             gr.Markdown(
                                 "Delete the contents of the 'purged_content' project directory.")
                                     with gr.Row():
@@ -494,18 +496,18 @@ class VideoRemixer(TabBase):
                                     with gr.Row():
                                         delete_source_711 = gr.Checkbox(
                                             label="Remove Source Video Frames")
-                                        with gr.Box():
+                                        with gr.Column(variant="compact"):
                                             gr.Markdown(
                         "Delete source video PNG frame files used to split content into scenes.")
                                     with gr.Row():
                                         delete_dropped_711 = gr.Checkbox(
                                             label="Remove Dropped Scenes")
-                                        with gr.Box():
+                                        with gr.Column(variant="compact"):
                                             gr.Markdown(
                 "Delete Dropped Scene files used when compiling scenes after making scene choices.")
                                     with gr.Row():
                                         delete_thumbs_711 = gr.Checkbox(label="Remove Thumbnails")
-                                        with gr.Box():
+                                        with gr.Column(variant="compact"):
                                             gr.Markdown(
                                     "Delete Thumbnails used to display scenes in Scene Chooser.")
                                     with gr.Row():
@@ -525,48 +527,48 @@ class VideoRemixer(TabBase):
                                     "**_Clear space after final Remix Videos have been saved_**")
                                     with gr.Row():
                                         delete_kept_712 = gr.Checkbox(label="Remove Kept Scenes")
-                                        with gr.Box():
+                                        with gr.Column(variant="compact"):
                                             gr.Markdown(
                 "Delete Kept Scene files used when compiling scenes after making scene choices.")
                                     with gr.Row():
                                         delete_resized_712 = gr.Checkbox(
                                             label="Remove Resized Frames")
-                                        with gr.Box():
+                                        with gr.Column(variant="compact"):
                                             gr.Markdown(
     "Delete Resized PNG frame files used as inputs for processing and creating remix video clips.")
                                     with gr.Row():
                                         delete_resynth_712 = gr.Checkbox(
                                             label="Remove Resynthesized Frames")
-                                        with gr.Box():
+                                        with gr.Column(variant="compact"):
                                             gr.Markdown(
                                         "Delete Resynthesized PNG frame files used as inputs " +\
                                         "for processing and creating remix video clips.")
                                     with gr.Row():
                                         delete_inflated_712 = gr.Checkbox(
                                             label="Remove Inflated Frames")
-                                        with gr.Box():
+                                        with gr.Column(variant="compact"):
                                             gr.Markdown(
     "Delete Inflated PNG frame files used as inputs for processing and creating remix video clips.")
                                     with gr.Row():
                                         delete_upscaled_712 = gr.Checkbox(
                                             label="Remove Upscaled Frames")
-                                        with gr.Box():
+                                        with gr.Column(variant="compact"):
                                             gr.Markdown(
     "Delete Upscaled PNG frame files used as inputs for processing and creating remix video clips.")
                                     with gr.Row():
                                         delete_audio_712 = gr.Checkbox(label="Delete Audio Clips")
-                                        with gr.Box():
+                                        with gr.Column(variant="compact"):
                                             gr.Markdown(
                         "Delete Audio WAV/MP3 files used as inputs for creating remix video clips.")
                                     with gr.Row():
                                         delete_video_712 = gr.Checkbox(label="Delete Video Clips")
-                                        with gr.Box():
+                                        with gr.Column(variant="compact"):
                                             gr.Markdown(
                             "Delete Video MP4 files used as inputs for creating remix video clips.")
                                     with gr.Row():
                                         delete_clips_712 = gr.Checkbox(
                                             label="Delete Remix Video Clips")
-                                        with gr.Box():
+                                        with gr.Column(variant="compact"):
                                             gr.Markdown(
         "Delete Video+Audio MP4 files used as inputs to concatentate into the final Remix Video.")
                                     with gr.Row():
@@ -587,7 +589,7 @@ class VideoRemixer(TabBase):
                                     with gr.Row():
                                         delete_all_713 = gr.Checkbox(
                                             label="Permanently Delete Processed Content")
-                                        with gr.Box():
+                                        with gr.Column(variant="compact"):
                                             gr.Markdown(
             "Deletes all created project content. **Does not delete original and remixed videos.**")
                                     with gr.Row():
@@ -625,7 +627,8 @@ class VideoRemixer(TabBase):
 
         back_button1.click(self.back_button1, outputs=tabs_video_remixer)
 
-        next_button2.click(self.next_button2, inputs=[thumbnail_type, min_frames_per_scene],
+        next_button2.click(self.next_button2,
+                           inputs=[thumbnail_type, min_frames_per_scene, skip_detection],
                            outputs=[tabs_video_remixer, message_box2, scene_index, scene_label,
                                     scene_image, scene_state, scene_info])
 
@@ -977,17 +980,10 @@ class VideoRemixer(TabBase):
     def back_button1(self):
         return gr.update(selected=self.TAB_REMIX_HOME)
 
-    # def deinterlace_change(self, deinterlace):
-    #     source_frame_rate = float(self.state.video_details['frame_rate'])
-    #     if deinterlace:
-    #         return gr.update(value=source_frame_rate / 2.0)
-    #     else:
-    #         return gr.update(value=source_frame_rate)
-
     ### SET UP PROJECT EVENT HANDLERS
 
     # User has clicked Set Up Project from Set Up Project
-    def next_button2(self, thumbnail_type, min_frames_per_scene):
+    def next_button2(self, thumbnail_type, min_frames_per_scene, skip_detection):
         global_options = self.config.ffmpeg_settings["global_options"]
 
         if not self.state.project_path:
@@ -1000,70 +996,71 @@ class VideoRemixer(TabBase):
         self.log("saving after setting thumbnail type and min frames per scene")
         self.state.save()
 
-        try:
-            self.log(f"copying video from {self.state.source_video} to project path")
-            self.state.save_original_video(prevent_overwrite=True)
-        except ValueError as error:
-            # ignore, don't copy the file a second time if the user is restarting here
-            self.log(f"ignoring: {error}")
+        if not skip_detection or not self.state.scenes_present():
+            try:
+                self.log(f"copying video from {self.state.source_video} to project path")
+                self.state.save_original_video(prevent_overwrite=True)
+            except ValueError as error:
+                # ignore, don't copy the file a second time if the user is restarting here
+                self.log(f"ignoring: {error}")
 
-        self.log("saving project after ensuring video is in project path")
-        self.state.save()
-
-        # user may be redoing project set up
-        # settings changes could affect already-processed content
-        self.log("resetting project on rendering for project settings")
-        self.state.reset_at_project_settings()
-
-        # split video into raw PNG frames, avoid doing again if redoing setup
-        self.log("splitting source video into PNG frames")
-        global_options = self.config.ffmpeg_settings["global_options"]
-        ffcmd = self.state.render_source_frames(global_options=global_options,
-                                                prevent_overwrite=True)
-        if not ffcmd:
-            self.log("rendering source frames skipped")
-        else:
-            self.log("saving project after converting video to PNG frames")
-            self.state.save()
-            self.log(f"FFmpeg command: {ffcmd}")
-
-        self.state.scenes_path = os.path.join(self.state.project_path, "SCENES")
-        self.state.dropped_scenes_path = os.path.join(self.state.project_path, "DROPPED_SCENES")
-        self.log(f"creating scenes directory {self.state.scenes_path}")
-        create_directory(self.state.scenes_path)
-        self.log(f"creating dropped scenes directory {self.state.dropped_scenes_path}")
-        create_directory(self.state.dropped_scenes_path)
-
-        self.log("saving project after establishing scene paths")
-        self.state.save()
-
-        # split frames into scenes, must do again if redoing setup since scenes could differ
-        self.log(f"about to split scenes by {self.state.split_type}")
-        error = self.state.split_scenes(self.log, prevent_overwrite=False)
-        if error:
-            return gr.update(selected=self.TAB_SET_UP_PROJECT), \
-                   gr.update(value=format_markdown(f"There was an error splitting the source video: {error}", "error")), \
-                   *self.empty_args(5)
-        self.log("saving project after splitting into scenes")
-        self.state.save()
-
-        if self.state.min_frames_per_scene > 0:
-            self.log(f"about to consolidate scenes with too few frames")
-            self.state.consolidate_scenes(self.log)
-            self.log("saving project after consolidating scenes")
+            self.log("saving project after ensuring video is in project path")
             self.state.save()
 
-        self.state.scene_names = sorted(get_directories(self.state.scenes_path))
+            # user may be redoing project set up
+            # settings changes could affect already-processed content
+            self.log("resetting project on rendering for project settings")
+            self.state.reset_at_project_settings()
 
-        # if there's only one scene, assume it should be kept to save some time
-        if len(self.state.scene_names) < 2:
-            self.state.keep_all_scenes()
-        else:
-            self.state.drop_all_scenes()
+            # split video into raw PNG frames, avoid doing again if redoing setup
+            self.log("splitting source video into PNG frames")
+            global_options = self.config.ffmpeg_settings["global_options"]
+            ffcmd = self.state.render_source_frames(global_options=global_options,
+                                                    prevent_overwrite=True)
+            if not ffcmd:
+                self.log("rendering source frames skipped")
+            else:
+                self.log("saving project after converting video to PNG frames")
+                self.state.save()
+                self.log(f"FFmpeg command: {ffcmd}")
 
-        self.state.current_scene = 0
-        self.log("saving project after establishing scene names")
-        self.state.save()
+            self.state.scenes_path = os.path.join(self.state.project_path, "SCENES")
+            self.state.dropped_scenes_path = os.path.join(self.state.project_path, "DROPPED_SCENES")
+            self.log(f"creating scenes directory {self.state.scenes_path}")
+            create_directory(self.state.scenes_path)
+            self.log(f"creating dropped scenes directory {self.state.dropped_scenes_path}")
+            create_directory(self.state.dropped_scenes_path)
+
+            self.log("saving project after establishing scene paths")
+            self.state.save()
+
+            # split frames into scenes
+            self.log(f"about to split scenes by {self.state.split_type}")
+            error = self.state.split_scenes(self.log, prevent_overwrite=False)
+            if error:
+                return gr.update(selected=self.TAB_SET_UP_PROJECT), \
+                    gr.update(value=format_markdown(f"There was an error splitting the source video: {error}", "error")), \
+                    *self.empty_args(5)
+            self.log("saving project after splitting into scenes")
+            self.state.save()
+
+            if self.state.min_frames_per_scene > 0:
+                self.log(f"about to consolidate scenes with too few frames")
+                self.state.consolidate_scenes(self.log)
+                self.log("saving project after consolidating scenes")
+                self.state.save()
+
+            self.state.scene_names = sorted(get_directories(self.state.scenes_path))
+
+            # if there's only one scene, assume it should be kept to save some time
+            if len(self.state.scene_names) < 2:
+                self.state.keep_all_scenes()
+            else:
+                self.state.drop_all_scenes()
+
+            self.state.current_scene = 0
+            self.log("saving project after establishing scene names")
+            self.state.save()
 
         self.log(f"about to create thumbnails of type {self.state.thumbnail_type}")
         try:
