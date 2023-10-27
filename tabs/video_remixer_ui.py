@@ -402,6 +402,8 @@ class VideoRemixer(TabBase):
                                             with gr.Row():
                                                 scene_id_702 = gr.Number(value=-1,
                                                                          label="Scene Index")
+                                                preview_button702 = gr.Button(
+                                                    value="Refresh Preview").style(full_width=False)
                                             with gr.Row():
                                                 split_percent_702 = gr.Slider(value=50.0,
                                                     label="Split Position", minimum=0.0,
@@ -411,8 +413,6 @@ class VideoRemixer(TabBase):
                                             preview_image702 = gr.Image(type="filepath",
                                                             label="Split Frame Preview", tool=None)\
                                                                 .style(height=400)
-                                            preview_button702 = gr.Button(value=
-                                                                          "Refresh Preview")
                                     with gr.Row():
                                         message_box702 = gr.Markdown(format_markdown(
                     "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
@@ -699,7 +699,8 @@ class VideoRemixer(TabBase):
             outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils, scene_id_700])
 
         split_scene_button.click(self.split_scene_shortcut, inputs=scene_index,
-            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils, scene_id_702])
+            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils, scene_id_702,
+                     split_percent_702, preview_image702])
 
         next_button3.click(self.next_button3,
                            outputs=[tabs_video_remixer, project_info4])
@@ -753,7 +754,11 @@ class VideoRemixer(TabBase):
 
         preview_button702.click(self.preview_button702, inputs=[scene_id_702, split_percent_702],
                                 outputs=preview_image702, show_progress=False)
-        split_percent_702.release(self.preview_button702, inputs=[scene_id_702, split_percent_702],
+
+        scene_id_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
+                                outputs=preview_image702, show_progress=False)
+
+        split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
                                 outputs=preview_image702, show_progress=False)
 
         export_project_703.click(self.export_project_703,
@@ -1171,10 +1176,20 @@ class VideoRemixer(TabBase):
         return self.scene_chooser_details(self.state.current_scene)
 
     def drop_processed_shortcut(self, scene_index):
-        return gr.update(selected=7), gr.update(selected=self.TAB_EXTRA_UTILITIES), gr.update(selected=self.TAB_EXTRA_UTIL_DROP_PROCESSED), scene_index
+        return gr.update(selected=7), \
+            gr.update(selected=self.TAB_EXTRA_UTILITIES), \
+            gr.update(selected=self.TAB_EXTRA_UTIL_DROP_PROCESSED), \
+            scene_index
 
     def split_scene_shortcut(self, scene_index):
-        return gr.update(selected=7), gr.update(selected=self.TAB_EXTRA_UTILITIES), gr.update(selected=self.TAB_EXTRA_UTIL_SPLIT_SCENE), scene_index
+        default_percent = 50.0
+        display_frame = self.compute_preview_frame(scene_index, default_percent)
+        return gr.update(selected=7), \
+            gr.update(selected=self.TAB_EXTRA_UTILITIES), \
+            gr.update(selected=self.TAB_EXTRA_UTIL_SPLIT_SCENE), \
+            scene_index, \
+            default_percent, \
+            display_frame
 
     # given scene name such as [042-420] compute details to display in Scene Chooser
     def scene_chooser_details(self, scene_index):
@@ -1738,24 +1753,18 @@ class VideoRemixer(TabBase):
             gr.update(value=format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
 
-    def preview_button702(self, scene_index, split_percent):
-        if not isinstance(scene_index, (int, float)):
-            return gr.update(value=None)
-
+    def compute_preview_frame(self, scene_index, split_percent):
         scene_index = int(scene_index)
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
         if scene_index < 0 or scene_index > last_scene:
-            return gr.update(value=None)
+            return None
 
         scene_name, _, num_frames, _, _, split_frame = self.compute_scene_split(scene_index, split_percent)
         original_scene_path = os.path.join(self.state.scenes_path, scene_name)
-
         frame_files = self.valid_split_scene_cache(scene_index)
         if not frame_files:
             # optimize to uncompile only the first time it's needed
-            # TODO this will need to be handled differently if changing code
-            #      to enter into scene split with the preview pre-filled
             self.state.uncompile_scenes()
 
             frame_files = sorted(get_files(original_scene_path))
@@ -1763,9 +1772,14 @@ class VideoRemixer(TabBase):
 
         num_frame_files = len(frame_files)
         if num_frame_files != num_frames:
-            return gr.update(value=None)
+            self.log(f"compute_preview_frame(): expected {num_frame_files} frame files but found {num_frames} for scene index {scene_index} - returning None")
+            return None
+        return frame_files[split_frame]
 
-        display_frame = frame_files[split_frame]
+    def preview_button702(self, scene_index, split_percent):
+        if not isinstance(scene_index, (int, float)):
+            return gr.update(value=None)
+        display_frame = self.compute_preview_frame(scene_index, split_percent)
         return gr.update(value=display_frame)
 
     def export_project_703(self, new_project_path, new_project_name):
