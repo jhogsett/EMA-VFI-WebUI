@@ -29,8 +29,6 @@ class VideoRemixer(TabBase):
     def new_project(self):
         self.state = VideoRemixerState()
         self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"])
-        # self.split_scene_cache = []
-        # self.split_scene_cached_index = -1
         self.invalidate_split_scene_cache()
 
     TAB_REMIX_HOME = 0
@@ -1621,7 +1619,6 @@ class VideoRemixer(TabBase):
 
     def split_button702(self, scene_index, split_percent):
         global_options = self.config.ffmpeg_settings["global_options"]
-        # split_point = split_percent / 100.0
 
         if not isinstance(scene_index, (int, float)):
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
@@ -1753,25 +1750,16 @@ class VideoRemixer(TabBase):
 
         scene_name, _, num_frames, _, _, split_frame = self.compute_scene_split(scene_index, split_percent)
         original_scene_path = os.path.join(self.state.scenes_path, scene_name)
-        # self.state.uncompile_scenes()
 
         frame_files = self.valid_split_scene_cache(scene_index)
-
-        # if self.split_scene_cache and self.split_scene_cached_index == scene_index:
-        #     frame_files = self.split_scene_cache
-        # else:
-
         if not frame_files:
             # optimize to uncompile only the first time it's needed
             # TODO this will need to be handled differently if changing code
-            #      to enter scene split with the preview pre-filled
+            #      to enter into scene split with the preview pre-filled
             self.state.uncompile_scenes()
 
             frame_files = sorted(get_files(original_scene_path))
             self.fill_split_scene_cache(scene_index, frame_files)
-
-            # self.split_scene_cache = frame_files
-            # self.split_scene_cached_index = scene_index
 
         num_frame_files = len(frame_files)
         if num_frame_files != num_frames:
