@@ -625,9 +625,6 @@ class VideoRemixer(TabBase):
 
         back_button1.click(self.back_button1, outputs=tabs_video_remixer)
 
-        # deinterlace.change(self.deinterlace_change, inputs=deinterlace, outputs=project_fps,
-        #                    show_progress=False)
-
         next_button2.click(self.next_button2, inputs=[thumbnail_type, min_frames_per_scene],
                            outputs=[tabs_video_remixer, message_box2, scene_index, scene_label,
                                     scene_image, scene_state, scene_info])
@@ -756,6 +753,9 @@ class VideoRemixer(TabBase):
                                 outputs=preview_image702, show_progress=False)
 
         scene_id_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
+                                outputs=preview_image702, show_progress=False)
+
+        split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
                                 outputs=preview_image702, show_progress=False)
 
         split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
@@ -1605,6 +1605,7 @@ class VideoRemixer(TabBase):
 
     def compute_scene_split(self, scene_index : int, split_percent : float):
         scene_name = self.state.scene_names[scene_index]
+        split_percent = 0.0 if isinstance(split_percent, type(None)) else split_percent
         split_point = split_percent / 100.0
         first_frame, last_frame, num_width = details_from_group_name(scene_name)
         num_frames = (last_frame - first_frame) + 1
