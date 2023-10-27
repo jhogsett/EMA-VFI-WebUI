@@ -29,6 +29,7 @@ class VideoRemixer(TabBase):
     def new_project(self):
         self.state = VideoRemixerState()
         self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"])
+        self.invalidate_split_scene_cache()
 
     TAB_REMIX_HOME = 0
     TAB_REMIX_SETTINGS = 1
@@ -401,6 +402,8 @@ class VideoRemixer(TabBase):
                                             with gr.Row():
                                                 scene_id_702 = gr.Number(value=-1,
                                                                          label="Scene Index")
+                                                preview_button702 = gr.Button(
+                                                    value="Refresh Preview").style(full_width=False)
                                             with gr.Row():
                                                 split_percent_702 = gr.Slider(value=50.0,
                                                     label="Split Position", minimum=0.0,
@@ -410,8 +413,6 @@ class VideoRemixer(TabBase):
                                             preview_image702 = gr.Image(type="filepath",
                                                             label="Split Frame Preview", tool=None)\
                                                                 .style(height=400)
-                                            preview_button702 = gr.Button(value=
-                                                                          "Refresh Preview")
                                     with gr.Row():
                                         message_box702 = gr.Markdown(format_markdown(
                     "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
@@ -624,9 +625,6 @@ class VideoRemixer(TabBase):
 
         back_button1.click(self.back_button1, outputs=tabs_video_remixer)
 
-        # deinterlace.change(self.deinterlace_change, inputs=deinterlace, outputs=project_fps,
-        #                    show_progress=False)
-
         next_button2.click(self.next_button2, inputs=[thumbnail_type, min_frames_per_scene],
                            outputs=[tabs_video_remixer, message_box2, scene_index, scene_label,
                                     scene_image, scene_state, scene_info])
@@ -698,7 +696,8 @@ class VideoRemixer(TabBase):
             outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils, scene_id_700])
 
         split_scene_button.click(self.split_scene_shortcut, inputs=scene_index,
-            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils, scene_id_702])
+            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils, scene_id_702,
+                     split_percent_702, preview_image702])
 
         next_button3.click(self.next_button3,
                            outputs=[tabs_video_remixer, project_info4])
@@ -752,7 +751,14 @@ class VideoRemixer(TabBase):
 
         preview_button702.click(self.preview_button702, inputs=[scene_id_702, split_percent_702],
                                 outputs=preview_image702, show_progress=False)
-        split_percent_702.release(self.preview_button702, inputs=[scene_id_702, split_percent_702],
+
+        scene_id_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
+                                outputs=preview_image702, show_progress=False)
+
+        split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
+                                outputs=preview_image702, show_progress=False)
+
+        split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
                                 outputs=preview_image702, show_progress=False)
 
         export_project_703.click(self.export_project_703,
@@ -1170,10 +1176,20 @@ class VideoRemixer(TabBase):
         return self.scene_chooser_details(self.state.current_scene)
 
     def drop_processed_shortcut(self, scene_index):
-        return gr.update(selected=7), gr.update(selected=self.TAB_EXTRA_UTILITIES), gr.update(selected=self.TAB_EXTRA_UTIL_DROP_PROCESSED), scene_index
+        return gr.update(selected=7), \
+            gr.update(selected=self.TAB_EXTRA_UTILITIES), \
+            gr.update(selected=self.TAB_EXTRA_UTIL_DROP_PROCESSED), \
+            scene_index
 
     def split_scene_shortcut(self, scene_index):
-        return gr.update(selected=7), gr.update(selected=self.TAB_EXTRA_UTILITIES), gr.update(selected=self.TAB_EXTRA_UTIL_SPLIT_SCENE), scene_index
+        default_percent = 50.0
+        display_frame = self.compute_preview_frame(scene_index, default_percent)
+        return gr.update(selected=7), \
+            gr.update(selected=self.TAB_EXTRA_UTILITIES), \
+            gr.update(selected=self.TAB_EXTRA_UTIL_SPLIT_SCENE), \
+            scene_index, \
+            default_percent, \
+            display_frame
 
     # given scene name such as [042-420] compute details to display in Scene Chooser
     def scene_chooser_details(self, scene_index):
@@ -1589,6 +1605,7 @@ class VideoRemixer(TabBase):
 
     def compute_scene_split(self, scene_index : int, split_percent : float):
         scene_name = self.state.scene_names[scene_index]
+        split_percent = 0.0 if isinstance(split_percent, type(None)) else split_percent
         split_point = split_percent / 100.0
         first_frame, last_frame, num_width = details_from_group_name(scene_name)
         num_frames = (last_frame - first_frame) + 1
@@ -1602,9 +1619,22 @@ class VideoRemixer(TabBase):
 
         return scene_name, num_width, num_frames, first_frame, last_frame, split_frame
 
+    def valid_split_scene_cache(self, scene_index):
+        if self.split_scene_cache and self.split_scene_cached_index == scene_index:
+            return self.split_scene_cache
+        else:
+            return None
+
+    def fill_split_scene_cache(self, scene_index, data):
+        self.split_scene_cache = data
+        self.split_scene_cached_index = scene_index
+
+    def invalidate_split_scene_cache(self):
+        self.split_scene_cache = []
+        self.split_scene_cached_index = -1
+
     def split_button702(self, scene_index, split_percent):
         global_options = self.config.ffmpeg_settings["global_options"]
-        split_point = split_percent / 100.0
 
         if not isinstance(scene_index, (int, float)):
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
@@ -1716,31 +1746,41 @@ class VideoRemixer(TabBase):
         self.log("saving project after completing scene split")
         self.state.save()
 
+        self.log("invalidating scene split cache after splitting")
+        self.invalidate_split_scene_cache()
+
         message = messages.report()
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
             gr.update(value=format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
 
-    def preview_button702(self, scene_index, split_percent):
-        if not isinstance(scene_index, (int, float)):
-            return gr.update(value=None)
-
+    def compute_preview_frame(self, scene_index, split_percent):
         scene_index = int(scene_index)
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
         if scene_index < 0 or scene_index > last_scene:
-            return gr.update(value=None)
+            return None
 
         scene_name, _, num_frames, _, _, split_frame = self.compute_scene_split(scene_index, split_percent)
         original_scene_path = os.path.join(self.state.scenes_path, scene_name)
-        self.state.uncompile_scenes()
+        frame_files = self.valid_split_scene_cache(scene_index)
+        if not frame_files:
+            # optimize to uncompile only the first time it's needed
+            self.state.uncompile_scenes()
 
-        frame_files = sorted(get_files(original_scene_path))
+            frame_files = sorted(get_files(original_scene_path))
+            self.fill_split_scene_cache(scene_index, frame_files)
+
         num_frame_files = len(frame_files)
         if num_frame_files != num_frames:
-            return gr.update(value=None)
+            self.log(f"compute_preview_frame(): expected {num_frame_files} frame files but found {num_frames} for scene index {scene_index} - returning None")
+            return None
+        return frame_files[split_frame]
 
-        display_frame = frame_files[split_frame]
+    def preview_button702(self, scene_index, split_percent):
+        if not isinstance(scene_index, (int, float)):
+            return gr.update(value=None)
+        display_frame = self.compute_preview_frame(scene_index, split_percent)
         return gr.update(value=display_frame)
 
     def export_project_703(self, new_project_path, new_project_name):
