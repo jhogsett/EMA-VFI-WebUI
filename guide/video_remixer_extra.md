@@ -7,8 +7,7 @@
 - **Used For:** Breaking up a scene without redoing project setup
 - _Enter the scene ID for the scene to split and choose a percentage for the split point_
 - _Splits the scene into two new scenes, and creates replacement thumbnails_
-- _**Tips:**_
-    - Click _Refresh Preview_ to see the chosen split frame
+- _**Tip:**_
     - Use the _Split Scene_ button in the _Danger Zone_ from the Scene Chooser
 
 #### Drop Processed Scene - Drop a scene after processing has been already been done

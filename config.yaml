@@ -118,6 +118,7 @@ remixer_settings:
   minimum_crf: 17
   scale_type_up: "lanczos"
   scale_type_down: "area"
+source_audio_crf: 28
   thumb_scale: 0.5
   use_tiling: False
 restoration_settings:

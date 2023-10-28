@@ -404,8 +404,6 @@ class VideoRemixer(TabBase):
                                             with gr.Row():
                                                 scene_id_702 = gr.Number(value=-1,
                                                                          label="Scene Index")
-                                                preview_button702 = gr.Button(
-                                                    value="Refresh Preview").style(full_width=False)
                                             with gr.Row():
                                                 split_percent_702 = gr.Slider(value=50.0,
                                                     label="Split Position", minimum=0.0,
@@ -752,9 +750,6 @@ class VideoRemixer(TabBase):
                               outputs=[tabs_video_remixer, message_box702, scene_index, scene_label,
                                        scene_image, scene_state, scene_info])
 
-        preview_button702.click(self.preview_button702, inputs=[scene_id_702, split_percent_702],
-                                outputs=preview_image702, show_progress=False)
-
         scene_id_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
                                 outputs=preview_image702, show_progress=False)
 
@@ -985,6 +980,7 @@ class VideoRemixer(TabBase):
     # User has clicked Set Up Project from Set Up Project
     def next_button2(self, thumbnail_type, min_frames_per_scene, skip_detection):
         global_options = self.config.ffmpeg_settings["global_options"]
+        source_audio_crf = self.config.remixer_settings["source_audio_crf"]
 
         if not self.state.project_path:
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
@@ -996,6 +992,7 @@ class VideoRemixer(TabBase):
         self.log("saving after setting thumbnail type and min frames per scene")
         self.state.save()
 
+        # TODO this enormous conditional is messy
         if not skip_detection or not self.state.scenes_present():
             try:
                 self.log(f"copying video from {self.state.source_video} to project path")
@@ -1007,6 +1004,17 @@ class VideoRemixer(TabBase):
             self.log("saving project after ensuring video is in project path")
             self.state.save()
 
+            try:
+                self.log(f"creating source audio from {self.state.source_video}")
+                # source_audio_crf = self.config.remixer_settings["source_audio_crf"]
+                self.state.create_source_audio(source_audio_crf, global_options, prevent_overwrite=True)
+            except ValueError as error:
+                # ignore, don't create the file a second time if the user is restarting here
+                self.log(f"ignoring: {error}")
+
+            self.log("saving project after creating audio source")
+            self.state.save()
+
             # user may be redoing project set up
             # settings changes could affect already-processed content
             self.log("resetting project on rendering for project settings")
@@ -1014,7 +1022,7 @@ class VideoRemixer(TabBase):
 
             # split video into raw PNG frames, avoid doing again if redoing setup
             self.log("splitting source video into PNG frames")
-            global_options = self.config.ffmpeg_settings["global_options"]
+            # global_options = self.config.ffmpeg_settings["global_options"]
             ffcmd = self.state.render_source_frames(global_options=global_options,
                                                     prevent_overwrite=True)
             if not ffcmd:
@@ -1812,6 +1820,13 @@ class VideoRemixer(TabBase):
                 Mtqdm().message(bar, "Copying source video - no ETA")
                 shutil.copy(self.state.source_video, new_state.source_video)
                 Mtqdm().update_bar(bar)
+
+            # copy the source audio (if not using the source video as audio source)
+            if self.state.source_audio != self.state.source_video:
+                with Mtqdm().open_bar(total=1, desc="Copying") as bar:
+                    Mtqdm().message(bar, "Copying source audio - no ETA")
+                    shutil.copy(self.state.source_audio, new_state.source_audio)
+                    Mtqdm().update_bar(bar)
 
             # ensure scenes path contains all / only kept scenes
             self.state.uncompile_scenes()
