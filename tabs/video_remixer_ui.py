@@ -1006,7 +1006,6 @@ class VideoRemixer(TabBase):
 
             try:
                 self.log(f"creating source audio from {self.state.source_video}")
-                # source_audio_crf = self.config.remixer_settings["source_audio_crf"]
                 self.state.create_source_audio(source_audio_crf, global_options, prevent_overwrite=True)
             except ValueError as error:
                 # ignore, don't create the file a second time if the user is restarting here
@@ -1022,7 +1021,6 @@ class VideoRemixer(TabBase):
 
             # split video into raw PNG frames, avoid doing again if redoing setup
             self.log("splitting source video into PNG frames")
-            # global_options = self.config.ffmpeg_settings["global_options"]
             ffcmd = self.state.render_source_frames(global_options=global_options,
                                                     prevent_overwrite=True)
             if not ffcmd:
