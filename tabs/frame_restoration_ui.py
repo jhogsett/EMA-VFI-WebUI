@@ -124,5 +124,5 @@ class FrameRestoration(TabBase):
                     output_paths)
                 downloads.append(info_file)
 
-            return gr.Image.update(value=preview_gif), gr.File.update(value=downloads,
+            return gr.update(value=preview_gif), gr.update(value=downloads,
                 visible=True)

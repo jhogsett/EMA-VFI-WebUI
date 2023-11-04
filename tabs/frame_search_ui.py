@@ -83,5 +83,7 @@ class FrameSearch(TabBase):
                 target_interpolater.split_frames(img_before_file, img_after_file, num_splits,
                     float(min_target), float(max_target), output_path, output_basename)
                 output_paths = target_interpolater.output_paths
-            return gr.Image.update(value=output_paths[0]), gr.File.update(value=output_paths,
+            return gr.update(value=output_paths[0]), gr.update(value=output_paths,
                 visible=True)
+        else:
+            return None, None
