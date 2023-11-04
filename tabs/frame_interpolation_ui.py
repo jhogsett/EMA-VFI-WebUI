@@ -30,8 +30,8 @@ class FrameInterpolation(TabBase):
                 + " see an animation of result and download the new frames", elem_id="tabheading")
             with gr.Row():
                 with gr.Column():
-                    img1_input_fi = gr.Image(type="filepath", label="Before Frame", tool=None)
-                    img2_input_fi = gr.Image(type="filepath", label="After Frame", tool=None)
+                    img1_input_fi = gr.Image(type="filepath", label="Before Frame")
+                    img2_input_fi = gr.Image(type="filepath", label="After Frame")
                     with gr.Row():
                         splits_input_fi = gr.Slider(value=1, minimum=1, maximum=max_splits,
                             step=1, label="Split Count")
@@ -40,7 +40,7 @@ class FrameInterpolation(TabBase):
                 with gr.Column():
                     img_output_fi = gr.Image(type="filepath", label="Animated Preview",
                         interactive=False, elem_id="mainoutput")
-                    file_output_fi = gr.File(type="file", file_count="multiple",
+                    file_output_fi = gr.File(type="filepath", file_count="multiple",
                         label="Download", visible=False)
             interpolate_button_fi = gr.Button("Interpolate", variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -49,8 +49,11 @@ class FrameInterpolation(TabBase):
         interpolate_button_fi.click(self.frame_interpolation,
             inputs=[img1_input_fi, img2_input_fi, splits_input_fi],
             outputs=[img_output_fi, file_output_fi])
-        splits_input_fi.change(update_splits_info, inputs=splits_input_fi,
+        splits_input_fi.change(self.update_splits_info_fi, inputs=splits_input_fi,
             outputs=info_output_fi, show_progress=False)
+
+    def update_splits_info_fi(self, num_splits : int):
+        return update_splits_info(num_splits)
 
     def frame_interpolation(self, img_before_file : str, img_after_file : str, num_splits : float):
         """Interpolate button handler"""

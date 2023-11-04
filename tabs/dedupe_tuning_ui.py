@@ -52,19 +52,19 @@ class DuplicateTuning(TabBase):
             with gr.Row():
                 report_button = gr.Button("Create Report", variant="primary")
             with gr.Row():
-                file_output = gr.File(type="file", file_count="multiple", label="Download",
+                file_output = gr.File(type="filepath", file_count="multiple", label="Download",
                                       visible=False)
                 error_output = gr.Text(max_lines=1, label="Error", visible=False)
             with gr.Row():
-                output_frame = gr.DataFrame(value=None, max_rows=max_rows, interactive=False,
+                output_frame = gr.DataFrame(value=None, interactive=False,
                                             label="Tuning Report")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.deduplicate_tuning.render()
-        report_button.click(self.create_report,
+        report_button.click(self.create_tuning_report,
                 inputs=[input_path_text, max_dupes, tune_min, tune_max, tune_step],
                 outputs=[file_output, output_frame, error_output])
 
-    def create_report(self,
+    def create_tuning_report(self,
                         input_path : str,
                         max_dupes : int,
                         min_threshold : int,

@@ -40,16 +40,16 @@ class DuplicateFramesReport(TabBase):
             with gr.Row():
                 report_button = gr.Button("Create Report", variant="primary")
             with gr.Row():
-                file_output = gr.File(type="file", file_count="multiple", label="Download",
+                file_output = gr.File(type="filepath", file_count="multiple", label="Download",
                                       visible=False)
             with gr.Row():
                 output_text = gr.Textbox(label="Report", max_lines=max_lines, interactive=False)
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.duplicates_report.render()
-        report_button.click(self.create_report, inputs=[input_path_text, threshold, max_dupes],
+        report_button.click(self.create_dedupe_report, inputs=[input_path_text, threshold, max_dupes],
                             outputs=[file_output, output_text])
 
-    def create_report(self,
+    def create_dedupe_report(self,
                         input_path : str,
                         threshold : int,
                         max_dupes : int):

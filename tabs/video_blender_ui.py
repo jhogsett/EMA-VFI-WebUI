@@ -52,7 +52,7 @@ class VideoBlender(TabBase):
                                 projects_dropdown_vb = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
                                     " Saved Projects", choices=choices, value=choices[0])
                                 save_project_button_vb = gr.Button(SimpleIcons.PROP_SYMBOL +
-                                    " Save").style(full_width=False)
+                                    " Save")
                     with gr.Row():
                         input_main_path = gr.Textbox(label="Project Main Path",
                                                      placeholder="Root path for the project")
@@ -328,13 +328,13 @@ class VideoBlender(TabBase):
                 output_img_path2_vb, fix_frames_count, preview_image_ff, fixed_path_ff])
         render_video_vb.click(self.video_blender_render_preview,
             inputs=[preview_path_vb, input_frame_rate_vb], outputs=[video_preview_vb])
-        step1_enabled.change(self.video_blender_new_project_ui_switch,
+        step1_enabled.change(self.video_blender_new_project_ui_switch_step1,
             inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
             outputs=[step1_input, step2_input, step3_input], show_progress=False)
-        step2_enabled.change(self.video_blender_new_project_ui_switch,
+        step2_enabled.change(self.video_blender_new_project_ui_switch_step2,
             inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
             outputs=[step1_input, step2_input, step3_input], show_progress=False)
-        step3_enabled.change(self.video_blender_new_project_ui_switch,
+        step3_enabled.change(self.video_blender_new_project_ui_switch_step3,
             inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
             outputs=[step1_input, step2_input, step3_input], show_progress=False)
         new_project_button.click(self.video_blender_new_project,
@@ -533,6 +533,36 @@ class VideoBlender(TabBase):
             PNGtoMP4(input_path, None, float(frame_rate), output_filepath,
                 crf=QUALITY_SMALLER_SIZE, global_options=global_options)
             return output_filepath
+
+    def video_blender_new_project_ui_switch_step1(self,
+                                            step1_enabled,
+                                            step2_enabled,
+                                            step3_enabled,
+                                            step4_enabled):
+        return self.video_blender_new_project_ui_switch(step1_enabled,
+                                                        step2_enabled,
+                                                        step3_enabled,
+                                                        step4_enabled)
+
+    def video_blender_new_project_ui_switch_step2(self,
+                                            step1_enabled,
+                                            step2_enabled,
+                                            step3_enabled,
+                                            step4_enabled):
+        return self.video_blender_new_project_ui_switch(step1_enabled,
+                                                        step2_enabled,
+                                                        step3_enabled,
+                                                        step4_enabled)
+
+    def video_blender_new_project_ui_switch_step3(self,
+                                            step1_enabled,
+                                            step2_enabled,
+                                            step3_enabled,
+                                            step4_enabled):
+        return self.video_blender_new_project_ui_switch(step1_enabled,
+                                                        step2_enabled,
+                                                        step3_enabled,
+                                                        step4_enabled)
 
     def video_blender_new_project_ui_switch(self,
                                             step1_enabled,

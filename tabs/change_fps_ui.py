@@ -84,24 +84,33 @@ class ChangeFPS(TabBase):
                                                 variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.change_fps.render()
-        starting_fps_fc.change(update_info_fc,
+        starting_fps_fc.change(self.update_info_starting_fps,
             inputs=[starting_fps_fc, ending_fps_fc, precision_fc],
             outputs=[output_lcm_text_fc, output_filler_text_fc, output_sampled_text_fc,
                 times_output_fc, predictions_output_fc], show_progress=False)
-        ending_fps_fc.change(update_info_fc, inputs=[starting_fps_fc, ending_fps_fc, precision_fc],
+        ending_fps_fc.change(self.update_info_ending_fps, inputs=[starting_fps_fc, ending_fps_fc, precision_fc],
             outputs=[output_lcm_text_fc, output_filler_text_fc, output_sampled_text_fc,
                 times_output_fc, predictions_output_fc], show_progress=False)
-        precision_fc.change(update_info_fc, inputs=[starting_fps_fc, ending_fps_fc, precision_fc],
+        precision_fc.change(self.update_info_precision, inputs=[starting_fps_fc, ending_fps_fc, precision_fc],
             outputs=[output_lcm_text_fc, output_filler_text_fc, output_sampled_text_fc,
                 times_output_fc, predictions_output_fc], show_progress=False)
         fill_with_dupes.change(self.update_fill_type, inputs=fill_with_dupes,
                                outputs=precision_fc, show_progress=False)
         convert_button_fc.click(self.convert_fc, inputs=[input_path_text_fc, output_path_text_fc,
             starting_fps_fc, ending_fps_fc, precision_fc, fill_with_dupes])
-        convert_batch.click(self.convert_batch, inputs=[input_path_batch, output_path_batch,
+        convert_batch.click(self.convert_batch_fc, inputs=[input_path_batch, output_path_batch,
             starting_fps_fc, ending_fps_fc, precision_fc, fill_with_dupes])
 
-    def convert_batch(self,
+    def update_info_starting_fps(self, starting_fps : int, ending_fps : int, precision : int):
+        return update_info_fc(starting_fps, ending_fps, precision)
+
+    def update_info_ending_fps(self, starting_fps : int, ending_fps : int, precision : int):
+        return update_info_fc(starting_fps, ending_fps, precision)
+
+    def update_info_precision(self, starting_fps : int, ending_fps : int, precision : int):
+        return update_info_fc(starting_fps, ending_fps, precision)
+
+    def convert_batch_fc(self,
                     input_path : str,
                     output_path : str,
                     starting_fps : int,

@@ -39,9 +39,9 @@ class FrameRestoration(TabBase):
                 with gr.Column():
                     with gr.Row():
                         img1_input_fr = gr.Image(type="filepath",
-                            label="Frame Before Replacement Frames", tool=None)
+                            label="Frame Before Replacement Frames")
                         img2_input_fr = gr.Image(type="filepath",
-                            label="Frame After Replacement Frames", tool=None)
+                            label="Frame After Replacement Frames")
                     with gr.Row():
                         frames_input_fr = gr.Slider(value=default_frames, minimum=1,
                             maximum=max_frames, step=1, label="Frames to Restore")
@@ -54,7 +54,7 @@ class FrameRestoration(TabBase):
                 with gr.Column():
                     img_output_fr = gr.Image(type="filepath", label="Animated Preview",
                         interactive=False, elem_id="mainoutput")
-                    file_output_fr = gr.File(type="file", file_count="multiple",
+                    file_output_fr = gr.File(type="filepath", file_count="multiple",
                         label="Download", visible=False)
             predictions_default = restored_frame_predictions(default_frames, default_precision)
             predictions_output_fr = gr.Textbox(value=predictions_default,
@@ -66,12 +66,18 @@ class FrameRestoration(TabBase):
             inputs=[img1_input_fr, img2_input_fr, frames_input_fr,
                 precision_input_fr],
             outputs=[img_output_fr, file_output_fr])
-        frames_input_fr.change(update_info_fr,
+        frames_input_fr.change(self.update_info_frames_input,
             inputs=[frames_input_fr, precision_input_fr],
             outputs=[times_output_fr, predictions_output_fr], show_progress=False)
-        precision_input_fr.change(update_info_fr,
+        precision_input_fr.change(self.update_info_precision_input,
             inputs=[frames_input_fr, precision_input_fr],
             outputs=[times_output_fr, predictions_output_fr], show_progress=False)
+
+    def update_info_frames_input(self, num_frames : int, num_splits : int):
+       return update_info_fr(num_frames, num_splits)
+
+    def update_info_precision_input(self, num_frames : int, num_splits : int):
+       return update_info_fr(num_frames, num_splits)
 
     def frame_restoration(self,
                         img_before_file : str,

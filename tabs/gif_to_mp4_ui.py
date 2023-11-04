@@ -77,7 +77,7 @@ class GIFtoMP4(TabBase):
                 WebuiTips.gif_to_mp4.render()
         convert_button.click(self.convert, inputs=[input_path_text, output_path_text,
             upscale_input, inflation_input, order_input, input_frame_rate, quality_slider])
-        convert_button_batch.click(self.convert_batch, inputs=[input_path_text_batch,
+        convert_button_batch.click(self.convert_batch_gm, inputs=[input_path_text_batch,
             output_path_text, upscale_input, inflation_input, order_input, input_frame_rate,
             quality_slider])
 
@@ -85,7 +85,7 @@ class GIFtoMP4(TabBase):
         """Convert button handler"""
         self._convert(*args)
 
-    def convert_batch(self,
+    def convert_batch_gm(self,
                 input_filepath : str,
                 output_filepath : str,
                 upscaling : float,

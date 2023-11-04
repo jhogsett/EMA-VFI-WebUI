@@ -57,12 +57,15 @@ class VideoInflation(TabBase):
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.video_inflation.render()
 
-        splits_input_vi.change(update_splits_info,
+        splits_input_vi.change(self.update_splits_info_vi,
             inputs=splits_input_vi, outputs=info_output_vi, show_progress=False)
         interpolate_button_vi.click(self.video_inflation,
             inputs=[input_path_text_vi, output_path_text_vi, splits_input_vi])
         interpolate_batch_vi.click(self.batch_inflation,
             inputs=[input_path_batch, output_path_batch, splits_input_vi])
+
+    def update_splits_info_vi(self, num_splits : int):
+        return update_splits_info(num_splits)
 
     def batch_inflation(self, input_path : str, output_path : str | None, num_splits : float):
         """Inflate Video button handler"""

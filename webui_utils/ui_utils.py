@@ -2,7 +2,7 @@
 from .simple_utils import max_steps, restored_frame_fractions, restored_frame_predictions, \
     fps_change_details
 
-def update_splits_info(num_splits : float):
+def update_splits_info(num_splits : int):
     """Given a count of splits/search depth/search precision, compute the count of work steps"""
     # can be called directly by a Gradio event handler with one float input and one text output
     return str(max_steps(num_splits))
