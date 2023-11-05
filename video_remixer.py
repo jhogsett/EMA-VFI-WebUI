@@ -9,7 +9,7 @@ from webui_utils.file_utils import split_filepath, create_directory, get_directo
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
-    MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom
+    MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom, SourceToMP4
 from webui_utils.jot import Jot
 from webui_utils.mtqdm import Mtqdm
 from split_scenes import SplitScenes
@@ -30,6 +30,7 @@ class VideoRemixerState():
         # source video from initial tab
         self.source_video = None # set on clicking New Project
                                  # and again during project set up (pointing to duplicate copy)
+        self.source_audio = None
         self.video_details = {}
         self.video_info1 = None
 
@@ -258,6 +259,29 @@ class VideoRemixerState():
             self.source_video = project_video_path
             Mtqdm().update_bar(bar)
 
+    # this is expected to be called after save_original_video()
+    def create_source_audio(self, crf, global_options, prevent_overwrite=True, skip_mp4=True):
+        _, filename, ext = split_filepath(self.source_video)
+        if skip_mp4 and ext.lower() == ".mp4":
+            self.source_audio = self.source_video
+            return
+
+        audio_filename = filename  + "-audio" + ".mp4"
+
+        # clean various problematic chars from filenames
+        filtered_filename = clean_filename(audio_filename, self.FILENAME_FILTER)
+        project_audio_path = os.path.join(self.project_path, filtered_filename)
+
+        if os.path.exists(project_audio_path) and prevent_overwrite:
+            raise ValueError(
+            f"The local project audio file already exists, copying skipped: {project_audio_path}")
+
+        with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
+            Mtqdm().message(bar, "Creating source audio locally - no ETA")
+            SourceToMP4(self.source_video, project_audio_path, crf, global_options=global_options)
+            self.source_audio = project_audio_path
+            Mtqdm().update_bar(bar)
+
     def copy_project_file(self, copy_path):
         project_file = VideoRemixerState.determine_project_filepath(self.project_path)
         saved_project_file = os.path.join(copy_path, self.DEF_FILENAME)
@@ -310,9 +334,12 @@ class VideoRemixerState():
             Mtqdm().update_bar(bar)
         return ffmpeg_cmd
 
+    def scenes_present(self):
+        self.uncompile_scenes()
+        return os.path.exists(self.scenes_path) and get_directories(self.scenes_path)
+
     def split_scenes(self, log_fn, prevent_overwrite=False):
-        if prevent_overwrite:
-            if os.path.exists(self.scenes_path) and get_directories(self.scenes_path):
+        if prevent_overwrite and self.scenes_present():
                 return None
         try:
             if self.split_type == "Scene":
@@ -772,19 +799,29 @@ class VideoRemixerState():
         else:
             raise RuntimeError(f"'processing_step' {processing_step} is unrecognized")
 
+    # processed content is stale if it is not selected and exists
+    def processed_content_stale(self, selected : bool, path : str):
+        if selected:
+            return False
+        if not os.path.exists(path):
+            return False
+        contents = get_directories(path)
+        content_present = len(contents) > 0
+        return content_present
+
     # content is stale if it is present on disk but not currently selected
     # stale content and its derivative content should be purged
     def purge_stale_processed_content(self, purge_upscale):
-        if not self.resize:
+        if self.processed_content_stale(self.resize, self.resize_path):
             self.purge_processed_content(purge_from=self.RESIZE_STEP)
 
-        if not self.resynthesize:
+        if self.processed_content_stale(self.resynthesize, self.resynthesis_path):
             self.purge_processed_content(purge_from=self.RESYNTH_STEP)
 
-        if not self.inflate:
+        if self.processed_content_stale(self.inflate, self.inflation_path):
             self.purge_processed_content(purge_from=self.INFLATE_STEP)
 
-        if not self.upscale or purge_upscale:
+        if self.processed_content_stale(self.upscale, self.upscale_path) or purge_upscale:
             self.purge_processed_content(purge_from=self.UPSCALE_STEP)
 
     def purge_incomplete_processed_content(self):
@@ -1086,7 +1123,7 @@ class VideoRemixerState():
         self.save()
 
         edge_trim = 1 if self.resynthesize else 0
-        SliceVideo(self.source_video,
+        SliceVideo(self.source_audio,
                     self.project_fps,
                     self.scenes_path,
                     self.audio_clips_path,
@@ -1380,7 +1417,7 @@ class VideoRemixerState():
     def load(filepath : str):
         with open(filepath, "r") as file:
             try:
-                state = yaml.load(file, Loader=Loader)
+                state : VideoRemixerState = yaml.load(file, Loader=Loader)
 
                 # reload some things
                 # TODO maybe reload from what's found on disk
@@ -1404,6 +1441,12 @@ class VideoRemixerState():
                     state.split_frames = state.calc_split_frames(state.project_fps, state.split_time)
                 # new attribute
                 state.processed_content_invalid = False
+                # new separate audio source
+                try:
+                    if not state.source_audio:
+                        state.source_audio = state.source_video
+                except AttributeError:
+                    state.source_audio = state.source_video
 
                 return state
             except YAMLError as error:

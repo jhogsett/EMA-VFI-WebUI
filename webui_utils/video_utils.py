@@ -819,3 +819,18 @@ def combine_videos(input_paths : list,
         return cmd
     except FFRuntimeError as error:
         raise ValueError(f"combine_video() received an error using FFmpeg: {str(error)}")
+
+def SourceToMP4(input_path : str, # pylint: disable=invalid-name
+            output_filepath : str,
+            crf : int=QUALITY_DEFAULT,
+            global_options : str=""):
+    """Encapsulate logic for the Source to MP4 feature"""
+    path, filename, ext = split_filepath(output_filepath)
+    output_filepath = os.path.join(path, filename + ".mp4")
+    ffcmd = FFmpeg(
+        inputs= {input_path : None},
+        outputs={output_filepath : f"-c:a aac -c:v libx264 -crf {crf}"},
+        global_options="-y " + global_options)
+    cmd = ffcmd.cmd
+    ffcmd.run()
+    return cmd
