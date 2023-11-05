@@ -37,8 +37,7 @@ class GIFtoPNG(TabBase):
         """Convert button handler"""
         if input_filepath and output_path:
             create_directory(output_path)
-            start_number = 0 # TODO
             global_options = self.config.ffmpeg_settings["global_options"]
-            ffmpeg_cmd = _GIFtoPNG(input_filepath, output_path, start_number=start_number,
+            ffmpeg_cmd = _GIFtoPNG(input_filepath, output_path, start_number=0,
                                    global_options=global_options)
             return gr.update(value=ffmpeg_cmd, visible=True)
