@@ -2,6 +2,7 @@
 ![pybadge](https://img.shields.io/badge/Python-3.10.9-4380b0)
 ![ptbadge](https://img.shields.io/badge/Torch-1.13.1-ee4b28)
 ![nvbadge](https://img.shields.io/badge/Cuda-11.7-76b900)
+![grbadge](https://img.shields.io/badge/Gradio-3.36.1-f67500)
 
 # EMA-VFI-WebUI - AI-Based Movie Restoration
 
