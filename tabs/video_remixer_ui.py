@@ -152,8 +152,7 @@ class VideoRemixer(TabBase):
 
                     message_box1 = gr.Markdown(value=format_markdown(self.TAB1_DEFAULT_MESSAGE))
                     with gr.Row():
-                        back_button1 = gr.Button(value="< Back", variant="secondary").\
-                            style(full_width=False)
+                        back_button1 = gr.Button(value="< Back", variant="secondary", scale=0)
                         next_button1 = gr.Button(value="Next >", variant="primary",
                                                 elem_id="actionbutton")
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -184,8 +183,7 @@ class VideoRemixer(TabBase):
                         color="none", italic=True, bold=False))
 
                     with gr.Row():
-                        back_button2 = gr.Button(value="< Back", variant="secondary").\
-                            style(full_width=False)
+                        back_button2 = gr.Button(value="< Back", variant="secondary", scale=0)
                         next_button2 = gr.Button(value="Set Up Project " + SimpleIcons.SLOW_SYMBOL,
                                                 variant="primary", elem_id="actionbutton")
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -205,8 +203,7 @@ class VideoRemixer(TabBase):
                                 scene_index = gr.Number(label="Scene Index", precision=0)
                     with gr.Row():
                         with gr.Column():
-                            scene_image = gr.Image(type="filepath", interactive=False).style(
-                                height=max_thumb_size)
+                            scene_image = gr.Image(type="filepath", interactive=False, height=max_thumb_size)
                         with gr.Column():
                             keep_next = gr.Button(value="Keep Scene | Next >", variant="primary",
                                                 elem_id="actionbutton")
@@ -235,8 +232,7 @@ class VideoRemixer(TabBase):
                                     drop_processed_button = gr.Button(value="Drop Processed Scene",
                                                                 variant="stop")
                     with gr.Row():
-                        back_button3 = gr.Button(value="< Back", variant="secondary").\
-                            style(full_width=False)
+                        back_button3 = gr.Button(value="< Back", variant="secondary", scale=0)
                         next_button3 = gr.Button(value="Done Choosing Scenes", variant="primary",
                                                 elem_id="actionbutton")
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -249,8 +245,7 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         message_box4 = gr.Markdown(value=format_markdown(self.TAB4_DEFAULT_MESSAGE))
                     with gr.Row():
-                        back_button4 = gr.Button(value="< Back", variant="secondary").\
-                            style(full_width=False)
+                        back_button4 = gr.Button(value="< Back", variant="secondary", scale=0)
                         next_button4 = gr.Button(value="Compile Scenes", variant="primary",
                                                 elem_id="actionbutton")
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -288,10 +283,10 @@ class VideoRemixer(TabBase):
                             color="more", bold_heading_only=True))
 
                     with gr.Row():
-                        upscale = gr.Checkbox(label="Upscale Frames", value=True)
-                        upscale_option = gr.Radio(label="Upscale By", value="2X",
+                        upscale = gr.Checkbox(label="Upscale Frames", value=True, scale=1)
+                        upscale_option = gr.Radio(label="Upscale By", value="2X", scale=1,
                                                   choices=["1X", "2X", "4X"])
-                        with gr.Column(variant="compact"):
+                        with gr.Column(variant="compact", scale=2):
                             gr.Markdown(format_markdown(
                                 "Clean and Enlarge frames using Real-ESRGAN 4x+ upscaler\r\n" +
                                 "- Remove grime, noise, and digital artifacts\r\n" +
@@ -309,8 +304,7 @@ class VideoRemixer(TabBase):
                     gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
 
                     with gr.Row():
-                        back_button5 = gr.Button(value="< Back", variant="secondary").\
-                            style(full_width=False)
+                        back_button5 = gr.Button(value="< Back", variant="secondary", scale=0)
                         next_button5 = gr.Button(value="Process Remix " +
                                     SimpleIcons.SLOW_SYMBOL, variant="primary",
                                     elem_id="actionbutton")
@@ -335,8 +329,7 @@ class VideoRemixer(TabBase):
                                 message_box60 = gr.Markdown(value=format_markdown(self.TAB60_DEFAULT_MESSAGE))
                             gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
                             with gr.Row():
-                                back_button60 = gr.Button(value="< Back", variant="secondary").\
-                                    style(full_width=False)
+                                back_button60 = gr.Button(value="< Back", variant="secondary", scale=0)
                                 next_button60 = gr.Button(
                                     value="Save Remix " + SimpleIcons.SLOW_SYMBOL,
                                     variant="primary", elem_id="highlightbutton")
@@ -356,8 +349,7 @@ class VideoRemixer(TabBase):
                                 message_box61 = gr.Markdown(value=format_markdown(self.TAB61_DEFAULT_MESSAGE))
                             gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
                             with gr.Row():
-                                back_button61 = gr.Button(value="< Back", variant="secondary").\
-                                    style(full_width=False)
+                                back_button61 = gr.Button(value="< Back", variant="secondary", scale=0)
                                 next_button61 = gr.Button(
                                     value="Save Custom Remix " + SimpleIcons.SLOW_SYMBOL,
                                     variant="primary", elem_id="highlightbutton")
@@ -378,8 +370,7 @@ class VideoRemixer(TabBase):
                                                 format_markdown(self.TAB62_DEFAULT_MESSAGE))
                             gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
                             with gr.Row():
-                                back_button62 = gr.Button(value="< Back", variant="secondary").\
-                                    style(full_width=False)
+                                back_button62 = gr.Button(value="< Back", variant="secondary", scale=0)
                                 next_button62 = gr.Button(
                                     value="Save Marked Remix " + SimpleIcons.SLOW_SYMBOL,
                                     variant="primary", elem_id="highlightbutton")
@@ -411,14 +402,12 @@ class VideoRemixer(TabBase):
                                                 info="A lower value splits earlier in the scene")
                                         with gr.Column():
                                             preview_image702 = gr.Image(type="filepath",
-                                                            label="Split Frame Preview", tool=None)\
-                                                                .style(height=400)
+                                    label="Split Frame Preview", tool=None, height=max_thumb_size)
                                     with gr.Row():
                                         message_box702 = gr.Markdown(format_markdown(
                     "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
                                     split_button702 = gr.Button(
-                                        "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop")\
-                                            .style(full_width=False)
+                                        "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
                                 # Drop Processed Scene
                                 with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene",
@@ -428,8 +417,7 @@ class VideoRemixer(TabBase):
                                     scene_id_700 = gr.Number(value=-1, label="Scene Index")
                                     with gr.Row():
                                         message_box700 = gr.Markdown(format_markdown("Click Drop Scene to: Remove all Processed Content for the specified scene"))
-                                    drop_button700 = gr.Button("Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop").\
-                                        style(full_width=False)
+                                    drop_button700 = gr.Button("Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
                                 # Choose Scene Range
                                 with gr.Tab(SimpleIcons.HEART_HANDS + " Choose Scene Range", id=self.TAB_EXTRA_UTIL_CHOOSE_RANGE):
@@ -446,7 +434,7 @@ class VideoRemixer(TabBase):
                                     with gr.Row():
                                         message_box701 = gr.Markdown(format_markdown("Click Choose Scene Range to: Set the Scene Range to the specified state"))
                                     choose_button701 = gr.Button("Choose Scene Range",
-                                                            variant="stop").style(full_width=False)
+                                                            variant="stop", scale=0)
 
                                 # Export Kept Scenes
                                 with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_UTIL_EXPORT_SCENES):
@@ -459,10 +447,10 @@ class VideoRemixer(TabBase):
                                     with gr.Row():
                                         message_box703 = gr.Markdown(format_markdown("Click Export Project to: Save the kept scenes as a new project"))
                                     export_project_703 = gr.Button("Export Project " + SimpleIcons.SLOW_SYMBOL,
-                                                            variant="stop").style(full_width=False)
+                                                            variant="stop", scale=0)
                                     with gr.Row():
                                         result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
-                                        open_result703 = gr.Button("Open New Project", visible=False).style(full_width=False)
+                                        open_result703 = gr.Button("Open New Project", visible=False, scale=0)
 
                         with gr.Tab(SimpleIcons.HERB +" Reduce Footprint", id=self.TAB_EXTRA_REDUCE):
                             gr.Markdown("Free Disk Space by Removing Unneeded Content")
@@ -483,10 +471,8 @@ class VideoRemixer(TabBase):
                                     with gr.Row():
                                         delete_button710 = gr.Button(value="Delete Purged Content "\
                                                         + SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                        select_all_button710 = gr.Button(value="Select All").\
-                                            style(full_width=False)
-                                        select_none_button710 = gr.Button(value="Select None").\
-                                            style(full_width=False)
+                                        select_all_button710 = gr.Button(value="Select All", scale=0)
+                                        select_none_button710 = gr.Button(value="Select None", scale=0)
 
                                 with gr.Tab(SimpleIcons.CROSSMARK + " Remove Scene Chooser Content"):
                                     gr.Markdown(
@@ -515,10 +501,8 @@ class VideoRemixer(TabBase):
                                         delete_button711 = gr.Button(
                                             value="Delete Selected Content " +\
                                                 SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                        select_all_button711 = gr.Button(value="Select All").\
-                                            style(full_width=False)
-                                        select_none_button711 = gr.Button(value="Select None").\
-                                            style(full_width=False)
+                                        select_all_button711 = gr.Button(value="Select All", scale=0)
+                                        select_none_button711 = gr.Button(value="Select None", scale=0)
 
                                 with gr.Tab(SimpleIcons.CROSSMARK + " Remove Remix Video Source Content"):
                                     gr.Markdown(
@@ -576,10 +560,8 @@ class VideoRemixer(TabBase):
                                         delete_button712 = gr.Button(
                                             value="Delete Selected Content " +\
                                                 SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                        select_all_button712 = gr.Button(value="Select All").\
-                                            style(full_width=False)
-                                        select_none_button712 = gr.Button(value="Select None").\
-                                            style(full_width=False)
+                                        select_all_button712 = gr.Button(value="Select All", scale=0)
+                                        select_none_button712 = gr.Button(value="Select None", scale=0)
 
                                 with gr.Tab(SimpleIcons.COLLISION + " Remove All Processed Content"):
                                     gr.Markdown(
