@@ -283,10 +283,10 @@ class VideoRemixer(TabBase):
                             color="more", bold_heading_only=True))
 
                     with gr.Row():
-                        upscale = gr.Checkbox(label="Upscale Frames", value=True)
-                        upscale_option = gr.Radio(label="Upscale By", value="2X",
+                        upscale = gr.Checkbox(label="Upscale Frames", value=True, scale=1)
+                        upscale_option = gr.Radio(label="Upscale By", value="2X", scale=1,
                                                   choices=["1X", "2X", "4X"])
-                        with gr.Column(variant="compact"):
+                        with gr.Column(variant="compact", scale=2):
                             gr.Markdown(format_markdown(
                                 "Clean and Enlarge frames using Real-ESRGAN 4x+ upscaler\r\n" +
                                 "- Remove grime, noise, and digital artifacts\r\n" +
