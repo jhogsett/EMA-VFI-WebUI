@@ -918,6 +918,8 @@ class VideoRemixer(TabBase):
         # TODO validate the other entries
 
         try:
+            # TODO move logic to state class
+
             # this is first project write
             self.log(f"creating project path {project_path}")
             create_directory(project_path)
@@ -966,6 +968,8 @@ class VideoRemixer(TabBase):
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                    gr.update(value=format_markdown(f"Project settings have not yet been saved on the previous tab", "error")), \
                    *fill_empty_args(5)
+
+        # TODO move logic to state class
 
         self.state.thumbnail_type = thumbnail_type
         self.state.min_frames_per_scene = min_frames_per_scene
@@ -1078,6 +1082,7 @@ class VideoRemixer(TabBase):
     def back_button2(self):
         return gr.update(selected=self.TAB_REMIX_SETTINGS)
 
+    # TODO is this still necessary? pro: change type without regen of thumbs con: non anticipatable behavior compared to other tabs
     def thumb_change(self, thumbnail_type):
         self.state.thumbnail_type = thumbnail_type
         if self.state.project_path:
@@ -1214,6 +1219,8 @@ class VideoRemixer(TabBase):
                    gr.update(value=format_markdown(f"The project has not yet been set up from the Set Up Project tab.", "error")), \
                    *fill_empty_args(5)
 
+        # TODO move logic to state class
+
         self.log("moving previously dropped scenes back to scenes directory")
         self.state.uncompile_scenes()
 
@@ -1245,6 +1252,8 @@ class VideoRemixer(TabBase):
                    gr.update(value=format_markdown(
                     "The project has not yet been set up from the Set Up Project tab.", "error")), \
                    *self.noop_args(7)
+
+        # TODO move logic to state class
 
         self.state.resynthesize = resynthesize
         self.state.inflate = inflate
@@ -1363,6 +1372,7 @@ class VideoRemixer(TabBase):
 
     ### SAVE REMIX EVENT HANDLERS
 
+    # TODO move to state class
     def prepare_save_remix(self, output_filepath):
         if not output_filepath:
             raise ValueError("Enter a path for the remixed video to proceed")
@@ -1397,6 +1407,7 @@ class VideoRemixer(TabBase):
         self.state.clean_remix_content(purge_from="video_clips")
         return global_options, kept_scenes
 
+    # TODO move to state class
     def save_remix(self, global_options, kept_scenes):
         self.log(f"about to create video clips")
         self.state.create_video_clips(self.log, kept_scenes, global_options)
@@ -1417,6 +1428,7 @@ class VideoRemixer(TabBase):
         self.log("saving project after creating remix video")
         self.state.save()
 
+    # TODO move to state class
     def save_custom_remix(self,
                           output_filepath,
                           global_options,
@@ -1488,6 +1500,9 @@ class VideoRemixer(TabBase):
         if not self.state.project_path:
             return gr.update(value=format_markdown(
                     "The project has not yet been set up from the Set Up Project tab.", "error"))
+
+        # TODO move logic to state class
+
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             draw_text_options = {}
@@ -1518,6 +1533,7 @@ class VideoRemixer(TabBase):
     def back_button6(self):
         return gr.update(selected=self.TAB_PROC_OPTIONS)
 
+    # TODO move logic to state class
     def drop_button700(self, scene_index):
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
@@ -1542,6 +1558,7 @@ class VideoRemixer(TabBase):
         removed = "\r\n".join(removed)
         return gr.update(value=format_markdown(f"Removed:\r\n{removed}"))
 
+    # TODO move logic to state class
     def choose_button701(self, first_scene_index, last_scene_index, scene_state):
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
@@ -1588,6 +1605,7 @@ class VideoRemixer(TabBase):
             gr.update(value=format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
 
+    # TODO move logic to state class
     def compute_scene_split(self, scene_index : int, split_percent : float):
         scene_name = self.state.scene_names[scene_index]
         split_percent = 0.0 if isinstance(split_percent, type(None)) else split_percent
@@ -1604,16 +1622,19 @@ class VideoRemixer(TabBase):
 
         return scene_name, num_width, num_frames, first_frame, last_frame, split_frame
 
+    # TODO move logic to state class
     def valid_split_scene_cache(self, scene_index):
         if self.split_scene_cache and self.split_scene_cached_index == scene_index:
             return self.split_scene_cache
         else:
             return None
 
+    # TODO move logic to state class
     def fill_split_scene_cache(self, scene_index, data):
         self.split_scene_cache = data
         self.split_scene_cached_index = scene_index
 
+    # TODO move logic to state class
     def invalidate_split_scene_cache(self):
         self.split_scene_cache = []
         self.split_scene_cached_index = -1
@@ -1643,6 +1664,8 @@ class VideoRemixer(TabBase):
                 *fill_empty_args(5)
 
         self.log(f"setting split frame to {split_frame}")
+
+        # TODO move logic to state class
 
         new_lower_first_frame = first_frame
         new_lower_last_frame = first_frame + (split_frame - 1)
@@ -1739,6 +1762,7 @@ class VideoRemixer(TabBase):
             gr.update(value=format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
 
+    # TODO move logic to state class
     def compute_preview_frame(self, scene_index, split_percent):
         scene_index = int(scene_index)
         num_scenes = len(self.state.scene_names)
@@ -1768,6 +1792,7 @@ class VideoRemixer(TabBase):
         display_frame = self.compute_preview_frame(scene_index, split_percent)
         return gr.update(value=display_frame)
 
+    # TODO move logic to state class
     def export_project_703(self, new_project_path, new_project_name):
         empty_args = [gr.update(visible=False), gr.update(visible=False)]
         if not new_project_path:

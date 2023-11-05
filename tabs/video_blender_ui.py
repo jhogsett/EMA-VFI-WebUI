@@ -631,7 +631,10 @@ class VideoBlender(TabBase):
             if step1_enabled:
                 output_pattern = "source_frame%09d.png"
                 self.log(f"using FFmpeg to create PNG frames from input video {step1_path}")
-                deinterlace = False # TODO
+
+                # TODO allow deinterlacing in Video Blender
+                deinterlace = False
+
                 global_options = self.config.ffmpeg_settings["global_options"]
                 ffmpeg_cmd = MP4toPNG(step1_path, output_pattern, float(step1_frame_rate),
                         source_frames_path, deinterlace=deinterlace, global_options=global_options)
