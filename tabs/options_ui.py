@@ -23,4 +23,4 @@ class Options(TabBase):
                 restart_button = gr.Button("Restart App", variant="primary",
                     elem_id="restartbutton")
         restart_button.click(self.restart_fn,
-            js="function(){setTimeout(function(){window.location.reload()},2000);return[]}")
+            _js="function(){setTimeout(function(){window.location.reload()},2000);return[]}")
