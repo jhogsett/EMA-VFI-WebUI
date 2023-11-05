@@ -223,6 +223,11 @@ class VideoRemixer(TabBase):
                                                             variant="secondary")
                                 last_scene = gr.Button(value="Last Scene >>",
                                                             variant="secondary")
+                            with gr.Row():
+                                    split_scene_button = gr.Button(value="Split Scene " + SimpleIcons.AXE,
+                                                                variant="secondary")
+                                    choose_range_button = gr.Button(value="Choose Scene Range " + SimpleIcons.HEART_HANDS,
+                                                                variant="secondary")
                             with gr.Accordion(label="Danger Zone", open=False):
                                 with gr.Row():
                                     keep_all_button = gr.Button(value="Keep All Scenes",
