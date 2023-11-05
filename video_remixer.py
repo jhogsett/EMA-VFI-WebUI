@@ -571,6 +571,12 @@ class VideoRemixerState():
     def drop_all_scenes(self):
         self.scene_states = {scene_name : "Drop" for scene_name in self.scene_names}
 
+    def invert_all_scenes(self):
+        new_states = {}
+        for k, v in self.scene_states.items():
+            new_states[k] = "Keep" if v == "Drop" else "Drop"
+        self.scene_states = new_states
+
     GAP = " " * 5
 
     def scene_chooser_data(self, scene_index):
