@@ -33,3 +33,6 @@ frames:
 """ + "\n".join(output_paths)
     with open(info_file, 'w', encoding='utf-8') as file:
         file.write(report)
+
+def fill_empty_args(num):
+    return [None for _ in range(num)]

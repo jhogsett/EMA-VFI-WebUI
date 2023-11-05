@@ -16,6 +16,7 @@ from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
 from video_remixer import VideoRemixerState
 from webui_utils.mtqdm import Mtqdm
+from webui_utils.ui_utils import fill_empty_args
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -782,9 +783,6 @@ class VideoRemixer(TabBase):
 
     ### UTILITY FUNCTIONS
 
-    def empty_args(self, num):
-        return [None for _ in range(num)]
-
     def noop_args(self, num):
         return [gr.update(visible=True) for _ in range(num)]
 
@@ -792,7 +790,7 @@ class VideoRemixer(TabBase):
 
     # User has clicked New Project > from Remix Home
     def next_button00(self, video_path):
-        empty_args = self.empty_args(7)
+        empty_args = fill_empty_args(7)
         if not video_path:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=format_markdown("Enter a path to a video on this server to get started", "warning")), \
@@ -827,7 +825,7 @@ class VideoRemixer(TabBase):
 
     # User has clicked Open Project > from Remix Home
     def next_button01(self, project_path):
-        empty_args = self.empty_args(29)
+        empty_args = fill_empty_args(29)
         if not project_path:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=format_markdown("Enter a path to a Video Remixer project directory on this server to get started", "warning")), \
@@ -910,12 +908,12 @@ class VideoRemixer(TabBase):
         if not is_safe_path(project_path):
             return gr.update(selected=self.TAB_REMIX_SETTINGS), \
                 gr.update(value=format_markdown(f"The project path is not valid", "warning")),\
-                *self.empty_args(3)
+                *fill_empty_args(3)
 
         if split_time < 1:
             return gr.update(selected=self.TAB_REMIX_SETTINGS), \
                 gr.update(value=format_markdown(f"Scene Split Seconds should be >= 1", "warning")),\
-                *self.empty_args(3)
+                *fill_empty_args(3)
 
         # TODO validate the other entries
 
@@ -967,7 +965,7 @@ class VideoRemixer(TabBase):
         if not self.state.project_path:
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                    gr.update(value=format_markdown(f"Project settings have not yet been saved on the previous tab", "error")), \
-                   *self.empty_args(5)
+                   *fill_empty_args(5)
 
         self.state.thumbnail_type = thumbnail_type
         self.state.min_frames_per_scene = min_frames_per_scene
@@ -1030,7 +1028,7 @@ class VideoRemixer(TabBase):
             if error:
                 return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                     gr.update(value=format_markdown(f"There was an error splitting the source video: {error}", "error")), \
-                    *self.empty_args(5)
+                    *fill_empty_args(5)
             self.log("saving project after splitting into scenes")
             self.state.save()
 
@@ -1058,7 +1056,7 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                    gr.update(value=format_markdown(f"There was an error creating thumbnails from the source video: {error}", "error")), \
-                   *self.empty_args(5)
+                   *fill_empty_args(5)
 
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
         self.log("saving project after creating scene thumbnails")
@@ -1182,14 +1180,14 @@ class VideoRemixer(TabBase):
     def scene_chooser_details(self, scene_index):
         if not self.state.thumbnails:
             self.log(f"thumbnails don't exist yet in scene_chooser_details()")
-            return self.empty_args(5)
+            return fill_empty_args(5)
         try:
             scene_name, thumbnail_path, scene_state, scene_info = \
                 self.state.scene_chooser_details(scene_index)
             return scene_index, scene_name, thumbnail_path, scene_state, scene_info
         except ValueError as error:
             self.log(error)
-            return self.empty_args(5)
+            return fill_empty_args(5)
 
     # User has clicked Done Choosing Scenes from Scene Chooser
     def next_button3(self):
@@ -1214,7 +1212,7 @@ class VideoRemixer(TabBase):
         if not self.state.project_path:
             return gr.update(selected=self.TAB_COMPILE_SCENES), \
                    gr.update(value=format_markdown(f"The project has not yet been set up from the Set Up Project tab.", "error")), \
-                   *self.empty_args(5)
+                   *fill_empty_args(5)
 
         self.log("moving previously dropped scenes back to scenes directory")
         self.state.uncompile_scenes()
@@ -1552,7 +1550,7 @@ class VideoRemixer(TabBase):
                 or not isinstance(last_scene_index, (int, float)):
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
     gr.update(value=format_markdown("Please enter Scene Indexes to get started", "warning")), \
-                *self.empty_args(5)
+                *fill_empty_args(5)
 
         first_scene_index = int(first_scene_index)
         last_scene_index = int(last_scene_index)
@@ -1562,17 +1560,17 @@ class VideoRemixer(TabBase):
                 or last_scene_index > last_scene:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 gr.update(value=format_markdown(f"Please enter valid Scene Indexes between 0 and {last_scene} to get started", "warning")), \
-                *self.empty_args(5)
+                *fill_empty_args(5)
 
         if first_scene_index >= last_scene_index:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 gr.update(value=format_markdown(f"'Ending Scene Index' must be higher than 'Starting Scene Index'", "warning")), \
-                *self.empty_args(5)
+                *fill_empty_args(5)
 
         if scene_state not in ["Keep", "Drop"]:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
     gr.update(value=format_markdown("Please make a Scenes Choice to get started", "warning")), \
-                *self.empty_args(5)
+                *fill_empty_args(5)
 
         for scene_index in range(first_scene_index, last_scene_index + 1):
             scene_name = self.state.scene_names[scene_index]
@@ -1626,7 +1624,7 @@ class VideoRemixer(TabBase):
         if not isinstance(scene_index, (int, float)):
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 gr.update(value=format_markdown("Please enter a Scene Index to get started", "warning")), \
-                *self.empty_args(5)
+                *fill_empty_args(5)
 
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
@@ -1634,7 +1632,7 @@ class VideoRemixer(TabBase):
         if scene_index < 0 or scene_index > last_scene:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 gr.update(value=format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning")), \
-                *self.empty_args(5)
+                *fill_empty_args(5)
 
         scene_name, num_width, num_frames, first_frame, last_frame, split_frame \
             = self.compute_scene_split(scene_index, split_percent)
@@ -1642,7 +1640,7 @@ class VideoRemixer(TabBase):
         if num_frames < 2:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 gr.update(value=format_markdown("Scene must have at least two frames to be split", "error")), \
-                *self.empty_args(5)
+                *fill_empty_args(5)
 
         self.log(f"setting split frame to {split_frame}")
 
@@ -1673,7 +1671,7 @@ class VideoRemixer(TabBase):
                 f"({num_frame_files}) in scene path '{original_scene_path}'"
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 gr.update(value=format_markdown(message, "error")), \
-                    *self.empty_args(5)
+                    *fill_empty_args(5)
 
         messages = Jot()
 
