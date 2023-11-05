@@ -106,5 +106,3 @@ class FrameSearch(TabBase):
         return gr.update(value=output_paths[0]), \
             gr.update(value=output_paths, visible=True), \
             gr.update(value=format_markdown(self.DEFAULT_MESSAGE))
-        else:
-            return None, None
