@@ -220,6 +220,11 @@ class VideoRemixer(TabBase):
                                                             variant="secondary")
                                 last_scene = gr.Button(value="Last Scene >>",
                                                             variant="secondary")
+                            with gr.Row():
+                                    split_scene_button = gr.Button(value="Split Scene",
+                                                                variant="secondary")
+                                    choose_range_button = gr.Button(value="Choose Scene Range",
+                                                                variant="secondary")
                             with gr.Accordion(label="Danger Zone", open=False):
                                 with gr.Row():
                                     keep_all_button = gr.Button(value="Keep All Scenes",
@@ -227,7 +232,7 @@ class VideoRemixer(TabBase):
                                     drop_all_button = gr.Button(value="Drop All Scenes",
                                                                 variant="stop")
                                 with gr.Row():
-                                    split_scene_button = gr.Button(value="Split Scene",
+                                    invert_choices_button = gr.Button(value="Invert Scene Choices",
                                                                 variant="stop")
                                     drop_processed_button = gr.Button(value="Drop Processed Scene",
                                                                 variant="stop")
@@ -655,16 +660,6 @@ class VideoRemixer(TabBase):
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
-        keep_all_button.click(self.keep_all_scenes, show_progress=True,
-                            inputs=[scene_index, scene_label],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
-
-        drop_all_button.click(self.drop_all_scenes, show_progress=True,
-                            inputs=[scene_index, scene_label],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
-
         first_scene.click(self.first_scene, show_progress=False,
                             inputs=[scene_index, scene_label],
                             outputs=[scene_index, scene_label, scene_image, scene_state,
@@ -675,12 +670,31 @@ class VideoRemixer(TabBase):
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
-        drop_processed_button.click(self.drop_processed_shortcut, inputs=scene_index,
-            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils, scene_id_700])
-
         split_scene_button.click(self.split_scene_shortcut, inputs=scene_index,
             outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils, scene_id_702,
                      split_percent_702, preview_image702])
+
+        choose_range_button.click(self.choose_range_shortcut, inputs=scene_index,
+            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils,
+                     first_scene_id_701, last_scene_id_701])
+
+        keep_all_button.click(self.keep_all_scenes, show_progress=True,
+                            inputs=[scene_index, scene_label],
+                            outputs=[scene_index, scene_label, scene_image, scene_state,
+                                     scene_info])
+
+        drop_all_button.click(self.drop_all_scenes, show_progress=True,
+                            inputs=[scene_index, scene_label],
+                            outputs=[scene_index, scene_label, scene_image, scene_state,
+                                     scene_info])
+
+        invert_choices_button.click(self.invert_all_scenes, show_progress=True,
+                            inputs=[scene_index, scene_label],
+                            outputs=[scene_index, scene_label, scene_image, scene_state,
+                                     scene_info])
+
+        drop_processed_button.click(self.drop_processed_shortcut, inputs=scene_index,
+            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils, scene_id_700])
 
         next_button3.click(self.next_button3,
                            outputs=[tabs_video_remixer, project_info4])
@@ -1146,14 +1160,6 @@ class VideoRemixer(TabBase):
                 break
         return self.scene_chooser_details(self.state.current_scene)
 
-    def keep_all_scenes(self, scene_index, scene_label):
-        self.state.keep_all_scenes()
-        return self.scene_chooser_details(self.state.current_scene)
-
-    def drop_all_scenes(self, scene_index, scene_label):
-        self.state.drop_all_scenes()
-        return self.scene_chooser_details(self.state.current_scene)
-
     def first_scene(self, scene_index, scene_label):
         self.state.current_scene = 0
         return self.scene_chooser_details(self.state.current_scene)
@@ -1162,21 +1168,41 @@ class VideoRemixer(TabBase):
         self.state.current_scene = len(self.state.scene_names) - 1
         return self.scene_chooser_details(self.state.current_scene)
 
+    def split_scene_shortcut(self, scene_index):
+        default_percent = 50.0
+        display_frame = self.compute_preview_frame(scene_index, default_percent)
+        return gr.update(selected=self.TAB_REMIX_EXTRA), \
+            gr.update(selected=self.TAB_EXTRA_UTILITIES), \
+            gr.update(selected=self.TAB_EXTRA_UTIL_SPLIT_SCENE), \
+            scene_index, \
+            default_percent, \
+            display_frame
+
+    def choose_range_shortcut(self, scene_index):
+        return gr.update(selected=self.TAB_REMIX_EXTRA), \
+            gr.update(selected=self.TAB_EXTRA_UTILITIES), \
+            gr.update(selected=self.TAB_EXTRA_UTIL_CHOOSE_RANGE), \
+            scene_index, \
+            scene_index
+
+    def keep_all_scenes(self, scene_index, scene_label):
+        self.state.keep_all_scenes()
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def drop_all_scenes(self, scene_index, scene_label):
+        self.state.drop_all_scenes()
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def invert_all_scenes(self, scene_index, scene_label):
+        self.state.invert_all_scenes()
+        return self.scene_chooser_details(self.state.current_scene)
+
     def drop_processed_shortcut(self, scene_index):
         return gr.update(selected=7), \
             gr.update(selected=self.TAB_EXTRA_UTILITIES), \
             gr.update(selected=self.TAB_EXTRA_UTIL_DROP_PROCESSED), \
             scene_index
 
-    def split_scene_shortcut(self, scene_index):
-        default_percent = 50.0
-        display_frame = self.compute_preview_frame(scene_index, default_percent)
-        return gr.update(selected=7), \
-            gr.update(selected=self.TAB_EXTRA_UTILITIES), \
-            gr.update(selected=self.TAB_EXTRA_UTIL_SPLIT_SCENE), \
-            scene_index, \
-            default_percent, \
-            display_frame
 
     # given scene name such as [042-420] compute details to display in Scene Chooser
     def scene_chooser_details(self, scene_index):
