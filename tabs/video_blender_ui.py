@@ -52,7 +52,7 @@ class VideoBlender(TabBase):
                                 projects_dropdown_vb = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
                                     " Saved Projects", choices=choices, value=choices[0])
                                 save_project_button_vb = gr.Button(SimpleIcons.PROP_SYMBOL +
-                                    " Save").style(full_width=False)
+                                    " Save", scale=0)
                     with gr.Row():
                         input_main_path = gr.Textbox(label="Project Main Path",
                                                      placeholder="Root path for the project")
@@ -77,13 +77,13 @@ class VideoBlender(TabBase):
                     with gr.Row():
                         with gr.Column():
                             output_prev_frame_vb = gr.Image(label="Previous Frame",
-                                interactive=False, type="filepath", elem_id="sideimage")
+                                interactive=False, type="filepath", elem_id="sideimage", height=300)
                         with gr.Column():
                             output_curr_frame_vb = gr.Image(show_label=False,
-                                interactive=False, type="filepath", elem_id="actionimage")
+                                interactive=False, type="filepath", elem_id="actionimage", height=300)
                         with gr.Column():
                             output_next_frame_vb = gr.Image(label="Next Frame",
-                                interactive=False, type="filepath", elem_id="sideimage")
+                                interactive=False, type="filepath", elem_id="sideimage", height=300)
                     with gr.Row():
                         with gr.Column():
                             gr.Row()
@@ -110,10 +110,10 @@ class VideoBlender(TabBase):
                             with gr.Tabs():
                                 with gr.Tab(label="Repair / Path 2 Frame"):
                                     output_img_path2_vb = gr.Image(show_label=False,
-                                        interactive=False, type="filepath")
+                                        interactive=False, type="filepath", height=300)
                                 with gr.Tab(label="Original / Path 1 Frame"):
                                     output_img_path1_vb = gr.Image(show_label=False,
-                                        interactive=False, type="filepath")
+                                        interactive=False, type="filepath", height=300)
 
                         with gr.Column():
                             gr.Row()
@@ -156,7 +156,7 @@ class VideoBlender(TabBase):
                         with gr.Column():
                             preview_image_ff = gr.Image(type="filepath",
                                 label="Fixed Frames Preview", interactive=False,
-                                elem_id="highlightoutput")
+                                elem_id="highlightoutput", height=300)
                             fixed_path_ff = gr.Text(label="Path to Restored Frames",
                                 interactive=False)
                             use_fixed_button_ff = gr.Button(value="Apply Fixed Frames",
@@ -167,9 +167,11 @@ class VideoBlender(TabBase):
                 ### VIDEO PREVIEW
                 with gr.Tab(SimpleIcons.TELEVISION + "Video Preview", id=3):
                     with gr.Row():
+                        gr.Column(scale=1)
                         with gr.Column():
                             video_preview_vb = gr.Video(label="Preview", interactive=False,
-                                include_audio=False)
+                                include_audio=False, width=800, container=True, scale=8)
+                        gr.Column(scale=1)
                     preview_path_vb = gr.Textbox(max_lines=1, label="Path to PNG Sequence",
                         placeholder="Path on this server to the PNG files to be converted")
                     with gr.Row():

@@ -2,10 +2,13 @@
 ![pybadge](https://img.shields.io/badge/Python-3.10.9-4380b0)
 ![ptbadge](https://img.shields.io/badge/Torch-1.13.1-ee4b28)
 ![nvbadge](https://img.shields.io/badge/Cuda-11.7-76b900)
+![grbadge](https://img.shields.io/badge/Gradio-3.36.1-f67500)
 
 # EMA-VFI-WebUI - AI-Based Movie Restoration
 
 ![frame-interpolation](https://github.com/jhogsett/EMA-VFI-WebUI/assets/825994/2370458c-6414-421f-8aa2-33a0db84c2cf)
+
+🎬 [Windows 11 example install steps 11/03/2023](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Example-Windows-11-Install-Steps-November-3,-2023)
 
 _**💥 See more samples in the**_ [Samples Showcase](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Samples-Showcase)
 
