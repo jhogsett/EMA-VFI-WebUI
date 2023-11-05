@@ -37,6 +37,7 @@ class VideoBlender(TabBase):
         skip_frames = self.config.blender_settings["skip_frames"]
         frame_rate = self.config.blender_settings["frame_rate"]
         max_frame_rate = self.config.blender_settings["max_frame_rate"]
+        max_image_size = self.config.blender_settings["max_image_size"]
         with gr.Tab("Video Blender"):
             with gr.Tabs() as tabs_video_blender:
 
@@ -77,13 +78,13 @@ class VideoBlender(TabBase):
                     with gr.Row():
                         with gr.Column():
                             output_prev_frame_vb = gr.Image(label="Previous Frame",
-                                interactive=False, type="filepath", elem_id="sideimage")
+                                interactive=False, type="filepath", elem_id="sideimage", height=max_image_size)
                         with gr.Column():
                             output_curr_frame_vb = gr.Image(show_label=False,
-                                interactive=False, type="filepath", elem_id="actionimage")
+                                interactive=False, type="filepath", elem_id="actionimage", height=max_image_size)
                         with gr.Column():
                             output_next_frame_vb = gr.Image(label="Next Frame",
-                                interactive=False, type="filepath", elem_id="sideimage")
+                                interactive=False, type="filepath", elem_id="sideimage", height=max_image_size)
                     with gr.Row():
                         with gr.Column():
                             gr.Row()
@@ -110,10 +111,10 @@ class VideoBlender(TabBase):
                             with gr.Tabs():
                                 with gr.Tab(label="Repair / Path 2 Frame"):
                                     output_img_path2_vb = gr.Image(show_label=False,
-                                        interactive=False, type="filepath")
+                                        interactive=False, type="filepath", height=max_image_size)
                                 with gr.Tab(label="Original / Path 1 Frame"):
                                     output_img_path1_vb = gr.Image(show_label=False,
-                                        interactive=False, type="filepath")
+                                        interactive=False, type="filepath", height=max_image_size)
 
                         with gr.Column():
                             gr.Row()
@@ -156,7 +157,7 @@ class VideoBlender(TabBase):
                         with gr.Column():
                             preview_image_ff = gr.Image(type="filepath",
                                 label="Fixed Frames Preview", interactive=False,
-                                elem_id="highlightoutput")
+                                elem_id="highlightoutput", height=max_image_size)
                             fixed_path_ff = gr.Text(label="Path to Restored Frames",
                                 interactive=False)
                             use_fixed_button_ff = gr.Button(value="Apply Fixed Frames",

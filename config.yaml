@@ -8,6 +8,7 @@ blender_settings:
   frame_rate: 30
   gif_duration: 1000
   max_frame_rate: 1000
+  max_image_size: 300
   projects_file: "video_blender_projects.csv"
   skip_frames: 100
 directories:

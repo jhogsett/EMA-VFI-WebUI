@@ -38,10 +38,8 @@ class FrameRestoration(TabBase):
             with gr.Row():
                 with gr.Column():
                     with gr.Row():
-                        img1_input_fr = gr.Image(type="filepath",
-                            label="Frame Before Replacement Frames")
-                        img2_input_fr = gr.Image(type="filepath",
-                            label="Frame After Replacement Frames")
+                        img1_input_fr = gr.Image(type="filepath", label="Frame Before Replacement Frames", height=300, sources=["upload"])
+                        img2_input_fr = gr.Image(type="filepath", label="Frame After Replacement Frames", height=300, sources=["upload"])
                     with gr.Row():
                         frames_input_fr = gr.Slider(value=default_frames, minimum=1,
                             maximum=max_frames, step=1, label="Frames to Restore")
@@ -53,7 +51,7 @@ class FrameRestoration(TabBase):
                             label="Frame Search Times", max_lines=1, interactive=False)
                 with gr.Column():
                     img_output_fr = gr.Image(type="filepath", label="Animated Preview",
-                        interactive=False, elem_id="mainoutput")
+                        interactive=False, elem_id="mainoutput", height=300)
                     file_output_fr = gr.File(type="filepath", file_count="multiple",
                         label="Download", visible=False)
             predictions_default = restored_frame_predictions(default_frames, default_precision)

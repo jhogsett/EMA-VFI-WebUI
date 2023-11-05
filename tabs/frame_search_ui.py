@@ -30,8 +30,8 @@ class FrameSearch(TabBase):
                 elem_id="tabheading")
             with gr.Row():
                 with gr.Column():
-                    img1_input_fs = gr.Image(type="filepath", label="Before Frame")
-                    img2_input_fs = gr.Image(type="filepath", label="After Frame")
+                    img1_input_fs = gr.Image(type="filepath", label="Before Frame", height=300, sources=["upload"])
+                    img2_input_fs = gr.Image(type="filepath", label="After Frame", height=300, sources=["upload"])
                     with gr.Row():
                         splits_input_fs = gr.Slider(value=default_splits, minimum=1,
                                             maximum=max_splits, step=1, label="Search Precision")
@@ -41,7 +41,7 @@ class FrameSearch(TabBase):
                             label="Upper Bound")
                 with gr.Column():
                     img_output_fs = gr.Image(type="filepath", label="Found Frame",
-                        interactive=False, elem_id="mainoutput")
+                        interactive=False, elem_id="mainoutput", height=300)
                     file_output_fs = gr.File(type="filepath", file_count="multiple",
                         label="Download", visible=False)
             search_button_fs = gr.Button("Search", variant="primary")
