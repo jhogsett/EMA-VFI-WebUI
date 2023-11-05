@@ -203,8 +203,7 @@ class VideoRemixer(TabBase):
                                 scene_index = gr.Number(label="Scene Index", precision=0)
                     with gr.Row():
                         with gr.Column():
-                            scene_image = gr.Image(type="filepath", interactive=False).style(
-                                height=max_thumb_size)
+                            scene_image = gr.Image(type="filepath", interactive=False, height=max_thumb_size)
                         with gr.Column():
                             keep_next = gr.Button(value="Keep Scene | Next >", variant="primary",
                                                 elem_id="actionbutton")
@@ -403,8 +402,7 @@ class VideoRemixer(TabBase):
                                                 info="A lower value splits earlier in the scene")
                                         with gr.Column():
                                             preview_image702 = gr.Image(type="filepath",
-                                                            label="Split Frame Preview", tool=None)\
-                                                                .style(height=400)
+                                    label="Split Frame Preview", tool=None, height=max_thumb_size)
                                     with gr.Row():
                                         message_box702 = gr.Markdown(format_markdown(
                     "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
