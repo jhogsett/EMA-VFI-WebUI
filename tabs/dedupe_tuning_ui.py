@@ -52,7 +52,7 @@ class DuplicateTuning(TabBase):
             with gr.Row():
                 report_button = gr.Button("Create Report", variant="primary")
             with gr.Row():
-                file_output = gr.File(type="filepath", file_count="multiple", label="Download",
+                file_output = gr.File(type="file", file_count="multiple", label="Download",
                                       visible=False)
                 error_output = gr.Text(max_lines=1, label="Error", visible=False)
             with gr.Row():

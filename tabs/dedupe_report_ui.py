@@ -40,7 +40,7 @@ class DuplicateFramesReport(TabBase):
             with gr.Row():
                 report_button = gr.Button("Create Report", variant="primary")
             with gr.Row():
-                file_output = gr.File(type="filepath", file_count="multiple", label="Download",
+                file_output = gr.File(type="file", file_count="multiple", label="Download",
                                       visible=False)
             with gr.Row():
                 output_text = gr.Textbox(label="Report", max_lines=max_lines, interactive=False)

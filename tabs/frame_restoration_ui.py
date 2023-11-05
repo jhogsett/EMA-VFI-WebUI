@@ -52,7 +52,7 @@ class FrameRestoration(TabBase):
                 with gr.Column():
                     img_output_fr = gr.Image(type="filepath", label="Animated Preview",
                         interactive=False, elem_id="mainoutput", height=300)
-                    file_output_fr = gr.File(type="filepath", file_count="multiple",
+                    file_output_fr = gr.File(type="file", file_count="multiple",
                         label="Download", visible=False)
             predictions_default = restored_frame_predictions(default_frames, default_precision)
             predictions_output_fr = gr.Textbox(value=predictions_default,

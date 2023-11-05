@@ -42,7 +42,7 @@ class FrameSearch(TabBase):
                 with gr.Column():
                     img_output_fs = gr.Image(type="filepath", label="Found Frame",
                         interactive=False, elem_id="mainoutput", height=300)
-                    file_output_fs = gr.File(type="filepath", file_count="multiple",
+                    file_output_fs = gr.File(type="file", file_count="multiple",
                         label="Download", visible=False)
             search_button_fs = gr.Button("Search", variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):

@@ -40,7 +40,7 @@ class FrameInterpolation(TabBase):
                 with gr.Column():
                     img_output_fi = gr.Image(type="filepath", label="Animated Preview",
                         interactive=False, elem_id="mainoutput", height=300)
-                    file_output_fi = gr.File(type="filepath", file_count="multiple",
+                    file_output_fi = gr.File(type="file", file_count="multiple",
                         label="Download", visible=False)
             interpolate_button_fi = gr.Button("Interpolate", variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
