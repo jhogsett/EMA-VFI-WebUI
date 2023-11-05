@@ -52,7 +52,7 @@ class VideoBlender(TabBase):
                                 projects_dropdown_vb = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
                                     " Saved Projects", choices=choices, value=choices[0])
                                 save_project_button_vb = gr.Button(SimpleIcons.PROP_SYMBOL +
-                                    " Save").style(full_width=False)
+                                    " Save", scale=0)
                     with gr.Row():
                         input_main_path = gr.Textbox(label="Project Main Path",
                                                      placeholder="Root path for the project")

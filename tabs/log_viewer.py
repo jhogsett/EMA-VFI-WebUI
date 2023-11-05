@@ -25,11 +25,10 @@ class LogViewer(TabBase):
                 log_text = gr.Textbox(max_lines=max_lines, placeholder="Press Refresh Log", label="Log",
                                       interactive=False, elem_id="logviewer")
             with gr.Row():
-                refresh_button = gr.Button(value="Refresh Log", variant="primary").style(
-                    full_width=False)
+                refresh_button = gr.Button(value="Refresh Log", variant="primary", scale=0)
                 sort_order = gr.Radio(choices=["Oldest First", "Newest First"],
                                       value="Oldest First", label="Sort Order")
-                clear_button = gr.Button(value="Clear Log").style(full_width=False)
+                clear_button = gr.Button(value="Clear Log", scale=0)
 
         refresh_button.click(self.refresh_log_text, inputs=sort_order, outputs=log_text)
         clear_button.click(self.clear_log_text, outputs=log_text)
