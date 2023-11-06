@@ -402,6 +402,8 @@ class VideoRemixer(TabBase):
                                             with gr.Row():
                                                 scene_id_702 = gr.Number(value=-1,
                                                                          label="Scene Index")
+                                                scene_info_702 = gr.Text(label="Scene Details",
+                                                                         interactive=False)
                                             with gr.Row():
                                                 split_percent_702 = gr.Slider(value=50.0,
                                                     label="Split Position", minimum=0.0,
@@ -753,13 +755,13 @@ class VideoRemixer(TabBase):
                                        scene_image, scene_state, scene_info])
 
         scene_id_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
-                                outputs=preview_image702, show_progress=False)
+                                outputs=[preview_image702, scene_info_702], show_progress=False)
 
         split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
-                                outputs=preview_image702, show_progress=False)
+                                outputs=[preview_image702, scene_info_702], show_progress=False)
 
         split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
-                                outputs=preview_image702, show_progress=False)
+                                outputs=[preview_image702, scene_info_702], show_progress=False)
 
         export_project_703.click(self.export_project_703,
                                  inputs=[export_path_703, project_name_703],
@@ -1174,13 +1176,16 @@ class VideoRemixer(TabBase):
 
     def split_scene_shortcut(self, scene_index):
         default_percent = 50.0
+        scene_index = int(scene_index)
         display_frame = self.compute_preview_frame(scene_index, default_percent)
+        _, _, _, scene_info = self.state.scene_chooser_details(scene_index)
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
             gr.update(selected=self.TAB_EXTRA_UTILITIES), \
             gr.update(selected=self.TAB_EXTRA_UTIL_SPLIT_SCENE), \
             scene_index, \
             default_percent, \
-            display_frame
+            display_frame, \
+            scene_info
 
     def choose_range_shortcut(self, scene_index):
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
@@ -1796,9 +1801,14 @@ class VideoRemixer(TabBase):
 
     def preview_button702(self, scene_index, split_percent):
         if not isinstance(scene_index, (int, float)):
-            return gr.update(value=None)
+            return self.empty_args(2)
+        scene_index = int(scene_index)
+        if scene_index < 0 or scene_index >= len(self.state.scene_names):
+            return self.empty_args(2)
+
         display_frame = self.compute_preview_frame(scene_index, split_percent)
-        return gr.update(value=display_frame)
+        _, _, _, scene_info = self.state.scene_chooser_details(scene_index)
+        return display_frame, scene_info
 
     def export_project_703(self, new_project_path, new_project_name):
         empty_args = [gr.update(visible=False), gr.update(visible=False)]
