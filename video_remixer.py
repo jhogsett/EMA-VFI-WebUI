@@ -589,7 +589,7 @@ class VideoRemixerState():
         try:
             scene_name = self.scene_names[scene_index]
             scene_state = self.scene_states[scene_name]
-            scene_position = f"{scene_index+1} of {len(self.scene_names)}"
+            scene_position = f"{scene_index+1}-of-{len(self.scene_names)}"
 
             first_index, last_index, _ = details_from_group_name(scene_name)
             scene_start = seconds_to_hmsf(

@@ -192,15 +192,16 @@ class VideoRemixer(TabBase):
                 ## CHOOSE SCENES
                 with gr.Tab(SimpleIcons.FOUR + " Choose Scenes", id=self.TAB_CHOOSE_SCENES):
                     with gr.Row():
-                        with gr.Column():
-                            with gr.Row():
-                                scene_label = gr.Text(label="Scene Name", interactive=False)
-                                scene_info = gr.Text(label="Scene Details", interactive=False)
-                        with gr.Column():
+                        # with gr.Column():
+                        #     with gr.Row(variant="panel"):
+                        scene_label = gr.Text(label="Scene Name", interactive=False, scale=1)
+                        scene_info = gr.Text(label="Scene Details", interactive=False, scale=1)
+                        with gr.Column(scale=2):
                             with gr.Row():
                                 scene_state = gr.Radio(label="Choose", value=None,
                                                     choices=["Keep", "Drop"])
-                                scene_index = gr.Number(label="Scene Index", precision=0)
+                                with gr.Column(variant="compact", elem_id="mainhighlightdim"):
+                                    scene_index = gr.Number(label="Scene Index", precision=0)
                     with gr.Row():
                         with gr.Column():
                             scene_image = gr.Image(type="filepath", interactive=False, height=max_thumb_size)
@@ -624,6 +625,10 @@ class VideoRemixer(TabBase):
 
         scene_state.change(self.scene_state_button, show_progress=False,
                             inputs=[scene_index, scene_label, scene_state],
+                            outputs=[scene_index, scene_label, scene_image, scene_state,
+                                     scene_info])
+
+        scene_index.change(self.go_to_frame, inputs=scene_index,
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
