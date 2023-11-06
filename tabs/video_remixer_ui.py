@@ -192,8 +192,6 @@ class VideoRemixer(TabBase):
                 ## CHOOSE SCENES
                 with gr.Tab(SimpleIcons.FOUR + " Choose Scenes", id=self.TAB_CHOOSE_SCENES):
                     with gr.Row():
-                        # with gr.Column():
-                        #     with gr.Row(variant="panel"):
                         scene_label = gr.Text(label="Scene Name", interactive=False, scale=1)
                         scene_info = gr.Text(label="Scene Details", interactive=False, scale=1)
                         with gr.Column(scale=2):
