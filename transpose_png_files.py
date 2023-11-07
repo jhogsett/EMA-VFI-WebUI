@@ -38,17 +38,16 @@ class TransposePngFiles:
         self.type = type.lower()
         self.log_fn = log_fn
 
-    TYPES = ["fliph", "flipv", "rot90", "rot180", "rot270", "transp", "transv"]
+    TYPES = ["fliph", "flipv", "ccw90", "rot180", "cw90", "transp", "transv"]
     PIL_TYPES = {
         "fliph" : Image.Transpose.FLIP_LEFT_RIGHT,
         "flipv" : Image.Transpose.FLIP_TOP_BOTTOM,
-        "rot90" : Image.Transpose.ROTATE_90,
+        "ccw90" : Image.Transpose.ROTATE_90,
         "rot180" : Image.Transpose.ROTATE_180,
-        "rot270" : Image.Transpose.ROTATE_270,
+        "cw90" : Image.Transpose.ROTATE_270,
         "transp" : Image.Transpose.TRANSPOSE,
         "transv" : Image.Transpose.TRANSVERSE
     }
-    DEFAULT_TYPE = "rot90"
 
     def transpose(self) -> None:
         """Invoke the Simplify PNG Files feature"""
