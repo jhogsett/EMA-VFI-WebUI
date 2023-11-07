@@ -36,6 +36,7 @@ from tabs.slice_video_ui import SliceVideo
 from tabs.strip_scenes_ui import StripScenes
 from tabs.video_remixer_ui import VideoRemixer
 from tabs.video_assembler_ui import VideoAssembler
+from tabs.transpose_png_files_ui import TransposePngFiles
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
@@ -103,6 +104,7 @@ def create_ui(config : SimpleConfig,
                 PNGtoMP4(config, engine, log.log).render_tab()
                 GIFtoPNG(config, engine, log.log).render_tab()
                 PNGtoGIF(config, engine, log.log).render_tab()
+                TransposePngFiles(config, engine, log.log).render_tab()
                 SimplifyPngFiles(config, engine, log.log).render_tab()
                 VideoAssembler(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()

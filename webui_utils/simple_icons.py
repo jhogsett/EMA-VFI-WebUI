@@ -24,6 +24,7 @@ class SimpleIcons:
     QUESTION = "❓"
     RECYCLE = "♻️"
     RIGHT_ARROW = "➡️"
+    RIGHT_DOWN_ARROW = "⤵️"
     SCISSORS = "✂️"
     SIX = "6️⃣"
     THREE = "3️⃣"
@@ -177,6 +178,7 @@ class SimpleIcons:
         PINCHING_HAND,
         PROPERTIES,
         RECYCLE,
+        RIGHT_DOWN_ARROW,
         ROCKET,
         SCROLL,
         SEEDLING,
