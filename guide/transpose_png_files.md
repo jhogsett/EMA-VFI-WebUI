@@ -11,9 +11,8 @@
     - _Transverse_ - flip diagonally from top-right to bottom-left
 1. Choose _Individual Path_ or _Batch Processing_
     - If **Individual Path**
-        - Set _Input Path_ to a path on this server to the PNG files being cleaned
+        - Set _Input Path_ to a path on this server to the PNG files being transposed
     - If **Batch Processing**
-        - Set _Input Path_ to a directory on this server containing PNG frame groups to be cleaned
-1. Click _Clean_ or _Clean Batch_
-1. Each PNG file will be rewritten excluding optional data
-    - 🎁 As a bonus, the PNG files usually have a smaller file size!
+        - Set _Input Path_ to a directory on this server containing PNG frame groups to be transposed
+1. Click _Transpose_ or _Transpose Batch_
+1. Each PNG file processed and resaved according to the selected transpose type
