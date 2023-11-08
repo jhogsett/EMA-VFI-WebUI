@@ -630,10 +630,6 @@ class VideoRemixer(TabBase):
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
 
-        scene_index.change(self.go_to_frame, inputs=scene_index,
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
-
         scene_index.submit(self.go_to_frame, inputs=scene_index,
                             outputs=[scene_index, scene_label, scene_image, scene_state,
                                      scene_info])
