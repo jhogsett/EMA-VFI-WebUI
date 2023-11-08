@@ -1827,60 +1827,40 @@ class VideoRemixer(TabBase):
         _, _, _, scene_info = self.state.scene_chooser_details(scene_index)
         return display_frame, scene_info
 
-    # TODO DRYing
-    def prev_second_702(self, scene_index, split_percent):
+    def compute_advance_702(self, scene_index, split_percent, by_frame : bool, by_next : bool):
         if not isinstance(scene_index, (int, float)):
             return self.empty_args(2)
+
         scene_index = int(scene_index)
         scene_name = self.state.scene_names[scene_index]
         first_frame, last_frame, _ = details_from_group_name(scene_name)
         num_frames = (last_frame - first_frame) + 1
-        frames_1s = self.state.project_fps
         split_percent_frame = num_frames * split_percent / 100.0
-        new_split_frame = split_percent_frame - frames_1s
+
+        if by_frame:
+            new_split_frame = split_percent_frame + 1 if by_next else split_percent_frame - 1
+        else:
+            frames_1s = self.state.project_fps
+            new_split_frame = split_percent_frame + frames_1s if by_next \
+                else split_percent_frame - frames_1s
+
         new_split_frame = 0 if new_split_frame < 0 else new_split_frame
+        new_split_frame = num_frames if new_split_frame > num_frames else new_split_frame
+
         new_split_percent = new_split_frame / num_frames
         return new_split_percent * 100.0
+
+    def prev_second_702(self, scene_index, split_percent):
+        return self.compute_advance_702(scene_index, split_percent, by_frame=False, by_next=False)
 
     def prev_frame_702(self, scene_index, split_percent):
-        if not isinstance(scene_index, (int, float)):
-            return self.empty_args(2)
-        scene_index = int(scene_index)
-        scene_name = self.state.scene_names[scene_index]
-        first_frame, last_frame, _ = details_from_group_name(scene_name)
-        num_frames = (last_frame - first_frame) + 1
-        split_percent_frame = num_frames * split_percent / 100.0
-        new_split_frame = split_percent_frame - 1
-        new_split_frame = 0 if new_split_frame < 0 else new_split_frame
-        new_split_percent = new_split_frame / num_frames
-        return new_split_percent * 100.0
+        return self.compute_advance_702(scene_index, split_percent, by_frame=True, by_next=False)
 
     def next_frame_702(self, scene_index, split_percent):
-        if not isinstance(scene_index, (int, float)):
-            return self.empty_args(2)
-        scene_index = int(scene_index)
-        scene_name = self.state.scene_names[scene_index]
-        first_frame, last_frame, _ = details_from_group_name(scene_name)
-        num_frames = (last_frame - first_frame) + 1
-        split_percent_frame = num_frames * split_percent / 100.0
-        new_split_frame = split_percent_frame + 1
-        new_split_frame = num_frames if new_split_frame > num_frames else new_split_frame
-        new_split_percent = new_split_frame / num_frames
-        return new_split_percent * 100.0
+        return self.compute_advance_702(scene_index, split_percent, by_frame=True, by_next=True)
 
     def next_second_702(self, scene_index, split_percent):
-        if not isinstance(scene_index, (int, float)):
-            return self.empty_args(2)
-        scene_index = int(scene_index)
-        scene_name = self.state.scene_names[scene_index]
-        first_frame, last_frame, _ = details_from_group_name(scene_name)
-        num_frames = (last_frame - first_frame) + 1
-        frames_1s = self.state.project_fps
-        split_percent_frame = num_frames * split_percent / 100.0
-        new_split_frame = split_percent_frame + frames_1s
-        new_split_frame = num_frames if new_split_frame > num_frames else new_split_frame
-        new_split_percent = new_split_frame / num_frames
-        return new_split_percent * 100.0
+        return self.compute_advance_702(scene_index, split_percent, by_frame=False, by_next=True)
 
     def export_project_703(self, new_project_path, new_project_name):
         empty_args = [gr.update(visible=False), gr.update(visible=False)]
