@@ -7,7 +7,7 @@
     - When resynthesis is used, the WAV audio clips are shortened to match
 1. Check _Inflate New Frames_ to insert AI-interpolated _likely_ frames between all real frames
     - This causes the effective frame rate of the remix video to double
-    - When inflation used, this is taken into aacount for creating the final video clips
+    - When inflation used, this is taken into account for creating the final video clips
 1. Check _Upscale Frames_ to use AI to clean and enlarge frames
     - Choose whether to upscale by _1X_, _2X_ or _4X_
     - Upscaling at 1X will cleanse the frames without enlarging

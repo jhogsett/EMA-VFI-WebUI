@@ -107,7 +107,7 @@ remixer_settings:
   marked_box_color: black@0.5
   marked_draw_box: True
   marked_ffmpeg_video: -vf "drawtext=<SCENE_INFO>" -c:v libx264 -crf 28
-  marked_ffmpeg_audio: -c:a aac
+  marked_ffmpeg_audio: -c:a aac -shortest
   marked_font_color: white@0.9
   marked_font_size: 30
   marked_font_file: fonts/trim.ttf
