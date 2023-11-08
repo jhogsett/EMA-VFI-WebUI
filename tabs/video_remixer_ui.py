@@ -16,6 +16,7 @@ from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
 from video_remixer import VideoRemixerState
 from webui_utils.mtqdm import Mtqdm
+from webui_utils.session import Session
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -93,7 +94,8 @@ class VideoRemixer(TabBase):
                             gr.Markdown("**Open an existing Video Remixer project**")
                             with gr.Row():
                                 project_load_path = gr.Textbox(label="Project Path",
-                placeholder="Path on this server to the Video Remixer project directory or file")
+                placeholder="Path on this server to the Video Remixer project directory or file",
+                                    value=Session().get("last-video-remixer-project"))
                             with gr.Row():
                                 message_box01 = gr.Markdown(
                                     value=format_markdown(self.TAB01_DEFAULT_MESSAGE))
@@ -889,6 +891,8 @@ class VideoRemixer(TabBase):
             message_text = format_markdown(self.TAB01_DEFAULT_MESSAGE)
         return_to_tab = self.state.get_progress_tab()
         scene_details = self.scene_chooser_details(self.state.tryattr("current_scene"))
+
+        Session().set("last-video-remixer-project", project_path)
 
         return gr.update(selected=return_to_tab), \
             gr.update(value=message_text), \

@@ -4,7 +4,7 @@ import yaml
 from yaml import Loader, YAMLError
 
 class Session():
-    def __init__(self, path : str):
+    def __init__(self, path : str="session.yaml"):
         self.path = path
         self.data = {}
         self.load()
