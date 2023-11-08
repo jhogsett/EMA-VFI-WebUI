@@ -409,6 +409,11 @@ class VideoRemixer(TabBase):
                                                     label="Split Position", minimum=0.0,
                                                     maximum=100.0, step=0.1,
                                                 info="A lower value splits earlier in the scene")
+                                            with gr.Row():
+                                                prev_second_702 = gr.Button(value="< 1 second", scale=0)
+                                                prev_frame_702 = gr.Button(value="< 1 frame", scale=0)
+                                                next_frame_702 = gr.Button(value="1 frame >", scale=0)
+                                                next_second_702 = gr.Button(value="1 second >", scale=0)
                                         with gr.Column():
                                             preview_image702 = gr.Image(type="filepath",
                                     label="Split Frame Preview", tool=None, height=max_thumb_size)
@@ -762,6 +767,18 @@ class VideoRemixer(TabBase):
 
         split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
                                 outputs=[preview_image702, scene_info_702], show_progress=False)
+
+        prev_second_702.click(self.prev_second_702, inputs=[scene_id_702, split_percent_702],
+                                outputs=split_percent_702, show_progress=False)
+
+        prev_frame_702.click(self.prev_frame_702, inputs=[scene_id_702, split_percent_702],
+                                outputs=split_percent_702, show_progress=False)
+
+        next_frame_702.click(self.next_frame_702, inputs=[scene_id_702, split_percent_702],
+                                outputs=split_percent_702, show_progress=False)
+
+        next_second_702.click(self.next_second_702, inputs=[scene_id_702, split_percent_702],
+                                outputs=split_percent_702, show_progress=False)
 
         export_project_703.click(self.export_project_703,
                                  inputs=[export_path_703, project_name_703],
@@ -1813,6 +1830,61 @@ class VideoRemixer(TabBase):
         display_frame = self.compute_preview_frame(scene_index, split_percent)
         _, _, _, scene_info = self.state.scene_chooser_details(scene_index)
         return display_frame, scene_info
+
+    # TODO DRYing
+    def prev_second_702(self, scene_index, split_percent):
+        if not isinstance(scene_index, (int, float)):
+            return self.empty_args(2)
+        scene_index = int(scene_index)
+        scene_name = self.state.scene_names[scene_index]
+        first_frame, last_frame, _ = details_from_group_name(scene_name)
+        num_frames = (last_frame - first_frame) + 1
+        frames_1s = self.state.project_fps
+        split_percent_frame = num_frames * split_percent / 100.0
+        new_split_frame = split_percent_frame - frames_1s
+        new_split_frame = 0 if new_split_frame < 0 else new_split_frame
+        new_split_percent = new_split_frame / num_frames
+        return new_split_percent * 100.0
+
+    def prev_frame_702(self, scene_index, split_percent):
+        if not isinstance(scene_index, (int, float)):
+            return self.empty_args(2)
+        scene_index = int(scene_index)
+        scene_name = self.state.scene_names[scene_index]
+        first_frame, last_frame, _ = details_from_group_name(scene_name)
+        num_frames = (last_frame - first_frame) + 1
+        split_percent_frame = num_frames * split_percent / 100.0
+        new_split_frame = split_percent_frame - 1
+        new_split_frame = 0 if new_split_frame < 0 else new_split_frame
+        new_split_percent = new_split_frame / num_frames
+        return new_split_percent * 100.0
+
+    def next_frame_702(self, scene_index, split_percent):
+        if not isinstance(scene_index, (int, float)):
+            return self.empty_args(2)
+        scene_index = int(scene_index)
+        scene_name = self.state.scene_names[scene_index]
+        first_frame, last_frame, _ = details_from_group_name(scene_name)
+        num_frames = (last_frame - first_frame) + 1
+        split_percent_frame = num_frames * split_percent / 100.0
+        new_split_frame = split_percent_frame + 1
+        new_split_frame = num_frames if new_split_frame > num_frames else new_split_frame
+        new_split_percent = new_split_frame / num_frames
+        return new_split_percent * 100.0
+
+    def next_second_702(self, scene_index, split_percent):
+        if not isinstance(scene_index, (int, float)):
+            return self.empty_args(2)
+        scene_index = int(scene_index)
+        scene_name = self.state.scene_names[scene_index]
+        first_frame, last_frame, _ = details_from_group_name(scene_name)
+        num_frames = (last_frame - first_frame) + 1
+        frames_1s = self.state.project_fps
+        split_percent_frame = num_frames * split_percent / 100.0
+        new_split_frame = split_percent_frame + frames_1s
+        new_split_frame = num_frames if new_split_frame > num_frames else new_split_frame
+        new_split_percent = new_split_frame / num_frames
+        return new_split_percent * 100.0
 
     def export_project_703(self, new_project_path, new_project_name):
         empty_args = [gr.update(visible=False), gr.update(visible=False)]
