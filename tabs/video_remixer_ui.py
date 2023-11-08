@@ -95,7 +95,7 @@ class VideoRemixer(TabBase):
                             with gr.Row():
                                 project_load_path = gr.Textbox(label="Project Path",
                 placeholder="Path on this server to the Video Remixer project directory or file",
-                                    value=Session().get("last-video-remixer-project"))
+                                    value=lambda : Session().get("last-video-remixer-project"))
                             with gr.Row():
                                 message_box01 = gr.Markdown(
                                     value=format_markdown(self.TAB01_DEFAULT_MESSAGE))
