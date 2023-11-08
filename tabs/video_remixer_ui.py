@@ -967,6 +967,8 @@ class VideoRemixer(TabBase):
             self.log(f"saving new project at {self.state.project_filepath()}")
             self.state.save_progress("setup")
 
+            Session().set("last-video-remixer-project", project_path)
+
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                 gr.update(value=format_markdown(self.TAB1_DEFAULT_MESSAGE)), \
                 self.state.project_info2, \
