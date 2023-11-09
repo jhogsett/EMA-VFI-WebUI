@@ -177,6 +177,7 @@ class VideoRemixerState():
     FILENAME_FILTER = [" ", "'", "[", "]"]
 
     def ingest_video(self, video_path):
+        """Inspect submitted video and collect important details about it for project set up"""
         self.source_video = video_path
         path, filename, _ = split_filepath(video_path)
 
@@ -1418,6 +1419,67 @@ class VideoRemixerState():
             messages.add(message)
 
         return messages.report()
+
+    def recover_project(self, global_options, remixer_settings, log_fn):
+        log_fn.log("beginning project recovery")
+
+        # purge project paths ahead of recreating
+        purged_path = self.purge_paths([
+            self.frames_path,
+            self.scenes_path,
+            self.dropped_scenes_path,
+            self.thumbnail_path,
+            self.audio_clips_path,
+            self.video_clips_path,
+            self.clips_path,
+            self.resize_path,
+            self.resynthesis_path,
+            self.inflation_path,
+            self.upscale_path
+        ])
+        log_fn.log(f"all generated content directories purged to {purged_path}")
+
+        self.render_source_frames(global_options=global_options, prevent_overwrite=False)
+        log_fn.log(f"source frames rendered to {self.frames_path}")
+
+        create_directory(self.scenes_path)
+        log_fn.log(f"created scenes directory {self.scenes_path}")
+        create_directory(self.dropped_scenes_path)
+        log_fn.log(f"created dropped scenes directory {self.dropped_scenes_path}")
+
+        log_fn.log("beginning recreating of scenes from source frames")
+        source_frames = sorted(get_files(self.frames_path))
+        with Mtqdm().open_bar(total=len(self.scene_names), desc="Recreating Scenes") as bar:
+            for scene_name in self.scene_names:
+                scene_path = os.path.join(self.scenes_path, scene_name)
+                create_directory(scene_path)
+                log_fn.log(f"created scene directory {scene_path}")
+
+                first_index, last_index, _ = details_from_group_name(scene_name)
+                num_frames = (last_index - first_index) + 1
+                with Mtqdm().open_bar(total=num_frames, desc="Copying") as inner_bar:
+                    for index in range(first_index, last_index + 1):
+                        source_path = source_frames[index]
+                        _, filename, ext = split_filepath(source_path)
+                        frame_path = os.path.join(scene_path, filename + ext)
+                        shutil.copy(source_path, frame_path)
+                        Mtqdm().update_bar(inner_bar)
+
+                log_fn.log(f"scene frames copied to {scene_path}")
+                Mtqdm().update_bar(bar)
+        log_fn.log(f"recreated scenes")
+
+        log_fn.log(f"about to create thumbnails of type {self.thumbnail_type}")
+        self.create_thumbnails(log_fn, global_options, remixer_settings)
+        self.thumbnails = sorted(get_files(self.thumbnail_path))
+
+        self.clips_path = os.path.join(self.project_path, "CLIPS")
+        log_fn.log(f"creating clips directory {self.clips_path}")
+        create_directory(self.clips_path)
+
+        # user will expect to return to scene chooser on reopening
+        log_fn.log("saving project after recovery process")
+        self.save_progress("choose")
 
     @staticmethod
     def load(filepath : str):
