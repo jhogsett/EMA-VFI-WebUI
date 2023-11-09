@@ -751,10 +751,6 @@ class VideoRemixer(TabBase):
                                outputs=[tabs_video_remixer, message_box701, scene_index,
                                         scene_label, scene_image, scene_state, scene_info])
 
-        split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
-                              outputs=[tabs_video_remixer, message_box702, scene_index, scene_label,
-                                       scene_image, scene_state, scene_info])
-
         scene_id_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
                                 outputs=[preview_image702, scene_info_702], show_progress=False)
 
@@ -775,6 +771,10 @@ class VideoRemixer(TabBase):
 
         next_second_702.click(self.next_second_702, inputs=[scene_id_702, split_percent_702],
                                 outputs=split_percent_702, show_progress=False)
+
+        split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
+                              outputs=[tabs_video_remixer, message_box702, scene_index, scene_label,
+                                       scene_image, scene_state, scene_info])
 
         export_project_703.click(self.export_project_703,
                                  inputs=[export_path_703, project_name_703],
@@ -1788,7 +1788,10 @@ class VideoRemixer(TabBase):
         self.log("invalidating scene split cache after splitting")
         self.invalidate_split_scene_cache()
 
-        message = messages.report()
+        report = messages.report()
+        self.log(report)
+
+        message = f"Scene split into new scenes {new_lower_scene_name} and {new_upper_scene_name}"
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
             gr.update(value=format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
