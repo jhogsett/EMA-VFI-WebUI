@@ -596,7 +596,7 @@ class VideoRemixer(TabBase):
 
                                 with gr.Tab(SimpleIcons.MENDING_HEART + " Recover Project"):
                                     gr.Markdown(
-                                    "**_Recreate source content for a deleted project_**")
+                                    "**_Restore a project from the original source video and project file_**")
                                     with gr.Row():
                                         message_box714 = gr.Markdown(format_markdown("Click Recover Project to: Restore the currently loaded project"))
                                     gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
