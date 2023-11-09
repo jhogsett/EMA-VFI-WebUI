@@ -180,7 +180,7 @@ BAD_GET_DIRECTORIES_ARGS = [
     ([4], "'path' must be a string"),
     (os.path.join(FIXTURE_PATH, ".."), "'path' must be a legal path"),
     (os.path.join(FIXTURE_PATH, "../.."), "'path' must be a legal path"),
-    (os.path.join(FIXTURE_PATH, "test/../test"), "'path' must be a legal path"),
+    (os.path.join(FIXTURE_PATH, "test/../test"), "'path' does not exist"),
 ]
 
 def test_get_directories():

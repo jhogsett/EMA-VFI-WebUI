@@ -17,6 +17,7 @@ from tabs.tab_base import TabBase
 from video_remixer import VideoRemixerState
 from webui_utils.mtqdm import Mtqdm
 from webui_utils.ui_utils import fill_empty_args
+from webui_utils.session import Session
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -94,7 +95,8 @@ class VideoRemixer(TabBase):
                             gr.Markdown("**Open an existing Video Remixer project**")
                             with gr.Row():
                                 project_load_path = gr.Textbox(label="Project Path",
-                placeholder="Path on this server to the Video Remixer project directory or file")
+                placeholder="Path on this server to the Video Remixer project directory or file",
+                                    value=lambda : Session().get("last-video-remixer-project"))
                             with gr.Row():
                                 message_box01 = gr.Markdown(
                                     value=format_markdown(self.TAB01_DEFAULT_MESSAGE))
@@ -193,15 +195,14 @@ class VideoRemixer(TabBase):
                 ## CHOOSE SCENES
                 with gr.Tab(SimpleIcons.FOUR + " Choose Scenes", id=self.TAB_CHOOSE_SCENES):
                     with gr.Row():
-                        with gr.Column():
-                            with gr.Row():
-                                scene_label = gr.Text(label="Scene Name", interactive=False)
-                                scene_info = gr.Text(label="Scene Details", interactive=False)
-                        with gr.Column():
+                        scene_label = gr.Text(label="Scene Name", interactive=False, scale=1)
+                        scene_info = gr.Text(label="Scene Details", interactive=False, scale=1)
+                        with gr.Column(scale=2):
                             with gr.Row():
                                 scene_state = gr.Radio(label="Choose", value=None,
                                                     choices=["Keep", "Drop"])
-                                scene_index = gr.Number(label="Scene Index", precision=0)
+                                with gr.Column(variant="compact", elem_id="mainhighlightdim"):
+                                    scene_index = gr.Number(label="Scene Index", precision=0)
                     with gr.Row():
                         with gr.Column():
                             scene_image = gr.Image(type="filepath", interactive=False, height=max_thumb_size)
@@ -402,11 +403,18 @@ class VideoRemixer(TabBase):
                                             with gr.Row():
                                                 scene_id_702 = gr.Number(value=-1,
                                                                          label="Scene Index")
+                                                scene_info_702 = gr.Text(label="Scene Details",
+                                                                         interactive=False)
                                             with gr.Row():
                                                 split_percent_702 = gr.Slider(value=50.0,
                                                     label="Split Position", minimum=0.0,
                                                     maximum=100.0, step=0.1,
                                                 info="A lower value splits earlier in the scene")
+                                            with gr.Row():
+                                                prev_second_702 = gr.Button(value="< 1 second", scale=0)
+                                                prev_frame_702 = gr.Button(value="< 1 frame", scale=0)
+                                                next_frame_702 = gr.Button(value="1 frame >", scale=0)
+                                                next_second_702 = gr.Button(value="1 second >", scale=0)
                                         with gr.Column():
                                             preview_image702 = gr.Image(type="filepath",
                                     label="Split Frame Preview", tool=None, height=max_thumb_size)
@@ -744,18 +752,30 @@ class VideoRemixer(TabBase):
                                outputs=[tabs_video_remixer, message_box701, scene_index,
                                         scene_label, scene_image, scene_state, scene_info])
 
+        scene_id_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
+                                outputs=[preview_image702, scene_info_702], show_progress=False)
+
+        split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
+                                outputs=[preview_image702, scene_info_702], show_progress=False)
+
+        split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
+                                outputs=[preview_image702, scene_info_702], show_progress=False)
+
+        prev_second_702.click(self.prev_second_702, inputs=[scene_id_702, split_percent_702],
+                                outputs=split_percent_702, show_progress=False)
+
+        prev_frame_702.click(self.prev_frame_702, inputs=[scene_id_702, split_percent_702],
+                                outputs=split_percent_702, show_progress=False)
+
+        next_frame_702.click(self.next_frame_702, inputs=[scene_id_702, split_percent_702],
+                                outputs=split_percent_702, show_progress=False)
+
+        next_second_702.click(self.next_second_702, inputs=[scene_id_702, split_percent_702],
+                                outputs=split_percent_702, show_progress=False)
+
         split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
                               outputs=[tabs_video_remixer, message_box702, scene_index, scene_label,
                                        scene_image, scene_state, scene_info])
-
-        scene_id_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
-                                outputs=preview_image702, show_progress=False)
-
-        split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
-                                outputs=preview_image702, show_progress=False)
-
-        split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
-                                outputs=preview_image702, show_progress=False)
 
         export_project_703.click(self.export_project_703,
                                  inputs=[export_path_703, project_name_703],
@@ -883,6 +903,8 @@ class VideoRemixer(TabBase):
         return_to_tab = self.state.get_progress_tab()
         scene_details = self.scene_chooser_details(self.state.tryattr("current_scene"))
 
+        Session().set("last-video-remixer-project", project_path)
+
         return gr.update(selected=return_to_tab), \
             gr.update(value=message_text), \
             self.state.tryattr("video_info1"), \
@@ -957,6 +979,8 @@ class VideoRemixer(TabBase):
             # user will expect to return to the setup tab on reopening
             self.log(f"saving new project at {self.state.project_filepath()}")
             self.state.save_progress("setup")
+
+            Session().set("last-video-remixer-project", project_path)
 
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                 gr.update(value=format_markdown(self.TAB1_DEFAULT_MESSAGE)), \
@@ -1172,13 +1196,16 @@ class VideoRemixer(TabBase):
 
     def split_scene_shortcut(self, scene_index):
         default_percent = 50.0
+        scene_index = int(scene_index)
         display_frame = self.compute_preview_frame(scene_index, default_percent)
+        _, _, _, scene_info = self.state.scene_chooser_details(scene_index)
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
             gr.update(selected=self.TAB_EXTRA_UTILITIES), \
             gr.update(selected=self.TAB_EXTRA_UTIL_SPLIT_SCENE), \
             scene_index, \
             default_percent, \
-            display_frame
+            display_frame, \
+            scene_info
 
     def choose_range_shortcut(self, scene_index):
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
@@ -1782,7 +1809,10 @@ class VideoRemixer(TabBase):
         self.log("invalidating scene split cache after splitting")
         self.invalidate_split_scene_cache()
 
-        message = messages.report()
+        report = messages.report()
+        self.log(report)
+
+        message = f"Scene split into new scenes {new_lower_scene_name} and {new_upper_scene_name}"
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
             gr.update(value=format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
@@ -1813,9 +1843,49 @@ class VideoRemixer(TabBase):
 
     def preview_button702(self, scene_index, split_percent):
         if not isinstance(scene_index, (int, float)):
-            return gr.update(value=None)
+            return self.empty_args(2)
+        scene_index = int(scene_index)
+        if scene_index < 0 or scene_index >= len(self.state.scene_names):
+            return self.empty_args(2)
+
         display_frame = self.compute_preview_frame(scene_index, split_percent)
-        return gr.update(value=display_frame)
+        _, _, _, scene_info = self.state.scene_chooser_details(scene_index)
+        return display_frame, scene_info
+
+    def compute_advance_702(self, scene_index, split_percent, by_frame : bool, by_next : bool):
+        if not isinstance(scene_index, (int, float)):
+            return self.empty_args(2)
+
+        scene_index = int(scene_index)
+        scene_name = self.state.scene_names[scene_index]
+        first_frame, last_frame, _ = details_from_group_name(scene_name)
+        num_frames = (last_frame - first_frame) + 1
+        split_percent_frame = num_frames * split_percent / 100.0
+
+        if by_frame:
+            new_split_frame = split_percent_frame + 1 if by_next else split_percent_frame - 1
+        else:
+            frames_1s = self.state.project_fps
+            new_split_frame = split_percent_frame + frames_1s if by_next \
+                else split_percent_frame - frames_1s
+
+        new_split_frame = 0 if new_split_frame < 0 else new_split_frame
+        new_split_frame = num_frames if new_split_frame > num_frames else new_split_frame
+
+        new_split_percent = new_split_frame / num_frames
+        return new_split_percent * 100.0
+
+    def prev_second_702(self, scene_index, split_percent):
+        return self.compute_advance_702(scene_index, split_percent, by_frame=False, by_next=False)
+
+    def prev_frame_702(self, scene_index, split_percent):
+        return self.compute_advance_702(scene_index, split_percent, by_frame=True, by_next=False)
+
+    def next_frame_702(self, scene_index, split_percent):
+        return self.compute_advance_702(scene_index, split_percent, by_frame=True, by_next=True)
+
+    def next_second_702(self, scene_index, split_percent):
+        return self.compute_advance_702(scene_index, split_percent, by_frame=False, by_next=True)
 
     # TODO move logic to state class
     def export_project_703(self, new_project_path, new_project_name):

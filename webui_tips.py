@@ -73,3 +73,4 @@ class WebuiTips:
     video_remixer_save = gr.Markdown(load_markdown(tips_path, "video_remixer_save"))
     video_remixer_extra = gr.Markdown(load_markdown(tips_path, "video_remixer_extra"))
     video_assembler = gr.Markdown(load_markdown(tips_path, "video_assembler"))
+    transpose_png_files = gr.Markdown(load_markdown(tips_path, "transpose_png_files"))
