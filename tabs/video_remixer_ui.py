@@ -602,7 +602,7 @@ class VideoRemixer(TabBase):
                                     gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
                                         restore_button714 = gr.Button(
-                                            value="Restore Project " +\
+                                            value="Recover Project " +\
                                                 SimpleIcons.SLOW_SYMBOL, variant="stop")
 
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -826,7 +826,8 @@ class VideoRemixer(TabBase):
 
         delete_button713.click(self.delete_button713, inputs=delete_all_713, outputs=message_box713)
 
-        restore_button714.click(self.restore_button714, outputs=message_box714)
+        restore_button714.click(self.restore_button714, outputs=[tabs_video_remixer, message_box714,
+                                    scene_index, scene_label, scene_image, scene_state, scene_info])
 
     ### UTILITY FUNCTIONS
 
@@ -2090,3 +2091,7 @@ class VideoRemixer(TabBase):
         self.state.recover_project(global_options=global_options,
                                    remixer_settings=self.config.remixer_settings,
                                    log_fn=self.log)
+        message = f"Project recovered"
+        return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+            gr.update(value=format_markdown(message)), \
+            *self.scene_chooser_details(self.state.current_scene)

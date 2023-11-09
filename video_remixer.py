@@ -1439,7 +1439,7 @@ class VideoRemixerState():
         ])
         log_fn(f"all generated content directories purged to {purged_path}")
 
-        self.render_source_frames(global_options=global_options, prevent_overwrite=False)
+        self.render_source_frames(global_options=global_options, prevent_overwrite=True)
         log_fn(f"source frames rendered to {self.frames_path}")
 
         create_directory(self.scenes_path)
