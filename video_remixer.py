@@ -177,6 +177,7 @@ class VideoRemixerState():
     FILENAME_FILTER = [" ", "'", "[", "]"]
 
     def ingest_video(self, video_path):
+        """Inspect submitted video and collect important details about it for project set up"""
         self.source_video = video_path
         path, filename, _ = split_filepath(video_path)
 
@@ -270,16 +271,16 @@ class VideoRemixerState():
 
         # clean various problematic chars from filenames
         filtered_filename = clean_filename(audio_filename, self.FILENAME_FILTER)
-        project_audio_path = os.path.join(self.project_path, filtered_filename)
+        self.source_audio = os.path.join(self.project_path, filtered_filename)
 
-        if os.path.exists(project_audio_path) and prevent_overwrite:
+        if os.path.exists(self.source_audio) and prevent_overwrite:
             raise ValueError(
-            f"The local project audio file already exists, copying skipped: {project_audio_path}")
+            f"The local project audio file already exists, copying skipped: {self.source_audio}")
 
         with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
             Mtqdm().message(bar, "Creating source audio locally - no ETA")
-            SourceToMP4(self.source_video, project_audio_path, crf, global_options=global_options)
-            self.source_audio = project_audio_path
+            SourceToMP4(self.source_video, self.source_audio, crf, global_options=global_options)
+            self.source_audio = self.source_audio
             Mtqdm().update_bar(bar)
 
     def copy_project_file(self, copy_path):
@@ -675,6 +676,10 @@ class VideoRemixerState():
             current_path = os.path.join(self.scenes_path, dir)
             dropped_path = os.path.join(self.dropped_scenes_path, dir)
             shutil.move(current_path, dropped_path)
+
+    def recompile_scenes(self):
+        self.uncompile_scenes()
+        self.compile_scenes()
 
     ## Main Processing ##
 
@@ -1418,6 +1423,74 @@ class VideoRemixerState():
             messages.add(message)
 
         return messages.report()
+
+    def recover_project(self, global_options, remixer_settings, log_fn):
+        log_fn("beginning project recovery")
+
+        # purge project paths ahead of recreating
+        purged_path = self.purge_paths([
+            self.scenes_path,
+            self.dropped_scenes_path,
+            self.thumbnail_path,
+            self.audio_clips_path,
+            self.video_clips_path,
+            self.clips_path,
+            self.resize_path,
+            self.resynthesis_path,
+            self.inflation_path,
+            self.upscale_path
+        ])
+        log_fn(f"generated content directories purged to {purged_path}")
+
+        self.render_source_frames(global_options=global_options, prevent_overwrite=True)
+        log_fn(f"source frames rendered to {self.frames_path}")
+
+        source_audio_crf = remixer_settings["source_audio_crf"]
+        try:
+            self.create_source_audio(source_audio_crf, global_options, prevent_overwrite=True)
+            log_fn(f"created source audio {self.source_audio} from {self.source_video}")
+        except ValueError as error:
+            # ignore, don't create the file if present or same as video
+            log_fn(f"ignoring: {error}")
+
+        create_directory(self.scenes_path)
+        log_fn(f"created scenes directory {self.scenes_path}")
+        create_directory(self.dropped_scenes_path)
+        log_fn(f"created dropped scenes directory {self.dropped_scenes_path}")
+
+        log_fn("beginning recreating of scenes from source frames")
+        source_frames = sorted(get_files(self.frames_path))
+        with Mtqdm().open_bar(total=len(self.scene_names), desc="Recreating Scenes") as bar:
+            for scene_name in self.scene_names:
+                scene_path = os.path.join(self.scenes_path, scene_name)
+                create_directory(scene_path)
+                log_fn(f"created scene directory {scene_path}")
+
+                first_index, last_index, _ = details_from_group_name(scene_name)
+                num_frames = (last_index - first_index) + 1
+                with Mtqdm().open_bar(total=num_frames, desc="Copying") as inner_bar:
+                    for index in range(first_index, last_index + 1):
+                        source_path = source_frames[index]
+                        _, filename, ext = split_filepath(source_path)
+                        frame_path = os.path.join(scene_path, filename + ext)
+                        shutil.copy(source_path, frame_path)
+                        Mtqdm().update_bar(inner_bar)
+
+                log_fn(f"scene frames copied to {scene_path}")
+                Mtqdm().update_bar(bar)
+        log_fn(f"recreated scenes")
+
+        log_fn(f"about to create thumbnails of type {self.thumbnail_type}")
+        self.create_thumbnails(log_fn, global_options, remixer_settings)
+        self.thumbnails = sorted(get_files(self.thumbnail_path))
+
+        self.clips_path = os.path.join(self.project_path, "CLIPS")
+        log_fn(f"creating clips directory {self.clips_path}")
+        create_directory(self.clips_path)
+
+        # user will expect to return to scene chooser on reopening
+        log_fn("saving project after recovery process")
+        self.save_progress("choose")
 
     @staticmethod
     def load(filepath : str):

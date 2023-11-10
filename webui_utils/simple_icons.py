@@ -103,6 +103,7 @@ class SimpleIcons:
     LABCOAT = "🥼"
     MAGIC_WAND = "🪄"
     MEAT = "🥩"
+    MENDING_HEART = "❤️‍🩹"
     MICROSCOPE = "🔬"
     PACKAGE = "📦"
     ROBOT = "🤖"
@@ -170,6 +171,7 @@ class SimpleIcons:
         LABCOAT,
         MAGIC_WAND,
         MAGNIFIER,
+        MENDING_HEART,
         MICROSCOPE,
         MOVIE,
         NOTEBOOK,
