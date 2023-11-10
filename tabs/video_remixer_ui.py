@@ -1858,10 +1858,10 @@ class VideoRemixer(TabBase):
 
     def preview_button702(self, scene_index, split_percent):
         if not isinstance(scene_index, (int, float)):
-            return self.empty_args(2)
+            return fill_empty_args(2)
         scene_index = int(scene_index)
         if scene_index < 0 or scene_index >= len(self.state.scene_names):
-            return self.empty_args(2)
+            return fill_empty_args(2)
 
         display_frame = self.compute_preview_frame(scene_index, split_percent)
         _, _, _, scene_info = self.state.scene_chooser_details(scene_index)
@@ -1869,7 +1869,7 @@ class VideoRemixer(TabBase):
 
     def compute_advance_702(self, scene_index, split_percent, by_frame : bool, by_next : bool):
         if not isinstance(scene_index, (int, float)):
-            return self.empty_args(2)
+            return fill_empty_args(2)
 
         scene_index = int(scene_index)
         scene_name = self.state.scene_names[scene_index]
