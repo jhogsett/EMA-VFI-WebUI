@@ -171,6 +171,7 @@ class SimpleIcons:
         LABCOAT,
         MAGIC_WAND,
         MAGNIFIER,
+        MENDING_HEART,
         MICROSCOPE,
         MOVIE,
         NOTEBOOK,
