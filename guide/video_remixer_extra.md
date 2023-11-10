@@ -55,3 +55,9 @@
 - **When Useful:** After the project is complete and no longer needed - frees all disk space used by project-created content, except for source and remix videos
 - _Check the box for the content to delete and click Delete Selected Content_
 - _All project content except videos are permanently deleted_
+
+#### Recover Project - Recreate a purged or corrupt project using the source video and project file
+
+- **When Useful:** After a project's content has been purged, or if it has become corrupt - restores the project to an editable state
+- _Click Recover Project_
+- _The project's source frames, scenes and thumbnails are restored_
