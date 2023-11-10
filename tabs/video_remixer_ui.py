@@ -595,6 +595,17 @@ class VideoRemixer(TabBase):
                                             value="Delete Processed Content " +\
                                                 SimpleIcons.SLOW_SYMBOL, variant="stop")
 
+                                with gr.Tab(SimpleIcons.MENDING_HEART + " Recover Project"):
+                                    gr.Markdown(
+                                    "**_Restore a project from the original source video and project file_**")
+                                    with gr.Row():
+                                        message_box714 = gr.Markdown(format_markdown("Click Recover Project to: Restore the currently loaded project"))
+                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                    with gr.Row():
+                                        restore_button714 = gr.Button(
+                                            value="Recover Project " +\
+                                                SimpleIcons.SLOW_SYMBOL, variant="stop")
+
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                         WebuiTips.video_remixer_extra.render()
 
@@ -816,6 +827,9 @@ class VideoRemixer(TabBase):
 
         delete_button713.click(self.delete_button713, inputs=delete_all_713, outputs=message_box713)
 
+        restore_button714.click(self.restore_button714, outputs=[tabs_video_remixer, message_box714,
+                                    scene_index, scene_label, scene_image, scene_state, scene_info])
+
     ### UTILITY FUNCTIONS
 
     def noop_args(self, num):
@@ -1029,7 +1043,8 @@ class VideoRemixer(TabBase):
 
             try:
                 self.log(f"creating source audio from {self.state.source_video}")
-                self.state.create_source_audio(source_audio_crf, global_options, prevent_overwrite=True)
+                self.state.create_source_audio(
+                    source_audio_crf, global_options, prevent_overwrite=True)
             except ValueError as error:
                 # ignore, don't create the file a second time if the user is restarting here
                 self.log(f"ignoring: {error}")
@@ -1273,11 +1288,8 @@ class VideoRemixer(TabBase):
 
         # TODO move logic to state class
 
-        self.log("moving previously dropped scenes back to scenes directory")
-        self.state.uncompile_scenes()
-
         self.log("moving dropped scenes to dropped scenes directory")
-        self.state.compile_scenes()
+        self.state.recompile_scenes()
 
         # scene choice changes are what invalidate previously made audio clips,
         # so clear them now along with dependent remix content
@@ -1318,6 +1330,9 @@ class VideoRemixer(TabBase):
         self.state.setup_processing_paths()
         self.log("saving project after storing processing choices")
         self.state.save()
+
+        # user may have changed scene choices and skipped compiling scenes
+        self.state.recompile_scenes()
 
         jot = Jot()
         kept_scenes = self.state.kept_scenes()
@@ -1929,8 +1944,7 @@ class VideoRemixer(TabBase):
                     Mtqdm().update_bar(bar)
 
             # ensure scenes path contains all / only kept scenes
-            self.state.uncompile_scenes()
-            self.state.compile_scenes()
+            self.state.recompile_scenes()
 
             # prepare to rebuild scene_states dict, and scene_names, thumbnails lists
             # in the new project
@@ -2094,3 +2108,13 @@ class VideoRemixer(TabBase):
         else:
             message = f"Removed: None"
         return gr.update(value=format_markdown(message))
+
+    def restore_button714(self):
+        global_options = self.config.ffmpeg_settings["global_options"]
+        self.state.recover_project(global_options=global_options,
+                                   remixer_settings=self.config.remixer_settings,
+                                   log_fn=self.log)
+        message = f"Project recovered"
+        return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+            gr.update(value=format_markdown(message)), \
+            *self.scene_chooser_details(self.state.current_scene)
