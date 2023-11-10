@@ -28,11 +28,6 @@ class VideoRemixer(TabBase):
         TabBase.__init__(self, config, engine, log_fn)
         self.new_project()
 
-    def new_project(self):
-        self.state = VideoRemixerState()
-        self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"])
-        self.invalidate_split_scene_cache()
-
     TAB_REMIX_HOME = 0
     TAB_REMIX_SETTINGS = 1
     TAB_SET_UP_PROJECT = 2
@@ -59,6 +54,11 @@ class VideoRemixer(TabBase):
     TAB60_DEFAULT_MESSAGE = "Click Save Remix to: Combine Processed Content with Audio Clips and Save Remix Video"
     TAB61_DEFAULT_MESSAGE = "Click Save Custom Remix to: Apply Custom Options and save Custom Remix Video"
     TAB62_DEFAULT_MESSAGE = "Click Save Marked Remix to: Apply Marking Options and save Marked Remix Video"
+
+    def new_project(self):
+        self.state = VideoRemixerState()
+        self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"])
+        self.invalidate_split_scene_cache()
 
     def render_tab(self):
         """Render tab into UI"""
@@ -969,8 +969,6 @@ class VideoRemixer(TabBase):
         # TODO validate the other entries
 
         try:
-            # TODO move logic to state class
-
             # this is first project write
             self.log(f"creating project path {project_path}")
             create_directory(project_path)
@@ -1247,9 +1245,8 @@ class VideoRemixer(TabBase):
             gr.update(selected=self.TAB_EXTRA_UTIL_DROP_PROCESSED), \
             scene_index
 
-
-    # given scene name such as [042-420] compute details to display in Scene Chooser
     def scene_chooser_details(self, scene_index):
+        """Given scene name such as [042-420] compute details to display in Scene Chooser"""
         if not self.state.thumbnails:
             self.log(f"thumbnails don't exist yet in scene_chooser_details()")
             return fill_empty_args(5)
@@ -1283,7 +1280,8 @@ class VideoRemixer(TabBase):
     def next_button4(self):
         if not self.state.project_path:
             return gr.update(selected=self.TAB_COMPILE_SCENES), \
-                   gr.update(value=format_markdown(f"The project has not yet been set up from the Set Up Project tab.", "error")), \
+                   gr.update(value=format_markdown(
+                f"The project has not yet been set up from the Set Up Project tab.", "error")), \
                    *fill_empty_args(5)
 
         # TODO move logic to state class
@@ -1544,7 +1542,8 @@ class VideoRemixer(TabBase):
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             self.save_remix(global_options, kept_scenes)
-            return gr.update(value=format_markdown(f"Remixed video {output_filepath} is complete.", "highlight"))
+            return gr.update(value=format_markdown(
+                f"Remixed video {output_filepath} is complete.", "highlight"))
 
         except ValueError as error:
             return gr.update(value=format_markdown(str(error), "error"))
@@ -1558,7 +1557,8 @@ class VideoRemixer(TabBase):
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             self.save_custom_remix(output_filepath, global_options, kept_scenes,
                                    custom_video_options, custom_audio_options)
-            return gr.update(value=format_markdown(f"Remixed custom video {output_filepath} is complete.", "highlight"))
+            return gr.update(value=format_markdown(
+                f"Remixed custom video {output_filepath} is complete.", "highlight"))
         except ValueError as error:
             return gr.update(value=format_markdown(str(error), "error"))
 
