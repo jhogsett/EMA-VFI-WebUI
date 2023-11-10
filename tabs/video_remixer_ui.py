@@ -1041,7 +1041,8 @@ class VideoRemixer(TabBase):
 
             try:
                 self.log(f"creating source audio from {self.state.source_video}")
-                self.state.create_source_audio(source_audio_crf, global_options, prevent_overwrite=True)
+                self.state.create_source_audio(
+                    source_audio_crf, global_options, prevent_overwrite=True)
             except ValueError as error:
                 # ignore, don't create the file a second time if the user is restarting here
                 self.log(f"ignoring: {error}")
@@ -1282,11 +1283,8 @@ class VideoRemixer(TabBase):
                    gr.update(value=format_markdown(f"The project has not yet been set up from the Set Up Project tab.", "error")), \
                    *self.empty_args(5)
 
-        self.log("moving previously dropped scenes back to scenes directory")
-        self.state.uncompile_scenes()
-
         self.log("moving dropped scenes to dropped scenes directory")
-        self.state.compile_scenes()
+        self.state.recompile_scenes()
 
         # scene choice changes are what invalidate previously made audio clips,
         # so clear them now along with dependent remix content
@@ -1325,6 +1323,9 @@ class VideoRemixer(TabBase):
         self.state.setup_processing_paths()
         self.log("saving project after storing processing choices")
         self.state.save()
+
+        # user may have changed scene choices and skipped compiling scenes
+        self.state.recompile_scenes()
 
         jot = Jot()
         kept_scenes = self.state.kept_scenes()
@@ -1920,8 +1921,7 @@ class VideoRemixer(TabBase):
                     Mtqdm().update_bar(bar)
 
             # ensure scenes path contains all / only kept scenes
-            self.state.uncompile_scenes()
-            self.state.compile_scenes()
+            self.state.recompile_scenes()
 
             # prepare to rebuild scene_states dict, and scene_names, thumbnails lists
             # in the new project

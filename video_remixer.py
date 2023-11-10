@@ -271,16 +271,16 @@ class VideoRemixerState():
 
         # clean various problematic chars from filenames
         filtered_filename = clean_filename(audio_filename, self.FILENAME_FILTER)
-        project_audio_path = os.path.join(self.project_path, filtered_filename)
+        self.source_audio = os.path.join(self.project_path, filtered_filename)
 
-        if os.path.exists(project_audio_path) and prevent_overwrite:
+        if os.path.exists(self.source_audio) and prevent_overwrite:
             raise ValueError(
-            f"The local project audio file already exists, copying skipped: {project_audio_path}")
+            f"The local project audio file already exists, copying skipped: {self.source_audio}")
 
         with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
             Mtqdm().message(bar, "Creating source audio locally - no ETA")
-            SourceToMP4(self.source_video, project_audio_path, crf, global_options=global_options)
-            self.source_audio = project_audio_path
+            SourceToMP4(self.source_video, self.source_audio, crf, global_options=global_options)
+            self.source_audio = self.source_audio
             Mtqdm().update_bar(bar)
 
     def copy_project_file(self, copy_path):
@@ -676,6 +676,10 @@ class VideoRemixerState():
             current_path = os.path.join(self.scenes_path, dir)
             dropped_path = os.path.join(self.dropped_scenes_path, dir)
             shutil.move(current_path, dropped_path)
+
+    def recompile_scenes(self):
+        self.uncompile_scenes()
+        self.compile_scenes()
 
     ## Main Processing ##
 
@@ -1444,7 +1448,7 @@ class VideoRemixerState():
         source_audio_crf = remixer_settings["source_audio_crf"]
         try:
             self.create_source_audio(source_audio_crf, global_options, prevent_overwrite=True)
-            log_fn(f"created source audio from {self.state.source_video}")
+            log_fn(f"created source audio {self.source_audio} from {self.source_video}")
         except ValueError as error:
             # ignore, don't create the file if present or same as video
             log_fn(f"ignoring: {error}")
