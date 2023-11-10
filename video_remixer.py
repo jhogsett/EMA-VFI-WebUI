@@ -1425,7 +1425,6 @@ class VideoRemixerState():
 
         # purge project paths ahead of recreating
         purged_path = self.purge_paths([
-            self.frames_path,
             self.scenes_path,
             self.dropped_scenes_path,
             self.thumbnail_path,
@@ -1437,10 +1436,18 @@ class VideoRemixerState():
             self.inflation_path,
             self.upscale_path
         ])
-        log_fn(f"all generated content directories purged to {purged_path}")
+        log_fn(f"generated content directories purged to {purged_path}")
 
         self.render_source_frames(global_options=global_options, prevent_overwrite=True)
         log_fn(f"source frames rendered to {self.frames_path}")
+
+        source_audio_crf = remixer_settings["source_audio_crf"]
+        try:
+            self.create_source_audio(source_audio_crf, global_options, prevent_overwrite=True)
+            log_fn(f"created source audio from {self.state.source_video}")
+        except ValueError as error:
+            # ignore, don't create the file if present or same as video
+            log_fn(f"ignoring: {error}")
 
         create_directory(self.scenes_path)
         log_fn(f"created scenes directory {self.scenes_path}")
