@@ -56,6 +56,7 @@ class VideoRemixer(TabBase):
     TAB62_DEFAULT_MESSAGE = "Click Save Marked Remix to: Apply Marking Options and save Marked Remix Video"
 
     def new_project(self):
+        """Reset state to create a new project"""
         self.state = VideoRemixerState()
         self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"])
         self.invalidate_split_scene_cache()
@@ -850,6 +851,7 @@ class VideoRemixer(TabBase):
                    *empty_args
 
         self.new_project()
+
         try:
             self.state.ingest_video(video_path)
             self.state.video_info1 = self.state.ingested_video_report()
@@ -858,12 +860,12 @@ class VideoRemixer(TabBase):
                    gr.update(value=format_markdown(str(error), "error")), \
                    *empty_args
 
-        # don't save yet, user may change project path next
+        # set progress but don't save project yet, user may change project path on next tab
         self.state.save_progress("settings", save_project=False)
 
         return gr.update(selected=self.TAB_REMIX_SETTINGS), \
-            gr.update(value=format_markdown(self.TAB00_DEFAULT_MESSAGE)), \
-            gr.update(value=self.state.video_info1), \
+            format_markdown(self.TAB00_DEFAULT_MESSAGE), \
+            self.state.video_info1, \
             self.state.project_path, \
             self.state.resize_w, \
             self.state.resize_h, \
