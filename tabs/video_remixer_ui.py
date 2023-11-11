@@ -111,7 +111,7 @@ class VideoRemixer(TabBase):
                 ### REMIX SETTINGS
                 with gr.Tab(SimpleIcons.TWO + " Remix Settings", id=self.TAB_REMIX_SETTINGS):
                     gr.Markdown("**Confirm Remixer Settings**")
-                    with gr.Box():
+                    with gr.Row(variant="panel"):
                         video_info1 = gr.Markdown("Video Details")
                     with gr.Row():
                         with gr.Column():
@@ -164,7 +164,7 @@ class VideoRemixer(TabBase):
                 ## SET UP PROJECT
                 with gr.Tab(SimpleIcons.THREE + " Set Up Project", id=self.TAB_SET_UP_PROJECT):
                     gr.Markdown("**Ready to Set Up Video Remixer Project**")
-                    with gr.Box():
+                    with gr.Row(variant="panel"):
                         project_info2 = gr.Markdown("Project Details")
                     with gr.Row():
                         thumbnail_type = gr.Radio(choices=["GIF", "JPG"], value="GIF",
@@ -248,7 +248,7 @@ class VideoRemixer(TabBase):
 
                 ## COMPILE SCENES
                 with gr.Tab(SimpleIcons.FIVE + " Compile Scenes", id=self.TAB_COMPILE_SCENES):
-                    with gr.Box():
+                    with gr.Row(variant="panel"):
                         project_info4 = gr.Markdown("Chosen Scene Details")
                     with gr.Row():
                         message_box4 = gr.Markdown(value=format_markdown(self.TAB4_DEFAULT_MESSAGE))
@@ -322,9 +322,8 @@ class VideoRemixer(TabBase):
                 ## SAVE REMIX
                 with gr.Tab(SimpleIcons.FINISH_FLAG + " Save Remix", id=self.TAB_SAVE_REMIX):
                     gr.Markdown("**Ready to Finalize Scenes and Save Remixed Video**")
-                    with gr.Row():
-                        summary_info6 = gr.Textbox(label="Processed Content", lines=6,
-                                                interactive=False)
+                    with gr.Row(variant="panel"):
+                        summary_info6 = gr.Markdown("Remix video source content")
                     with gr.Tabs():
                         ### CREATE MP4 REMIX
                         with gr.Tab(label="Create MP4 Remix"):
