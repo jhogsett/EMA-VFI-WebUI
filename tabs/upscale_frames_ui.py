@@ -87,9 +87,6 @@ class UpscaleFrames(TabBase):
         if not is_safe_path(input_path):
             return gr.update(value=format_markdown(
                 f"The input path {input_path} is not valid", "error"))
-        if not os.path.exists(output_path):
-            return gr.update(value=format_markdown(
-                f"The input path {output_path} was not found", "error"))
         if not is_safe_path(output_path):
             return gr.update(value=format_markdown(
                 f"The input path {output_path} is not valid", "error"))
