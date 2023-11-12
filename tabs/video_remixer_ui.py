@@ -6,7 +6,7 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import format_markdown
+from webui_utils.simple_utils import format_markdown, style_row
 from webui_utils.file_utils import get_files, create_directory, get_directories, split_filepath, \
     is_safe_path, duplicate_directory
 from webui_utils.video_utils import details_from_group_name
@@ -110,7 +110,7 @@ class VideoRemixer(TabBase):
                 ### REMIX SETTINGS
                 with gr.Tab(SimpleIcons.TWO + " Remix Settings", id=self.TAB_REMIX_SETTINGS):
                     gr.Markdown("**Confirm Remixer Settings**")
-                    with gr.Box():
+                    with gr.Row(variant="panel"):
                         video_info1 = gr.Markdown("Video Details")
                     with gr.Row():
                         with gr.Column():
@@ -163,7 +163,7 @@ class VideoRemixer(TabBase):
                 ## SET UP PROJECT
                 with gr.Tab(SimpleIcons.THREE + " Set Up Project", id=self.TAB_SET_UP_PROJECT):
                     gr.Markdown("**Ready to Set Up Video Remixer Project**")
-                    with gr.Box():
+                    with gr.Row(variant="panel"):
                         project_info2 = gr.Markdown("Project Details")
                     with gr.Row():
                         thumbnail_type = gr.Radio(choices=["GIF", "JPG"], value="GIF",
@@ -247,7 +247,7 @@ class VideoRemixer(TabBase):
 
                 ## COMPILE SCENES
                 with gr.Tab(SimpleIcons.FIVE + " Compile Scenes", id=self.TAB_COMPILE_SCENES):
-                    with gr.Box():
+                    with gr.Row(variant="panel"):
                         project_info4 = gr.Markdown("Chosen Scene Details")
                     with gr.Row():
                         message_box4 = gr.Markdown(value=format_markdown(self.TAB4_DEFAULT_MESSAGE))
@@ -321,9 +321,8 @@ class VideoRemixer(TabBase):
                 ## SAVE REMIX
                 with gr.Tab(SimpleIcons.FINISH_FLAG + " Save Remix", id=self.TAB_SAVE_REMIX):
                     gr.Markdown("**Ready to Finalize Scenes and Save Remixed Video**")
-                    with gr.Row():
-                        summary_info6 = gr.Textbox(label="Processed Content", lines=6,
-                                                interactive=False)
+                    with gr.Row(variant="panel"):
+                        summary_info6 = gr.Markdown("Remix video source content")
                     with gr.Tabs():
                         ### CREATE MP4 REMIX
                         with gr.Tab(label="Create MP4 Remix"):
@@ -1306,7 +1305,7 @@ class VideoRemixer(TabBase):
 
     # User has clicked Process Remix from Process Remix
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option):
-        if not self.state.project_path:
+        if not self.state.project_path or not self.state.scenes_path:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
                    gr.update(value=format_markdown(
                     "The project has not yet been set up from the Set Up Project tab.", "error")), \
@@ -1397,7 +1396,8 @@ class VideoRemixer(TabBase):
                     self.state.save()
                     jot.down(f"Upscaled scenes created in {self.state.upscale_path}")
 
-            self.state.summary_info6 = jot.grab()
+            styled_report = "<br/>\r\n".join(style_row(jot.lines, color="more"))
+            self.state.summary_info6 = styled_report
             self.state.output_filepath = self.state.default_remix_filepath()
             output_filepath_custom = self.state.default_remix_filepath("CUSTOM")
             output_filepath_marked = self.state.default_remix_filepath("MARKED")
@@ -1409,7 +1409,7 @@ class VideoRemixer(TabBase):
 
             return gr.update(selected=self.TAB_SAVE_REMIX), \
                    gr.update(value=format_markdown(self.TAB5_DEFAULT_MESSAGE)), \
-                   jot.grab(), \
+                   styled_report, \
                    self.state.output_filepath, \
                    output_filepath_custom, \
                    output_filepath_marked, \
