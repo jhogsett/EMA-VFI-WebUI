@@ -70,6 +70,7 @@ class SimpleIcons:
     THUMBS_UP = "👍"
     VULCAN_HAND = "🖖"
 
+    CHECKMARK = "✅"
     COPYRIGHT = "©️"
     CROSSMARK = "❌"
     NO_ENTRY = "⛔"
@@ -122,21 +123,25 @@ class SimpleIcons:
     APP_SYMBOL = CLAPPER
     CONV_SYMBOL = STILL
     DEDUPE_SYMBOL = SCISSORS
+    NO_SYMBOL = CROSSMARK
     PROP_SYMBOL = PROPERTIES
     SLOW_SYMBOL = WATCH
     SPLIT_MERGE_SYMBOL = VULCAN_HAND
     SPOTLIGHT_SYMBOL = GEMSTONE
     TIPS_SYMBOL = QUESTION
+    YES_SYMBOL = CHECKMARK
 
     SYMBOLS = [
         APP_SYMBOL,
         CONV_SYMBOL,
         DEDUPE_SYMBOL,
+        NO_SYMBOL,
         PROP_SYMBOL,
         SLOW_SYMBOL,
         SPLIT_MERGE_SYMBOL,
         SPOTLIGHT_SYMBOL,
         TIPS_SYMBOL,
+        YES_SYMBOL
     ]
 
     APP_ICONS = [
@@ -145,6 +150,7 @@ class SimpleIcons:
         BANDAGE,
         BAR_CHART,
         BROKEN_HEART,
+        CHECKMARK,
         CINEMA,
         CLAPPER,
         COCKTAIL,

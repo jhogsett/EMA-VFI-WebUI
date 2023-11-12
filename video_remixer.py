@@ -7,7 +7,7 @@ from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncremen
 from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
     clean_directories, clean_filename
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import seconds_to_hmsf, shrink
+from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
     MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom, SourceToMP4
 from webui_utils.jot import Jot
@@ -166,12 +166,26 @@ class VideoRemixerState():
         return os.path.join(self.project_path, filename)
 
     def ingested_video_report(self):
-        with Jot() as jot:
-            jot.down(f"Source Video: {self.video_details['source_video']}")
-            jot.down(f"| Frame Rate | Duration | Display Size | Aspect Ratio | Content Size | Frame Count | File Size | Has Audio |")
-            jot.down(f"| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |")
-            jot.down(f"| {self.video_details['frame_rate']} | {self.video_details['duration']} | {self.video_details['display_dimensions']} | {self.video_details['display_aspect_ratio']} | {self.video_details['content_dimensions']} | {self.video_details['frame_count_show']} | {self.video_details['file_size']} | {True if self.video_details['has_audio'] else False} |")
-        return jot.grab()
+        title = f"Ingested Video Report: {self.source_video}"
+        header_row = [
+            "Frame Rate",
+            "Duration",
+            "Display Size",
+            "Aspect Ratio",
+            "Content Size",
+            "Frame Count",
+            "File Size",
+            "Has Audio"]
+        data_rows = [[
+            self.video_details['frame_rate'],
+            self.video_details['duration'],
+            self.video_details['display_dimensions'],
+            self.video_details['display_aspect_ratio'],
+            self.video_details['content_dimensions'],
+            self.video_details['frame_count_show'],
+            self.video_details['file_size'],
+            SimpleIcons.YES_SYMBOL if self.video_details['has_audio'] else SimpleIcons.NO_SYMBOL]]
+        return format_table(header_row, data_rows, color="more", title=title)
 
     PROJECT_PATH_PREFIX = "REMIX-"
     FILENAME_FILTER = [" ", "'", "[", "]"]
@@ -218,27 +232,88 @@ class VideoRemixerState():
     def calc_split_frames(self, fps, seconds):
         return round(float(fps) * float(seconds))
 
+    def _project_settings_report_scene(self):
+        header_row = [
+            "Frame Rate",
+            "Deinterlace",
+            "Resize To",
+            "Crop To",
+            "Split Type",
+            "Scene Detection Threshold"]
+        data_rows = [[
+            f"{float(self.project_fps):.2f}",
+            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
+            f"{self.resize_w} x {self.resize_h}",
+            f"{self.crop_w} x {self.crop_h}",
+            self.split_type,
+            self.scene_threshold]]
+        return header_row, data_rows
+
+    def _project_settings_report_break(self):
+        header_row = [
+            "Frame Rate",
+            "Deinterlace",
+            "Resize To",
+            "Crop To",
+            "Split Type",
+            "Minimum Duration",
+            "Black Ratio"]
+        data_rows = [[
+            f"{float(self.project_fps):.2f}",
+            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
+            f"{self.resize_w} x {self.resize_h}",
+            f"{self.crop_w} x {self.crop_h}",
+            self.split_type,
+            f"{self.break_duration}s",
+            self.break_ratio]]
+        return header_row, data_rows
+
+    def _project_settings_report_time(self):
+        header_row = [
+            "Frame Rate",
+            "Deinterlace",
+            "Resize To",
+            "Crop To",
+            "Split Type",
+            "Split Time",
+            "Split Frames"]
+        self.split_frames = self.calc_split_frames(self.project_fps, self.split_time)
+        data_rows = [[
+            f"{float(self.project_fps):.2f}",
+            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
+            f"{self.resize_w} x {self.resize_h}",
+            f"{self.crop_w} x {self.crop_h}",
+            self.split_type,
+            f"{self.split_time}s",
+            self.split_frames]]
+        return header_row, data_rows
+
+    def _project_settings_report_none(self):
+        header_row = [
+            "Frame Rate",
+            "Deinterlace",
+            "Resize To",
+            "Crop To",
+            "Split Type"]
+        data_rows = [[
+            f"{float(self.project_fps):.2f}",
+            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
+            f"{self.resize_w} x {self.resize_h}",
+            f"{self.crop_w} x {self.crop_h}",
+            self.split_type]]
+        return header_row, data_rows
+
     def project_settings_report(self):
-        with Jot() as jot:
-            jot.down(f"Project Path: {self.project_path}")
-            if self.split_type == "Scene":
-                jot.down(f"| Frame Rate | Deinterlace | Resize To | Crop To | Split Type | Scene Detection Threshold |")
-                jot.down(f"| :-: | :-: | :-: | :-: | :-: | :-: |")
-                jot.down(f"| {float(self.project_fps):.2f} | {self.deinterlace} | {self.resize_w} x {self.resize_h} | {self.crop_w} x {self.crop_h} | {self.split_type} | {self.scene_threshold} |")
-            elif self.split_type == "Break":
-                jot.down(f"| Frame Rate | Deinterlace | Resize To | Crop To | Split Type | Minimum Duration | Black Ratio |")
-                jot.down(f"| :-: | :-: | :-: | :-: | :-: | :-: | :-: |")
-                jot.down(f"| {float(self.project_fps):.2f} | {self.deinterlace} | {self.resize_w} x {self.resize_h} | {self.crop_w} x {self.crop_h} | {self.split_type} | {self.break_duration} | {self.break_ratio} |")
-            elif self.split_type == "Time":
-                self.split_frames = self.calc_split_frames(self.project_fps, self.split_time)
-                jot.down(f"| Frame Rate | Deinterlace | Resize To | Crop To | Split Type | Split Time | Split Frames |")
-                jot.down(f"| :-: | :-: | :-: | :-: | :-: | :-: | :-: |")
-                jot.down(f"| {float(self.project_fps):.2f} | {self.deinterlace} | {self.resize_w} x {self.resize_h} | {self.crop_w} x {self.crop_h} | {self.split_type} | {self.split_time}s | {self.split_frames} |")
-            else: # "None"
-                jot.down(f"| Frame Rate | Deinterlace | Resize To | Crop To | Split Type |")
-                jot.down(f"| :-: | :-: | :-: | :-: | :-: |")
-                jot.down(f"| {float(self.project_fps):.2f} | {self.deinterlace} | {self.resize_w} x {self.resize_h} | {self.crop_w} x {self.crop_h} | {self.split_type} |")
-        return jot.grab()
+        title = f"Project Path: {self.project_path}"
+        if self.split_type == "Scene":
+            header_row, data_rows = self._project_settings_report_scene()
+        elif self.split_type == "Break":
+            header_row, data_rows = self._project_settings_report_break()
+        elif self.split_type == "Time":
+            header_row, data_rows = self._project_settings_report_time()
+        else: # "None"
+            header_row, data_rows = self._project_settings_report_none()
+        return format_table(header_row, data_rows, color="more", title=title)
 
     # keep project's own copy of original video
     # it will be needed later to cut thumbnails and audio clips
@@ -645,6 +720,11 @@ class VideoRemixerState():
         return seconds_to_hmsf(frames / self.project_fps, self.project_fps)
 
     def chosen_scenes_report(self):
+        header_row = [
+            "Scene Choices",
+            "Scenes",
+            "Frames",
+            "Time"]
         all_scenes = len(self.scene_names)
         all_frames = self.scene_frames("all")
         all_time = self.scene_frames_time(all_frames)
@@ -654,14 +734,23 @@ class VideoRemixerState():
         drop_scenes = len(self.dropped_scenes())
         drop_frames = self.scene_frames("drop")
         drop_time = self.scene_frames_time(drop_frames)
-
-        with Jot() as jot:
-            jot.down(f"| Scene Choices | Scenes | Frames | Time |")
-            jot.down(f"| :-: | :-: | :-: | :-: |")
-            jot.down(f"| Keep {SimpleIcons.HEART} | {keep_scenes:,d} | {keep_frames:,d} | +{keep_time} |")
-            jot.down(f"| Drop | {drop_scenes:,d} | {drop_frames:,d} | +{drop_time} |")
-            jot.down(f"| Total | {all_scenes:,d} | {all_frames:,d} | +{all_time} |")
-        return jot.grab()
+        data_rows = [
+            [
+                "Keep " + SimpleIcons.HEART,
+                f"{keep_scenes:,d}",
+                f"{keep_frames:,d}",
+                f"+{keep_time}"],
+            [
+                "Drop",
+                f"{drop_scenes:,d}",
+                f"{drop_frames:,d}",
+                f"+{drop_time}"],
+            [
+                "Total",
+                f"{all_scenes:,d}",
+                f"{all_frames:,d}",
+                f"+{all_time}"]]
+        return format_table(header_row, data_rows, color="more")
 
     def uncompile_scenes(self):
         dropped_dirs = get_directories(self.dropped_scenes_path)

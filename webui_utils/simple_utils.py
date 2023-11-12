@@ -251,11 +251,19 @@ TEXT_TO_HTML = {
 STYLE_COLORS = {
     "none" : "",
     "info" : "color:hsl(120 100% 65%)",
-    "more" : "color:hsl(29 100% 75%)",
+    "more" : "color:hsl(39 100% 65%)",
     "warning" : "color:hsl(60 100% 65%)",
     "error" : "color:hsl(0 100% 65%)",
     "highlight" : "color:hsl(284 100% 65%)",
 }
+
+def _compute_style(color : str, bold : bool, italic : bool):
+    color_style = STYLE_COLORS.get(color, "")
+    font_weight = "font-weight:bold" if bold else ""
+    font_style = "font-style:italic" if italic else ""
+    styles = [color_style, font_weight, font_style]
+    return ";".join([style for style in styles if style])
+
 def _format_markdown_line(text : str, style : str):
     terminate = text.find(TEXT_TERM) != -1
     for k,v in TEXT_TO_HTML.items():
@@ -264,13 +272,8 @@ def _format_markdown_line(text : str, style : str):
     return f"<span style=\"{style}\">{text}</span>{term}"
 
 def format_markdown(text, color="info", bold=True, bold_heading_only=False, italic=False):
-    font_weight = "font-weight:bold" if bold else ""
-    font_style = "font-style:italic" if italic else ""
-    color_style = STYLE_COLORS.get(color, "")
-
-    heading_style = ";".join([color_style, font_weight, font_style])
-    lines_style = heading_style if not bold_heading_only else ";".join([color_style, font_style])
-
+    heading_style = _compute_style(color, bold, italic)
+    lines_style = _compute_style(color, False, italic) if bold_heading_only else heading_style
     lines = text.splitlines()
     if len(lines) == 1:
         return _format_markdown_line(text, heading_style)
@@ -283,3 +286,43 @@ def format_markdown(text, color="info", bold=True, bold_heading_only=False, ital
             else:
                 result.append(_format_markdown_line(line, lines_style))
         return "\r\n".join(result)
+
+def _format_text(text, color="info", bold=False, italic=False):
+    style = _compute_style(color, bold, italic)
+    return f"<span style='{style}'>{text}</span>"
+
+def _format_table_row(row : list):
+    return "| " + " | ".join(row) + " |"
+
+def _format_table_aligner(row : list):
+    aligner_row = [":-:" for _ in row]
+    return _format_table_row(aligner_row)
+
+def style_row(row : str | list, color="info", bold=False, italic=False):
+    if isinstance(row, str):
+        return _format_text(row, color, bold, italic)
+    else:
+        return [_format_text(entry, color, bold, italic) for entry in row]
+
+def format_table(header_row : list,
+                 data_rows : list[list],
+                 color : str="info",
+                 title : str=None):
+    num_cols = len(header_row)
+    if num_cols < 1:
+        raise ValueError("header row must have one more more entries")
+
+    styled_header_row = style_row(header_row, color=color)
+    table = []
+
+    if title:
+        table.append(_format_text(title, color=color, bold=True, italic=True))
+
+    table.append(_format_table_row(styled_header_row))
+    table.append(_format_table_aligner(header_row))
+
+    for row in data_rows:
+        styled_row = style_row(row, color=color)
+        table.append(_format_table_row(styled_row))
+
+    return "\r\n".join(table)
