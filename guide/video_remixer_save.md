@@ -3,7 +3,7 @@
 The _Processed Content_ box shows a summary of the completed processing.
 
 ## How To Use
-1. Choose _Create MP4 Remix, Create Custom Remix_ or _Create Marked Remix_
+1. Choose _Create MP4 Remix, Create Custom Remix_, _Create Marked Remix_ or _Create Labeled Remix_
     - If **Create MP4 Remix**
         - Choose _Video Quality_
             - Lower values mean higher quality videos
@@ -31,9 +31,36 @@ The _Processed Content_ box shows a summary of the completed processing.
             - Optionally, customize the FFmpeg audio output settings
             - The entered value is used when combining video clips with original WAV audio
             - It's passed to FFMpeg as options for the audio+video output files
-1. Click _Save Remix, Save Custom Remix_ or _Save Marked Remix_
+    - If **Create Labeled Remix**
+        - Enter the _Label Text_
+        - Leave the remaining options set _as-is_
+            - Optionally, customize the label settings:
+            - Uncheck _Label at Top_ to place the label at the bottom
+            - Set _Font File_ to a font file within the application's root folder
+                - The font must be one supported by the installed version of FFmpeg
+                - Font files outside of the appplication root folder are not supported
+            - Set _Font Factor_ to the size of the label text
+                - Smaller values produce larger text
+                - Font size is computed as _image width_ / _font factor_
+            - Set _Font Color_ to the color and opacity of the label text
+                - Color can be specified in any format recognized by the FFmpeg _drawtext_ filter
+                - Examples:
+                    - `CornflowerBlue`
+                    - `#32CD32`
+                    - `random`
+                - Opacity can optionally be set:
+                    - `white@0.9`
+                    - `0x9400D3@0x4f`
+                    - `#FA8072AA`
+            - Leave _Background_ checked to draw a box underneath the label text
+            - Set _Border Factor_ to the size of the margin between the text and the background
+                - Smaller values produce larger margins
+                - Margin size is computed as _computed font size_ / _border factor_
+            - Set _Border Color_ to the color and opacity of the label text
+                - Color can be specified in any format recognized by the FFmpeg _drawtext_ filter
+1. Click _Save Remix, Save Custom Remix_, _Save Marked Remix_ or _Save Labeled Remix_
     - The previously processed video and audio clips are merged
-    - The final video is concatenated from the clips (without re-encoding)
+    - Note: The final video is concatenated from the clips without being re-encoding for the highest quality
 
 ## Important
 - `ffmpeg.exe` must be available on the system path
