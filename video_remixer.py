@@ -1320,6 +1320,27 @@ class VideoRemixerState():
         else:
             scenes_base_path = self.scenes_path
 
+        if custom_video_options.find("<LABEL>"):
+            if not draw_text_options:
+                raise RuntimeError("'draw_text_options' is None at create_custom_video_clips()")
+            try:
+                font_factor = draw_text_options["font_size"]
+                font_color = draw_text_options["font_color"]
+                font_file = draw_text_options["font_file"]
+                draw_box = draw_text_options["draw_box"]
+                box_color = draw_text_options["box_color"]
+                border_factor = draw_text_options["border_size"]
+                marked_at_top = draw_text_options["marked_at_top"]
+                crop_width = draw_text_options["crop_width"]
+            except IndexError as error:
+                raise RuntimeError(f"error retrieving 'draw_text_options': {error}")
+
+            font_size = crop_width / float(font_factor)
+            border_size = font_size / float(border_factor)
+            box_x = "(w-text_w)/2"
+            box_y = "(text_h*1)" if marked_at_top else f"h-(text_h*2)-({2*int(border_size)})"
+            box = "1" if draw_box else "0"
+
         video_clip_fps = 2 * self.project_fps if self.inflate else self.project_fps
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
             for scene_name in kept_scenes:
@@ -1328,39 +1349,24 @@ class VideoRemixerState():
                                                      f"{scene_name}.{custom_ext}")
 
                 use_custom_video_options = custom_video_options
-                if use_custom_video_options.find("<SCENE_INFO>"):
-                    if not draw_text_options:
-                        raise RuntimeError("'draw_text_options' is None at create_custom_video_clips()")
-                    font_factor = draw_text_options["font_size"]
-                    font_color = draw_text_options["font_color"]
-                    font_file = draw_text_options["font_file"]
-                    draw_box = draw_text_options["draw_box"]
-                    box_color = draw_text_options["box_color"]
-                    border_factor = draw_text_options["border_size"]
-                    marked_at_top = draw_text_options["marked_at_top"]
-                    crop_width = draw_text_options["crop_width"]
-                    # crop_height = draw_text_options["crop_height"]
-
-                    font_size = crop_width / float(font_factor)
-                    border_size = font_size / float(border_factor)
-
-                    box_x = "(w-text_w)/2"
-                    box_y = "(text_h*1)" if marked_at_top else f"h-(text_h*2)-({2*int(border_size)})"
-                    box = "1" if draw_box else "0"
-
-                    try:
+                if use_custom_video_options.find("<LABEL>"):
+                    label = draw_text_options.get("label")
+                    if not label:
                         scene_index = self.scene_names.index(scene_name)
                         _, _, _, _, scene_start, scene_duration, _ = \
                             self.scene_chooser_data(scene_index)
-                        scene_info = f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]"
+                        label = f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]"
+
+                    try:
                         # FFmpeg needs the colons escaped
-                        scene_info = scene_info.replace(":", "\:")
-                        draw_text = f"text='{scene_info}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}':box={box}:boxcolor={box_color}:boxborderw={border_size}"
-                        use_custom_video_options = use_custom_video_options\
-                            .replace("<SCENE_INFO>", draw_text)
+                        label = label.replace(":", "\:")
+                        draw_text = f"text='{label}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}':box={box}:boxcolor={box_color}:boxborderw={border_size}"
+                        use_custom_video_options = use_custom_video_options \
+                            .replace("<LABEL>", draw_text)
+
                     except IndexError as error:
                         use_custom_video_options = use_custom_video_options\
-                            .replace("<SCENE_INFO>", f"[{error}]")
+                            .replace("<LABEL>", f"[{error}]")
 
                 ResequenceFiles(scene_input_path,
                                 "png",
