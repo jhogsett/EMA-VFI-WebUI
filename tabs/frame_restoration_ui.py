@@ -8,7 +8,7 @@ from webui_utils.image_utils import create_gif
 from webui_utils.file_utils import create_zip, create_directory
 from webui_utils.ui_utils import create_report
 from webui_utils.auto_increment import AutoIncrementDirectory
-from webui_utils.simple_utils import restored_frame_fractions, restored_frame_predictions
+from webui_utils.simple_utils import restored_frame_fractions, restored_frame_predictions, format_markdown
 from webui_utils.ui_utils import update_info_fr
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
@@ -24,6 +24,8 @@ class FrameRestoration(TabBase):
                     engine : InterpolateEngine,
                     log_fn : Callable):
         TabBase.__init__(self, config, engine, log_fn)
+
+    DEFAULT_MESSAGE = "Click Restore Frames to: Create multiple interpolated replacement frames"
 
     def render_tab(self):
         """Render tab into UI"""
@@ -59,19 +61,25 @@ class FrameRestoration(TabBase):
             predictions_default = restored_frame_predictions(default_frames, default_precision)
             predictions_output_fr = gr.Textbox(value=predictions_default,
                 label="Predicted Matches", max_lines=1, interactive=False)
-            restore_button_fr = gr.Button("Restore Frames", variant="primary")
+            message_box = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE))
+            gr.Markdown("*Progress can be tracked in the console*")
+            restore_button_fr = gr.Button("Restore Frames " + SimpleIcons.SLOW_SYMBOL,
+                                          variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.frame_restoration.render()
-        restore_button_fr.click(self.frame_restoration,
-            inputs=[img1_input_fr, img2_input_fr, frames_input_fr,
-                precision_input_fr],
-            outputs=[img_output_fr, file_output_fr])
+
         frames_input_fr.change(update_info_fr,
             inputs=[frames_input_fr, precision_input_fr],
             outputs=[times_output_fr, predictions_output_fr], show_progress=False)
+
         precision_input_fr.change(update_info_fr,
             inputs=[frames_input_fr, precision_input_fr],
             outputs=[times_output_fr, predictions_output_fr], show_progress=False)
+
+        restore_button_fr.click(self.frame_restoration,
+            inputs=[img1_input_fr, img2_input_fr, frames_input_fr,
+                precision_input_fr],
+            outputs=[img_output_fr, file_output_fr, message_box])
 
     def frame_restoration(self,
                         img_before_file : str,
@@ -79,44 +87,48 @@ class FrameRestoration(TabBase):
                         num_frames : float,
                         num_splits : float):
         """Restore Frames button handler"""
-        if img_before_file and img_after_file:
-            interpolater = Interpolate(self.engine.model, self.log)
-            target_interpolater = TargetInterpolate(interpolater, self.log)
-            use_time_step = self.config.engine_settings["use_time_step"]
-            frame_restorer = RestoreFrames(interpolater, target_interpolater, use_time_step,
-                                           self.log)
-            base_output_path = self.config.directories["output_restoration"]
-            create_directory(base_output_path)
-            output_path, run_index = AutoIncrementDirectory(base_output_path).next_directory("run")
-            output_basename = "restored_frame"
 
-            self.log(f"beginning frame restorations at {output_path}")
-            frame_restorer.restore_frames(img_before_file, img_after_file, num_frames,
-                num_splits, output_path, output_basename)
-            output_paths = frame_restorer.output_paths
+        if not img_before_file or not img_after_file:
+            return None, None, gr.update(value=format_markdown(
+                "Please choose a Before Frame and After Frame to begin", "warning"))
 
-            downloads = []
-            preview_gif = None
-            if self.config.restoration_settings["create_gif"]:
-                preview_gif = os.path.join(output_path, output_basename + str(run_index) + ".gif")
-                self.log(f"creating preview file {preview_gif}")
-                duration = self.config.restoration_settings["gif_duration"] / len(output_paths)
-                # gif_paths = [img_before_file, *output_paths, img_after_file]
-                # create_gif(gif_paths, preview_gif, duration=duration)
-                create_gif(output_paths, preview_gif, duration=duration)
-                downloads.append(preview_gif)
+        interpolater = Interpolate(self.engine.model, self.log)
+        target_interpolater = TargetInterpolate(interpolater, self.log)
+        use_time_step = self.config.engine_settings["use_time_step"]
+        frame_restorer = RestoreFrames(interpolater, target_interpolater, use_time_step,
+                                        self.log)
+        base_output_path = self.config.directories["output_restoration"]
+        create_directory(base_output_path)
+        output_path, run_index = AutoIncrementDirectory(base_output_path).next_directory("run")
+        output_basename = "restored_frame"
 
-            if self.config.restoration_settings["create_zip"]:
-                download_zip = os.path.join(output_path, output_basename + str(run_index) + ".zip")
-                self.log("creating zip of frame files")
-                create_zip(output_paths, download_zip)
-                downloads.append(download_zip)
+        self.log(f"beginning frame restorations at {output_path}")
+        frame_restorer.restore_frames(img_before_file, img_after_file, num_frames,
+            num_splits, output_path, output_basename)
+        output_paths = frame_restorer.output_paths
 
-            if self.config.restoration_settings["create_txt"]:
-                info_file = os.path.join(output_path, output_basename + str(run_index) + ".txt")
-                create_report(info_file, img_before_file, img_after_file, num_splits, output_path,
-                    output_paths)
-                downloads.append(info_file)
+        downloads = []
+        preview_gif = None
+        if self.config.restoration_settings["create_gif"]:
+            preview_gif = os.path.join(output_path, output_basename + str(run_index) + ".gif")
+            self.log(f"creating preview file {preview_gif}")
+            duration = self.config.restoration_settings["gif_duration"] / len(output_paths)
+            create_gif(output_paths, preview_gif, duration=duration)
+            downloads.append(preview_gif)
 
-            return gr.Image.update(value=preview_gif), gr.File.update(value=downloads,
-                visible=True)
+        if self.config.restoration_settings["create_zip"]:
+            download_zip = os.path.join(output_path, output_basename + str(run_index) + ".zip")
+            self.log("creating zip of frame files")
+            create_zip(output_paths, download_zip)
+            downloads.append(download_zip)
+
+        if self.config.restoration_settings["create_txt"]:
+            info_file = os.path.join(output_path, output_basename + str(run_index) + ".txt")
+            create_report(info_file, img_before_file, img_after_file, num_splits, output_path,
+                output_paths)
+            downloads.append(info_file)
+
+        message = f"Restored frames saved to {os.path.abspath(output_path)}"
+        return gr.Image.update(value=preview_gif), \
+            gr.File.update(value=downloads, visible=True), \
+            gr.update(value=format_markdown(message))

@@ -119,7 +119,7 @@ class VideoInflation(TabBase):
             message = "\r\n".join(errors)
             return gr.update(value=format_markdown(message, "error"))
         else:
-            message = f"Batch processed inflated frames saved to {output_path}"
+            message = f"Batch processed inflated frames saved to {os.path.abspath(output_path)}"
             return gr.update(value=format_markdown(message))
 
     def video_inflation(self, input_path : str, output_path : str | None, num_splits : float, interactive : bool=True):
@@ -166,7 +166,7 @@ class VideoInflation(TabBase):
         series_interpolater.interpolate_series(file_list, output_path, num_splits,
             output_basename)
 
-        message = f"Inflated frames saved to {output_path}"
+        message = f"Inflated frames saved to {os.path.abspath(output_path)}"
         if interactive:
             return gr.update(value=format_markdown(message))
         else:
