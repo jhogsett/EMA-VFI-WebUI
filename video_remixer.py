@@ -7,7 +7,7 @@ from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncremen
 from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
     clean_directories, clean_filename
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import seconds_to_hmsf, shrink
+from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
     MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom, SourceToMP4
 from webui_utils.jot import Jot
@@ -166,12 +166,26 @@ class VideoRemixerState():
         return os.path.join(self.project_path, filename)
 
     def ingested_video_report(self):
-        with Jot() as jot:
-            jot.down(f"Source Video: {self.video_details['source_video']}")
-            jot.down(f"| Frame Rate | Duration | Display Size | Aspect Ratio | Content Size | Frame Count | File Size | Has Audio |")
-            jot.down(f"| :-: | :-: | :-: | :-: | :-: | :-: | :-: | :-: |")
-            jot.down(f"| {self.video_details['frame_rate']} | {self.video_details['duration']} | {self.video_details['display_dimensions']} | {self.video_details['display_aspect_ratio']} | {self.video_details['content_dimensions']} | {self.video_details['frame_count_show']} | {self.video_details['file_size']} | {True if self.video_details['has_audio'] else False} |")
-        return jot.grab()
+        title = f"Ingested Video Report: {self.source_video}"
+        header_row = [
+            "Frame Rate",
+            "Duration",
+            "Display Size",
+            "Aspect Ratio",
+            "Content Size",
+            "Frame Count",
+            "File Size",
+            "Has Audio"]
+        data_row = [[
+            f"{self.video_details['frame_rate']}",
+            f"{self.video_details['duration']}",
+            f"{self.video_details['display_dimensions']}",
+            f"{self.video_details['display_aspect_ratio']}",
+            f"{self.video_details['content_dimensions']}",
+            f"{self.video_details['frame_count_show']}",
+            f"{self.video_details['file_size']}",
+            SimpleIcons.YES_SYMBOL if self.video_details['has_audio'] else SimpleIcons.NO_SYMBOL]]
+        return format_table(header_row, data_row, color="more", title=title)
 
     PROJECT_PATH_PREFIX = "REMIX-"
     FILENAME_FILTER = [" ", "'", "[", "]"]
