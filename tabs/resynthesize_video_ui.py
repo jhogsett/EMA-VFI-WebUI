@@ -111,7 +111,7 @@ class ResynthesizeVideo(TabBase):
             message = "\r\n".join(errors)
             return gr.update(value=format_markdown(message, "error"))
         else:
-            message = f"Batch processed resynthesized frames saved to {output_path}"
+            message = f"Batch processed resynthesized frames saved to {os.path.abspath(output_path)}"
             return gr.update(value=format_markdown(message))
 
     def resynthesize_video(self, input_path : str, output_path : str | None, interactive : bool=True):
@@ -162,7 +162,7 @@ class ResynthesizeVideo(TabBase):
         ResequenceFiles(output_path, "png", "resynthesized_frame", 1, 1, 1, 0, -1, True,
             self.log).resequence()
 
-        message = f"Resynthesized frames saved to {output_path}"
+        message = f"Resynthesized frames saved to {os.path.abspath(output_path)}"
         if interactive:
             return gr.update(value=format_markdown(message))
         else:
