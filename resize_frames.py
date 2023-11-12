@@ -82,8 +82,8 @@ class ResizeFrames:
         try:
             return {
                 "lanczos" : cv2.INTER_LANCZOS4,
-                "nearest" : cv2.INTER_NEAREST,
-                "linear" : cv2.INTER_LINEAR,
+                "nearest" : cv2.INTER_NEAREST_EXACT,
+                "linear" : cv2.INTER_LINEAR_EXACT,
                 "cubic" : cv2.INTER_CUBIC,
                 "area" : cv2.INTER_AREA,
                 "none" : None
