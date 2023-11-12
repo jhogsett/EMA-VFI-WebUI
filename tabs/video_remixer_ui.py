@@ -71,6 +71,14 @@ class VideoRemixer(TabBase):
         def_min_frames = self.config.remixer_settings["min_frames_per_scene"]
         marked_ffmpeg_video = self.config.remixer_settings["marked_ffmpeg_video"]
         marked_ffmpeg_audio = self.config.remixer_settings["marked_ffmpeg_audio"]
+        default_label_font_size = self.config.remixer_settings["marked_font_size"]
+        default_label_font_color = self.config.remixer_settings["marked_font_color"]
+        default_label_font_file = self.config.remixer_settings["marked_font_file"]
+        default_label_draw_box = self.config.remixer_settings["marked_draw_box"]
+        default_label_box_color = self.config.remixer_settings["marked_box_color"]
+        default_label_border_size = self.config.remixer_settings["marked_border_size"]
+        default_label_at_top = self.config.remixer_settings["marked_at_top"]
+
         with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Video Remixer"):
             gr.Markdown(
                 SimpleIcons.MOVIE + "Restore & Remix Videos with Audio")
@@ -384,13 +392,25 @@ class VideoRemixer(TabBase):
 
                         ### CREATE LABELED REMIX
                         with gr.Tab(label="Create Labeled Remix"):
-                            quality_slider_labeled = gr.Slider(minimum=minimum_crf,
-                                maximum=maximum_crf, step=1, value=default_crf,
-                                label="Video Quality",
-                                info="Lower values mean higher video quality")
-                            output_filepath_labeled = gr.Textbox(label="Output Filepath",
-                                max_lines=1,
-                                info="Enter a path and filename for the remixed video")
+                            with gr.Row():
+                                label_text = gr.Textbox(label="Label Text", max_lines=1)
+                                label_at_top = gr.Checkbox(value=default_label_at_top, label="Label at Top", info="Whether to place the label at the top or at the bottom")
+                            with gr.Row():
+                                label_font_file = gr.Textbox(value=default_label_font_file, label="Font File", max_lines=1, info="Font file within the application directory")
+                                label_font_size = gr.Number(value=default_label_font_size, label="Font Factor", info="Size as a factor of frame width, smaller values produce larger text")
+                                label_font_color = gr.Textbox(value=default_label_font_color, label="Font Color", max_lines=1, info="Font color and opacity in FFmpeg 'drawtext' filter format")
+                            with gr.Row():
+                                label_draw_box = gr.Checkbox(value=default_label_draw_box, label="Background", info="Draw a background underneath the label text")
+                                label_border_size = gr.Number(value=default_label_border_size, label="Border Factor", info="Size as a factor of computed font size, smaller values produce a large margin")
+                                label_box_color = gr.Textbox(value=default_label_box_color, label="Background Color", max_lines=1, info="Background color and opacity in FFmpeg 'drawtext' filter format")
+                            with gr.Row():
+                                quality_slider_labeled = gr.Slider(minimum=minimum_crf,
+                                    maximum=maximum_crf, step=1, value=default_crf,
+                                    label="Video Quality",
+                                    info="Lower values mean higher video quality")
+                                output_filepath_labeled = gr.Textbox(label="Output Filepath",
+                                    max_lines=1,
+                                    info="Enter a path and filename for the remixed video")
                             with gr.Row():
                                 message_box63 = gr.Markdown(value=format_markdown(self.TAB63_DEFAULT_MESSAGE))
                             gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
@@ -774,7 +794,9 @@ class VideoRemixer(TabBase):
         back_button62.click(self.back_button6, outputs=tabs_video_remixer)
 
         next_button63.click(self.next_button63,
-                        inputs=[output_filepath_labeled, quality_slider_labeled],
+                        inputs=[label_text, label_font_size, label_font_color, label_font_file,
+                                label_draw_box, label_box_color, label_border_size, label_at_top,
+                                output_filepath_labeled, quality_slider_labeled],
                         outputs=message_box63)
 
         back_button63.click(self.back_button6, outputs=tabs_video_remixer)
@@ -1614,26 +1636,35 @@ class VideoRemixer(TabBase):
             return gr.update(value=format_markdown(str(error), "error"))
 
     # User has clicked Save Labeled Remix from Save Remix
-    def next_button63(self, output_filepath, quality):
+    def next_button63(self,
+                      label_text,
+                      label_font_size,
+                      label_font_color,
+                      label_font_file,
+                      label_draw_box,
+                      label_box_color,
+                      label_border_size,
+                      label_at_top,
+                      output_filepath,
+                      quality):
         if not self.state.project_path:
             return gr.update(value=format_markdown(
                     "The project has not yet been set up from the Set Up Project tab.", "error"))
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             draw_text_options = {}
-            draw_text_options["font_size"] = self.config.remixer_settings["marked_font_size"]
-            draw_text_options["font_color"] = self.config.remixer_settings["marked_font_color"]
-            draw_text_options["font_file"] = self.config.remixer_settings["marked_font_file"]
-            draw_text_options["draw_box"] = self.config.remixer_settings["marked_draw_box"]
-            draw_text_options["box_color"] = self.config.remixer_settings["marked_box_color"]
-            draw_text_options["border_size"] = self.config.remixer_settings["marked_border_size"]
-            draw_text_options["marked_at_top"] = self.config.remixer_settings["marked_at_top"]
+            draw_text_options["font_size"] = label_font_size
+            draw_text_options["font_color"] = label_font_color
+            draw_text_options["font_file"] = label_font_file
+            draw_text_options["draw_box"] = label_draw_box
+            draw_text_options["box_color"] = label_box_color
+            draw_text_options["border_size"] = label_border_size
+            draw_text_options["marked_at_top"] = label_at_top
 
             labeled_video_options = self.config.remixer_settings["labeled_ffmpeg_video"]
             labeled_audio_options = self.config.remixer_settings["labeled_ffmpeg_audio"]
 
             labeled_video_options = labeled_video_options.replace("<CRF>", str(quality))
-            label_text = "label"
             draw_text_options["label"] = label_text
 
             # account for upscaling
