@@ -17,6 +17,7 @@ from tabs.tab_base import TabBase
 from video_remixer import VideoRemixerState
 from webui_utils.mtqdm import Mtqdm
 from webui_utils.session import Session
+from ffmpy import FFRuntimeError
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -58,6 +59,7 @@ class VideoRemixer(TabBase):
     TAB60_DEFAULT_MESSAGE = "Click Save Remix to: Combine Processed Content with Audio Clips and Save Remix Video"
     TAB61_DEFAULT_MESSAGE = "Click Save Custom Remix to: Apply Custom Options and save Custom Remix Video"
     TAB62_DEFAULT_MESSAGE = "Click Save Marked Remix to: Apply Marking Options and save Marked Remix Video"
+    TAB63_DEFAULT_MESSAGE = "Click Save Labeled Remix to: Add Label and save Remix Video"
 
     def render_tab(self):
         """Render tab into UI"""
@@ -70,6 +72,14 @@ class VideoRemixer(TabBase):
         def_min_frames = self.config.remixer_settings["min_frames_per_scene"]
         marked_ffmpeg_video = self.config.remixer_settings["marked_ffmpeg_video"]
         marked_ffmpeg_audio = self.config.remixer_settings["marked_ffmpeg_audio"]
+        default_label_font_size = self.config.remixer_settings["marked_font_size"]
+        default_label_font_color = self.config.remixer_settings["marked_font_color"]
+        default_label_font_file = self.config.remixer_settings["marked_font_file"]
+        default_label_draw_box = self.config.remixer_settings["marked_draw_box"]
+        default_label_box_color = self.config.remixer_settings["marked_box_color"]
+        default_label_border_size = self.config.remixer_settings["marked_border_size"]
+        default_label_at_top = self.config.remixer_settings["marked_at_top"]
+
         with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Video Remixer"):
             gr.Markdown(
                 SimpleIcons.MOVIE + "Restore & Remix Videos with Audio")
@@ -379,6 +389,36 @@ class VideoRemixer(TabBase):
                                 back_button62 = gr.Button(value="< Back", variant="secondary", scale=0)
                                 next_button62 = gr.Button(
                                     value="Save Marked Remix " + SimpleIcons.SLOW_SYMBOL,
+                                    variant="primary", elem_id="highlightbutton")
+
+                        ### CREATE LABELED REMIX
+                        with gr.Tab(label="Create Labeled Remix"):
+                            with gr.Row():
+                                label_text = gr.Textbox(label="Label Text", max_lines=1, placeholder="Leave blank to use same label as Marked Remix tab")
+                                label_at_top = gr.Checkbox(value=default_label_at_top, label="Label at Top", info="Whether to place the label at the top or at the bottom")
+                            with gr.Row():
+                                label_font_file = gr.Textbox(value=default_label_font_file, label="Font File", max_lines=1, info="Font file within the application directory")
+                                label_font_size = gr.Number(value=default_label_font_size, label="Font Factor", info="Size as a factor of frame width, smaller values produce larger text")
+                                label_font_color = gr.Textbox(value=default_label_font_color, label="Font Color", max_lines=1, info="Font color and opacity in FFmpeg 'drawtext' filter format")
+                            with gr.Row():
+                                label_draw_box = gr.Checkbox(value=default_label_draw_box, label="Background", info="Draw a background underneath the label text")
+                                label_border_size = gr.Number(value=default_label_border_size, label="Border Factor", info="Size as a factor of computed font size, smaller values produce a large margin")
+                                label_box_color = gr.Textbox(value=default_label_box_color, label="Background Color", max_lines=1, info="Background color and opacity in FFmpeg 'drawtext' filter format")
+                            with gr.Row():
+                                quality_slider_labeled = gr.Slider(minimum=minimum_crf,
+                                    maximum=maximum_crf, step=1, value=default_crf,
+                                    label="Video Quality",
+                                    info="Lower values mean higher video quality")
+                                output_filepath_labeled = gr.Textbox(label="Output Filepath",
+                                    max_lines=1,
+                                    info="Enter a path and filename for the remixed video")
+                            with gr.Row():
+                                message_box63 = gr.Markdown(value=format_markdown(self.TAB63_DEFAULT_MESSAGE))
+                            gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                            with gr.Row():
+                                back_button63 = gr.Button(value="< Back", variant="secondary", scale=0)
+                                next_button63 = gr.Button(
+                                    value="Save Labeled Remix " + SimpleIcons.SLOW_SYMBOL,
                                     variant="primary", elem_id="highlightbutton")
 
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -728,8 +768,8 @@ class VideoRemixer(TabBase):
         next_button5.click(self.next_button5,
                     inputs=[resynthesize, inflate, resize, upscale, upscale_option],
                     outputs=[tabs_video_remixer, message_box5, summary_info6, output_filepath,
-                             output_filepath_custom, output_filepath_marked, message_box60,
-                             message_box61, message_box62])
+                             output_filepath_custom, output_filepath_marked, output_filepath_labeled,
+                             message_box60, message_box61, message_box62, message_box63])
 
         back_button5.click(self.back_button5, outputs=tabs_video_remixer)
 
@@ -753,6 +793,14 @@ class VideoRemixer(TabBase):
                         outputs=message_box62)
 
         back_button62.click(self.back_button6, outputs=tabs_video_remixer)
+
+        next_button63.click(self.next_button63,
+                        inputs=[label_text, label_font_size, label_font_color, label_font_file,
+                                label_draw_box, label_box_color, label_border_size, label_at_top,
+                                output_filepath_labeled, quality_slider_labeled],
+                        outputs=message_box63)
+
+        back_button63.click(self.back_button6, outputs=tabs_video_remixer)
 
         drop_button700.click(self.drop_button700, inputs=scene_id_700, outputs=message_box700)
 
@@ -1305,11 +1353,12 @@ class VideoRemixer(TabBase):
 
     # User has clicked Process Remix from Process Remix
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option):
+        noop_args = self.noop_args(8)
         if not self.state.project_path or not self.state.scenes_path:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
                    gr.update(value=format_markdown(
                     "The project has not yet been set up from the Set Up Project tab.", "error")), \
-                   *self.noop_args(7)
+                   *noop_args
 
         self.state.resynthesize = resynthesize
         self.state.inflate = inflate
@@ -1401,6 +1450,7 @@ class VideoRemixer(TabBase):
             self.state.output_filepath = self.state.default_remix_filepath()
             output_filepath_custom = self.state.default_remix_filepath("CUSTOM")
             output_filepath_marked = self.state.default_remix_filepath("MARKED")
+            output_filepath_labeled = self.state.default_remix_filepath("LABELED")
             self.state.save()
 
             # user will expect to return to the save remix tab on reopening
@@ -1413,13 +1463,15 @@ class VideoRemixer(TabBase):
                    self.state.output_filepath, \
                    output_filepath_custom, \
                    output_filepath_marked, \
+                   output_filepath_labeled, \
                    gr.update(value=format_markdown(self.TAB60_DEFAULT_MESSAGE)), \
                    gr.update(value=format_markdown(self.TAB61_DEFAULT_MESSAGE)), \
-                   gr.update(value=format_markdown(self.TAB62_DEFAULT_MESSAGE))
+                   gr.update(value=format_markdown(self.TAB62_DEFAULT_MESSAGE)), \
+                   gr.update(value=format_markdown(self.TAB63_DEFAULT_MESSAGE))
         else:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
                    gr.update(value=format_markdown("At least one scene must be set to 'Keep' before processing can proceed", "error")), \
-                   *self.noop_args(7)
+                   *noop_args
 
     def back_button5(self):
         return gr.update(selected=self.TAB_COMPILE_SCENES)
@@ -1581,6 +1633,81 @@ class VideoRemixer(TabBase):
             self.save_custom_remix(output_filepath, global_options, kept_scenes,
                                    marked_video_options, marked_audio_options, draw_text_options)
             return gr.update(value=format_markdown(f"Remixed marked video {output_filepath} is complete.", "highlight"))
+        except ValueError as error:
+            return gr.update(value=format_markdown(str(error), "error"))
+
+    # User has clicked Save Labeled Remix from Save Remix
+    def next_button63(self,
+                      label_text,
+                      label_font_size,
+                      label_font_color,
+                      label_font_file,
+                      label_draw_box,
+                      label_box_color,
+                      label_border_size,
+                      label_at_top,
+                      output_filepath,
+                      quality):
+        if not self.state.project_path:
+            return gr.update(value=format_markdown(
+                "The project has not yet been set up from the Set Up Project tab.", "error"))
+        if label_font_size <= 0.0:
+            return gr.update(value=format_markdown(
+                "The Font Factor must be > 0", "warning"))
+        if not label_font_file:
+           return gr.update(value=format_markdown(
+                "The Font File must not be blank", "warning"))
+        if not os.path.exists(label_font_file):
+           return gr.update(value=format_markdown(
+                f"The Font File {os.path.abspath(label_font_file)} was not found", "error"))
+        if not label_font_file:
+           return gr.update(value=format_markdown(
+                "The Font File must not be blank", "warning"))
+        if not label_font_color:
+           return gr.update(value=format_markdown(
+                "The Font Color must not be blank", "warning"))
+        if label_draw_box:
+            if (label_border_size <= 0.0):
+                return gr.update(value=format_markdown(
+                    "The Border Factor must be > 0", "warning"))
+        if not label_box_color:
+           return gr.update(value=format_markdown(
+                "The Background Color must not be blank", "warning"))
+        try:
+            global_options, kept_scenes = self.prepare_save_remix(output_filepath)
+            draw_text_options = {}
+            draw_text_options["font_size"] = label_font_size
+            draw_text_options["font_color"] = label_font_color
+            draw_text_options["font_file"] = label_font_file
+            draw_text_options["draw_box"] = label_draw_box
+            draw_text_options["box_color"] = label_box_color
+            draw_text_options["border_size"] = label_border_size
+            draw_text_options["marked_at_top"] = label_at_top
+            draw_text_options["label"] = label_text
+
+            labeled_video_options = self.config.remixer_settings["labeled_ffmpeg_video"]
+            labeled_audio_options = self.config.remixer_settings["labeled_ffmpeg_audio"]
+            labeled_video_options = labeled_video_options.replace("<CRF>", str(quality))
+            self.log(f"using labeled video options: {labeled_video_options}")
+            self.log(f"using labeled audeo options: {labeled_audio_options}")
+
+            # account for upscaling
+            upscale_factor = 1
+            if self.state.upscale:
+                if self.state.upscale_option == "2X":
+                    upscale_factor = 2
+                elif self.state.upscale_option == "4X":
+                    upscale_factor = 4
+            draw_text_options["crop_width"] = self.state.crop_w * upscale_factor
+            draw_text_options["crop_height"] = self.state.crop_h * upscale_factor
+
+            try:
+                self.save_custom_remix(output_filepath, global_options, kept_scenes,
+                                    labeled_video_options, labeled_audio_options, draw_text_options)
+                return gr.update(value=format_markdown(f"Remixed labeled video {output_filepath} is complete.", "highlight"))
+            except FFRuntimeError as error:
+                return gr.update(value=format_markdown(f"Error: {error}.", "error"))
+
         except ValueError as error:
             return gr.update(value=format_markdown(str(error), "error"))
 

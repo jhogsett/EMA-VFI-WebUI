@@ -102,11 +102,13 @@ remixer_settings:
   default_gif_fps: 10
   gif_end_delay: 1.0
   gif_factor: 10
+  labeled_ffmpeg_video: -vf "drawtext=<LABEL>" -c:v libx264 -crf <CRF>
+  labeled_ffmpeg_audio: -c:a aac -shortest
   marked_at_top: True
   marked_border_size: 5
   marked_box_color: black@0.5
   marked_draw_box: True
-  marked_ffmpeg_video: -vf "drawtext=<SCENE_INFO>" -c:v libx264 -crf 28
+  marked_ffmpeg_video: -vf "drawtext=<LABEL>" -c:v libx264 -crf 28
   marked_ffmpeg_audio: -c:a aac -shortest
   marked_font_color: white@0.9
   marked_font_size: 30
