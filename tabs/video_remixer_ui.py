@@ -17,6 +17,7 @@ from tabs.tab_base import TabBase
 from video_remixer import VideoRemixerState
 from webui_utils.mtqdm import Mtqdm
 from webui_utils.session import Session
+from ffmpy import FFRuntimeError
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -393,7 +394,7 @@ class VideoRemixer(TabBase):
                         ### CREATE LABELED REMIX
                         with gr.Tab(label="Create Labeled Remix"):
                             with gr.Row():
-                                label_text = gr.Textbox(label="Label Text", max_lines=1)
+                                label_text = gr.Textbox(label="Label Text", max_lines=1, placeholder="Leave blank to use same label as Marked Remix tab")
                                 label_at_top = gr.Checkbox(value=default_label_at_top, label="Label at Top", info="Whether to place the label at the top or at the bottom")
                             with gr.Row():
                                 label_font_file = gr.Textbox(value=default_label_font_file, label="Font File", max_lines=1, info="Font file within the application directory")
@@ -1649,7 +1650,29 @@ class VideoRemixer(TabBase):
                       quality):
         if not self.state.project_path:
             return gr.update(value=format_markdown(
-                    "The project has not yet been set up from the Set Up Project tab.", "error"))
+                "The project has not yet been set up from the Set Up Project tab.", "error"))
+        if label_font_size <= 0.0:
+            return gr.update(value=format_markdown(
+                "The Font Factor must be > 0", "warning"))
+        if not label_font_file:
+           return gr.update(value=format_markdown(
+                "The Font File must not be blank", "warning"))
+        if not os.path.exists(label_font_file):
+           return gr.update(value=format_markdown(
+                f"The Font File {os.path.abspath(label_font_file)} was not found", "error"))
+        if not label_font_file:
+           return gr.update(value=format_markdown(
+                "The Font File must not be blank", "warning"))
+        if not label_font_color:
+           return gr.update(value=format_markdown(
+                "The Font Color must not be blank", "warning"))
+        if label_draw_box:
+            if (label_border_size <= 0.0):
+                return gr.update(value=format_markdown(
+                    "The Border Factor must be > 0", "warning"))
+        if not label_box_color:
+           return gr.update(value=format_markdown(
+                "The Background Color must not be blank", "warning"))
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             draw_text_options = {}
@@ -1660,12 +1683,13 @@ class VideoRemixer(TabBase):
             draw_text_options["box_color"] = label_box_color
             draw_text_options["border_size"] = label_border_size
             draw_text_options["marked_at_top"] = label_at_top
+            draw_text_options["label"] = label_text
 
             labeled_video_options = self.config.remixer_settings["labeled_ffmpeg_video"]
             labeled_audio_options = self.config.remixer_settings["labeled_ffmpeg_audio"]
-
             labeled_video_options = labeled_video_options.replace("<CRF>", str(quality))
-            draw_text_options["label"] = label_text
+            self.log(f"using labeled video options: {labeled_video_options}")
+            self.log(f"using labeled audeo options: {labeled_audio_options}")
 
             # account for upscaling
             upscale_factor = 1
@@ -1677,9 +1701,13 @@ class VideoRemixer(TabBase):
             draw_text_options["crop_width"] = self.state.crop_w * upscale_factor
             draw_text_options["crop_height"] = self.state.crop_h * upscale_factor
 
-            self.save_custom_remix(output_filepath, global_options, kept_scenes,
-                                   labeled_video_options, labeled_audio_options, draw_text_options)
-            return gr.update(value=format_markdown(f"Remixed marked video {output_filepath} is complete.", "highlight"))
+            try:
+                self.save_custom_remix(output_filepath, global_options, kept_scenes,
+                                    labeled_video_options, labeled_audio_options, draw_text_options)
+                return gr.update(value=format_markdown(f"Remixed labeled video {output_filepath} is complete.", "highlight"))
+            except FFRuntimeError as error:
+                return gr.update(value=format_markdown(f"Error: {error}.", "error"))
+
         except ValueError as error:
             return gr.update(value=format_markdown(str(error), "error"))
 

@@ -1347,7 +1347,6 @@ class VideoRemixerState():
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_filepath = os.path.join(self.video_clips_path,
                                                      f"{scene_name}.{custom_ext}")
-
                 use_custom_video_options = custom_video_options
                 if use_custom_video_options.find("<LABEL>"):
                     label = draw_text_options.get("label")
@@ -1356,14 +1355,15 @@ class VideoRemixerState():
                         _, _, _, _, scene_start, scene_duration, _ = \
                             self.scene_chooser_data(scene_index)
                         label = f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]"
-
                     try:
                         # FFmpeg needs the colons escaped
                         label = label.replace(":", "\:")
-                        draw_text = f"text='{label}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}':box={box}:boxcolor={box_color}:boxborderw={border_size}"
+                        if draw_box:
+                            draw_text = f"text='{label}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}':box={box}:boxcolor={box_color}:boxborderw={border_size}"
+                        else:
+                            draw_text = f"text='{label}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}':box={box}"
                         use_custom_video_options = use_custom_video_options \
                             .replace("<LABEL>", draw_text)
-
                     except IndexError as error:
                         use_custom_video_options = use_custom_video_options\
                             .replace("<LABEL>", f"[{error}]")
