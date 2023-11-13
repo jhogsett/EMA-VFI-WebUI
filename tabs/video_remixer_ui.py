@@ -1376,6 +1376,7 @@ class VideoRemixer(TabBase):
         self.state.recompile_scenes()
 
         jot = Jot()
+        jot.down("Content Ready for Remix Video:")
         kept_scenes = self.state.kept_scenes()
         if kept_scenes:
             if self.state.processed_content_invalid:
@@ -1394,56 +1395,47 @@ class VideoRemixer(TabBase):
                 and not self.state.resynthesize \
                 and not self.state.inflate \
                 and not self.state.upscale:
-                jot.down(f"Using original source content in {self.state.scenes_path}")
+                jot.down(f"Original source scenes in {self.state.scenes_path}")
 
             if self.state.resize:
-                if self.state.processed_content_complete(self.state.RESIZE_STEP):
-                    jot.down(f"Using processed resized scenes in {self.state.resize_path}")
-                else:
+                if not self.state.processed_content_complete(self.state.RESIZE_STEP):
                     self.log("about to resize scenes")
                     self.state.resize_scenes(self.log,
                                              kept_scenes,
                                              self.config.remixer_settings)
                     self.log("saving project after resizing frames")
                     self.state.save()
-                    jot.down(f"Resized scenes created in {self.state.resize_path}")
+                jot.down(f"Resized/cropped scenes in {self.state.resize_path}")
 
             if self.state.resynthesize:
-                if self.state.processed_content_complete(self.state.RESYNTH_STEP):
-                    jot.down(
-                        f"Using processed resynthesized scenes in {self.state.resynthesis_path}")
-                else:
+                if not self.state.processed_content_complete(self.state.RESYNTH_STEP):
                     self.state.resynthesize_scenes(self.log,
                                                 kept_scenes,
                                                 self.engine,
                                                 self.config.engine_settings)
                     self.log("saving project after resynthesizing frames")
                     self.state.save()
-                    jot.down(f"Resynthesized scenes created in {self.state.resynthesis_path}")
+                jot.down(f"Resynthesized scenes in {self.state.resynthesis_path}")
 
             if self.state.inflate:
-                if self.state.processed_content_complete(self.state.INFLATE_STEP):
-                    jot.down(f"Using processed inflated scenes in {self.state.inflation_path}")
-                else:
+                if not self.state.processed_content_complete(self.state.INFLATE_STEP):
                     self.state.inflate_scenes(self.log,
                                                 kept_scenes,
                                                 self.engine,
                                                 self.config.engine_settings)
                     self.log("saving project after inflating frames")
                     self.state.save()
-                    jot.down(f"Inflated scenes created in {self.state.inflation_path}")
+                jot.down(f"Inflated scenes in {self.state.inflation_path}")
 
             if self.state.upscale:
-                if self.state.processed_content_complete(self.state.UPSCALE_STEP):
-                    jot.down(f"Using processed upscaled scenes in {self.state.upscale_path}")
-                else:
+                if not self.state.processed_content_complete(self.state.UPSCALE_STEP):
                     self.state.upscale_scenes(self.log,
                                             kept_scenes,
                                             self.config.realesrgan_settings,
                                             self.config.remixer_settings)
                     self.log("saving project after upscaling frames")
                     self.state.save()
-                    jot.down(f"Upscaled scenes created in {self.state.upscale_path}")
+                jot.down(f"Upscaled scenes in {self.state.upscale_path}")
 
             styled_report = "<br/>\r\n".join(style_row(jot.lines, color="more"))
             self.state.summary_info6 = styled_report
