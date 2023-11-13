@@ -306,9 +306,9 @@ def style_row(row : str | list, color="info", bold=False, italic=False):
 
 def style_report(title : str, rows : list[str], color="info"):
     report = []
-    report.append(style_row(title, bold=True, italic=True))
+    report.append(style_row(title, color=color, bold=True, italic=True))
     for row in rows:
-        report.append(style_row(row))
+        report.append(style_row(row, color=color))
     return "</br>\r\n".join(report)
 
 def format_table(header_row : list,
