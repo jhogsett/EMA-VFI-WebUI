@@ -6,7 +6,7 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import format_markdown, style_row
+from webui_utils.simple_utils import format_markdown, style_report
 from webui_utils.file_utils import get_files, create_directory, get_directories, split_filepath, \
     is_safe_path, duplicate_directory
 from webui_utils.video_utils import details_from_group_name
@@ -1376,7 +1376,6 @@ class VideoRemixer(TabBase):
         self.state.recompile_scenes()
 
         jot = Jot()
-        jot.down("Content Ready for Remix Video:")
         kept_scenes = self.state.kept_scenes()
         if kept_scenes:
             if self.state.processed_content_invalid:
@@ -1437,8 +1436,10 @@ class VideoRemixer(TabBase):
                     self.state.save()
                 jot.down(f"Upscaled scenes in {self.state.upscale_path}")
 
-            styled_report = "<br/>\r\n".join(style_row(jot.lines, color="more"))
-            self.state.summary_info6 = styled_report
+            # styled_report = "<br/>\r\n".join(style_row(jot.lines, color="more"))
+            # self.state.summary_info6 = styled_report
+            self.state.summary_info6 = style_report("Content Ready for Remix Video:", jot.lines)
+
             self.state.output_filepath = self.state.default_remix_filepath()
             output_filepath_custom = self.state.default_remix_filepath("CUSTOM")
             output_filepath_marked = self.state.default_remix_filepath("MARKED")

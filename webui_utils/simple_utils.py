@@ -304,6 +304,13 @@ def style_row(row : str | list, color="info", bold=False, italic=False):
     else:
         return [_format_text(entry, color, bold, italic) for entry in row]
 
+def style_report(title : str, rows : list[str], color="info"):
+    report = []
+    report.append(style_row(title, bold=True, italic=True))
+    for row in rows[1:]:
+        report.append(style_row(row))
+    return "</br>\r\n".join(report)
+
 def format_table(header_row : list,
                  data_rows : list[list],
                  color : str="info",
