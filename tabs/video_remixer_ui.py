@@ -2108,7 +2108,7 @@ class VideoRemixer(TabBase):
             gr.update(value=new_project_path), \
             gr.update(value=format_markdown(self.TAB01_DEFAULT_MESSAGE))
 
-    CLEANSE_SCENES_PATH = "cleaned_scenes"
+    CLEANSE_SCENES_PATH = "cleansed_scenes"
     CLEANSE_SCENES_FACTOR = 4.0
 
     def cleanse_button704(self):
@@ -2166,7 +2166,7 @@ class VideoRemixer(TabBase):
             for scene_name in kept_scenes:
                 downsample_scene_path = os.path.join(downsample_path, scene_name)
                 shutil.move(downsample_scene_path, self.state.scenes_path)
-            Mtqdm().update_bar(bar)
+                Mtqdm().update_bar(bar)
 
         shutil.rmtree(working_path)
         return gr.update(value=format_markdown("Kept scenes replaced with cleaned versions"))
