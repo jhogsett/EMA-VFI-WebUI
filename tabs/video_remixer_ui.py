@@ -49,6 +49,7 @@ class VideoRemixer(TabBase):
     TAB_EXTRA_UTIL_CHOOSE_RANGE = 1
     TAB_EXTRA_UTIL_SPLIT_SCENE = 2
     TAB_EXTRA_UTIL_EXPORT_SCENES = 3
+    TAB_EXTRA_UTIL_CLEANSE_SCENES = 4
 
     TAB00_DEFAULT_MESSAGE = "Click New Project to: Inspect Video and Count Frames (can take a minute or more)"
     TAB01_DEFAULT_MESSAGE = "Click Open Project to: Resume Editing an Existing Project"
@@ -505,6 +506,14 @@ class VideoRemixer(TabBase):
                                         result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
                                         open_result703 = gr.Button("Open New Project", visible=False, scale=0)
 
+                                # Cleanse Scene
+                                with gr.Tab(SimpleIcons.SOAP + " Cleanse Scenes", id=self.TAB_EXTRA_UTIL_CLEANSE_SCENES):
+                                    gr.Markdown(
+                                "**_Cleanse Kept Scenes_**")
+                                    with gr.Row():
+                                        message_box704 = gr.Markdown(format_markdown("Click Cleanse Scene to: Remove noise and artifacts from kept scenes"))
+                                    cleanse_button704 = gr.Button("Cleanse Scenes " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
+
                         with gr.Tab(SimpleIcons.HERB +" Reduce Footprint", id=self.TAB_EXTRA_REDUCE):
                             gr.Markdown("Free Disk Space by Removing Unneeded Content")
                             with gr.Tabs():
@@ -841,6 +850,8 @@ class VideoRemixer(TabBase):
         open_result703.click(self.open_result703, inputs=result_box703,
                                 outputs=[tabs_video_remixer, project_load_path, message_box01])
 
+        cleanse_button704.click(self.cleanse_button704, outputs=message_box704)
+
         delete_button710.click(self.delete_button710,
                                inputs=delete_purged_710,
                                outputs=message_box710)
@@ -1112,6 +1123,15 @@ class VideoRemixer(TabBase):
                 self.log("saving project after converting video to PNG frames")
                 self.state.save()
                 self.log(f"FFmpeg command: {ffcmd}")
+
+            try:
+                self.log("enhance source video info with extra data including frame dimensions")
+                self.state.enhance_video_info(ignore_errors=False)
+                self.state.save()
+            except ValueError as error:
+                return gr.update(selected=self.TAB_SET_UP_PROJECT), \
+                    gr.update(value=format_markdown(f"There was an error retrieving source frame dimensions: {error}", "error")), \
+                    *self.empty_args(5)
 
             self.state.scenes_path = os.path.join(self.state.project_path, "SCENES")
             self.state.dropped_scenes_path = os.path.join(self.state.project_path, "DROPPED_SCENES")
@@ -2087,6 +2107,70 @@ class VideoRemixer(TabBase):
         return gr.update(selected=self.TAB_REMIX_HOME), \
             gr.update(value=new_project_path), \
             gr.update(value=format_markdown(self.TAB01_DEFAULT_MESSAGE))
+
+    CLEANSE_SCENES_PATH = "cleaned_scenes"
+    CLEANSE_SCENES_FACTOR = 4.0
+
+    def cleanse_button704(self):
+        kept_scenes = self.state.kept_scenes()
+        if len(kept_scenes) < 1:
+            return gr.update(value=format_markdown("No kept scenes were found", "warning"))
+        self.state.uncompile_scenes()
+
+        working_path = os.path.join(self.state.project_path, self.CLEANSE_SCENES_PATH)
+        if os.path.exists(working_path):
+            self.log(f"purging previous working directory {working_path}")
+            purge_path = self.state.purge_paths([working_path])
+            if purge_path:
+                self.state.copy_project_file(purge_path)
+        self.log(f"creating working directory {working_path}")
+        create_directory(working_path)
+
+        upscale_path = os.path.join(working_path, "upscaled")
+        downsample_path = os.path.join(working_path, "downsampled")
+        self.log(f"creating upscale directory {working_path}")
+        create_directory(upscale_path)
+        self.log(f"creating downsample directory {working_path}")
+        create_directory(downsample_path)
+
+        content_width = self.state.video_details["source_width"]
+        content_height = self.state.video_details["source_height"]
+        scale_type = self.config.remixer_settings["scale_type_down"]
+
+        upscaler = self.state.get_upscaler(self.log, self.config.realesrgan_settings, self.config.remixer_settings)
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Cleansing") as bar:
+            for scene_name in kept_scenes:
+                scene_path = os.path.join(self.state.scenes_path, scene_name)
+                upscale_scene_path = os.path.join(upscale_path, scene_name)
+                create_directory(upscale_scene_path)
+                self.state.upscale_scene(upscaler, scene_path, upscale_scene_path, self.CLEANSE_SCENES_FACTOR)
+
+                downsample_scene_path = os.path.join(downsample_path, scene_name)
+                create_directory(downsample_scene_path)
+                self.state.resize_scene(self.log,
+                                        upscale_scene_path,
+                                        downsample_scene_path,
+                                        content_width,
+                                        content_height,
+                                        scale_type)
+                Mtqdm().update_bar(bar)
+
+        self.log("purging scenes before replacing with cleansed scenes")
+        scene_paths = []
+        for scene_name in kept_scenes:
+            scene_path = os.path.join(self.state.scenes_path, scene_name)
+            scene_paths.append(scene_path)
+        self.state.purge_paths(scene_paths)
+
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Replacing") as bar:
+            for scene_name in kept_scenes:
+                downsample_scene_path = os.path.join(downsample_path, scene_name)
+                shutil.move(downsample_scene_path, self.state.scenes_path)
+            Mtqdm().update_bar(bar)
+
+        shutil.rmtree(working_path)
+        return gr.update(value=format_markdown("Kept scenes replaced with cleaned versions"))
+
 
     def delete_button710(self, delete_purged):
         if delete_purged:
