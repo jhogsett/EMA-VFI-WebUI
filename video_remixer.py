@@ -1365,7 +1365,7 @@ class VideoRemixerState():
         else:
             scenes_base_path = self.scenes_path
 
-        if custom_video_options.find("<LABEL>"):
+        if custom_video_options.find("<LABEL>") != -1:
             if not draw_text_options:
                 raise RuntimeError("'draw_text_options' is None at create_custom_video_clips()")
             try:
@@ -1393,7 +1393,7 @@ class VideoRemixerState():
                 scene_output_filepath = os.path.join(self.video_clips_path,
                                                      f"{scene_name}.{custom_ext}")
                 use_custom_video_options = custom_video_options
-                if use_custom_video_options.find("<LABEL>"):
+                if use_custom_video_options.find("<LABEL>") != -1:
                     label = draw_text_options.get("label")
                     if not label:
                         scene_index = self.scene_names.index(scene_name)
