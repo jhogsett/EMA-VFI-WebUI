@@ -30,6 +30,14 @@
 - _**Note:**_
     - The original source frames and dropped scenes are not duplicated
 
+#### Cleanse Scenes - Remove noise and artifacts from kept scenes
+
+- **Used For:** Cleaning scenes that are especially noisy or full of digital artifacts
+- _Use Scene Chooser to Keep the frames that should be cleansed_
+- _All kept scenes are upscaled 4X using Real-ESRGAN 4x+ then reduced 4X using "area" interpolation_
+- _**Note:**_
+    - The original scenes are purged to the _purged_content_ folder
+
 ## _Reduce Footprint_
 
 #### Remove Soft-Deleted Content - Delete content set aside when remix processing selections are changed

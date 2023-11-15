@@ -509,7 +509,7 @@ class VideoRemixer(TabBase):
                                 # Cleanse Scene
                                 with gr.Tab(SimpleIcons.SOAP + " Cleanse Scenes", id=self.TAB_EXTRA_UTIL_CLEANSE_SCENES):
                                     gr.Markdown(
-                                "**_Cleanse Kept Scenes_**")
+                                "**_Remove noise and artifacts from kept scenes_**")
                                     with gr.Row():
                                         message_box704 = gr.Markdown(format_markdown("Click Cleanse Scene to: Remove noise and artifacts from kept scenes"))
                                     cleanse_button704 = gr.Button("Cleanse Scenes " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)

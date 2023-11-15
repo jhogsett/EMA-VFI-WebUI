@@ -1058,7 +1058,7 @@ class VideoRemixerState():
                                   int(self.resize_h),
                                   scale_type,
                                   crop_type,
-                                  crop_offset).resize()
+                                  crop_offset)
                 Mtqdm().update_bar(bar)
 
     def resynthesize_scenes(self, log_fn, kept_scenes, engine, engine_settings):
