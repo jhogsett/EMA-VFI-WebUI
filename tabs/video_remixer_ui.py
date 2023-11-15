@@ -1436,7 +1436,6 @@ class VideoRemixer(TabBase):
                     self.state.save()
                 jot.down(f"Upscaled scenes in {self.state.upscale_path}")
 
-            # styled_report = "<br/>\r\n".join(style_row(jot.lines, color="more"))
             styled_report = style_report("Content Ready for Remix Video:", jot.lines, color="more")
             self.state.summary_info6 = styled_report
 
