@@ -430,7 +430,9 @@ class VideoRemixerState():
 
     def scenes_present(self):
         self.uncompile_scenes()
-        return os.path.exists(self.scenes_path) and get_directories(self.scenes_path)
+        return self.scenes_path and \
+            os.path.exists(self.scenes_path) and \
+            get_directories(self.scenes_path)
 
     def split_scenes(self, log_fn, prevent_overwrite=False):
         if prevent_overwrite and self.scenes_present():
