@@ -274,7 +274,9 @@ def get_essential_video_details(input_path : str, count_frames=False) -> dict:
             video_essentials["frame_rate"] = frame_rate
 
             duration = seconds_to_hms(float(stream_data.get("duration", 0)))
-            video_essentials["duration"] = "+" + duration[:duration.find(".")].zfill(8)
+            decimal_position = duration.find(".")
+            cut_off_decimal = None if decimal_position == -1 else decimal_position
+            video_essentials["duration"] = "+" + duration[:cut_off_decimal].zfill(8)
 
             width = stream_data.get("width")
             height = stream_data.get("height")
