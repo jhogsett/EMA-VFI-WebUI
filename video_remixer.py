@@ -21,6 +21,7 @@ from deep_interpolate import DeepInterpolate
 from interpolate_series import InterpolateSeries
 from resequence_files import ResequenceFiles
 from upscale_series import UpscaleSeries
+from PIL import Image
 
 class VideoRemixerState():
     def __init__(self):
@@ -410,9 +411,28 @@ class VideoRemixerState():
             Mtqdm().update_bar(bar)
         return ffmpeg_cmd
 
+    # this is intended to be called after source frames have been rendered
+    def enhance_video_info(self, ignore_errors=True):
+        """Get the actual dimensions of the PNG frame files"""
+        source_frames = sorted(get_files(self.frames_path))
+        if source_frames:
+            sample_frame = source_frames[0]
+            try:
+                img = Image.open(sample_frame)
+                self.video_details["source_width"] = img.width
+                self.video_details["source_height"] = img.height
+            except Exception as error:
+                if not ignore_errors:
+                    raise error
+            return
+        if not ignore_errors:
+            raise ValueError(f"Error: no frame PNG files found in {self.frames_path}")
+
     def scenes_present(self):
         self.uncompile_scenes()
-        return os.path.exists(self.scenes_path) and get_directories(self.scenes_path)
+        return self.scenes_path and \
+            os.path.exists(self.scenes_path) and \
+            get_directories(self.scenes_path)
 
     def split_scenes(self, log_fn, prevent_overwrite=False):
         if prevent_overwrite and self.scenes_present():
@@ -753,11 +773,12 @@ class VideoRemixerState():
         return format_table(header_row, data_rows, color="more")
 
     def uncompile_scenes(self):
-        dropped_dirs = get_directories(self.dropped_scenes_path)
-        for dir in dropped_dirs:
-            current_path = os.path.join(self.dropped_scenes_path, dir)
-            undropped_path = os.path.join(self.scenes_path, dir)
-            shutil.move(current_path, undropped_path)
+        if self.dropped_scenes_path:
+            dropped_dirs = get_directories(self.dropped_scenes_path)
+            for dir in dropped_dirs:
+                current_path = os.path.join(self.dropped_scenes_path, dir)
+                undropped_path = os.path.join(self.scenes_path, dir)
+                shutil.move(current_path, undropped_path)
 
     def compile_scenes(self):
         dropped_scenes = self.dropped_scenes()
@@ -975,47 +996,69 @@ class VideoRemixerState():
 
         return processing_path
 
+    def get_resize_params(self, content_width, content_height, remixer_settings):
+        if self.resize_w == content_width and self.resize_h == content_height:
+            scale_type = "none"
+        else:
+            if self.resize_w <= content_width and self.resize_h <= content_height:
+                # use the down scaling type if there are only reductions
+                # the default "area" type preserves details better on reducing
+                scale_type = remixer_settings["scale_type_down"]
+            else:
+                # otherwise use the upscaling type
+                # the default "lanczos" type preserves details better on enlarging
+                scale_type = remixer_settings["scale_type_up"]
+
+        if self.crop_w == self.resize_w and \
+                self.crop_h == self.resize_h:
+            crop_type = "none"
+        else:
+            crop_type = "crop"
+        crop_offset = -1
+        return scale_type, crop_type, crop_offset
+
+    def resize_scene(self,
+                     log_fn,
+                     scene_input_path,
+                     scene_output_path,
+                     resize_w,
+                     resize_h,
+                     scale_type,
+                     crop_type="none",
+                     crop_offset=-1):
+
+        ResizeFrames(scene_input_path,
+                    scene_output_path,
+                    resize_w,
+                    resize_h,
+                    scale_type,
+                    log_fn,
+                    crop_type=crop_type,
+                    crop_width=self.crop_w,
+                    crop_height=self.crop_h,
+                    crop_offset_x=crop_offset,
+                    crop_offset_y=crop_offset).resize()
+
     def resize_scenes(self, log_fn, kept_scenes, remixer_settings):
         scenes_base_path = self.scenes_source_path(self.RESIZE_STEP)
         create_directory(self.resize_path)
+
+        content_width = self.video_details["content_width"]
+        content_height = self.video_details["content_height"]
+        scale_type, crop_type, crop_offset = self.get_resize_params(content_width, content_height, remixer_settings)
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Resize") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_path = os.path.join(self.resize_path, scene_name)
-                content_width = self.video_details["content_width"]
-                content_height = self.video_details["content_height"]
-
-                if self.resize_w == content_width and self.resize_h == content_height:
-                    scale_type = "none"
-                else:
-                    if self.resize_w <= content_width and self.resize_h <= content_height:
-                        # use the down scaling type if there are only reductions
-                        # the default "area" type preserves details better on reducing
-                        scale_type = remixer_settings["scale_type_down"]
-                    else:
-                        # otherwise use the upscaling type
-                        # the default "lanczos" type preserves details better on enlarging
-                        scale_type = remixer_settings["scale_type_up"]
-
-                if self.crop_w == self.resize_w and \
-                        self.crop_h == self.resize_h:
-                    crop_type = "none"
-                else:
-                    crop_type = "crop"
-                crop_offset = -1
-
-                ResizeFrames(scene_input_path,
-                            scene_output_path,
-                            int(self.resize_w),
-                            int(self.resize_h),
-                            scale_type,
-                            log_fn,
-                            crop_type=crop_type,
-                            crop_width=self.crop_w,
-                            crop_height=self.crop_h,
-                            crop_offset_x=crop_offset,
-                            crop_offset_y=crop_offset).resize()
+                self.resize_scene(log_fn,
+                                  scene_input_path,
+                                  scene_output_path,
+                                  int(self.resize_w),
+                                  int(self.resize_h),
+                                  scale_type,
+                                  crop_type,
+                                  crop_offset)
                 Mtqdm().update_bar(bar)
 
     def resynthesize_scenes(self, log_fn, kept_scenes, engine, engine_settings):
@@ -1085,7 +1128,7 @@ class VideoRemixerState():
                                 log_fn).resequence()
                 Mtqdm().update_bar(bar)
 
-    def upscale_scenes(self, log_fn, kept_scenes, realesrgan_settings, remixer_settings):
+    def get_upscaler(self, log_fn, realesrgan_settings, remixer_settings):
         model_name = realesrgan_settings["model_name"]
         gpu_ids = realesrgan_settings["gpu_ids"]
         fp32 = realesrgan_settings["fp32"]
@@ -1096,8 +1139,16 @@ class VideoRemixerState():
         else:
             tiling = 0
             tile_pad = 0
-        upscaler = UpscaleSeries(model_name, gpu_ids, fp32, tiling, tile_pad, log_fn)
+        return UpscaleSeries(model_name, gpu_ids, fp32, tiling, tile_pad, log_fn)
 
+    def upscale_scene(self, upscaler, scene_input_path, scene_output_path, upscale_factor):
+        create_directory(scene_output_path)
+        file_list = sorted(get_files(scene_input_path))
+        output_basename = "upscaled_frames"
+        upscaler.upscale_series(file_list, scene_output_path, upscale_factor, output_basename, "png")
+
+    def upscale_scenes(self, log_fn, kept_scenes, realesrgan_settings, remixer_settings):
+        upscaler = self.get_upscaler(log_fn, realesrgan_settings, remixer_settings)
         scenes_base_path = self.scenes_source_path(self.UPSCALE_STEP)
         create_directory(self.upscale_path)
 
@@ -1112,13 +1163,7 @@ class VideoRemixerState():
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_path = os.path.join(self.upscale_path, scene_name)
-                create_directory(scene_output_path)
-
-                file_list = sorted(get_files(scene_input_path))
-                output_basename = "upscaled_frames"
-
-                upscaler.upscale_series(file_list, scene_output_path, upscale_factor,
-                                                    output_basename, "png")
+                self.upscale_scene(upscaler, scene_input_path, scene_output_path, upscale_factor)
                 Mtqdm().update_bar(bar)
 
     def remix_filename_suffix(self, extra_suffix):
@@ -1320,7 +1365,7 @@ class VideoRemixerState():
         else:
             scenes_base_path = self.scenes_path
 
-        if custom_video_options.find("<LABEL>"):
+        if custom_video_options.find("<LABEL>") != -1:
             if not draw_text_options:
                 raise RuntimeError("'draw_text_options' is None at create_custom_video_clips()")
             try:
@@ -1348,7 +1393,7 @@ class VideoRemixerState():
                 scene_output_filepath = os.path.join(self.video_clips_path,
                                                      f"{scene_name}.{custom_ext}")
                 use_custom_video_options = custom_video_options
-                if use_custom_video_options.find("<LABEL>"):
+                if use_custom_video_options.find("<LABEL>") != -1:
                     label = draw_text_options.get("label")
                     if not label:
                         scene_index = self.scene_names.index(scene_name)
@@ -1621,6 +1666,8 @@ class VideoRemixerState():
                         state.source_audio = state.source_video
                 except AttributeError:
                     state.source_audio = state.source_video
+                # new source video properties
+                state.enhance_video_info()
 
                 return state
             except YAMLError as error:
