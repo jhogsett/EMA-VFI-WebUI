@@ -1062,15 +1062,15 @@ class VideoRemixerState():
                 Mtqdm().update_bar(bar)
 
     # TODO dry up this code with same in resynthesize_video_ui - maybe a specific resynth script
-    def one_pass_resynthesis(self, input_path, output_path, output_basename, engine):
+    def one_pass_resynthesis(self, log_fn, input_path, output_path, output_basename, engine):
         file_list = sorted(get_files(input_path, extension="png"))
-        self.log(f"beginning series of frame recreations at {output_path}")
+        log_fn(f"beginning series of frame recreations at {output_path}")
         engine.interpolate_series(file_list, output_path, 1, "interframe", offset=2)
 
-        self.log(f"auto-resequencing recreated frames at {output_path}")
+        log_fn(f"auto-resequencing recreated frames at {output_path}")
         ResequenceFiles(output_path, "png", "resynthesized_frame", 1, 1, 1, 0, -1, True, self.log).resequence()
 
-    def two_pass_resynthesis(self, input_path, output_path, output_basename, engine):
+    def two_pass_resynthesis(self, log_fn, input_path, output_path, output_basename, engine):
         interframes_path1 = os.path.join(output_path, "interframes-pass1")
         interframes_path2 = os.path.join(output_path, "interframes-pass2")
         interframes_path3 = os.path.join(output_path, "interframes-final")
@@ -1080,10 +1080,10 @@ class VideoRemixerState():
 
         with Mtqdm().open_bar(total=2, desc="Two-Pass Resynthesis") as bar:
             file_list = sorted(get_files(input_path, extension="png"))
-            self.log(f"beginning pass #1 of series of frame recreations at {interframes_path1}")
+            log_fn(f"beginning pass #1 of series of frame recreations at {interframes_path1}")
             engine.interpolate_series(file_list, interframes_path1, 1, "interframe")
 
-            self.log(f"selecting odd interframes only at {interframes_path1}")
+            log_fn(f"selecting odd interframes only at {interframes_path1}")
             ResequenceFiles(interframes_path1,
                             "png",
                             "odd_interframe",
@@ -1096,10 +1096,10 @@ class VideoRemixerState():
             Mtqdm().update_bar(bar)
 
             file_list = sorted(get_files(interframes_path2, extension="png"))
-            self.log(f"beginning pass #2 of series of frame recreations at {interframes_path2}")
+            log_fn(f"beginning pass #2 of series of frame recreations at {interframes_path2}")
             engine.interpolate_series(file_list, interframes_path3, 1, "interframe")
 
-            self.log(f"selecting odd interframes only at {interframes_path3}")
+            log_fn(f"selecting odd interframes only at {interframes_path3}")
             ResequenceFiles(interframes_path3,
                             "png",
                             output_basename,
@@ -1129,9 +1129,9 @@ class VideoRemixerState():
                 create_directory(scene_output_path)
 
                 if two_pass:
-                    self.two_pass_resynthesis(scene_input_path, scene_output_path, output_basename, series_interpolater)
+                    self.two_pass_resynthesis(log_fn, scene_input_path, scene_output_path, output_basename, series_interpolater)
                 else:
-                    self.one_pass_resynthesis(scene_input_path, scene_output_path, output_basename, series_interpolater)
+                    self.one_pass_resynthesis(log_fn, scene_input_path, scene_output_path, output_basename, series_interpolater)
 
                 Mtqdm().update_bar(bar)
 
