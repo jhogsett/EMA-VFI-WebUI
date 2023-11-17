@@ -5,7 +5,7 @@ import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import format_markdown
-from webui_utils.file_utils import create_directory, get_files, get_directories, is_safe_path
+from webui_utils.file_utils import create_directory, get_files, get_directories, is_safe_path, remove_directories
 from webui_utils.auto_increment import AutoIncrementDirectory
 from webui_utils.mtqdm import Mtqdm
 from webui_tips import WebuiTips
@@ -35,11 +35,15 @@ class ResynthesizeVideo(TabBase):
                 elem_id="tabheading")
             with gr.Tabs():
                 with gr.Tab(label="Individual Path"):
-                    input_path_text = gr.Text(max_lines=1, label="Input Path",
-                        placeholder="Path on this server to the frame PNG files to resynthesize")
-                    output_path_text = gr.Text(max_lines=1, label="Output Path",
-                        placeholder="Where to place the resynthesized PNG frames",
-                        info="Leave blank to use default path")
+                    with gr.Row():
+                        input_path_text = gr.Text(max_lines=1, label="Input Path",
+                            placeholder="Path on this server to the frame PNG files to resynthesize")
+                        output_path_text = gr.Text(max_lines=1, label="Output Path",
+                            placeholder="Where to place the resynthesized PNG frames",
+                            info="Leave blank to use default path")
+                    resynth_type = gr.Radio(choices=["One Pass", "Two Pass"], value="One Pass",
+                                            label="Resynthesis Type",
+            info="One Pass Resynthesis is faster, Two Pass Resynthesis is better with fast motion")
                     gr.Markdown("*Progress can be tracked in the console*")
                     message_box_single = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_SINGLE))
                     resynthesize_button = gr.Button("Resynthesize Video " +
@@ -59,14 +63,14 @@ class ResynthesizeVideo(TabBase):
                 WebuiTips.resynthesize_video.render()
 
         resynthesize_button.click(self.resynthesize_video,
-            inputs=[input_path_text, output_path_text],
+            inputs=[input_path_text, output_path_text, resynth_type],
             outputs=message_box_single)
 
         resynthesize_batch.click(self.resynthesize_batch,
-            inputs=[input_path_batch, output_path_batch],
+            inputs=[input_path_batch, output_path_batch, resynth_type],
             outputs=message_box_batch)
 
-    def resynthesize_batch(self, input_path : str, output_path : str | None):
+    def resynthesize_batch(self, input_path : str, output_path : str | None, resynth_type : str):
         """Resynthesize Video button handler"""
         if not input_path:
             return gr.update(value=format_markdown(
@@ -114,7 +118,57 @@ class ResynthesizeVideo(TabBase):
             message = f"Batch processed resynthesized frames saved to {os.path.abspath(output_path)}"
             return gr.update(value=format_markdown(message))
 
-    def resynthesize_video(self, input_path : str, output_path : str | None, interactive : bool=True):
+    def one_pass_resynthesis(self, input_path, output_path, output_basename, engine):
+        file_list = sorted(get_files(input_path, extension="png"))
+        self.log(f"beginning series of frame recreations at {output_path}")
+        engine.interpolate_series(file_list, output_path, 1, "interframe", offset=2)
+
+        self.log(f"auto-resequencing recreated frames at {output_path}")
+        ResequenceFiles(output_path, "png", "resynthesized_frame", 1, 1, 1, 0, -1, True, self.log).resequence()
+
+    def two_pass_resynthesis(self, input_path, output_path, output_basename, engine):
+        interframes_path1 = os.path.join(output_path, "interframes-pass1")
+        interframes_path2 = os.path.join(output_path, "interframes-pass2")
+        interframes_path3 = os.path.join(output_path, "interframes-final")
+        create_directory(interframes_path1)
+        create_directory(interframes_path2)
+        create_directory(interframes_path3)
+
+        with Mtqdm().open_bar(total=2, desc="Two-Pass Resynthesis") as bar:
+            file_list = sorted(get_files(input_path, extension="png"))
+            self.log(f"beginning pass #1 of series of frame recreations at {interframes_path1}")
+            engine.interpolate_series(file_list, interframes_path1, 1, "interframe")
+
+            self.log(f"selecting odd interframes only at {interframes_path1}")
+            ResequenceFiles(interframes_path1,
+                            "png",
+                            "odd_interframe",
+                            1, 1, # start, step
+                            2, 1, # stride, offset
+                            -1,   # auto-zero fill
+                            True, # rename
+                            self.log,
+                            output_path=interframes_path2).resequence()
+            Mtqdm().update_bar(bar)
+
+            file_list = sorted(get_files(interframes_path2, extension="png"))
+            self.log(f"beginning pass #2 of series of frame recreations at {interframes_path2}")
+            engine.interpolate_series(file_list, interframes_path3, 1, "interframe")
+
+            self.log(f"selecting odd interframes only at {interframes_path3}")
+            ResequenceFiles(interframes_path3,
+                            "png",
+                            output_basename,
+                            1, 1, # start, step
+                            2, 1, # stride, offset
+                            -1,   # auto-zero fill
+                            True, # rename
+                            self.log,
+                            output_path=output_path).resequence()
+            Mtqdm().update_bar(bar)
+            remove_directories([interframes_path1, interframes_path2, interframes_path3])
+
+    def resynthesize_video(self, input_path : str, output_path : str | None, resynth_type : str, interactive : bool=True):
         """Resynthesize Video button handler"""
         if not input_path:
             if interactive:
@@ -151,16 +205,12 @@ class ResynthesizeVideo(TabBase):
         use_time_step = self.config.engine_settings["use_time_step"]
         deep_interpolater = DeepInterpolate(interpolater, use_time_step, self.log)
         series_interpolater = InterpolateSeries(deep_interpolater, self.log)
-
         output_basename = "resynthesized_frames"
-        file_list = get_files(input_path, extension="png")
-        self.log(f"beginning series of frame recreations at {output_path}")
-        series_interpolater.interpolate_series(file_list, output_path, 1, output_basename,
-            offset=2)
 
-        self.log(f"auto-resequencing recreated frames at {output_path}")
-        ResequenceFiles(output_path, "png", "resynthesized_frame", 1, 1, 1, 0, -1, True,
-            self.log).resequence()
+        if resynth_type.lower().startswith("one"):
+            self.one_pass_resynthesis(input_path, output_path, output_basename, series_interpolater)
+        else:
+            self.two_pass_resynthesis(input_path, output_path, output_basename, series_interpolater)
 
         message = f"Resynthesized frames saved to {os.path.abspath(output_path)}"
         if interactive:
