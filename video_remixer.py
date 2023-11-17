@@ -5,7 +5,7 @@ import yaml
 from yaml import Loader, YAMLError
 from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
 from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
-    clean_directories, clean_filename
+    clean_directories, clean_filename, remove_directories
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
@@ -773,7 +773,7 @@ class VideoRemixerState():
         return format_table(header_row, data_rows, color="more")
 
     def uncompile_scenes(self):
-        if self.dropped_scenes_path:
+        if self.dropped_scenes_path and os.path.exists(self.dropped_scenes_path):
             dropped_dirs = get_directories(self.dropped_scenes_path)
             for dir in dropped_dirs:
                 current_path = os.path.join(self.dropped_scenes_path, dir)
@@ -1061,38 +1061,78 @@ class VideoRemixerState():
                                   crop_offset)
                 Mtqdm().update_bar(bar)
 
-    def resynthesize_scenes(self, log_fn, kept_scenes, engine, engine_settings):
+    # TODO dry up this code with same in resynthesize_video_ui - maybe a specific resynth script
+    def one_pass_resynthesis(self, input_path, output_path, output_basename, engine):
+        file_list = sorted(get_files(input_path, extension="png"))
+        self.log(f"beginning series of frame recreations at {output_path}")
+        engine.interpolate_series(file_list, output_path, 1, "interframe", offset=2)
+
+        self.log(f"auto-resequencing recreated frames at {output_path}")
+        ResequenceFiles(output_path, "png", "resynthesized_frame", 1, 1, 1, 0, -1, True, self.log).resequence()
+
+    def two_pass_resynthesis(self, input_path, output_path, output_basename, engine):
+        interframes_path1 = os.path.join(output_path, "interframes-pass1")
+        interframes_path2 = os.path.join(output_path, "interframes-pass2")
+        interframes_path3 = os.path.join(output_path, "interframes-final")
+        create_directory(interframes_path1)
+        create_directory(interframes_path2)
+        create_directory(interframes_path3)
+
+        with Mtqdm().open_bar(total=2, desc="Two-Pass Resynthesis") as bar:
+            file_list = sorted(get_files(input_path, extension="png"))
+            self.log(f"beginning pass #1 of series of frame recreations at {interframes_path1}")
+            engine.interpolate_series(file_list, interframes_path1, 1, "interframe")
+
+            self.log(f"selecting odd interframes only at {interframes_path1}")
+            ResequenceFiles(interframes_path1,
+                            "png",
+                            "odd_interframe",
+                            1, 1, # start, step
+                            2, 1, # stride, offset
+                            -1,   # auto-zero fill
+                            False, # rename
+                            self.log,
+                            output_path=interframes_path2).resequence()
+            Mtqdm().update_bar(bar)
+
+            file_list = sorted(get_files(interframes_path2, extension="png"))
+            self.log(f"beginning pass #2 of series of frame recreations at {interframes_path2}")
+            engine.interpolate_series(file_list, interframes_path3, 1, "interframe")
+
+            self.log(f"selecting odd interframes only at {interframes_path3}")
+            ResequenceFiles(interframes_path3,
+                            "png",
+                            output_basename,
+                            1, 1, # start, step
+                            2, 1, # stride, offset
+                            -1,   # auto-zero fill
+                            False, # rename
+                            self.log,
+                            output_path=output_path).resequence()
+            Mtqdm().update_bar(bar)
+            remove_directories([interframes_path1, interframes_path2, interframes_path3])
+
+    def resynthesize_scenes(self, log_fn, kept_scenes, engine, engine_settings, two_pass=True):
         interpolater = Interpolate(engine.model, log_fn)
         use_time_step = engine_settings["use_time_step"]
         deep_interpolater = DeepInterpolate(interpolater, use_time_step, log_fn)
         series_interpolater = InterpolateSeries(deep_interpolater, log_fn)
+        output_basename = "resynthesized_frames"
 
         scenes_base_path = self.scenes_source_path(self.RESYNTH_STEP)
         create_directory(self.resynthesis_path)
 
-        with Mtqdm().open_bar(total=len(kept_scenes), desc="Resynth") as bar:
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Resynthesize") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_path = os.path.join(self.resynthesis_path, scene_name)
                 create_directory(scene_output_path)
 
-                output_basename = "resynthesized_frames"
-                file_list = sorted(get_files(scene_input_path, extension="png"))
-                series_interpolater.interpolate_series(file_list,
-                                                       scene_output_path,
-                                                       1,
-                                                       output_basename,
-                                                       offset=2)
-                ResequenceFiles(scene_output_path,
-                                "png",
-                                "resynthesized_frame",
-                                1,
-                                1,
-                                1,
-                                0,
-                                -1,
-                                True,
-                                log_fn).resequence()
+                if two_pass:
+                    self.two_pass_resynthesis(scene_input_path, scene_output_path, output_basename, series_interpolater)
+                else:
+                    self.one_pass_resynthesis(scene_input_path, scene_output_path, output_basename, series_interpolater)
+
                 Mtqdm().update_bar(bar)
 
     def inflate_scenes(self, log_fn, kept_scenes, engine, engine_settings):
