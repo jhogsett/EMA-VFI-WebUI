@@ -1428,10 +1428,12 @@ class VideoRemixer(TabBase):
 
             if self.state.resynthesize:
                 if not self.state.processed_content_complete(self.state.RESYNTH_STEP):
+                    two_pass_resynth = self.config.remixer_settings["resynth_type"] == 2
                     self.state.resynthesize_scenes(self.log,
                                                 kept_scenes,
                                                 self.engine,
-                                                self.config.engine_settings)
+                                                self.config.engine_settings,
+                                                two_pass=two_pass_resynth)
                     self.log("saving project after resynthesizing frames")
                     self.state.save()
                 jot.down(f"Resynthesized scenes in {self.state.resynthesis_path}")

@@ -118,6 +118,7 @@ remixer_settings:
   maximum_crf: 28
   min_frames_per_scene: 10
   minimum_crf: 17
+  resynth_type: 2
   scale_type_up: "lanczos"
   scale_type_down: "area"
   source_audio_crf: 28
