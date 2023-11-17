@@ -1112,7 +1112,7 @@ class VideoRemixerState():
                             2, 1, # stride, offset
                             -1,   # auto-zero fill
                             False, # rename
-                            self.log,
+                            log_fn,
                             output_path=output_path).resequence()
             Mtqdm().update_bar(bar)
             remove_directories([interframes_path1, interframes_path2, interframes_path3])
