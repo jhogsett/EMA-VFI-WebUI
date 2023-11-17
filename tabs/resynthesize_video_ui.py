@@ -33,6 +33,9 @@ class ResynthesizeVideo(TabBase):
             gr.HTML(SimpleIcons.TWO_HEARTS +
                 "Interpolate replacement frames from an entire video for use in movie restoration",
                 elem_id="tabheading")
+            resynth_type = gr.Radio(choices=["One Pass", "Two Pass"], value="One Pass",
+                                    label="Resynthesis Type",
+            info="One Pass Resynthesis is faster, Two Pass Resynthesis is better with fast motion")
             with gr.Tabs():
                 with gr.Tab(label="Individual Path"):
                     with gr.Row():
@@ -41,22 +44,20 @@ class ResynthesizeVideo(TabBase):
                         output_path_text = gr.Text(max_lines=1, label="Output Path",
                             placeholder="Where to place the resynthesized PNG frames",
                             info="Leave blank to use default path")
-                    resynth_type = gr.Radio(choices=["One Pass", "Two Pass"], value="One Pass",
-                                            label="Resynthesis Type",
-            info="One Pass Resynthesis is faster, Two Pass Resynthesis is better with fast motion")
-                    gr.Markdown("*Progress can be tracked in the console*")
                     message_box_single = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_SINGLE))
+                    gr.Markdown("*Progress can be tracked in the console*")
                     resynthesize_button = gr.Button("Resynthesize Video " +
                                                        SimpleIcons.SLOW_SYMBOL, variant="primary")
                 with gr.Tab(label="Batch Processing"):
-                    input_path_batch = gr.Text(max_lines=1,
-                        placeholder="Path on this server to the frame groups to resynthesize",
-                        label="Input Path")
-                    output_path_batch = gr.Text(max_lines=1,
-                        placeholder="Where to place the resynthesized frame groups",
-                        label="Output Path")
-                    gr.Markdown("*Progress can be tracked in the console*")
+                    with gr.Row():
+                        input_path_batch = gr.Text(max_lines=1,
+                            placeholder="Path on this server to the frame groups to resynthesize",
+                            label="Input Path")
+                        output_path_batch = gr.Text(max_lines=1,
+                            placeholder="Where to place the resynthesized frame groups",
+                            label="Output Path")
                     message_box_batch = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_BATCH))
+                    gr.Markdown("*Progress can be tracked in the console*")
                     resynthesize_batch = gr.Button("Resynthesize Batch " +
                                                        SimpleIcons.SLOW_SYMBOL, variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -107,7 +108,7 @@ class ResynthesizeVideo(TabBase):
                 group_input_path = os.path.join(input_path, group_name)
                 group_output_path = os.path.join(output_path, group_name)
                 try:
-                    self.resynthesize_video(group_input_path, group_output_path, interactive=False)
+                    self.resynthesize_video(group_input_path, group_output_path, resynth_type=resynth_type, interactive=False)
                 except ValueError as error:
                     errors.append(f"Error handling directory {group_name}: " + str(error))
                 Mtqdm().update_bar(bar)
@@ -146,7 +147,7 @@ class ResynthesizeVideo(TabBase):
                             1, 1, # start, step
                             2, 1, # stride, offset
                             -1,   # auto-zero fill
-                            True, # rename
+                            False, # rename
                             self.log,
                             output_path=interframes_path2).resequence()
             Mtqdm().update_bar(bar)
@@ -162,7 +163,7 @@ class ResynthesizeVideo(TabBase):
                             1, 1, # start, step
                             2, 1, # stride, offset
                             -1,   # auto-zero fill
-                            True, # rename
+                            False, # rename
                             self.log,
                             output_path=output_path).resequence()
             Mtqdm().update_bar(bar)
