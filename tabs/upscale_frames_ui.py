@@ -29,7 +29,6 @@ class UpscaleFrames(TabBase):
             gr.HTML(SimpleIcons.INCREASING + "Use Real-ESRGAN to Enlarge and Denoise Frames",
                 elem_id="tabheading")
             with gr.Row():
-                # with gr.Column():
                 with gr.Row():
                     scale_input = gr.Slider(value=4.0, minimum=1.0, maximum=8.0, step=0.05,
                         label="Frame Upscale Factor")
