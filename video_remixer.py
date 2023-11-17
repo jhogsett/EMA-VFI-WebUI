@@ -1068,7 +1068,13 @@ class VideoRemixerState():
         engine.interpolate_series(file_list, output_path, 1, "interframe", offset=2)
 
         log_fn(f"auto-resequencing recreated frames at {output_path}")
-        ResequenceFiles(output_path, "png", "resynthesized_frame", 1, 1, 1, 0, -1, True, self.log).resequence()
+        ResequenceFiles(output_path,
+                        "png", "resynthesized_frame",
+                        1, 1, # start, step
+                        1, 0, # stride, offset
+                        -1,   # auto-zero fill
+                        True, # rename
+                        log_fn).resequence()
 
     def two_pass_resynthesis(self, log_fn, input_path, output_path, output_basename, engine):
         interframes_path1 = os.path.join(output_path, "interframes-pass1")
@@ -1085,13 +1091,12 @@ class VideoRemixerState():
 
             log_fn(f"selecting odd interframes only at {interframes_path1}")
             ResequenceFiles(interframes_path1,
-                            "png",
-                            "odd_interframe",
-                            1, 1, # start, step
-                            2, 1, # stride, offset
-                            -1,   # auto-zero fill
+                            "png", "odd_interframe",
+                            1, 1,  # start, step
+                            2, 1,  # stride, offset
+                            -1,    # auto-zero fill
                             False, # rename
-                            self.log,
+                            log_fn,
                             output_path=interframes_path2).resequence()
             Mtqdm().update_bar(bar)
 
