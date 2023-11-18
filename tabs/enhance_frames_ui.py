@@ -39,17 +39,20 @@ class EnhanceImages(TabBase):
                         placeholder="Path on this server to place the enhanced PNG file group directories")
                     gr.Markdown("*Progress can be tracked in the console*")
                     enhance_batch = gr.Button("Enhance Batch", variant="primary")
-            clip_threshold = gr.Slider(minimum=1.0, maximum=10.0, value=2.0, label="Clip Threshold", info="A larger value produces more intense image enhancement")
+            clip_threshold = gr.Slider(minimum=1.0, maximum=10.0, value=2.0, label="Clip Threshold",
+                                       info="A larger value produces more intense image enhancement")
             # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
             #     WebuiTips.simplify_png_files.render()
 
-        enhance_button.click(self.enhance_png_files, inputs=input_path, show_progress=False)
-        enhance_batch.click(self.enhance_png_batch, inputs=input_path_batch, show_progress=False)
+        enhance_button.click(self.enhance_png_files, show_progress=False,
+                             inputs=[input_path, output_path, clip_threshold])
+        enhance_batch.click(self.enhance_png_batch, show_progress=False,
+                            inputs=[input_path_batch, output_path_batch, clip_threshold])
 
-    def clean_png_batch(self, input_path : str):
+    def enhance_png_batch(self, input_path : str, output_path : str, clip_threshold : float):
         """Clean Batch button handler"""
-        if input_path:
-            self.log(f"beginning batch SimplfyPngFiles processing with input_path={input_path}")
+        if input_path and output_path:
+            self.log(f"beginning batch Enhance Image processing with input_path={input_path}")
             group_names = get_directories(input_path)
             self.log(f"found {len(group_names)} groups to process")
 
@@ -57,10 +60,11 @@ class EnhanceImages(TabBase):
                 with Mtqdm().open_bar(total=len(group_names), desc="Frame Group") as bar:
                     for group_name in group_names:
                         group_input_path = os.path.join(input_path, group_name)
-                        self.clean_png_files(group_input_path)
+                        group_output_path = os.path.join(output_path, group_name)
+                        self.enhance_png_files(group_input_path, group_output_path, clip_threshold)
                         Mtqdm().update_bar(bar)
 
-    def clean_png_files(self, input_path : str):
+    def enhance_png_files(self, input_path : str, output_path : str, clip_threshold : float):
         """Clean button handler"""
-        if input_path:
-            _SimplifyPngFiles(input_path, self.log_fn).simplify()
+        if input_path and output_path:
+            ImageEnhancement(input_path, output_path, clip_threshold, self.log_fn).enhance()
