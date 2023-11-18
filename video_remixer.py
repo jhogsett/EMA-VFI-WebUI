@@ -412,21 +412,29 @@ class VideoRemixerState():
         return ffmpeg_cmd
 
     # this is intended to be called after source frames have been rendered
-    def enhance_video_info(self, ignore_errors=True):
+    def enhance_video_info(self, log_fn, ignore_errors=True):
         """Get the actual dimensions of the PNG frame files"""
-        source_frames = sorted(get_files(self.frames_path))
-        if source_frames:
-            sample_frame = source_frames[0]
-            try:
-                img = Image.open(sample_frame)
-                self.video_details["source_width"] = img.width
-                self.video_details["source_height"] = img.height
-            except Exception as error:
-                if not ignore_errors:
-                    raise error
-            return
-        if not ignore_errors:
-            raise ValueError(f"Error: no frame PNG files found in {self.frames_path}")
+        if self.scene_names:
+            self.uncompile_scenes()
+            first_scene_name = self.scene_names[0]
+            first_scene_path = os.path.join(self.scenes_path, first_scene_name)
+            scene_files = sorted(get_files(first_scene_path))
+            if scene_files:
+                sample_frame = scene_files[0]
+                try:
+                    img = Image.open(sample_frame)
+                    self.video_details["source_width"] = img.width
+                    self.video_details["source_height"] = img.height
+                except Exception as error:
+                    log_fn(f"Error: {error}")
+                    if not ignore_errors:
+                        raise error
+                return
+        message = f"Error: no frame PNG files found in {self.scenes_path}"
+        if ignore_errors:
+            log_fn(message)
+        else:
+            raise ValueError(message)
 
     def scenes_present(self):
         self.uncompile_scenes()
@@ -1678,7 +1686,7 @@ class VideoRemixerState():
         self.save_progress("choose")
 
     @staticmethod
-    def load(filepath : str):
+    def load(filepath : str, log_fn):
         with open(filepath, "r") as file:
             try:
                 state : VideoRemixerState = yaml.load(file, Loader=Loader)
@@ -1712,7 +1720,15 @@ class VideoRemixerState():
                 except AttributeError:
                     state.source_audio = state.source_video
                 # new source video properties
-                state.enhance_video_info()
+                state.enhance_video_info(log_fn)
+                # new crop offsets
+                try:
+                    if state.crop_offset_x == None or state.crop_offset_y == None:
+                        state.crop_offset_x = -1
+                        state.crop_offset_y = -1
+                except AttributeError:
+                    state.crop_offset_x = -1
+                    state.crop_offset_y = -1
 
                 return state
             except YAMLError as error:
@@ -1725,7 +1741,7 @@ class VideoRemixerState():
                 raise ValueError(message)
 
     @staticmethod
-    def load_ported(original_project_path, ported_project_file : str, save_original = True):
+    def load_ported(original_project_path, ported_project_file : str, log_fn, save_original = True):
         new_path, _, _ = split_filepath(ported_project_file)
 
         if save_original:
@@ -1763,7 +1779,7 @@ class VideoRemixerState():
         with open(ported_project_file, "w", encoding="UTF-8") as file:
             file.writelines(new_lines)
 
-        state = VideoRemixerState.load(ported_project_file)
+        state = VideoRemixerState.load(ported_project_file, log_fn)
         state.save(ported_project_file)
 
         return state

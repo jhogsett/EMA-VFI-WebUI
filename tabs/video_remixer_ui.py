@@ -986,7 +986,7 @@ class VideoRemixer(TabBase):
                    *empty_args
 
         try:
-            self.state = VideoRemixerState.load(project_file)
+            self.state = VideoRemixerState.load(project_file, self.log)
         except ValueError as error:
             self.log(f"error opening project: {error}")
             return gr.update(selected=self.TAB_REMIX_HOME), \
@@ -995,7 +995,7 @@ class VideoRemixer(TabBase):
 
         if self.state.project_ported(project_file):
             try:
-                self.state = VideoRemixerState.load_ported(self.state.project_path, project_file)
+                self.state = VideoRemixerState.load_ported(self.state.project_path, project_file, self.log)
             except ValueError as error:
                 self.log(f"error opening ported project at {project_file}: {error}")
                 return gr.update(selected=self.TAB_REMIX_HOME), \
@@ -1404,7 +1404,7 @@ class VideoRemixer(TabBase):
 
     # User has clicked Process Remix from Process Remix
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option):
-        noop_args = self.noop_args(8)
+        noop_args = self.noop_args(9)
         if not self.state.project_path or not self.state.scenes_path:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
                    gr.update(value=format_markdown(
@@ -2071,10 +2071,10 @@ class VideoRemixer(TabBase):
             new_profile_filepath = self.state.copy_project_file(full_new_project_path)
 
             # load the copied project file
-            new_state = VideoRemixerState.load(new_profile_filepath)
+            new_state = VideoRemixerState.load(new_profile_filepath, self.log)
 
             # update project paths to the new one
-            new_state = VideoRemixerState.load_ported(new_state.project_path, new_profile_filepath, save_original=False)
+            new_state = VideoRemixerState.load_ported(new_state.project_path, new_profile_filepath, self.log, save_original=False)
 
             # ensure the project directories exist
             new_state.post_load_integrity_check()
