@@ -63,7 +63,7 @@ class ImageEnhancement:
             self.log(f"enhancing {file}")
             img = cv2.imread(file)
 
-            # this works but seemed to sensitive to blue
+            # this works but seemed too sensitive to blue
             # lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
             # lab[...,0] = clahe.apply(lab[...,0])
             # img_clahe = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)

@@ -11,7 +11,7 @@ from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
 from image_enhancement import ImageEnhancement
 
-class EnhanceImages(TabBase):
+class EnhanceFrames(TabBase):
     """Encapsulates UI elements and events for the Enhance Images feature"""
     def __init__(self,
                     config : SimpleConfig,
