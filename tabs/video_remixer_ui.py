@@ -2200,6 +2200,7 @@ class VideoRemixer(TabBase):
                 Mtqdm().update_bar(bar)
 
         shutil.rmtree(working_path)
+        self.invalidate_split_scene_cache()
         return gr.update(value=format_markdown("Kept scenes replaced with cleaned versions"))
 
 
