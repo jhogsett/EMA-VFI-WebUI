@@ -24,23 +24,26 @@ class EnhanceFrames(TabBase):
         with gr.Tab("Enhance Images"):
             gr.Markdown(SimpleIcons.SPARKLES + "Auto-Correct Contrast for PNG Files",
                 elem_id="tabheading")
+            clip_threshold = gr.Slider(minimum=1.0, maximum=10.0, value=2.0, step=0.25,
+                                    label="Clip Threshold",
+                                    info="A larger value produces more intense image enhancement")
             with gr.Tabs():
                 with gr.Tab(label="Individual Path"):
-                    input_path = gr.Text(max_lines=1, label="Input Path for PNG Files",
-                        placeholder="Path on this server to the PNG files to be enhanced")
-                    output_path = gr.Text(max_lines=1, label="Output Path for PNG Files",
-                        placeholder="Path on this server to place the enhanced PNG files")
+                    with gr.Row():
+                        input_path = gr.Text(max_lines=1, label="Input Path for PNG Files",
+                            placeholder="Path on this server to the PNG files to be enhanced")
+                        output_path = gr.Text(max_lines=1, label="Output Path for PNG Files",
+                            placeholder="Path on this server to place the enhanced PNG files")
                     gr.Markdown("*Progress can be tracked in the console*")
                     enhance_button = gr.Button("Enhance", variant="primary")
                 with gr.Tab(label="Batch Processing"):
-                    input_path_batch = gr.Text(max_lines=1, label="Input Path for PNG File Groups",
-                        placeholder="Path on this server to the PNG file group directories to be enhanced")
-                    output_path_batch = gr.Text(max_lines=1, label="Output Path for PNG File Groups",
-                        placeholder="Path on this server to place the enhanced PNG file group directories")
+                    with gr.Row():
+                        input_path_batch = gr.Text(max_lines=1, label="Input Path for PNG File Groups",
+                            placeholder="Path on this server to the PNG file group directories to be enhanced")
+                        output_path_batch = gr.Text(max_lines=1, label="Output Path for PNG File Groups",
+                            placeholder="Path on this server to place the enhanced PNG file group directories")
                     gr.Markdown("*Progress can be tracked in the console*")
                     enhance_batch = gr.Button("Enhance Batch", variant="primary")
-            clip_threshold = gr.Slider(minimum=1.0, maximum=10.0, value=2.0, label="Clip Threshold",
-                                       info="A larger value produces more intense image enhancement")
             # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
             #     WebuiTips.simplify_png_files.render()
 
