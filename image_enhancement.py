@@ -30,8 +30,8 @@ def main():
     ImageEnhancement(args.input_path,
                      args.output_path,
                      args.clip_limit,
-                     args.tile_grid_size,
-                     log.log).enhance()
+                     log.log,
+                     tile_grid_size=args.tile_grid_size).enhance()
 
 class ImageEnhancement:
     """Encapsulate logic for Split Channels feature"""
@@ -39,13 +39,13 @@ class ImageEnhancement:
                 input_path : str,
                 output_path : str,
                 clip_limit : float,
-                tile_grid_size : int,
-                log_fn : Callable | None):
+                log_fn : Callable | None,
+                tile_grid_size : int=1):
         self.input_path = input_path
         self.output_path = output_path
         self.clip_limit = clip_limit
-        self.tile_grid_size = tile_grid_size
         self.log_fn = log_fn
+        self.tile_grid_size = tile_grid_size
 
     def enhance(self) -> None:
         """Invoke the Image Enhancement feature"""
@@ -63,11 +63,17 @@ class ImageEnhancement:
             self.log(f"enhancing {file}")
             img = cv2.imread(file)
 
-            lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-            lab[...,0] = clahe.apply(lab[...,0])
-            img_clahe = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+            # this works but seemed to sensitive to blue
+            # lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+            # lab[...,0] = clahe.apply(lab[...,0])
+            # img_clahe = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
 
-            # simple, colors diverge
+            # better overall results
+            hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS_FULL)
+            hls[...,1] = clahe.apply(hls[...,1])
+            img_clahe = cv2.cvtColor(hls, cv2.COLOR_HLS2BGR_FULL)
+
+            # simple, but colors diverge
             # img_b = clahe_model.apply(img[:,:,0])
             # img_g = clahe_model.apply(img[:,:,1])
             # img_r = clahe_model.apply(img[:,:,2])
