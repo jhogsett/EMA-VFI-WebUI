@@ -28,6 +28,7 @@ class VideoRemixer(TabBase):
         TabBase.__init__(self, config, engine, log_fn)
         self.new_project()
 
+    # TODO this only runs at app start-up
     def new_project(self):
         self.state = VideoRemixerState()
         self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"])
@@ -1010,6 +1011,7 @@ class VideoRemixer(TabBase):
         scene_details = self.scene_chooser_details(self.state.tryattr("current_scene"))
 
         Session().set("last-video-remixer-project", project_path)
+        self.invalidate_split_scene_cache()
 
         return gr.update(selected=return_to_tab), \
             gr.update(value=message_text), \
