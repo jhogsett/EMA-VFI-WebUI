@@ -196,7 +196,6 @@ class SimpleIcons:
         STILL,
         TELEVISION,
         THREE,
-        TOOLBOX,
         TWO,
         TWO_HEARTS,
         VULCAN_HAND,

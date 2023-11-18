@@ -1,7 +1,5 @@
 **Video Remixer Extra** - Special Features and Project Clean Up
 
-## _Utilities_
-
 #### Split Scene - Split a Scene into two new scenes at a chosen moment
 
 - **Used For:** Breaking up a scene without redoing project setup
@@ -10,25 +8,11 @@
 - _**Tip:**_
     - Use the _Split Scene_ button in the _Danger Zone_ from the Scene Chooser
 
-#### Drop Processed Scene - Drop a scene after processing has been already been done
-
-- **Used For:** Removing a scene from the remix without having to reprocess content
-- _Enter the scene ID to drop_
-- _Sets the scene to_ Dropped _in the project and deletes all related processed content_
-
 #### Choose Scene Range - Keep or Drop a range of scenes
 
 - **Used For:** Quickly Keeping or Dropping a series of scenes
 - _Enter the starting and ending scene IDs, and whether to Keep or Drop_
 - _All scenes from starting to ending scene ID are set to the chosen state_
-
-#### Export Kept Scenes - Duplicate kept scenes to a new project
-
-- **Used For:** Creating a new project from a set of kept scenes
-- _Enter the path for storage and a name for the the new project_
-- _All kept scenes and related thumbnails will be duplicated to the new project_
-- _**Note:**_
-    - The original source frames and dropped scenes are not duplicated
 
 #### Cleanse Scenes - Remove noise and artifacts from kept scenes
 
@@ -38,7 +22,21 @@
 - _**Note:**_
     - The original scenes are purged to the _purged_content_ folder
 
-## _Reduce Footprint_
+#### Drop Processed Scene - Drop a scene after processing has been already been done
+
+- **Used For:** Removing a scene from the remix without having to reprocess content
+- _Enter the scene ID to drop_
+- _Sets the scene to_ Dropped _in the project and deletes all related processed content_
+
+#### Export Kept Scenes - Duplicate kept scenes to a new project
+
+- **Used For:** Creating a new project from a set of kept scenes
+- _Enter the path for storage and a name for the the new project_
+- _All kept scenes and related thumbnails will be duplicated to the new project_
+- _**Note:**_
+    - The original source frames and dropped scenes are not duplicated
+
+#### Manage Storage - Free Disk Space by Removing Unneeded Content
 
 #### Remove Soft-Deleted Content - Delete content set aside when remix processing selections are changed
 

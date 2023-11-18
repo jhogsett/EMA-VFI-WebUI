@@ -42,14 +42,12 @@ class VideoRemixer(TabBase):
     TAB_SAVE_REMIX = 6
     TAB_REMIX_EXTRA = 7
 
-    TAB_EXTRA_UTILITIES = 0
-    TAB_EXTRA_REDUCE = 1
-
-    TAB_EXTRA_UTIL_DROP_PROCESSED = 0
-    TAB_EXTRA_UTIL_CHOOSE_RANGE = 1
-    TAB_EXTRA_UTIL_SPLIT_SCENE = 2
-    TAB_EXTRA_UTIL_EXPORT_SCENES = 3
-    TAB_EXTRA_UTIL_CLEANSE_SCENES = 4
+    TAB_EXTRA_DROP_PROCESSED = 0
+    TAB_EXTRA_CHOOSE_RANGE = 1
+    TAB_EXTRA_SPLIT_SCENE = 2
+    TAB_EXTRA_EXPORT_SCENES = 3
+    TAB_EXTRA_CLEANSE_SCENES = 4
+    TAB_EXTRA_MANAGE_STORAGE = 5
 
     TAB00_DEFAULT_MESSAGE = "Click New Project to: Inspect Video and Count Frames (can take a minute or more)"
     TAB01_DEFAULT_MESSAGE = "Click Open Project to: Resume Editing an Existing Project"
@@ -429,96 +427,102 @@ class VideoRemixer(TabBase):
                 with gr.Tab(SimpleIcons.COCKTAIL + " Remix Extra", id=self.TAB_REMIX_EXTRA):
                     with gr.Tabs() as tabs_remix_extra:
 
-                        with gr.Tab(SimpleIcons.TOOLBOX + " Utilities", id=self.TAB_EXTRA_UTILITIES):
-                            gr.Markdown("Special Remix Features for Advanced Use")
-                            with gr.Tabs() as tabs_remix_extra_utils:
+                        # Split Scene
+                        with gr.Tab(SimpleIcons.AXE + " Split Scene",
+                                    id=self.TAB_EXTRA_SPLIT_SCENE):
+                            gr.Markdown("**_Split a Scene in two at a set point_**")
+                            with gr.Row():
+                                with gr.Column():
+                                    with gr.Row():
+                                        scene_id_702 = gr.Number(value=-1,
+                                                                    label="Scene Index")
+                                        scene_info_702 = gr.Text(label="Scene Details",
+                                                                    interactive=False)
+                                    with gr.Row():
+                                        split_percent_702 = gr.Slider(value=50.0,
+                                            label="Split Position", minimum=0.0,
+                                            maximum=100.0, step=0.1,
+                                        info="A lower value splits earlier in the scene")
+                                    with gr.Row():
+                                        prev_second_702 = gr.Button(value="< 1 second", scale=0)
+                                        prev_frame_702 = gr.Button(value="< 1 frame", scale=0)
+                                        next_frame_702 = gr.Button(value="1 frame >", scale=0)
+                                        next_second_702 = gr.Button(value="1 second >", scale=0)
+                                with gr.Column():
+                                    preview_image702 = gr.Image(type="filepath",
+                            label="Split Frame Preview", tool=None, height=max_thumb_size)
+                            with gr.Row():
+                                message_box702 = gr.Markdown(format_markdown(
+            "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
+                            split_button702 = gr.Button(
+                                "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
-                                # Split Scene
-                                with gr.Tab(SimpleIcons.AXE + " Split Scene",
-                                            id=self.TAB_EXTRA_UTIL_SPLIT_SCENE):
-                                    gr.Markdown("**_Split a Scene in two at a set point_**")
-                                    with gr.Row():
-                                        with gr.Column():
-                                            with gr.Row():
-                                                scene_id_702 = gr.Number(value=-1,
-                                                                         label="Scene Index")
-                                                scene_info_702 = gr.Text(label="Scene Details",
-                                                                         interactive=False)
-                                            with gr.Row():
-                                                split_percent_702 = gr.Slider(value=50.0,
-                                                    label="Split Position", minimum=0.0,
-                                                    maximum=100.0, step=0.1,
-                                                info="A lower value splits earlier in the scene")
-                                            with gr.Row():
-                                                prev_second_702 = gr.Button(value="< 1 second", scale=0)
-                                                prev_frame_702 = gr.Button(value="< 1 frame", scale=0)
-                                                next_frame_702 = gr.Button(value="1 frame >", scale=0)
-                                                next_second_702 = gr.Button(value="1 second >", scale=0)
-                                        with gr.Column():
-                                            preview_image702 = gr.Image(type="filepath",
-                                    label="Split Frame Preview", tool=None, height=max_thumb_size)
-                                    with gr.Row():
-                                        message_box702 = gr.Markdown(format_markdown(
-                    "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
-                                    split_button702 = gr.Button(
-                                        "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
+                        # Choose Scene Range
+                        with gr.Tab(SimpleIcons.HEART_HANDS + " Choose Scene Range",
+                                    id=self.TAB_EXTRA_CHOOSE_RANGE):
+                            gr.Markdown("**_Keep or Drop a range of scenes_**")
+                            with gr.Row():
+                                first_scene_id_701 = gr.Number(value=-1,
+                                                            label="Starting Scene Index")
+                                last_scene_id_701 = gr.Number(value=-1,
+                                                            label="Ending Scene Index")
+                            with gr.Row():
+                                scene_state_701 = gr.Radio(label="Scenes Choice",
+                                                            value=None,
+                                                            choices=["Keep", "Drop"])
+                            with gr.Row():
+                                message_box701 = gr.Markdown(
+                                    format_markdown(
+                        "Click Choose Scene Range to: Set the Scene Range to the specified state"))
+                            choose_button701 = gr.Button("Choose Scene Range",
+                                                    variant="stop", scale=0)
 
-                                # Drop Processed Scene
-                                with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene",
-                                            id=self.TAB_EXTRA_UTIL_DROP_PROCESSED):
-                                    gr.Markdown(
-                                "**_Drop a scene after processing has been already been done_**")
-                                    scene_id_700 = gr.Number(value=-1, label="Scene Index")
-                                    with gr.Row():
-                                        message_box700 = gr.Markdown(format_markdown("Click Drop Scene to: Remove all Processed Content for the specified scene"))
-                                    drop_button700 = gr.Button("Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
+                        # Cleanse Scenes
+                        with gr.Tab(SimpleIcons.SOAP + " Cleanse Scenes",
+                                    id=self.TAB_EXTRA_CLEANSE_SCENES):
+                            gr.Markdown("**_Remove noise and artifacts from kept scenes_**")
+                            with gr.Row():
+                                message_box704 = gr.Markdown(
+                                    format_markdown(
+                            "Click Cleanse Scene to: Remove noise and artifacts from kept scenes"))
+                            cleanse_button704 = gr.Button(
+                            "Cleanse Scenes " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
-                                # Choose Scene Range
-                                with gr.Tab(SimpleIcons.HEART_HANDS + " Choose Scene Range", id=self.TAB_EXTRA_UTIL_CHOOSE_RANGE):
-                                    gr.Markdown("**_Keep or Drop a range of scenes_**")
-                                    with gr.Row():
-                                        first_scene_id_701 = gr.Number(value=-1,
-                                                                    label="Starting Scene Index")
-                                        last_scene_id_701 = gr.Number(value=-1,
-                                                                    label="Ending Scene Index")
-                                    with gr.Row():
-                                        scene_state_701 = gr.Radio(label="Scenes Choice",
-                                                                   value=None,
-                                                                   choices=["Keep", "Drop"])
-                                    with gr.Row():
-                                        message_box701 = gr.Markdown(format_markdown("Click Choose Scene Range to: Set the Scene Range to the specified state"))
-                                    choose_button701 = gr.Button("Choose Scene Range",
-                                                            variant="stop", scale=0)
+                        # Drop Processed Scene
+                        with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene",
+                                    id=self.TAB_EXTRA_DROP_PROCESSED):
+                            gr.Markdown(
+                        "**_Drop a scene after processing has been already been done_**")
+                            scene_id_700 = gr.Number(value=-1, label="Scene Index")
+                            with gr.Row():
+                                message_box700 = gr.Markdown(
+                                    format_markdown(
+                    "Click Drop Scene to: Remove all Processed Content for the specified scene"))
+                            drop_button700 = gr.Button(
+                        "Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
-                                # Export Kept Scenes
-                                with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_UTIL_EXPORT_SCENES):
-                                    gr.Markdown("**_Save Kept Scenes as a New Project_**")
-                                    with gr.Row():
-                                        export_path_703 = gr.Textbox(label="Exported Project Root Directory", max_lines=1,
-                                                info="Enter a path on this server for the root directory of the new project")
-                                        project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
-                                                info="Enter a name for the new project")
-                                    with gr.Row():
-                                        message_box703 = gr.Markdown(format_markdown("Click Export Project to: Save the kept scenes as a new project"))
-                                    export_project_703 = gr.Button("Export Project " + SimpleIcons.SLOW_SYMBOL,
-                                                            variant="stop", scale=0)
-                                    with gr.Row():
-                                        result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
-                                        open_result703 = gr.Button("Open New Project", visible=False, scale=0)
+                        # Export Kept Scenes
+                        with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_EXPORT_SCENES):
+                            gr.Markdown("**_Save Kept Scenes as a New Project_**")
+                            with gr.Row():
+                                export_path_703 = gr.Textbox(label="Exported Project Root Directory", max_lines=1,
+                                        info="Enter a path on this server for the root directory of the new project")
+                                project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
+                                        info="Enter a name for the new project")
+                            with gr.Row():
+                                message_box703 = gr.Markdown(format_markdown("Click Export Project to: Save the kept scenes as a new project"))
+                            export_project_703 = gr.Button("Export Project " + SimpleIcons.SLOW_SYMBOL,
+                                                    variant="stop", scale=0)
+                            with gr.Row():
+                                result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
+                                open_result703 = gr.Button("Open New Project", visible=False, scale=0)
 
-                                # Cleanse Scene
-                                with gr.Tab(SimpleIcons.SOAP + " Cleanse Scenes", id=self.TAB_EXTRA_UTIL_CLEANSE_SCENES):
-                                    gr.Markdown(
-                                "**_Remove noise and artifacts from kept scenes_**")
-                                    with gr.Row():
-                                        message_box704 = gr.Markdown(format_markdown("Click Cleanse Scene to: Remove noise and artifacts from kept scenes"))
-                                    cleanse_button704 = gr.Button("Cleanse Scenes " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
-
-                        with gr.Tab(SimpleIcons.HERB +" Reduce Footprint", id=self.TAB_EXTRA_REDUCE):
+                        with gr.Tab(SimpleIcons.HERB +" Manage Storage",
+                                    id=self.TAB_EXTRA_MANAGE_STORAGE):
                             gr.Markdown("Free Disk Space by Removing Unneeded Content")
                             with gr.Tabs():
-
-                                with gr.Tab(SimpleIcons.WASTE_BASKET + " Remove Soft-Deleted Content"):
+                                with gr.Tab(SimpleIcons.WASTE_BASKET +
+                                            " Remove Soft-Deleted Content"):
                                     gr.Markdown(
                     "**_Delete content set aside when remix processing selections are changed_**")
                                     with gr.Row():
@@ -528,15 +532,23 @@ class VideoRemixer(TabBase):
                                             gr.Markdown(
                                 "Delete the contents of the 'purged_content' project directory.")
                                     with gr.Row():
-                                        message_box710 = gr.Markdown(format_markdown("Click Delete Purged Content to: Permanently Remove soft-deleted content"))
-                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                        message_box710 = gr.Markdown(
+                                            format_markdown(
+                        "Click Delete Purged Content to: Permanently Remove soft-deleted content"))
+                                    gr.Markdown(
+                                        format_markdown(
+                    "Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
-                                        delete_button710 = gr.Button(value="Delete Purged Content "\
-                                                        + SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                        select_all_button710 = gr.Button(value="Select All", scale=0)
-                                        select_none_button710 = gr.Button(value="Select None", scale=0)
+                                        delete_button710 = gr.Button(
+                                            value="Delete Purged Content " +
+                                            SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                        select_all_button710 = gr.Button(
+                                            value="Select All", scale=0)
+                                        select_none_button710 = gr.Button(
+                                            value="Select None", scale=0)
 
-                                with gr.Tab(SimpleIcons.CROSSMARK + " Remove Scene Chooser Content"):
+                                with gr.Tab(SimpleIcons.CROSSMARK +
+                                            " Remove Scene Chooser Content"):
                                     gr.Markdown(
                             "**_Delete source PNG frame files, thumbnails and dropped scenes_**")
                                     with gr.Row():
@@ -557,16 +569,23 @@ class VideoRemixer(TabBase):
                                             gr.Markdown(
                                     "Delete Thumbnails used to display scenes in Scene Chooser.")
                                     with gr.Row():
-                                        message_box711 = gr.Markdown(format_markdown("Click Delete Selected Content to: Permanently Remove the selected content"))
-                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                        message_box711 = gr.Markdown(
+                                            format_markdown(
+                        "Click Delete Selected Content to: Permanently Remove the selected content"))
+                                    gr.Markdown(
+                                        format_markdown(
+                    "Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
                                         delete_button711 = gr.Button(
                                             value="Delete Selected Content " +\
                                                 SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                        select_all_button711 = gr.Button(value="Select All", scale=0)
-                                        select_none_button711 = gr.Button(value="Select None", scale=0)
+                                        select_all_button711 = gr.Button(
+                                            value="Select All", scale=0)
+                                        select_none_button711 = gr.Button(
+                                            value="Select None", scale=0)
 
-                                with gr.Tab(SimpleIcons.CROSSMARK + " Remove Remix Video Source Content"):
+                                with gr.Tab(SimpleIcons.CROSSMARK +
+                                            " Remove Remix Video Source Content"):
                                     gr.Markdown(
                                     "**_Clear space after final Remix Videos have been saved_**")
                                     with gr.Row():
@@ -616,14 +635,20 @@ class VideoRemixer(TabBase):
                                             gr.Markdown(
         "Delete Video+Audio MP4 files used as inputs to concatentate into the final Remix Video.")
                                     with gr.Row():
-                                        message_box712 = gr.Markdown(format_markdown("Click Delete Selected Content to: Permanently Remove the selected content"))
-                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                        message_box712 = gr.Markdown(
+                                            format_markdown(
+                        "Click Delete Selected Content to: Permanently Remove the selected content"))
+                                    gr.Markdown(
+                                        format_markdown(
+                    "Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
                                         delete_button712 = gr.Button(
                                             value="Delete Selected Content " +\
                                                 SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                        select_all_button712 = gr.Button(value="Select All", scale=0)
-                                        select_none_button712 = gr.Button(value="Select None", scale=0)
+                                        select_all_button712 = gr.Button(
+                                            value="Select All", scale=0)
+                                        select_none_button712 = gr.Button(
+                                            value="Select None", scale=0)
 
                                 with gr.Tab(SimpleIcons.COLLISION + " Remove All Processed Content"):
                                     gr.Markdown(
@@ -635,8 +660,12 @@ class VideoRemixer(TabBase):
                                             gr.Markdown(
             "Deletes all created project content. **Does not delete original and remixed videos.**")
                                     with gr.Row():
-                                        message_box713 = gr.Markdown(format_markdown("Click Delete Processed Content to: Permanently Remove all processed content"))
-                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                        message_box713 = gr.Markdown(
+                                            format_markdown(
+                    "Click Delete Processed Content to: Permanently Remove all processed content"))
+                                    gr.Markdown(
+                                        format_markdown(
+                    "Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
                                         delete_button713 = gr.Button(
                                             value="Delete Processed Content " +\
@@ -644,14 +673,18 @@ class VideoRemixer(TabBase):
 
                                 with gr.Tab(SimpleIcons.MENDING_HEART + " Recover Project"):
                                     gr.Markdown(
-                                    "**_Restore a project from the original source video and project file_**")
+                        "**_Restore a project from the original source video and project file_**")
                                     with gr.Row():
-                                        message_box714 = gr.Markdown(format_markdown("Click Recover Project to: Restore the currently loaded project"))
-                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                        message_box714 = gr.Markdown(
+                                            format_markdown(
+                                    "Click Recover Project to: Restore the currently loaded project"))
+                                    gr.Markdown(
+                                        format_markdown(
+                    "Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
                                         restore_button714 = gr.Button(
-                                            value="Recover Project " +\
-                                                SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                            value="Recover Project " +
+                                            SimpleIcons.SLOW_SYMBOL, variant="stop")
 
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                         WebuiTips.video_remixer_extra.render()
@@ -739,12 +772,11 @@ class VideoRemixer(TabBase):
                                      scene_info])
 
         split_scene_button.click(self.split_scene_shortcut, inputs=scene_index,
-            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils, scene_id_702,
+            outputs=[tabs_video_remixer, tabs_remix_extra, scene_id_702,
                      split_percent_702, preview_image702])
 
         choose_range_button.click(self.choose_range_shortcut, inputs=scene_index,
-            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils,
-                     first_scene_id_701, last_scene_id_701])
+            outputs=[tabs_video_remixer, tabs_remix_extra, first_scene_id_701, last_scene_id_701])
 
         keep_all_button.click(self.keep_all_scenes, show_progress=True,
                             inputs=[scene_index, scene_label],
@@ -762,7 +794,7 @@ class VideoRemixer(TabBase):
                                      scene_info])
 
         drop_processed_button.click(self.drop_processed_shortcut, inputs=scene_index,
-            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils, scene_id_700])
+            outputs=[tabs_video_remixer, tabs_remix_extra, scene_id_700])
 
         next_button3.click(self.next_button3,
                            outputs=[tabs_video_remixer, project_info4])
@@ -1279,8 +1311,7 @@ class VideoRemixer(TabBase):
         display_frame = self.compute_preview_frame(scene_index, default_percent)
         _, _, _, scene_info = self.state.scene_chooser_details(scene_index)
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
-            gr.update(selected=self.TAB_EXTRA_UTILITIES), \
-            gr.update(selected=self.TAB_EXTRA_UTIL_SPLIT_SCENE), \
+            gr.update(selected=self.TAB_EXTRA_SPLIT_SCENE), \
             scene_index, \
             default_percent, \
             display_frame, \
@@ -1288,8 +1319,7 @@ class VideoRemixer(TabBase):
 
     def choose_range_shortcut(self, scene_index):
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
-            gr.update(selected=self.TAB_EXTRA_UTILITIES), \
-            gr.update(selected=self.TAB_EXTRA_UTIL_CHOOSE_RANGE), \
+            gr.update(selected=self.TAB_EXTRA_CHOOSE_RANGE), \
             scene_index, \
             scene_index
 
@@ -1307,8 +1337,7 @@ class VideoRemixer(TabBase):
 
     def drop_processed_shortcut(self, scene_index):
         return gr.update(selected=7), \
-            gr.update(selected=self.TAB_EXTRA_UTILITIES), \
-            gr.update(selected=self.TAB_EXTRA_UTIL_DROP_PROCESSED), \
+            gr.update(selected=self.TAB_EXTRA_DROP_PROCESSED), \
             scene_index
 
 
