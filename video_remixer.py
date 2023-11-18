@@ -49,6 +49,8 @@ class VideoRemixerState():
         self.deinterlace = None
         self.min_frames_per_scene = None
         self.split_time = None
+        self.crop_offset_x = None
+        self.crop_offset_y = None
 
         # set on confirming set up options
         self.split_frames = None
@@ -114,6 +116,7 @@ class VideoRemixerState():
         "upscale_option" : "2X",
         "min_frames_per_scene" : 10,
         "split_time" : 60,
+        "crop_offsets" : -1
     }
 
     # set project settings UI defaults in case the project is reopened
@@ -217,6 +220,8 @@ class VideoRemixerState():
         self.resize_h = resize_h
         self.crop_w = crop_w
         self.crop_h = crop_h
+        self.crop_offset_x = -1
+        self.crop_offset_y = -1
         self.project_fps = float(video_details['frame_rate'])
 
     @staticmethod
@@ -239,6 +244,7 @@ class VideoRemixerState():
             "Deinterlace",
             "Resize To",
             "Crop To",
+            "Crop Offset",
             "Split Type",
             "Scene Detection Threshold"]
         data_rows = [[
@@ -246,6 +252,7 @@ class VideoRemixerState():
             SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
             f"{self.resize_w} x {self.resize_h}",
             f"{self.crop_w} x {self.crop_h}",
+            f"{self.crop_offset_x} x {self.crop_offset_y}",
             self.split_type,
             self.scene_threshold]]
         return header_row, data_rows
@@ -256,6 +263,7 @@ class VideoRemixerState():
             "Deinterlace",
             "Resize To",
             "Crop To",
+            "Crop Offset",
             "Split Type",
             "Minimum Duration",
             "Black Ratio"]
@@ -264,6 +272,7 @@ class VideoRemixerState():
             SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
             f"{self.resize_w} x {self.resize_h}",
             f"{self.crop_w} x {self.crop_h}",
+            f"{self.crop_offset_x} x {self.crop_offset_y}",
             self.split_type,
             f"{self.break_duration}s",
             self.break_ratio]]
@@ -275,6 +284,7 @@ class VideoRemixerState():
             "Deinterlace",
             "Resize To",
             "Crop To",
+            "Crop Offset",
             "Split Type",
             "Split Time",
             "Split Frames"]
@@ -284,6 +294,7 @@ class VideoRemixerState():
             SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
             f"{self.resize_w} x {self.resize_h}",
             f"{self.crop_w} x {self.crop_h}",
+            f"{self.crop_offset_x} x {self.crop_offset_y}",
             self.split_type,
             f"{self.split_time}s",
             self.split_frames]]
@@ -295,12 +306,14 @@ class VideoRemixerState():
             "Deinterlace",
             "Resize To",
             "Crop To",
+            "Crop Offset",
             "Split Type"]
         data_rows = [[
             f"{float(self.project_fps):.2f}",
             SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
             f"{self.resize_w} x {self.resize_h}",
             f"{self.crop_w} x {self.crop_h}",
+            f"{self.crop_offset_x} x {self.crop_offset_y}",
             self.split_type]]
         return header_row, data_rows
 
@@ -1017,13 +1030,16 @@ class VideoRemixerState():
                 # the default "lanczos" type preserves details better on enlarging
                 scale_type = remixer_settings["scale_type_up"]
 
-        if self.crop_w == self.resize_w and \
-                self.crop_h == self.resize_h:
+        if self.crop_w == self.resize_w and self.crop_h == self.resize_h:
+            # disable cropping if noop
+            crop_type = "none"
+        elif self.crop_w > self.resize_w or self.crop_h > self.resize_h:
+            # disable cropping if it will wrap/is invalid
+            # TODO put bounds on the crop parameters instead of disabling
             crop_type = "none"
         else:
             crop_type = "crop"
-        crop_offset = -1
-        return scale_type, crop_type, crop_offset
+        return scale_type, crop_type
 
     def resize_scene(self,
                      log_fn,
@@ -1032,8 +1048,7 @@ class VideoRemixerState():
                      resize_w,
                      resize_h,
                      scale_type,
-                     crop_type="none",
-                     crop_offset=-1):
+                     crop_type="none"):
 
         ResizeFrames(scene_input_path,
                     scene_output_path,
@@ -1044,8 +1059,8 @@ class VideoRemixerState():
                     crop_type=crop_type,
                     crop_width=self.crop_w,
                     crop_height=self.crop_h,
-                    crop_offset_x=crop_offset,
-                    crop_offset_y=crop_offset).resize()
+                    crop_offset_x=self.crop_offset_x,
+                    crop_offset_y=self.crop_offset_y).resize()
 
     def resize_scenes(self, log_fn, kept_scenes, remixer_settings):
         scenes_base_path = self.scenes_source_path(self.RESIZE_STEP)
@@ -1053,7 +1068,7 @@ class VideoRemixerState():
 
         content_width = self.video_details["content_width"]
         content_height = self.video_details["content_height"]
-        scale_type, crop_type, crop_offset = self.get_resize_params(content_width, content_height, remixer_settings)
+        scale_type, crop_type= self.get_resize_params(content_width, content_height, remixer_settings)
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Resize") as bar:
             for scene_name in kept_scenes:
@@ -1065,8 +1080,7 @@ class VideoRemixerState():
                                   int(self.resize_w),
                                   int(self.resize_h),
                                   scale_type,
-                                  crop_type,
-                                  crop_offset)
+                                  crop_type)
                 Mtqdm().update_bar(bar)
 
     # TODO dry up this code with same in resynthesize_video_ui - maybe a specific resynth script
