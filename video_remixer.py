@@ -9,7 +9,8 @@ from webui_utils.file_utils import split_filepath, create_directory, get_directo
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
-    MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom, SourceToMP4
+    MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom, SourceToMP4, \
+    rate_adjusted_count
 from webui_utils.jot import Jot
 from webui_utils.mtqdm import Mtqdm
 from split_scenes import SplitScenes
@@ -408,7 +409,11 @@ class VideoRemixerState():
                 return None
 
         video_path = self.source_video
-        index_width = self.video_details["index_width"]
+
+        source_frame_rate = float(self.video_details["frame_rate"])
+        source_frame_count = int(self.video_details["frame_count"])
+        _, index_width = rate_adjusted_count(source_frame_count, source_frame_rate, self.project_fps)
+
         self.output_pattern = f"source_%0{index_width}d.png"
         frame_rate = self.project_fps
         create_directory(self.frames_path)
@@ -604,8 +609,11 @@ class VideoRemixerState():
         self.thumbnail_path = os.path.join(self.project_path, self.THUMBNAILS_PATH)
         frames_source = os.path.join(self.scenes_path, scene_name)
 
+        source_frame_rate = float(self.video_details["frame_rate"])
+        source_frame_count = int(self.video_details["frame_count"])
+        _, index_width = rate_adjusted_count(source_frame_count, source_frame_rate, self.project_fps)
+
         log_fn(f"auto-resequencing source frames at {frames_source}")
-        index_width = self.video_details["index_width"]
         ResequenceFiles(frames_source, "png", "scene_frame", 0, 1, 1, 0, index_width, True,
             log_fn).resequence()
 

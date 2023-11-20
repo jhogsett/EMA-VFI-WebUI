@@ -306,6 +306,16 @@ def get_essential_video_details(input_path : str, count_frames=False) -> dict:
             video_essentials["display_aspect_ratio"] = stream_data.get("display_aspect_ratio")
         return video_essentials
 
+def rate_adjusted_count(source_count : int, source_rate : float, new_rate : float):
+    """Compute a projected frame count and index width given a change in frame rate"""
+    if source_rate == new_rate or not new_rate:
+        adjusted_count = source_count
+    else:
+        rate_ratio = new_rate / source_rate
+        adjusted_count = int(source_count * rate_ratio) + 1
+    index_width = len(str(adjusted_count))
+    return adjusted_count, index_width
+
 def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group : int):
     """Use FFmpeg to get a list of duplicate frames without making changes
         - input_path: path to PNG frame files
