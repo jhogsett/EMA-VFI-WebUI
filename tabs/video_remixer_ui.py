@@ -1204,7 +1204,7 @@ class VideoRemixer(TabBase):
 
             try:
                 self.log("enhance source video info with extra data including frame dimensions")
-                self.state.enhance_video_info(ignore_errors=False)
+                self.state.enhance_video_info(self.log, ignore_errors=False)
                 self.state.save()
             except ValueError as error:
                 return gr.update(selected=self.TAB_SET_UP_PROJECT), \
