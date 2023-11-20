@@ -1202,15 +1202,6 @@ class VideoRemixer(TabBase):
                 self.state.save()
                 self.log(f"FFmpeg command: {ffcmd}")
 
-            try:
-                self.log("enhance source video info with extra data including frame dimensions")
-                self.state.enhance_video_info(self.log, ignore_errors=False)
-                self.state.save()
-            except ValueError as error:
-                return gr.update(selected=self.TAB_SET_UP_PROJECT), \
-                    gr.update(value=format_markdown(f"There was an error retrieving source frame dimensions: {error}", "error")), \
-                    *self.empty_args(5)
-
             self.state.scenes_path = os.path.join(self.state.project_path, "SCENES")
             self.state.dropped_scenes_path = os.path.join(self.state.project_path, "DROPPED_SCENES")
             self.log(f"creating scenes directory {self.state.scenes_path}")
@@ -1238,6 +1229,15 @@ class VideoRemixer(TabBase):
                 self.state.save()
 
             self.state.scene_names = sorted(get_directories(self.state.scenes_path))
+
+            try:
+                self.log("enhance source video info with extra data including frame dimensions")
+                self.state.enhance_video_info(self.log, ignore_errors=False)
+                self.state.save()
+            except ValueError as error:
+                return gr.update(selected=self.TAB_SET_UP_PROJECT), \
+                    gr.update(value=format_markdown(f"There was an error retrieving source frame dimensions: {error}", "error")), \
+                    *self.empty_args(5)
 
             # if there's only one scene, assume it should be kept to save some time
             if len(self.state.scene_names) < 2:
