@@ -469,15 +469,16 @@ class VideoRemixer(TabBase):
                                             maximum=100.0, step=0.1,
                                         info="A lower value splits earlier in the scene")
                                     with gr.Row():
-                                        goto_0_702 = gr.Button(value="|<0%", scale=0, size="sm", min_width=64)
-                                        prev_minute_702 = gr.Button(value="<<<M", scale=0, size="sm", min_width=64)
-                                        prev_second_702 = gr.Button(value="<<S", scale=0, size="sm", min_width=64)
-                                        prev_frame_702 = gr.Button(value="<F", scale=0, size="sm", min_width=64)
-                                        goto_50_702 = gr.Button(value=">50%<", scale=0, size="sm", min_width=64)
-                                        next_frame_702 = gr.Button(value="F>", scale=0, size="sm", min_width=64)
-                                        next_second_702 = gr.Button(value="S>>", scale=0, size="sm", min_width=64)
-                                        next_minute_702 = gr.Button(value="M>>>", scale=0, size="sm", min_width=64)
-                                        goto_100_702 = gr.Button(value="100%>|", scale=0, size="sm", min_width=64)
+                                        prev_second_702 = gr.Button(value="< Second", scale=1, min_width=90)
+                                        prev_frame_702 = gr.Button(value="< Frame", scale=1, min_width=90)
+                                        next_frame_702 = gr.Button(value="Frame >", scale=1, min_width=90)
+                                        next_second_702 = gr.Button(value="Second >", scale=1, min_width=90)
+                                    with gr.Row():
+                                        prev_minute_702 = gr.Button(value="< Minute", scale=1, min_width=90, size="sm")
+                                        goto_0_702 = gr.Button(value="< First", scale=1, min_width=90, size="sm")
+                                        goto_50_702 = gr.Button(value="Middle", scale=1, min_width=90, size="sm")
+                                        goto_100_702 = gr.Button(value="Last >", scale=1, min_width=90, size="sm")
+                                        next_minute_702 = gr.Button(value="Minute >", scale=1, min_width=90, size="sm")
                                 with gr.Column():
                                     preview_image702 = gr.Image(type="filepath",
                             label="Split Frame Preview", tool=None, height=max_thumb_size)
