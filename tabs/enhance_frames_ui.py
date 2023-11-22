@@ -12,7 +12,7 @@ from tabs.tab_base import TabBase
 from image_enhancement import ImageEnhancement
 
 class EnhanceFrames(TabBase):
-    """Encapsulates UI elements and events for the Enhance Images feature"""
+    """Encapsulates UI elements and events for the Enhance Frames feature"""
     def __init__(self,
                     config : SimpleConfig,
                     engine : InterpolateEngine,
@@ -21,12 +21,19 @@ class EnhanceFrames(TabBase):
 
     def render_tab(self):
         """Render tab into UI"""
-        with gr.Tab("Enhance Images"):
+        threshold_min = self.config.enhance_images_settings["threshold_min"]
+        threshold_max = self.config.enhance_images_settings["threshold_max"]
+        threshold_step = self.config.enhance_images_settings["threshold_step"]
+        threshold_default = self.config.enhance_images_settings["threshold_default"]
+        with gr.Tab("Enhance Frames"):
             gr.Markdown(SimpleIcons.SPARKLES + "Auto-Correct Contrast for PNG Files",
                 elem_id="tabheading")
-            clip_threshold = gr.Slider(minimum=1.0, maximum=10.0, value=2.0, step=0.25,
-                                    label="Clip Threshold",
-                                    info="A larger value produces more intense image enhancement")
+            clip_threshold = gr.Slider(minimum=threshold_min,
+                                       maximum=threshold_max,
+                                       value=threshold_default,
+                                       step=threshold_step,
+                                       label="Correction Threshold",
+                                    info="A larger value produces more intense auto-correction")
             with gr.Tabs():
                 with gr.Tab(label="Individual Path"):
                     with gr.Row():
