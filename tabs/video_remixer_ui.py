@@ -1922,7 +1922,13 @@ class VideoRemixer(TabBase):
         self.split_scene_cache = []
         self.split_scene_cached_index = -1
 
-    def split_scene_content(self, content_path : str, scene_name : str, new_lower_scene_name : str, new_upper_scene_name : str, num_frames : int, split_frame : int):
+    def split_scene_content(self,
+                            content_path : str,
+                            scene_name : str,
+                            new_lower_scene_name : str,
+                            new_upper_scene_name : str,
+                            num_frames : int,
+                            split_frame : int):
         original_scene_path = os.path.join(content_path, scene_name)
         new_lower_scene_path = os.path.join(content_path, new_lower_scene_name)
         new_upper_scene_path = os.path.join(content_path, new_upper_scene_name)
@@ -2047,9 +2053,8 @@ class VideoRemixer(TabBase):
             if path and os.path.exists(path):
                 dirs = get_directories(path)
                 if scene_name in dirs:
-                    scene_path = os.path.join(path, scene_name)
                     try:
-                        self.split_processed_content(scene_path,
+                        self.split_processed_content(path,
                                                     scene_name,
                                                     new_lower_scene_name,
                                                     new_upper_scene_name,
