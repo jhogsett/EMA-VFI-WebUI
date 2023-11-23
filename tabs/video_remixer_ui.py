@@ -2049,7 +2049,7 @@ class VideoRemixer(TabBase):
                 if scene_name in dirs:
                     scene_path = os.path.join(path, scene_name)
                     try:
-                        self.split_processed_content(path,
+                        self.split_processed_content(scene_path,
                                                     scene_name,
                                                     new_lower_scene_name,
                                                     new_upper_scene_name,
