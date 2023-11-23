@@ -1891,21 +1891,22 @@ class VideoRemixer(TabBase):
             gr.update(value=format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
 
-    def compute_scene_split(self, scene_index : int, split_percent : float):
-        scene_name = self.state.scene_names[scene_index]
+    def compute_scene_split(self, scene_name : str, split_percent : float, override_num_frames=0):
         split_percent = 0.0 if isinstance(split_percent, type(None)) else split_percent
         split_point = split_percent / 100.0
+
+        # these are not reliable if override_num_frames is in use
         first_frame, last_frame, num_width = details_from_group_name(scene_name)
-        num_frames = (last_frame - first_frame) + 1
+
+        num_frames = override_num_frames or ((last_frame - first_frame) + 1)
         split_frame = math.ceil(num_frames * split_point)
 
         # ensure at least one frame remains in the lower scene
         split_frame = 1 if split_frame == 0 else split_frame
-
         # ensure at least one frame remains in the upper scene
         split_frame = num_frames-1 if split_frame >= num_frames else split_frame
 
-        return scene_name, num_width, num_frames, first_frame, last_frame, split_frame
+        return num_width, num_frames, first_frame, last_frame, split_frame
 
     def valid_split_scene_cache(self, scene_index):
         if self.split_scene_cache and self.split_scene_cached_index == scene_index:
@@ -1944,6 +1945,30 @@ class VideoRemixer(TabBase):
             shutil.move(frame_path, new_frame_path)
         os.replace(original_scene_path, new_lower_scene_path)
 
+    def split_processed_content(self,
+                                content_path : str,
+                                scene_name : str,
+                                new_lower_scene_name : str,
+                                new_upper_scene_name : str,
+                                split_percent : float):
+        original_scene_path = os.path.join(content_path, scene_name)
+        new_lower_scene_path = os.path.join(content_path, new_lower_scene_name)
+        new_upper_scene_path = os.path.join(content_path, new_upper_scene_name)
+
+        frame_files = sorted(get_files(original_scene_path))
+        create_directory(new_upper_scene_path)
+
+        _, _, _, _, split_frame = self.compute_scene_split(
+            scene_name, split_percent, override_num_frames=len(frame_files))
+
+        for index, frame_file in enumerate(frame_files):
+            if index < split_frame:
+                continue
+            frame_path = os.path.join(original_scene_path, frame_file)
+            _, filename, ext = split_filepath(frame_path)
+            new_frame_path = os.path.join(new_upper_scene_path, filename + ext)
+            shutil.move(frame_path, new_frame_path)
+        os.replace(original_scene_path, new_lower_scene_path)
 
     def split_button702(self, scene_index, split_percent):
         global_options = self.config.ffmpeg_settings["global_options"]
@@ -1961,8 +1986,11 @@ class VideoRemixer(TabBase):
                 gr.update(value=format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning")), \
                 *self.empty_args(5)
 
-        scene_name, num_width, num_frames, first_frame, last_frame, split_frame \
-            = self.compute_scene_split(scene_index, split_percent)
+        self.state.uncompile_scenes()
+
+        scene_name = self.state.scene_names[scene_index]
+        num_width, num_frames, first_frame, last_frame, split_frame = self.compute_scene_split(
+            scene_name, split_percent)
         if num_frames < 2:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 gr.update(value=format_markdown("Scene must have at least two frames to be split", "error")), \
@@ -1976,8 +2004,6 @@ class VideoRemixer(TabBase):
         new_upper_last_frame = last_frame
         new_upper_scene_name = VideoRemixerState.encode_scene_label(num_width,
                                                 new_upper_first_frame, new_upper_last_frame, 0, 0)
-        self.state.uncompile_scenes()
-
         try:
             self.split_scene_content(self.state.scenes_path,
                                     scene_name,
@@ -2012,11 +2038,6 @@ class VideoRemixer(TabBase):
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
 
         # also split processed content if it happens to have exactly
-        # the same number of frames
-        # will not typically work for resynthesized frames
-        #   (loss of two outer frames has to be accounted for)
-        # will not typically work for inflated frames
-        #   (addition of one-frame less than 2X additional between frames has to be accounted for)
         paths = [
             self.state.resize_path,
             self.state.resynthesis_path,
@@ -2032,12 +2053,11 @@ class VideoRemixer(TabBase):
                     num_files = len(files)
                     if num_files == num_frames:
                         try:
-                            self.split_scene_content(path,
-                                                    scene_name,
-                                                    new_lower_scene_name,
-                                                    new_upper_scene_name,
-                                                    num_frames,
-                                                    split_frame)
+                            self.split_processed_content(path,
+                                                        scene_name,
+                                                        new_lower_scene_name,
+                                                        new_upper_scene_name,
+                                                        split_frame)
                         except ValueError as error:
                             self.log(
                                 f"Error splitted processed content path {path}: {error} - ignored")
@@ -2067,7 +2087,8 @@ class VideoRemixer(TabBase):
         if scene_index < 0 or scene_index > last_scene:
             return None
 
-        scene_name, _, num_frames, _, _, split_frame = self.compute_scene_split(scene_index, split_percent)
+        scene_name = self.state.scene_names[scene_index]
+        _, num_frames, _, _, split_frame = self.compute_scene_split(scene_name, split_percent)
         original_scene_path = os.path.join(self.state.scenes_path, scene_name)
         frame_files = self.valid_split_scene_cache(scene_index)
         if not frame_files:
