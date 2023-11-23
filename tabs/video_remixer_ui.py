@@ -1891,6 +1891,20 @@ class VideoRemixer(TabBase):
             gr.update(value=format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
 
+    def valid_split_scene_cache(self, scene_index):
+        if self.split_scene_cache and self.split_scene_cached_index == scene_index:
+            return self.split_scene_cache
+        else:
+            return None
+
+    def fill_split_scene_cache(self, scene_index, data):
+        self.split_scene_cache = data
+        self.split_scene_cached_index = scene_index
+
+    def invalidate_split_scene_cache(self):
+        self.split_scene_cache = []
+        self.split_scene_cached_index = -1
+
     def compute_scene_split(self, scene_name : str, split_percent : float, override_num_frames=0):
         split_percent = 0.0 if isinstance(split_percent, type(None)) else split_percent
         split_point = split_percent / 100.0
@@ -1907,20 +1921,6 @@ class VideoRemixer(TabBase):
         split_frame = num_frames-1 if split_frame >= num_frames else split_frame
 
         return num_width, num_frames, first_frame, last_frame, split_frame
-
-    def valid_split_scene_cache(self, scene_index):
-        if self.split_scene_cache and self.split_scene_cached_index == scene_index:
-            return self.split_scene_cache
-        else:
-            return None
-
-    def fill_split_scene_cache(self, scene_index, data):
-        self.split_scene_cache = data
-        self.split_scene_cached_index = scene_index
-
-    def invalidate_split_scene_cache(self):
-        self.split_scene_cache = []
-        self.split_scene_cached_index = -1
 
     def split_scene_content(self,
                             content_path : str,
@@ -1966,7 +1966,6 @@ class VideoRemixer(TabBase):
 
         _, _, _, _, split_frame = self.compute_scene_split(
             scene_name, split_percent, override_num_frames=len(frame_files))
-
         for index, frame_file in enumerate(frame_files):
             if index < split_frame:
                 continue
@@ -2058,7 +2057,7 @@ class VideoRemixer(TabBase):
                                                     scene_name,
                                                     new_lower_scene_name,
                                                     new_upper_scene_name,
-                                                    split_frame)
+                                                    split_percent)
                     except ValueError as error:
                         self.log(
                             f"Error splitted processed content path {path}: {error} - ignored")
