@@ -2037,7 +2037,6 @@ class VideoRemixer(TabBase):
                                     self.config.remixer_settings)
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
 
-        # also split processed content if it happens to have exactly
         paths = [
             self.state.resize_path,
             self.state.resynthesis_path,
@@ -2049,21 +2048,16 @@ class VideoRemixer(TabBase):
                 dirs = get_directories(path)
                 if scene_name in dirs:
                     scene_path = os.path.join(path, scene_name)
-                    files = get_files(scene_path)
-                    num_files = len(files)
-                    if num_files == num_frames:
-                        try:
-                            self.split_processed_content(path,
-                                                        scene_name,
-                                                        new_lower_scene_name,
-                                                        new_upper_scene_name,
-                                                        split_frame)
-                        except ValueError as error:
-                            self.log(
-                                f"Error splitted processed content path {path}: {error} - ignored")
-                            continue
-                    else:
-                        self.log(f"Planned skip of splitting processed content path {path}: expected {num_frames} files but found {num_files}")
+                    try:
+                        self.split_processed_content(path,
+                                                    scene_name,
+                                                    new_lower_scene_name,
+                                                    new_upper_scene_name,
+                                                    split_frame)
+                    except ValueError as error:
+                        self.log(
+                            f"Error splitted processed content path {path}: {error} - ignored")
+                        continue
                 else:
                     self.log(f"Planned skip of splitting processed content path {path}: scene {scene_name} not found")
             else:
