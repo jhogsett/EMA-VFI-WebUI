@@ -313,7 +313,11 @@ def rate_adjusted_count(source_count : int, source_rate : float, new_rate : floa
     else:
         rate_ratio = new_rate / source_rate
         adjusted_count = int(source_count * rate_ratio) + 1
-    index_width = len(str(adjusted_count))
+
+    # use the large of the two computed index widths to ensure proper sorting
+    source_index_width = len(str(source_count))
+    adjusted_index_width = len(str(adjusted_count))
+    index_width = max(adjusted_index_width, source_index_width)
     return adjusted_count, index_width
 
 def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group : int):
