@@ -175,6 +175,7 @@ class SimpleIcons:
         INCREASING,
         INFO,
         LABCOAT,
+        LEFTRIGHT_ARROW,
         MAGIC_WAND,
         MAGNIFIER,
         MENDING_HEART,

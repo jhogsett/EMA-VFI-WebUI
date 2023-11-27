@@ -49,6 +49,7 @@ class VideoRemixer(TabBase):
     TAB_EXTRA_EXPORT_SCENES = 3
     TAB_EXTRA_CLEANSE_SCENES = 4
     TAB_EXTRA_MANAGE_STORAGE = 5
+    TAB_EXTRA_MERGE_RANGE = 6
 
     TAB00_DEFAULT_MESSAGE = "Click New Project to: Inspect Video and Count Frames (can take a minute or more)"
     TAB01_DEFAULT_MESSAGE = "Click Open Project to: Resume Editing an Existing Project"
@@ -452,7 +453,7 @@ class VideoRemixer(TabBase):
                 with gr.Tab(SimpleIcons.COCKTAIL + " Remix Extra", id=self.TAB_REMIX_EXTRA):
                     with gr.Tabs() as tabs_remix_extra:
 
-                        # Split Scene
+                        # SPLIT SCENE
                         with gr.Tab(SimpleIcons.AXE + " Split Scene",
                                     id=self.TAB_EXTRA_SPLIT_SCENE):
                             gr.Markdown("**_Split a Scene in two at a set point_**")
@@ -488,7 +489,7 @@ class VideoRemixer(TabBase):
                             split_button702 = gr.Button(
                                 "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
-                        # Choose Scene Range
+                        # CHOOSE SCENE RANGE
                         with gr.Tab(SimpleIcons.HEART_HANDS + " Choose Scene Range",
                                     id=self.TAB_EXTRA_CHOOSE_RANGE):
                             gr.Markdown("**_Keep or Drop a range of scenes_**")
@@ -508,7 +509,7 @@ class VideoRemixer(TabBase):
                             choose_button701 = gr.Button("Choose Scene Range",
                                                     variant="stop", scale=0)
 
-                        # Cleanse Scenes
+                        # CLEANSE SCENES
                         with gr.Tab(SimpleIcons.SOAP + " Cleanse Scenes",
                                     id=self.TAB_EXTRA_CLEANSE_SCENES):
                             gr.Markdown("**_Remove noise and artifacts from kept scenes_**")
@@ -519,7 +520,7 @@ class VideoRemixer(TabBase):
                             cleanse_button704 = gr.Button(
                             "Cleanse Scenes " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
-                        # Drop Processed Scene
+                        # DROP PROCESSED SCENE
                         with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene",
                                     id=self.TAB_EXTRA_DROP_PROCESSED):
                             gr.Markdown(
@@ -532,7 +533,23 @@ class VideoRemixer(TabBase):
                             drop_button700 = gr.Button(
                         "Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
-                        # Export Kept Scenes
+                        # MERGE SCENE RANGE
+                        with gr.Tab(SimpleIcons.LEFTRIGHT_ARROW + " Merge Scene Range",
+                                    id=self.TAB_EXTRA_MERGE_RANGE):
+                            gr.Markdown("**_Merge a range of scenes into one scene_**")
+                            with gr.Row():
+                                first_scene_id_705 = gr.Number(value=-1,
+                                                            label="Starting Scene Index")
+                                last_scene_id_705 = gr.Number(value=-1,
+                                                            label="Ending Scene Index")
+                            with gr.Row():
+                                message_box705 = gr.Markdown(
+                                    format_markdown(
+                        "Click Merge Scene Range to: Combine the chosen scenes into a single scene"))
+                            merge_button705 = gr.Button("Merge Scene Range",
+                                                    variant="stop", scale=0)
+
+                        # EXPORT KEPT SCENES
                         with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_EXPORT_SCENES):
                             gr.Markdown("**_Save Kept Scenes as a New Project_**")
                             with gr.Row():
@@ -548,6 +565,7 @@ class VideoRemixer(TabBase):
                                 result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
                                 open_result703 = gr.Button("Open New Project", visible=False, scale=0)
 
+                        # MANAGE STORAGE
                         with gr.Tab(SimpleIcons.HERB +" Manage Storage",
                                     id=self.TAB_EXTRA_MANAGE_STORAGE):
                             gr.Markdown("Free Disk Space by Removing Unneeded Content")
@@ -927,6 +945,11 @@ class VideoRemixer(TabBase):
                                 outputs=[tabs_video_remixer, project_load_path, message_box01])
 
         cleanse_button704.click(self.cleanse_button704, outputs=message_box704)
+
+        merge_button705.click(self.marge_button705,
+                               inputs=[first_scene_id_705, last_scene_id_705],
+                               outputs=[tabs_video_remixer, message_box705, scene_index,
+                                        scene_label, scene_image, scene_state, scene_info])
 
         delete_button710.click(self.delete_button710,
                                inputs=delete_purged_710,
@@ -1844,6 +1867,49 @@ class VideoRemixer(TabBase):
         self.state.save()
         removed = "\r\n".join(removed)
         return gr.update(value=format_markdown(f"Removed:\r\n{removed}"))
+
+    def merge_button705(self, first_scene_index, last_scene_index):
+        num_scenes = len(self.state.scene_names)
+        last_scene = num_scenes - 1
+
+        if not isinstance(first_scene_index, (int, float)) \
+                or not isinstance(last_scene_index, (int, float)):
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+    gr.update(value=format_markdown("Please enter Scene Indexes to get started", "warning")), \
+                *self.empty_args(5)
+
+        first_scene_index = int(first_scene_index)
+        last_scene_index = int(last_scene_index)
+        if first_scene_index < 0 \
+                or first_scene_index > last_scene \
+                or last_scene_index < 0 \
+                or last_scene_index > last_scene:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                gr.update(value=format_markdown(f"Please enter valid Scene Indexes between 0 and {last_scene} to get started", "warning")), \
+                *self.empty_args(5)
+
+        if first_scene_index >= last_scene_index:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                gr.update(value=format_markdown(f"'Ending Scene Index' must be higher than 'Starting Scene Index'", "warning")), \
+                *self.empty_args(5)
+
+        for scene_index in range(first_scene_index, last_scene_index + 1):
+            scene_name = self.state.scene_names[scene_index]
+            # etc
+
+        # todo
+        first_scene_name = self.state.scene_names[first_scene_index]
+        last_scene_name = self.state.scene_names[last_scene_index]
+        message = f"Scenes {first_scene_name} through {last_scene_name} set to '{scene_state}'"
+        self.log(f"saving project after {message}")
+        self.state.save()
+
+        return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+            gr.update(value=format_markdown(message)), \
+            *self.scene_chooser_details(self.state.current_scene)
+
+
+
 
     def choose_button701(self, first_scene_index, last_scene_index, scene_state):
         num_scenes = len(self.state.scene_names)
