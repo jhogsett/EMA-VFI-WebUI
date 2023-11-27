@@ -11,8 +11,10 @@ from webui_utils.mtqdm import Mtqdm
 def main():
     """Use the Resequence Files feature from the command line"""
     parser = argparse.ArgumentParser(description='Resequence video frame PNG files')
-    parser.add_argument("--path", default="./images", type=str,
+    parser.add_argument("--input_path", default="./images", type=str,
         help="Path to files to resequence")
+    parser.add_argument("--output_path", default="", type=str,
+        help="Path to store resequnced files (leave blank to use input path)")
     parser.add_argument("--file_type", default="png", type=str,
         help="File type of the files to resequence")
     parser.add_argument("--new_name", default="pngsequence", type=str,
@@ -29,18 +31,30 @@ def main():
         help="Zero-filled width of new frame IDs, -1 = auto")
     parser.add_argument("--rename", dest="rename", default=False, action="store_true",
         help="Rename rather than copy files")
+    parser.add_argument("--reverse", dest="reverse", default=False, action="store_true",
+        help="Sample files in reverse order")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
 
     log = SimpleLog(args.verbose)
-    ResequenceFiles(args.path, args.file_type, args.new_name, args.start, args.step,
-        args.stride, args.offset, args.zero_fill, args.rename, log.log).resequence()
+    ResequenceFiles(args.input_path,
+                    args.file_type,
+                    args.new_name,
+                    args.start,
+                    args.step,
+                    args.stride,
+                    args.offset,
+                    args.zero_fill,
+                    args.rename,
+                    log.log,
+                    args.output_path,
+                    args.reverse).resequence()
 
 class ResequenceFiles:
     """Encapsulate logic for Resequence Files feature"""
     def __init__(self,
-                path : str,
+                input_path : str,
                 file_type : str,
                 new_base_filename : str,
                 start_index : int,
@@ -49,8 +63,10 @@ class ResequenceFiles:
                 sample_offset: int,
                 zero_fill : int,
                 rename : bool ,
-                log_fn : Callable | None):
-        self.path = path
+                log_fn : Callable | None,
+                output_path : str | None=None,
+                reverse=False):
+        self.input_path = input_path
         self.file_type = file_type
         self.new_base_filename = new_base_filename
         self.start_index = start_index
@@ -59,16 +75,20 @@ class ResequenceFiles:
         self.sample_offset = sample_offset if sample_offset >= 0 else 0
         self.zero_fill = zero_fill
         self.rename = rename
+        self.reverse = reverse
         self.log_fn = log_fn
+        self.output_path = output_path or input_path
+
+    ZERO_FILL_AUTO_DETECT = -1
 
     def resequence(self) -> None:
         """Invoke the Resequence Files feature"""
-        files = sorted(glob.glob(os.path.join(self.path, "*." + self.file_type)))
+        files = sorted(glob.glob(os.path.join(self.input_path, "*." + self.file_type)), reverse=self.reverse)
         num_files = len(files)
         self.log(f"Found {num_files} files")
 
         max_file_num = num_files * self.index_step
-        num_width = len(str(max_file_num)) if self.zero_fill < 0 else self.zero_fill
+        num_width = len(str(max_file_num)) if self.zero_fill == self.ZERO_FILL_AUTO_DETECT else self.zero_fill
         index = self.start_index
 
         sample_set = create_sample_set(files, self.sample_offset, self.sample_stride)
@@ -78,14 +98,15 @@ class ResequenceFiles:
                 new_filename = self.new_base_filename + str(index).zfill(num_width) + "." +\
                     self.file_type
                 old_filepath = file
-                new_filepath = os.path.join(self.path, new_filename)
 
                 if self.rename:
+                    new_filepath = os.path.join(self.input_path, new_filename)
                     os.replace(old_filepath, new_filepath)
-                    self.log(f"File {file} renamed to {new_filename}")
+                    self.log(f"File {file} renamed to {new_filepath}")
                 else:
+                    new_filepath = os.path.join(self.output_path, new_filename)
                     shutil.copy(old_filepath, new_filepath)
-                    self.log(f"File {file} copied to {new_filename}")
+                    self.log(f"File {file} copied to {new_filepath}")
 
                 index += self.index_step
                 Mtqdm().update_bar(bar)

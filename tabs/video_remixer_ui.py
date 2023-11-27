@@ -6,7 +6,7 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import format_markdown, style_row
+from webui_utils.simple_utils import format_markdown, style_report
 from webui_utils.file_utils import get_files, create_directory, get_directories, split_filepath, \
     is_safe_path, duplicate_directory
 from webui_utils.video_utils import details_from_group_name
@@ -18,6 +18,7 @@ from video_remixer import VideoRemixerState
 from webui_utils.mtqdm import Mtqdm
 from webui_utils.ui_utils import fill_empty_args
 from webui_utils.session import Session
+from ffmpy import FFRuntimeError
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -28,6 +29,12 @@ class VideoRemixer(TabBase):
         TabBase.__init__(self, config, engine, log_fn)
         self.new_project()
 
+    # TODO this only runs at app start-up
+    def new_project(self):
+        self.state = VideoRemixerState()
+        self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"])
+        self.invalidate_split_scene_cache()
+
     TAB_REMIX_HOME = 0
     TAB_REMIX_SETTINGS = 1
     TAB_SET_UP_PROJECT = 2
@@ -37,13 +44,12 @@ class VideoRemixer(TabBase):
     TAB_SAVE_REMIX = 6
     TAB_REMIX_EXTRA = 7
 
-    TAB_EXTRA_UTILITIES = 0
-    TAB_EXTRA_REDUCE = 1
-
-    TAB_EXTRA_UTIL_DROP_PROCESSED = 0
-    TAB_EXTRA_UTIL_CHOOSE_RANGE = 1
-    TAB_EXTRA_UTIL_SPLIT_SCENE = 2
-    TAB_EXTRA_UTIL_EXPORT_SCENES = 3
+    TAB_EXTRA_DROP_PROCESSED = 0
+    TAB_EXTRA_CHOOSE_RANGE = 1
+    TAB_EXTRA_SPLIT_SCENE = 2
+    TAB_EXTRA_EXPORT_SCENES = 3
+    TAB_EXTRA_CLEANSE_SCENES = 4
+    TAB_EXTRA_MANAGE_STORAGE = 5
 
     TAB00_DEFAULT_MESSAGE = "Click New Project to: Inspect Video and Count Frames (can take a minute or more)"
     TAB01_DEFAULT_MESSAGE = "Click Open Project to: Resume Editing an Existing Project"
@@ -54,6 +60,7 @@ class VideoRemixer(TabBase):
     TAB60_DEFAULT_MESSAGE = "Click Save Remix to: Combine Processed Content with Audio Clips and Save Remix Video"
     TAB61_DEFAULT_MESSAGE = "Click Save Custom Remix to: Apply Custom Options and save Custom Remix Video"
     TAB62_DEFAULT_MESSAGE = "Click Save Marked Remix to: Apply Marking Options and save Marked Remix Video"
+    TAB63_DEFAULT_MESSAGE = "Click Save Labeled Remix to: Add Label and save Remix Video"
 
     def new_project(self):
         """Reset state to create a new project"""
@@ -72,6 +79,14 @@ class VideoRemixer(TabBase):
         def_min_frames = self.config.remixer_settings["min_frames_per_scene"]
         marked_ffmpeg_video = self.config.remixer_settings["marked_ffmpeg_video"]
         marked_ffmpeg_audio = self.config.remixer_settings["marked_ffmpeg_audio"]
+        default_label_font_size = self.config.remixer_settings["marked_font_size"]
+        default_label_font_color = self.config.remixer_settings["marked_font_color"]
+        default_label_font_file = self.config.remixer_settings["marked_font_file"]
+        default_label_draw_box = self.config.remixer_settings["marked_draw_box"]
+        default_label_box_color = self.config.remixer_settings["marked_box_color"]
+        default_label_border_size = self.config.remixer_settings["marked_border_size"]
+        default_label_at_top = self.config.remixer_settings["marked_at_top"]
+
         with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Video Remixer"):
             gr.Markdown(
                 SimpleIcons.MOVIE + "Restore & Remix Videos with Audio")
@@ -114,45 +129,52 @@ class VideoRemixer(TabBase):
                     gr.Markdown("**Confirm Remixer Settings**")
                     with gr.Row(variant="panel"):
                         video_info1 = gr.Markdown("Video Details")
-                    with gr.Row():
-                        with gr.Column():
-                            project_path = gr.Textbox(label="Set Project Path",
-                                                placeholder="Path on this server to store project data")
-                        with gr.Column():
-                            split_type = gr.Radio(label="Split Type", value="Scene",
-                                                        choices=["Scene", "Break", "Time", "None"])
+
                     with gr.Row():
                         with gr.Column():
                             with gr.Row():
-                                project_fps = gr.Slider(label="Remix Frame Rate", value=def_project_fps,
-                                                        minimum=1.0, maximum=max_project_fps, step=0.01)
-                                deinterlace = gr.Checkbox(label="Deinterlace Soure Video")
-                        with gr.Column():
+                                project_path = gr.Textbox(label="Set Project Path",
+                                            placeholder="Path on this server to store project data")
+                            with gr.Row():
+                                split_type = gr.Radio(label="Split Type", value="Scene",
+                                                        choices=["Scene", "Break", "Time", "None"])
                             with gr.Tabs():
                                 with gr.Tab("Scene Settings"):
                                     scene_threshold = gr.Slider(value=0.6, minimum=0.0, maximum=1.0,
-                                                                step=0.01, label="Scene Detection Threshold",
-                                            info="Value between 0.0 and 1.0 (higher = fewer scenes detected)")
+                                                    step=0.01, label="Scene Detection Threshold",
+                                info="Value between 0.0 and 1.0 (higher = fewer scenes detected)")
                                 with gr.Tab("Break Settings"):
                                     with gr.Row():
-                                        break_duration = gr.Slider(value=2.0, minimum=0.0, maximum=30.0,
-                                                                    step=0.25, label="Break Minimum Duration",
-                                                                    info="Choose a duration in seconds")
-                                        break_ratio = gr.Slider(value=0.98, minimum=0.0, maximum=1.0, step=0.01,
-                                                                    label="Break Black Frame Ratio",
-                                                                    info="Choose a value between 0.0 and 1.0")
+                                        break_duration = gr.Slider(value=2.0, minimum=0.0,
+                                                                   maximum=30.0, step=0.25,
+                                                                   label="Break Minimum Duration",
+                                                            info="Choose a duration in seconds")
+                                        break_ratio = gr.Slider(value=0.98, minimum=0.0,
+                                                                maximum=1.0, step=0.01,
+                                                                label="Break Black Frame Ratio",
+                                                        info="Choose a value between 0.0 and 1.0")
                                 with gr.Tab("Time Settings"):
-                                    split_time = gr.Number(value=60, precision=0, label="Scene Split Seconds",
+                                    split_time = gr.Number(value=60, precision=0,
+                                                           label="Scene Split Seconds",
                                                            info="Seconds for each split scene")
-                    with gr.Row():
                         with gr.Column():
+                            with gr.Row():
+                                project_fps = gr.Slider(label="Remix Frame Rate",
+                                                        value=def_project_fps,
+                                                        minimum=1.0, maximum=max_project_fps,
+                                                        step=0.01)
+                                deinterlace = gr.Checkbox(
+                                    label="Deinterlace Source Video")
                             with gr.Row():
                                 resize_w = gr.Number(label="Resize Width")
                                 resize_h = gr.Number(label="Resize Height")
-                        with gr.Column():
                             with gr.Row():
                                 crop_w = gr.Number(label="Crop Width")
                                 crop_h = gr.Number(label="Crop Height")
+                            with gr.Accordion(label="More Settings", open=False):
+                                with gr.Row():
+                                    crop_offset_x = gr.Number(label="Crop X Ofset", value=-1, info="Set to -1 for auto-centering")
+                                    crop_offset_y = gr.Number(label="Crop Y Offset", value=-1, info="Set to -1 for auto-centering")
 
                     message_box1 = gr.Markdown(value=format_markdown(self.TAB1_DEFAULT_MESSAGE))
                     with gr.Row():
@@ -170,18 +192,15 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         thumbnail_type = gr.Radio(choices=["GIF", "JPG"], value="GIF",
                                                   label="Thumbnail Type",
-                                    info="Choose 'GIF' for whole scene animation, 'JPG' for mid-scene image")
+                            info="Choose 'GIF' for whole scene animation, 'JPG' for mid-scene image")
                         min_frames_per_scene = gr.Number(label="Minimum Frames Per Scene",
                                     precision=0, value=def_min_frames,
                         info="Consolidates very small scenes info the next (0 to disable)")
                     with gr.Row():
                         skip_detection = gr.Checkbox(value=False, label="Recreate Thumbnails Only",
-                                        info="Remake thumbnails with existing scenes if present, skipping project setup")
+                    info="Remake thumbnails with existing scenes if present, skipping project setup")
                     with gr.Row():
                         message_box2 = gr.Markdown(value=format_markdown(self.TAB2_DEFAULT_MESSAGE))
-                    # gr.Markdown(format_markdown(
-                    # "(!) Redoing this step will restart scene detection and recreate thumbnails",
-                    # color="warning"))
                     gr.Markdown(format_markdown(
                         "Progress can be tracked in the console",
                         color="none", italic=True, bold=False))
@@ -206,7 +225,8 @@ class VideoRemixer(TabBase):
                                     scene_index = gr.Number(label="Scene Index", precision=0)
                     with gr.Row():
                         with gr.Column():
-                            scene_image = gr.Image(type="filepath", interactive=False, height=max_thumb_size)
+                            scene_image = gr.Image(type="filepath", interactive=False,
+                                                   height=max_thumb_size)
                         with gr.Column():
                             keep_next = gr.Button(value="Keep Scene | Next >", variant="primary",
                                                 elem_id="actionbutton")
@@ -225,10 +245,12 @@ class VideoRemixer(TabBase):
                                                             variant="secondary")
 
                             with gr.Row():
-                                    split_scene_button = gr.Button(value="Split Scene " + SimpleIcons.AXE,
-                                                                variant="secondary")
-                                    choose_range_button = gr.Button(value="Choose Scene Range " + SimpleIcons.HEART_HANDS,
-                                                                variant="secondary")
+                                    split_scene_button = gr.Button(
+                                        value="Split Scene " + SimpleIcons.AXE,
+                                        variant="secondary")
+                                    choose_range_button = gr.Button(
+                                        value="Choose Scene Range " + SimpleIcons.HEART_HANDS,
+                                        variant="secondary")
                             with gr.Accordion(label="Danger Zone", open=False):
                                 with gr.Row():
                                     keep_all_button = gr.Button(value="Keep All Scenes",
@@ -310,7 +332,10 @@ class VideoRemixer(TabBase):
                                 color="more", bold=True))
 
                     message_box5 = gr.Markdown(value=format_markdown(self.TAB5_DEFAULT_MESSAGE))
-                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                    gr.Markdown(
+                        format_markdown(
+                            "Progress can be tracked in the console", color="none", italic=True,
+                            bold=False))
 
                     with gr.Row():
                         back_button5 = gr.Button(value="< Back", variant="secondary", scale=0)
@@ -334,10 +359,15 @@ class VideoRemixer(TabBase):
                             output_filepath = gr.Textbox(label="Output Filepath", max_lines=1,
                                     info="Enter a path and filename for the remixed video")
                             with gr.Row():
-                                message_box60 = gr.Markdown(value=format_markdown(self.TAB60_DEFAULT_MESSAGE))
-                            gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                message_box60 = gr.Markdown(
+                                    value=format_markdown(self.TAB60_DEFAULT_MESSAGE))
+                            gr.Markdown(
+                                format_markdown(
+                                    "Progress can be tracked in the console", color="none",
+                                    italic=True, bold=False))
                             with gr.Row():
-                                back_button60 = gr.Button(value="< Back", variant="secondary", scale=0)
+                                back_button60 = gr.Button(value="< Back", variant="secondary",
+                                                          scale=0)
                                 next_button60 = gr.Button(
                                     value="Save Remix " + SimpleIcons.SLOW_SYMBOL,
                                     variant="primary", elem_id="highlightbutton")
@@ -354,10 +384,15 @@ class VideoRemixer(TabBase):
                                                                 max_lines=1,
                                             info="Enter a path and filename for the remixed video")
                             with gr.Row():
-                                message_box61 = gr.Markdown(value=format_markdown(self.TAB61_DEFAULT_MESSAGE))
-                            gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                message_box61 = gr.Markdown(
+                                    value=format_markdown(self.TAB61_DEFAULT_MESSAGE))
+                            gr.Markdown(
+                                format_markdown(
+                                    "Progress can be tracked in the console", color="none",
+                                    italic=True, bold=False))
                             with gr.Row():
-                                back_button61 = gr.Button(value="< Back", variant="secondary", scale=0)
+                                back_button61 = gr.Button(value="< Back", variant="secondary",
+                                                          scale=0)
                                 next_button61 = gr.Button(
                                     value="Save Custom Remix " + SimpleIcons.SLOW_SYMBOL,
                                     variant="primary", elem_id="highlightbutton")
@@ -376,11 +411,45 @@ class VideoRemixer(TabBase):
                             with gr.Row():
                                 message_box62 = gr.Markdown(value=
                                                 format_markdown(self.TAB62_DEFAULT_MESSAGE))
-                            gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                            gr.Markdown(
+                                format_markdown(
+                                    "Progress can be tracked in the console", color="none",
+                                    italic=True, bold=False))
                             with gr.Row():
-                                back_button62 = gr.Button(value="< Back", variant="secondary", scale=0)
+                                back_button62 = gr.Button(value="< Back", variant="secondary",
+                                                          scale=0)
                                 next_button62 = gr.Button(
                                     value="Save Marked Remix " + SimpleIcons.SLOW_SYMBOL,
+                                    variant="primary", elem_id="highlightbutton")
+
+                        ### CREATE LABELED REMIX
+                        with gr.Tab(label="Create Labeled Remix"):
+                            with gr.Row():
+                                label_text = gr.Textbox(label="Label Text", max_lines=1, placeholder="Leave blank to use same label as Marked Remix tab")
+                                label_at_top = gr.Checkbox(value=default_label_at_top, label="Label at Top", info="Whether to place the label at the top or at the bottom")
+                            with gr.Row():
+                                label_font_file = gr.Textbox(value=default_label_font_file, label="Font File", max_lines=1, info="Font file within the application directory")
+                                label_font_size = gr.Number(value=default_label_font_size, label="Font Factor", info="Size as a factor of frame width, smaller values produce larger text")
+                                label_font_color = gr.Textbox(value=default_label_font_color, label="Font Color", max_lines=1, info="Font color and opacity in FFmpeg 'drawtext' filter format")
+                            with gr.Row():
+                                label_draw_box = gr.Checkbox(value=default_label_draw_box, label="Background", info="Draw a background underneath the label text")
+                                label_border_size = gr.Number(value=default_label_border_size, label="Border Factor", info="Size as a factor of computed font size, smaller values produce a large margin")
+                                label_box_color = gr.Textbox(value=default_label_box_color, label="Background Color", max_lines=1, info="Background color and opacity in FFmpeg 'drawtext' filter format")
+                            with gr.Row():
+                                quality_slider_labeled = gr.Slider(minimum=minimum_crf,
+                                    maximum=maximum_crf, step=1, value=default_crf,
+                                    label="Video Quality",
+                                    info="Lower values mean higher video quality")
+                                output_filepath_labeled = gr.Textbox(label="Output Filepath",
+                                    max_lines=1,
+                                    info="Enter a path and filename for the remixed video")
+                            with gr.Row():
+                                message_box63 = gr.Markdown(value=format_markdown(self.TAB63_DEFAULT_MESSAGE))
+                            gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                            with gr.Row():
+                                back_button63 = gr.Button(value="< Back", variant="secondary", scale=0)
+                                next_button63 = gr.Button(
+                                    value="Save Labeled Remix " + SimpleIcons.SLOW_SYMBOL,
                                     variant="primary", elem_id="highlightbutton")
 
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -390,88 +459,108 @@ class VideoRemixer(TabBase):
                 with gr.Tab(SimpleIcons.COCKTAIL + " Remix Extra", id=self.TAB_REMIX_EXTRA):
                     with gr.Tabs() as tabs_remix_extra:
 
-                        with gr.Tab(SimpleIcons.TOOLBOX + " Utilities", id=self.TAB_EXTRA_UTILITIES):
-                            gr.Markdown("Special Remix Features for Advanced Use")
-                            with gr.Tabs() as tabs_remix_extra_utils:
+                        # Split Scene
+                        with gr.Tab(SimpleIcons.AXE + " Split Scene",
+                                    id=self.TAB_EXTRA_SPLIT_SCENE):
+                            gr.Markdown("**_Split a Scene in two at a set point_**")
+                            with gr.Row():
+                                with gr.Column():
+                                    with gr.Row():
+                                        scene_id_702 = gr.Number(value=-1,
+                                                                    label="Scene Index")
+                                        scene_info_702 = gr.Text(label="Scene Details",
+                                                                    interactive=False)
+                                    with gr.Row():
+                                        split_percent_702 = gr.Slider(value=50.0,
+                                            label="Split Position", minimum=0.0,
+                                            maximum=100.0, step=0.1,
+                                        info="A lower value splits earlier in the scene")
+                                    with gr.Row():
+                                        prev_second_702 = gr.Button(value="< Second", scale=1, min_width=90)
+                                        prev_frame_702 = gr.Button(value="< Frame", scale=1, min_width=90)
+                                        next_frame_702 = gr.Button(value="Frame >", scale=1, min_width=90)
+                                        next_second_702 = gr.Button(value="Second >", scale=1, min_width=90)
+                                    with gr.Row():
+                                        prev_minute_702 = gr.Button(value="< Minute", scale=1, min_width=90, size="sm")
+                                        goto_0_702 = gr.Button(value="< First", scale=1, min_width=90, size="sm")
+                                        goto_50_702 = gr.Button(value="Middle", scale=1, min_width=90, size="sm")
+                                        goto_100_702 = gr.Button(value="Last >", scale=1, min_width=90, size="sm")
+                                        next_minute_702 = gr.Button(value="Minute >", scale=1, min_width=90, size="sm")
+                                with gr.Column():
+                                    preview_image702 = gr.Image(type="filepath",
+                            label="Split Frame Preview", tool=None, height=max_thumb_size)
+                            with gr.Row():
+                                message_box702 = gr.Markdown(format_markdown(
+            "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
+                            split_button702 = gr.Button(
+                                "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
-                                # Split Scene
-                                with gr.Tab(SimpleIcons.AXE + " Split Scene",
-                                            id=self.TAB_EXTRA_UTIL_SPLIT_SCENE):
-                                    gr.Markdown("**_Split a Scene in two at a set point_**")
-                                    with gr.Row():
-                                        with gr.Column():
-                                            with gr.Row():
-                                                scene_id_702 = gr.Number(value=-1,
-                                                                         label="Scene Index")
-                                                scene_info_702 = gr.Text(label="Scene Details",
-                                                                         interactive=False)
-                                            with gr.Row():
-                                                split_percent_702 = gr.Slider(value=50.0,
-                                                    label="Split Position", minimum=0.0,
-                                                    maximum=100.0, step=0.1,
-                                                info="A lower value splits earlier in the scene")
-                                            with gr.Row():
-                                                prev_second_702 = gr.Button(value="< 1 second", scale=0)
-                                                prev_frame_702 = gr.Button(value="< 1 frame", scale=0)
-                                                next_frame_702 = gr.Button(value="1 frame >", scale=0)
-                                                next_second_702 = gr.Button(value="1 second >", scale=0)
-                                        with gr.Column():
-                                            preview_image702 = gr.Image(type="filepath",
-                                    label="Split Frame Preview", tool=None, height=max_thumb_size)
-                                    with gr.Row():
-                                        message_box702 = gr.Markdown(format_markdown(
-                    "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
-                                    split_button702 = gr.Button(
-                                        "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
+                        # Choose Scene Range
+                        with gr.Tab(SimpleIcons.HEART_HANDS + " Choose Scene Range",
+                                    id=self.TAB_EXTRA_CHOOSE_RANGE):
+                            gr.Markdown("**_Keep or Drop a range of scenes_**")
+                            with gr.Row():
+                                first_scene_id_701 = gr.Number(value=-1,
+                                                            label="Starting Scene Index")
+                                last_scene_id_701 = gr.Number(value=-1,
+                                                            label="Ending Scene Index")
+                            with gr.Row():
+                                scene_state_701 = gr.Radio(label="Scenes Choice",
+                                                            value=None,
+                                                            choices=["Keep", "Drop"])
+                            with gr.Row():
+                                message_box701 = gr.Markdown(
+                                    format_markdown(
+                        "Click Choose Scene Range to: Set the Scene Range to the specified state"))
+                            choose_button701 = gr.Button("Choose Scene Range",
+                                                    variant="stop", scale=0)
 
-                                # Drop Processed Scene
-                                with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene",
-                                            id=self.TAB_EXTRA_UTIL_DROP_PROCESSED):
-                                    gr.Markdown(
-                                "**_Drop a scene after processing has been already been done_**")
-                                    scene_id_700 = gr.Number(value=-1, label="Scene Index")
-                                    with gr.Row():
-                                        message_box700 = gr.Markdown(format_markdown("Click Drop Scene to: Remove all Processed Content for the specified scene"))
-                                    drop_button700 = gr.Button("Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
+                        # Cleanse Scenes
+                        with gr.Tab(SimpleIcons.SOAP + " Cleanse Scenes",
+                                    id=self.TAB_EXTRA_CLEANSE_SCENES):
+                            gr.Markdown("**_Remove noise and artifacts from kept scenes_**")
+                            with gr.Row():
+                                message_box704 = gr.Markdown(
+                                    format_markdown(
+                            "Click Cleanse Scene to: Remove noise and artifacts from kept scenes"))
+                            cleanse_button704 = gr.Button(
+                            "Cleanse Scenes " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
-                                # Choose Scene Range
-                                with gr.Tab(SimpleIcons.HEART_HANDS + " Choose Scene Range", id=self.TAB_EXTRA_UTIL_CHOOSE_RANGE):
-                                    gr.Markdown("**_Keep or Drop a range of scenes_**")
-                                    with gr.Row():
-                                        first_scene_id_701 = gr.Number(value=-1,
-                                                                    label="Starting Scene Index")
-                                        last_scene_id_701 = gr.Number(value=-1,
-                                                                    label="Ending Scene Index")
-                                    with gr.Row():
-                                        scene_state_701 = gr.Radio(label="Scenes Choice",
-                                                                   value=None,
-                                                                   choices=["Keep", "Drop"])
-                                    with gr.Row():
-                                        message_box701 = gr.Markdown(format_markdown("Click Choose Scene Range to: Set the Scene Range to the specified state"))
-                                    choose_button701 = gr.Button("Choose Scene Range",
-                                                            variant="stop", scale=0)
+                        # Drop Processed Scene
+                        with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene",
+                                    id=self.TAB_EXTRA_DROP_PROCESSED):
+                            gr.Markdown(
+                        "**_Drop a scene after processing has been already been done_**")
+                            scene_id_700 = gr.Number(value=-1, label="Scene Index")
+                            with gr.Row():
+                                message_box700 = gr.Markdown(
+                                    format_markdown(
+                    "Click Drop Scene to: Remove all Processed Content for the specified scene"))
+                            drop_button700 = gr.Button(
+                        "Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
-                                # Export Kept Scenes
-                                with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_UTIL_EXPORT_SCENES):
-                                    gr.Markdown("**_Save Kept Scenes as a New Project_**")
-                                    with gr.Row():
-                                        export_path_703 = gr.Textbox(label="Exported Project Root Directory", max_lines=1,
-                                                info="Enter a path on this server for the root directory of the new project")
-                                        project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
-                                                info="Enter a name for the new project")
-                                    with gr.Row():
-                                        message_box703 = gr.Markdown(format_markdown("Click Export Project to: Save the kept scenes as a new project"))
-                                    export_project_703 = gr.Button("Export Project " + SimpleIcons.SLOW_SYMBOL,
-                                                            variant="stop", scale=0)
-                                    with gr.Row():
-                                        result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
-                                        open_result703 = gr.Button("Open New Project", visible=False, scale=0)
+                        # Export Kept Scenes
+                        with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_EXPORT_SCENES):
+                            gr.Markdown("**_Save Kept Scenes as a New Project_**")
+                            with gr.Row():
+                                export_path_703 = gr.Textbox(label="Exported Project Root Directory", max_lines=1,
+                                        info="Enter a path on this server for the root directory of the new project")
+                                project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
+                                        info="Enter a name for the new project")
+                            with gr.Row():
+                                message_box703 = gr.Markdown(format_markdown("Click Export Project to: Save the kept scenes as a new project"))
+                            export_project_703 = gr.Button("Export Project " + SimpleIcons.SLOW_SYMBOL,
+                                                    variant="stop", scale=0)
+                            with gr.Row():
+                                result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
+                                open_result703 = gr.Button("Open New Project", visible=False, scale=0)
 
-                        with gr.Tab(SimpleIcons.HERB +" Reduce Footprint", id=self.TAB_EXTRA_REDUCE):
+                        with gr.Tab(SimpleIcons.HERB +" Manage Storage",
+                                    id=self.TAB_EXTRA_MANAGE_STORAGE):
                             gr.Markdown("Free Disk Space by Removing Unneeded Content")
                             with gr.Tabs():
-
-                                with gr.Tab(SimpleIcons.WASTE_BASKET + " Remove Soft-Deleted Content"):
+                                with gr.Tab(SimpleIcons.WASTE_BASKET +
+                                            " Remove Soft-Deleted Content"):
                                     gr.Markdown(
                     "**_Delete content set aside when remix processing selections are changed_**")
                                     with gr.Row():
@@ -481,15 +570,23 @@ class VideoRemixer(TabBase):
                                             gr.Markdown(
                                 "Delete the contents of the 'purged_content' project directory.")
                                     with gr.Row():
-                                        message_box710 = gr.Markdown(format_markdown("Click Delete Purged Content to: Permanently Remove soft-deleted content"))
-                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                        message_box710 = gr.Markdown(
+                                            format_markdown(
+                        "Click Delete Purged Content to: Permanently Remove soft-deleted content"))
+                                    gr.Markdown(
+                                        format_markdown(
+                    "Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
-                                        delete_button710 = gr.Button(value="Delete Purged Content "\
-                                                        + SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                        select_all_button710 = gr.Button(value="Select All", scale=0)
-                                        select_none_button710 = gr.Button(value="Select None", scale=0)
+                                        delete_button710 = gr.Button(
+                                            value="Delete Purged Content " +
+                                            SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                        select_all_button710 = gr.Button(
+                                            value="Select All", scale=0)
+                                        select_none_button710 = gr.Button(
+                                            value="Select None", scale=0)
 
-                                with gr.Tab(SimpleIcons.CROSSMARK + " Remove Scene Chooser Content"):
+                                with gr.Tab(SimpleIcons.CROSSMARK +
+                                            " Remove Scene Chooser Content"):
                                     gr.Markdown(
                             "**_Delete source PNG frame files, thumbnails and dropped scenes_**")
                                     with gr.Row():
@@ -510,16 +607,23 @@ class VideoRemixer(TabBase):
                                             gr.Markdown(
                                     "Delete Thumbnails used to display scenes in Scene Chooser.")
                                     with gr.Row():
-                                        message_box711 = gr.Markdown(format_markdown("Click Delete Selected Content to: Permanently Remove the selected content"))
-                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                        message_box711 = gr.Markdown(
+                                            format_markdown(
+                        "Click Delete Selected Content to: Permanently Remove the selected content"))
+                                    gr.Markdown(
+                                        format_markdown(
+                    "Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
                                         delete_button711 = gr.Button(
                                             value="Delete Selected Content " +\
                                                 SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                        select_all_button711 = gr.Button(value="Select All", scale=0)
-                                        select_none_button711 = gr.Button(value="Select None", scale=0)
+                                        select_all_button711 = gr.Button(
+                                            value="Select All", scale=0)
+                                        select_none_button711 = gr.Button(
+                                            value="Select None", scale=0)
 
-                                with gr.Tab(SimpleIcons.CROSSMARK + " Remove Remix Video Source Content"):
+                                with gr.Tab(SimpleIcons.CROSSMARK +
+                                            " Remove Remix Video Source Content"):
                                     gr.Markdown(
                                     "**_Clear space after final Remix Videos have been saved_**")
                                     with gr.Row():
@@ -569,14 +673,20 @@ class VideoRemixer(TabBase):
                                             gr.Markdown(
         "Delete Video+Audio MP4 files used as inputs to concatentate into the final Remix Video.")
                                     with gr.Row():
-                                        message_box712 = gr.Markdown(format_markdown("Click Delete Selected Content to: Permanently Remove the selected content"))
-                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                        message_box712 = gr.Markdown(
+                                            format_markdown(
+                        "Click Delete Selected Content to: Permanently Remove the selected content"))
+                                    gr.Markdown(
+                                        format_markdown(
+                    "Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
                                         delete_button712 = gr.Button(
                                             value="Delete Selected Content " +\
                                                 SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                        select_all_button712 = gr.Button(value="Select All", scale=0)
-                                        select_none_button712 = gr.Button(value="Select None", scale=0)
+                                        select_all_button712 = gr.Button(
+                                            value="Select All", scale=0)
+                                        select_none_button712 = gr.Button(
+                                            value="Select None", scale=0)
 
                                 with gr.Tab(SimpleIcons.COLLISION + " Remove All Processed Content"):
                                     gr.Markdown(
@@ -588,8 +698,12 @@ class VideoRemixer(TabBase):
                                             gr.Markdown(
             "Deletes all created project content. **Does not delete original and remixed videos.**")
                                     with gr.Row():
-                                        message_box713 = gr.Markdown(format_markdown("Click Delete Processed Content to: Permanently Remove all processed content"))
-                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                        message_box713 = gr.Markdown(
+                                            format_markdown(
+                    "Click Delete Processed Content to: Permanently Remove all processed content"))
+                                    gr.Markdown(
+                                        format_markdown(
+                    "Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
                                         delete_button713 = gr.Button(
                                             value="Delete Processed Content " +\
@@ -597,14 +711,18 @@ class VideoRemixer(TabBase):
 
                                 with gr.Tab(SimpleIcons.MENDING_HEART + " Recover Project"):
                                     gr.Markdown(
-                                    "**_Restore a project from the original source video and project file_**")
+                        "**_Restore a project from the original source video and project file_**")
                                     with gr.Row():
-                                        message_box714 = gr.Markdown(format_markdown("Click Recover Project to: Restore the currently loaded project"))
-                                    gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                        message_box714 = gr.Markdown(
+                                            format_markdown(
+                                    "Click Recover Project to: Restore the currently loaded project"))
+                                    gr.Markdown(
+                                        format_markdown(
+                    "Progress can be tracked in the console", color="none", italic=True, bold=False))
                                     with gr.Row():
                                         restore_button714 = gr.Button(
-                                            value="Recover Project " +\
-                                                SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                            value="Recover Project " +
+                                            SimpleIcons.SLOW_SYMBOL, variant="stop")
 
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                         WebuiTips.video_remixer_extra.render()
@@ -612,22 +730,23 @@ class VideoRemixer(TabBase):
         next_button00.click(self.next_button00,
                            inputs=video_path,
                            outputs=[tabs_video_remixer, message_box00, video_info1, project_path,
-                                    resize_w, resize_h, crop_w, crop_h, project_fps])
+                                    resize_w, resize_h, crop_w, crop_h, crop_offset_x, crop_offset_y,
+                                    project_fps])
 
         next_button01.click(self.next_button01,
                            inputs=project_load_path,
                            outputs=[tabs_video_remixer, message_box01, video_info1, project_path,
                                 project_fps, deinterlace, split_type, split_time, scene_threshold,
                                 break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
-                                project_info2, thumbnail_type, min_frames_per_scene,
-                                scene_index, scene_label, scene_image, scene_state, scene_info,
-                                project_info4, resize, resynthesize, inflate, upscale,
-                                upscale_option, summary_info6, output_filepath])
+                                crop_offset_x, crop_offset_y, project_info2, thumbnail_type,
+                                min_frames_per_scene, scene_index, scene_label, scene_image,
+                                scene_state, scene_info, project_info4, resize, resynthesize,
+                                inflate, upscale, upscale_option, summary_info6, output_filepath])
 
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold,
                                 break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
-                                deinterlace, split_time],
+                                crop_offset_x, crop_offset_y, deinterlace, split_time],
                            outputs=[tabs_video_remixer, message_box1, project_info2, message_box2,
                                 project_load_path])
 
@@ -692,12 +811,11 @@ class VideoRemixer(TabBase):
                                      scene_info])
 
         split_scene_button.click(self.split_scene_shortcut, inputs=scene_index,
-            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils, scene_id_702,
+            outputs=[tabs_video_remixer, tabs_remix_extra, scene_id_702,
                      split_percent_702, preview_image702])
 
         choose_range_button.click(self.choose_range_shortcut, inputs=scene_index,
-            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils,
-                     first_scene_id_701, last_scene_id_701])
+            outputs=[tabs_video_remixer, tabs_remix_extra, first_scene_id_701, last_scene_id_701])
 
         keep_all_button.click(self.keep_all_scenes, show_progress=True,
                             inputs=[scene_index, scene_label],
@@ -715,7 +833,7 @@ class VideoRemixer(TabBase):
                                      scene_info])
 
         drop_processed_button.click(self.drop_processed_shortcut, inputs=scene_index,
-            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_remix_extra_utils, scene_id_700])
+            outputs=[tabs_video_remixer, tabs_remix_extra, scene_id_700])
 
         next_button3.click(self.next_button3,
                            outputs=[tabs_video_remixer, project_info4])
@@ -730,8 +848,8 @@ class VideoRemixer(TabBase):
         next_button5.click(self.next_button5,
                     inputs=[resynthesize, inflate, resize, upscale, upscale_option],
                     outputs=[tabs_video_remixer, message_box5, summary_info6, output_filepath,
-                             output_filepath_custom, output_filepath_marked, message_box60,
-                             message_box61, message_box62])
+                             output_filepath_custom, output_filepath_marked, output_filepath_labeled,
+                             message_box60, message_box61, message_box62, message_box63])
 
         back_button5.click(self.back_button5, outputs=tabs_video_remixer)
 
@@ -756,6 +874,14 @@ class VideoRemixer(TabBase):
 
         back_button62.click(self.back_button6, outputs=tabs_video_remixer)
 
+        next_button63.click(self.next_button63,
+                        inputs=[label_text, label_font_size, label_font_color, label_font_file,
+                                label_draw_box, label_box_color, label_border_size, label_at_top,
+                                output_filepath_labeled, quality_slider_labeled],
+                        outputs=message_box63)
+
+        back_button63.click(self.back_button6, outputs=tabs_video_remixer)
+
         drop_button700.click(self.drop_button700, inputs=scene_id_700, outputs=message_box700)
 
         choose_button701.click(self.choose_button701,
@@ -771,6 +897,18 @@ class VideoRemixer(TabBase):
 
         split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
                                 outputs=[preview_image702, scene_info_702], show_progress=False)
+
+        goto_0_702.click(self.goto_0_702, outputs=split_percent_702, show_progress=False)
+
+        prev_minute_702.click(self.prev_minute_702, inputs=[scene_id_702, split_percent_702],
+                                outputs=split_percent_702, show_progress=False)
+
+        goto_50_702.click(self.goto_50_702, outputs=split_percent_702, show_progress=False)
+
+        next_minute_702.click(self.next_minute_702, inputs=[scene_id_702, split_percent_702],
+                                outputs=split_percent_702, show_progress=False)
+
+        goto_100_702.click(self.goto_100_702, outputs=split_percent_702, show_progress=False)
 
         prev_second_702.click(self.prev_second_702, inputs=[scene_id_702, split_percent_702],
                                 outputs=split_percent_702, show_progress=False)
@@ -794,6 +932,8 @@ class VideoRemixer(TabBase):
 
         open_result703.click(self.open_result703, inputs=result_box703,
                                 outputs=[tabs_video_remixer, project_load_path, message_box01])
+
+        cleanse_button704.click(self.cleanse_button704, outputs=message_box704)
 
         delete_button710.click(self.delete_button710,
                                inputs=delete_purged_710,
@@ -871,11 +1011,13 @@ class VideoRemixer(TabBase):
             self.state.resize_h, \
             self.state.crop_w, \
             self.state.crop_h, \
+            self.state.crop_offset_x, \
+            self.state.crop_offset_y, \
             self.state.project_fps
 
     # User has clicked Open Project > from Remix Home
     def next_button01(self, project_path):
-        empty_args = fill_empty_args(29)
+        empty_args = fill_empty_args(31)
         if not project_path:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=format_markdown("Enter a path to a Video Remixer project directory on this server to get started", "warning")), \
@@ -894,7 +1036,7 @@ class VideoRemixer(TabBase):
                    *empty_args
 
         try:
-            self.state = VideoRemixerState.load(project_file)
+            self.state = VideoRemixerState.load(project_file, self.log)
         except ValueError as error:
             self.log(f"error opening project: {error}")
             return gr.update(selected=self.TAB_REMIX_HOME), \
@@ -903,7 +1045,7 @@ class VideoRemixer(TabBase):
 
         if self.state.project_ported(project_file):
             try:
-                self.state = VideoRemixerState.load_ported(self.state.project_path, project_file)
+                self.state = VideoRemixerState.load_ported(self.state.project_path, project_file, self.log)
             except ValueError as error:
                 self.log(f"error opening ported project at {project_file}: {error}")
                 return gr.update(selected=self.TAB_REMIX_HOME), \
@@ -919,6 +1061,7 @@ class VideoRemixer(TabBase):
         scene_details = self.scene_chooser_details(self.state.tryattr("current_scene"))
 
         Session().set("last-video-remixer-project", project_path)
+        self.invalidate_split_scene_cache()
 
         return gr.update(selected=return_to_tab), \
             gr.update(value=message_text), \
@@ -936,6 +1079,8 @@ class VideoRemixer(TabBase):
             self.state.tryattr("resize_h"), \
             self.state.tryattr("crop_w"), \
             self.state.tryattr("crop_h"), \
+            self.state.tryattr("crop_offset_x", self.state.UI_SAFETY_DEFAULTS["crop_offsets"]), \
+            self.state.tryattr("crop_offset_y", self.state.UI_SAFETY_DEFAULTS["crop_offsets"]), \
             self.state.tryattr("project_info2"), \
             self.state.tryattr("thumbnail_type", self.state.UI_SAFETY_DEFAULTS["thumbnail_type"]), \
             self.state.tryattr("min_frames_per_scene", \
@@ -953,8 +1098,21 @@ class VideoRemixer(TabBase):
     ### REMIX SETTINGS EVENT HANDLERS
 
     # User has clicked Next > from Remix Settings
-    def next_button1(self, project_path, project_fps, split_type, scene_threshold, break_duration, \
-                     break_ratio, resize_w, resize_h, crop_w, crop_h, deinterlace, split_time):
+    def next_button1(self,
+                     project_path,
+                     project_fps,
+                     split_type,
+                     scene_threshold,
+                     break_duration,
+                     break_ratio,
+                     resize_w,
+                     resize_h,
+                     crop_w,
+                     crop_h,
+                     crop_offset_x,
+                     crop_offset_y,
+                     deinterlace,
+                     split_time):
         self.state.project_path = project_path
 
         if not is_safe_path(project_path):
@@ -983,6 +1141,8 @@ class VideoRemixer(TabBase):
             self.state.resize_h = int(resize_h)
             self.state.crop_w = int(crop_w)
             self.state.crop_h = int(crop_h)
+            self.state.crop_offset_x = int(crop_offset_x)
+            self.state.crop_offset_y = int(crop_offset_y)
             self.state.deinterlace = deinterlace
             self.state.split_time = split_time
             self.state.project_info2 = self.state.project_settings_report()
@@ -1094,6 +1254,15 @@ class VideoRemixer(TabBase):
                 self.state.save()
 
             self.state.scene_names = sorted(get_directories(self.state.scenes_path))
+
+            try:
+                self.log("enhance source video info with extra data including frame dimensions")
+                self.state.enhance_video_info(self.log, ignore_errors=False)
+                self.state.save()
+            except ValueError as error:
+                return gr.update(selected=self.TAB_SET_UP_PROJECT), \
+                    gr.update(value=format_markdown(f"There was an error retrieving source frame dimensions: {error}", "error")), \
+                    *self.empty_args(5)
 
             # if there's only one scene, assume it should be kept to save some time
             if len(self.state.scene_names) < 2:
@@ -1214,8 +1383,7 @@ class VideoRemixer(TabBase):
         display_frame = self.compute_preview_frame(scene_index, default_percent)
         _, _, _, scene_info = self.state.scene_chooser_details(scene_index)
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
-            gr.update(selected=self.TAB_EXTRA_UTILITIES), \
-            gr.update(selected=self.TAB_EXTRA_UTIL_SPLIT_SCENE), \
+            gr.update(selected=self.TAB_EXTRA_SPLIT_SCENE), \
             scene_index, \
             default_percent, \
             display_frame, \
@@ -1223,8 +1391,7 @@ class VideoRemixer(TabBase):
 
     def choose_range_shortcut(self, scene_index):
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
-            gr.update(selected=self.TAB_EXTRA_UTILITIES), \
-            gr.update(selected=self.TAB_EXTRA_UTIL_CHOOSE_RANGE), \
+            gr.update(selected=self.TAB_EXTRA_CHOOSE_RANGE), \
             scene_index, \
             scene_index
 
@@ -1242,8 +1409,7 @@ class VideoRemixer(TabBase):
 
     def drop_processed_shortcut(self, scene_index):
         return gr.update(selected=7), \
-            gr.update(selected=self.TAB_EXTRA_UTILITIES), \
-            gr.update(selected=self.TAB_EXTRA_UTIL_DROP_PROCESSED), \
+            gr.update(selected=self.TAB_EXTRA_DROP_PROCESSED), \
             scene_index
 
     def scene_chooser_details(self, scene_index):
@@ -1310,11 +1476,12 @@ class VideoRemixer(TabBase):
 
     # User has clicked Process Remix from Process Remix
     def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option):
+        noop_args = self.noop_args(9)
         if not self.state.project_path or not self.state.scenes_path:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
                    gr.update(value=format_markdown(
                     "The project has not yet been set up from the Set Up Project tab.", "error")), \
-                   *self.noop_args(7)
+                   *noop_args
 
         # TODO move logic to state class
 
@@ -1352,62 +1519,57 @@ class VideoRemixer(TabBase):
                 and not self.state.resynthesize \
                 and not self.state.inflate \
                 and not self.state.upscale:
-                jot.down(f"Using original source content in {self.state.scenes_path}")
+                jot.down(f"Original source scenes in {self.state.scenes_path}")
 
             if self.state.resize:
-                if self.state.processed_content_complete(self.state.RESIZE_STEP):
-                    jot.down(f"Using processed resized scenes in {self.state.resize_path}")
-                else:
+                if not self.state.processed_content_complete(self.state.RESIZE_STEP):
                     self.log("about to resize scenes")
                     self.state.resize_scenes(self.log,
                                              kept_scenes,
                                              self.config.remixer_settings)
                     self.log("saving project after resizing frames")
                     self.state.save()
-                    jot.down(f"Resized scenes created in {self.state.resize_path}")
+                jot.down(f"Resized/cropped scenes in {self.state.resize_path}")
 
             if self.state.resynthesize:
-                if self.state.processed_content_complete(self.state.RESYNTH_STEP):
-                    jot.down(
-                        f"Using processed resynthesized scenes in {self.state.resynthesis_path}")
-                else:
+                if not self.state.processed_content_complete(self.state.RESYNTH_STEP):
+                    two_pass_resynth = self.config.remixer_settings["resynth_type"] == 2
                     self.state.resynthesize_scenes(self.log,
                                                 kept_scenes,
                                                 self.engine,
-                                                self.config.engine_settings)
+                                                self.config.engine_settings,
+                                                two_pass=two_pass_resynth)
                     self.log("saving project after resynthesizing frames")
                     self.state.save()
-                    jot.down(f"Resynthesized scenes created in {self.state.resynthesis_path}")
+                jot.down(f"Resynthesized scenes in {self.state.resynthesis_path}")
 
             if self.state.inflate:
-                if self.state.processed_content_complete(self.state.INFLATE_STEP):
-                    jot.down(f"Using processed inflated scenes in {self.state.inflation_path}")
-                else:
+                if not self.state.processed_content_complete(self.state.INFLATE_STEP):
                     self.state.inflate_scenes(self.log,
                                                 kept_scenes,
                                                 self.engine,
                                                 self.config.engine_settings)
                     self.log("saving project after inflating frames")
                     self.state.save()
-                    jot.down(f"Inflated scenes created in {self.state.inflation_path}")
+                jot.down(f"Inflated scenes in {self.state.inflation_path}")
 
             if self.state.upscale:
-                if self.state.processed_content_complete(self.state.UPSCALE_STEP):
-                    jot.down(f"Using processed upscaled scenes in {self.state.upscale_path}")
-                else:
+                if not self.state.processed_content_complete(self.state.UPSCALE_STEP):
                     self.state.upscale_scenes(self.log,
                                             kept_scenes,
                                             self.config.realesrgan_settings,
                                             self.config.remixer_settings)
                     self.log("saving project after upscaling frames")
                     self.state.save()
-                    jot.down(f"Upscaled scenes created in {self.state.upscale_path}")
+                jot.down(f"Upscaled scenes in {self.state.upscale_path}")
 
-            styled_report = "<br/>\r\n".join(style_row(jot.lines, color="more"))
+            styled_report = style_report("Content Ready for Remix Video:", jot.lines, color="more")
             self.state.summary_info6 = styled_report
+
             self.state.output_filepath = self.state.default_remix_filepath()
             output_filepath_custom = self.state.default_remix_filepath("CUSTOM")
             output_filepath_marked = self.state.default_remix_filepath("MARKED")
+            output_filepath_labeled = self.state.default_remix_filepath("LABELED")
             self.state.save()
 
             # user will expect to return to the save remix tab on reopening
@@ -1420,13 +1582,15 @@ class VideoRemixer(TabBase):
                    self.state.output_filepath, \
                    output_filepath_custom, \
                    output_filepath_marked, \
+                   output_filepath_labeled, \
                    gr.update(value=format_markdown(self.TAB60_DEFAULT_MESSAGE)), \
                    gr.update(value=format_markdown(self.TAB61_DEFAULT_MESSAGE)), \
-                   gr.update(value=format_markdown(self.TAB62_DEFAULT_MESSAGE))
+                   gr.update(value=format_markdown(self.TAB62_DEFAULT_MESSAGE)), \
+                   gr.update(value=format_markdown(self.TAB63_DEFAULT_MESSAGE))
         else:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
                    gr.update(value=format_markdown("At least one scene must be set to 'Keep' before processing can proceed", "error")), \
-                   *self.noop_args(7)
+                   *noop_args
 
     def back_button5(self):
         return gr.update(selected=self.TAB_COMPILE_SCENES)
@@ -1599,6 +1763,81 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return gr.update(value=format_markdown(str(error), "error"))
 
+    # User has clicked Save Labeled Remix from Save Remix
+    def next_button63(self,
+                      label_text,
+                      label_font_size,
+                      label_font_color,
+                      label_font_file,
+                      label_draw_box,
+                      label_box_color,
+                      label_border_size,
+                      label_at_top,
+                      output_filepath,
+                      quality):
+        if not self.state.project_path:
+            return gr.update(value=format_markdown(
+                "The project has not yet been set up from the Set Up Project tab.", "error"))
+        if label_font_size <= 0.0:
+            return gr.update(value=format_markdown(
+                "The Font Factor must be > 0", "warning"))
+        if not label_font_file:
+           return gr.update(value=format_markdown(
+                "The Font File must not be blank", "warning"))
+        if not os.path.exists(label_font_file):
+           return gr.update(value=format_markdown(
+                f"The Font File {os.path.abspath(label_font_file)} was not found", "error"))
+        if not label_font_file:
+           return gr.update(value=format_markdown(
+                "The Font File must not be blank", "warning"))
+        if not label_font_color:
+           return gr.update(value=format_markdown(
+                "The Font Color must not be blank", "warning"))
+        if label_draw_box:
+            if (label_border_size <= 0.0):
+                return gr.update(value=format_markdown(
+                    "The Border Factor must be > 0", "warning"))
+        if not label_box_color:
+           return gr.update(value=format_markdown(
+                "The Background Color must not be blank", "warning"))
+        try:
+            global_options, kept_scenes = self.prepare_save_remix(output_filepath)
+            draw_text_options = {}
+            draw_text_options["font_size"] = label_font_size
+            draw_text_options["font_color"] = label_font_color
+            draw_text_options["font_file"] = label_font_file
+            draw_text_options["draw_box"] = label_draw_box
+            draw_text_options["box_color"] = label_box_color
+            draw_text_options["border_size"] = label_border_size
+            draw_text_options["marked_at_top"] = label_at_top
+            draw_text_options["label"] = label_text
+
+            labeled_video_options = self.config.remixer_settings["labeled_ffmpeg_video"]
+            labeled_audio_options = self.config.remixer_settings["labeled_ffmpeg_audio"]
+            labeled_video_options = labeled_video_options.replace("<CRF>", str(quality))
+            self.log(f"using labeled video options: {labeled_video_options}")
+            self.log(f"using labeled audeo options: {labeled_audio_options}")
+
+            # account for upscaling
+            upscale_factor = 1
+            if self.state.upscale:
+                if self.state.upscale_option == "2X":
+                    upscale_factor = 2
+                elif self.state.upscale_option == "4X":
+                    upscale_factor = 4
+            draw_text_options["crop_width"] = self.state.crop_w * upscale_factor
+            draw_text_options["crop_height"] = self.state.crop_h * upscale_factor
+
+            try:
+                self.save_custom_remix(output_filepath, global_options, kept_scenes,
+                                    labeled_video_options, labeled_audio_options, draw_text_options)
+                return gr.update(value=format_markdown(f"Remixed labeled video {output_filepath} is complete.", "highlight"))
+            except FFRuntimeError as error:
+                return gr.update(value=format_markdown(f"Error: {error}.", "error"))
+
+        except ValueError as error:
+            return gr.update(value=format_markdown(str(error), "error"))
+
     def back_button6(self):
         return gr.update(selected=self.TAB_PROC_OPTIONS)
 
@@ -1674,24 +1913,6 @@ class VideoRemixer(TabBase):
             gr.update(value=format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
 
-    # TODO move logic to state class
-    def compute_scene_split(self, scene_index : int, split_percent : float):
-        scene_name = self.state.scene_names[scene_index]
-        split_percent = 0.0 if isinstance(split_percent, type(None)) else split_percent
-        split_point = split_percent / 100.0
-        first_frame, last_frame, num_width = details_from_group_name(scene_name)
-        num_frames = (last_frame - first_frame) + 1
-        split_frame = math.ceil(num_frames * split_point)
-
-        # ensure at least one frame remains in the lower scene
-        split_frame = 1 if split_frame == 0 else split_frame
-
-        # ensure at least one frame remains in the upper scene
-        split_frame = num_frames-1 if split_frame >= num_frames else split_frame
-
-        return scene_name, num_width, num_frames, first_frame, last_frame, split_frame
-
-    # TODO move logic to state class
     def valid_split_scene_cache(self, scene_index):
         if self.split_scene_cache and self.split_scene_cached_index == scene_index:
             return self.split_scene_cache
@@ -1708,6 +1929,76 @@ class VideoRemixer(TabBase):
         self.split_scene_cache = []
         self.split_scene_cached_index = -1
 
+    def compute_scene_split(self, scene_name : str, split_percent : float, override_num_frames=0):
+        split_percent = 0.0 if isinstance(split_percent, type(None)) else split_percent
+        split_point = split_percent / 100.0
+
+        # these are not reliable if override_num_frames is in use
+        first_frame, last_frame, num_width = details_from_group_name(scene_name)
+
+        num_frames = override_num_frames or ((last_frame - first_frame) + 1)
+        split_frame = math.ceil(num_frames * split_point)
+
+        # ensure at least one frame remains in the lower scene
+        split_frame = 1 if split_frame == 0 else split_frame
+        # ensure at least one frame remains in the upper scene
+        split_frame = num_frames-1 if split_frame >= num_frames else split_frame
+
+        return num_width, num_frames, first_frame, last_frame, split_frame
+
+    def split_scene_content(self,
+                            content_path : str,
+                            scene_name : str,
+                            new_lower_scene_name : str,
+                            new_upper_scene_name : str,
+                            num_frames : int,
+                            split_frame : int):
+        original_scene_path = os.path.join(content_path, scene_name)
+        new_lower_scene_path = os.path.join(content_path, new_lower_scene_name)
+        new_upper_scene_path = os.path.join(content_path, new_upper_scene_name)
+
+        frame_files = sorted(get_files(original_scene_path))
+        num_frame_files = len(frame_files)
+        if num_frame_files != num_frames:
+            message = f"Mismatch between expected frames ({num_frames}) and found frames " + \
+                f"({num_frame_files}) in content path '{original_scene_path}'"
+            raise ValueError(message)
+
+        create_directory(new_upper_scene_path)
+
+        for index, frame_file in enumerate(frame_files):
+            if index < split_frame:
+                continue
+            frame_path = os.path.join(original_scene_path, frame_file)
+            _, filename, ext = split_filepath(frame_path)
+            new_frame_path = os.path.join(new_upper_scene_path, filename + ext)
+            shutil.move(frame_path, new_frame_path)
+        os.replace(original_scene_path, new_lower_scene_path)
+
+    def split_processed_content(self,
+                                content_path : str,
+                                scene_name : str,
+                                new_lower_scene_name : str,
+                                new_upper_scene_name : str,
+                                split_percent : float):
+        original_scene_path = os.path.join(content_path, scene_name)
+        new_lower_scene_path = os.path.join(content_path, new_lower_scene_name)
+        new_upper_scene_path = os.path.join(content_path, new_upper_scene_name)
+
+        frame_files = sorted(get_files(original_scene_path))
+        create_directory(new_upper_scene_path)
+
+        _, _, _, _, split_frame = self.compute_scene_split(
+            scene_name, split_percent, override_num_frames=len(frame_files))
+        for index, frame_file in enumerate(frame_files):
+            if index < split_frame:
+                continue
+            frame_path = os.path.join(original_scene_path, frame_file)
+            _, filename, ext = split_filepath(frame_path)
+            new_frame_path = os.path.join(new_upper_scene_path, filename + ext)
+            shutil.move(frame_path, new_frame_path)
+        os.replace(original_scene_path, new_lower_scene_path)
+
     def split_button702(self, scene_index, split_percent):
         global_options = self.config.ffmpeg_settings["global_options"]
 
@@ -1715,119 +2006,96 @@ class VideoRemixer(TabBase):
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 gr.update(value=format_markdown("Please enter a Scene Index to get started", "warning")), \
                 *fill_empty_args(5)
-
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
         scene_index = int(scene_index)
+
         if scene_index < 0 or scene_index > last_scene:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 gr.update(value=format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning")), \
                 *fill_empty_args(5)
 
-        scene_name, num_width, num_frames, first_frame, last_frame, split_frame \
-            = self.compute_scene_split(scene_index, split_percent)
+        self.state.uncompile_scenes()
 
+        scene_name = self.state.scene_names[scene_index]
+        num_width, num_frames, first_frame, last_frame, split_frame = self.compute_scene_split(
+            scene_name, split_percent)
         if num_frames < 2:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 gr.update(value=format_markdown("Scene must have at least two frames to be split", "error")), \
                 *fill_empty_args(5)
 
-        self.log(f"setting split frame to {split_frame}")
-
-        # TODO move logic to state class
-
         new_lower_first_frame = first_frame
         new_lower_last_frame = first_frame + (split_frame - 1)
         new_lower_scene_name = VideoRemixerState.encode_scene_label(num_width,
                                                 new_lower_first_frame, new_lower_last_frame, 0, 0)
-        self.log(f"new lower scene name: {new_lower_scene_name}")
-
         new_upper_first_frame = first_frame + split_frame
         new_upper_last_frame = last_frame
         new_upper_scene_name = VideoRemixerState.encode_scene_label(num_width,
                                                 new_upper_first_frame, new_upper_last_frame, 0, 0)
-        self.log(f"new upper scene name: {new_upper_scene_name}")
-
-        original_scene_path = os.path.join(self.state.scenes_path, scene_name)
-        new_lower_scene_path = os.path.join(self.state.scenes_path, new_lower_scene_name)
-        new_upper_scene_path = os.path.join(self.state.scenes_path, new_upper_scene_name)
-        self.log(f"new lower scene path: {new_lower_scene_path}")
-        self.log(f"new upper scene path: {new_upper_scene_path}")
-
-        self.state.uncompile_scenes()
-
-        frame_files = sorted(get_files(original_scene_path))
-        num_frame_files = len(frame_files)
-        if num_frame_files != num_frames:
-            message = f"Mismatch between expected frames ({num_frames}) and found frames " + \
-                f"({num_frame_files}) in scene path '{original_scene_path}'"
+        try:
+            self.split_scene_content(self.state.scenes_path,
+                                    scene_name,
+                                    new_lower_scene_name,
+                                    new_upper_scene_name,
+                                    num_frames,
+                                    split_frame)
+        except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                gr.update(value=format_markdown(message, "error")), \
-                    *fill_empty_args(5)
+                gr.update(value=format_markdown(f"Error: {error}", "error")), \
+                *fill_empty_args(5)
 
-        messages = Jot()
-
-        self.log(f"about to create directory '{new_upper_scene_path}'")
-        create_directory(new_upper_scene_path)
-        messages.add(f"Created directory {new_upper_scene_path}")
-
-        move_count = 0
-        for index, frame_file in enumerate(frame_files):
-            if index < split_frame:
-                continue
-            frame_path = os.path.join(original_scene_path, frame_file)
-            _, filename, ext = split_filepath(frame_path)
-            new_frame_path = os.path.join(new_upper_scene_path, filename + ext)
-
-            self.log(f"about to move '{frame_path}' to '{new_frame_path}'")
-            shutil.move(frame_path, new_frame_path)
-            move_count += 1
-        messages.add(f"Moved {move_count} frames to {new_upper_scene_path}")
-
-        self.log(f"about to rename '{original_scene_path}' to '{new_lower_scene_path}'")
-        os.replace(original_scene_path, new_lower_scene_path)
-        messages.add(f"Renamed {original_scene_path} to {new_lower_scene_path}")
-
-        self.log(f"about to rename scene name '{scene_name}' to '{new_lower_scene_name}'")
         self.state.scene_names[scene_index] = new_lower_scene_name
-        self.log(f"about to add new scene name '{new_upper_scene_name}'")
         self.state.scene_names.append(new_upper_scene_name)
-        self.log(f"sorting scene names")
         self.state.scene_names = sorted(self.state.scene_names)
 
         scene_state = self.state.scene_states[scene_name]
-        self.log(f"about to delete the original scene state for scene '{scene_name}'")
         del self.state.scene_states[scene_name]
-        self.log(f"adding scene state for new lower scene '{new_lower_scene_name}'")
         self.state.scene_states[new_lower_scene_name] = scene_state
-        messages.add(f"Set scene {new_lower_scene_name} to {scene_state}")
-        self.log(f"adding scene state for new upper scene '{new_upper_scene_name}'")
         self.state.scene_states[new_upper_scene_name] = scene_state
-        messages.add(f"Set scene {new_upper_scene_name} to {scene_state}")
+
         self.state.current_scene = scene_index
 
         thumbnail_file = self.state.thumbnails[scene_index]
         self.log(f"about to delete original thumbnail file '{thumbnail_file}'")
         os.remove(thumbnail_file)
-        messages.add(f"Deleted thumbnail {thumbnail_file}")
-        self.log(f"about to create thumbnail for new lower scene {new_lower_scene_name}")
         self.state.create_thumbnail(new_lower_scene_name, self.log, global_options,
                                     self.config.remixer_settings)
-        messages.add(f"Created thumbnail for scene {new_lower_scene_name}")
         self.log(f"about to create thumbnail for new upper scene {new_upper_scene_name}")
         self.state.create_thumbnail(new_upper_scene_name, self.log, global_options,
                                     self.config.remixer_settings)
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
-        messages.add(f"Created thumbnail for scene {new_upper_scene_name}")
+
+        paths = [
+            self.state.resize_path,
+            self.state.resynthesis_path,
+            self.state.inflation_path,
+            self.state.upscale_path
+        ]
+        for path in paths:
+            if path and os.path.exists(path):
+                dirs = get_directories(path)
+                if scene_name in dirs:
+                    try:
+                        self.split_processed_content(path,
+                                                    scene_name,
+                                                    new_lower_scene_name,
+                                                    new_upper_scene_name,
+                                                    split_percent)
+                    except ValueError as error:
+                        self.log(
+                            f"Error splitted processed content path {path}: {error} - ignored")
+                        continue
+                else:
+                    self.log(f"Planned skip of splitting processed content path {path}: scene {scene_name} not found")
+            else:
+                self.log(f"Planned skip of splitting processed content path {path}: path not found")
 
         self.log("saving project after completing scene split")
         self.state.save()
 
         self.log("invalidating scene split cache after splitting")
         self.invalidate_split_scene_cache()
-
-        report = messages.report()
-        self.log(report)
 
         message = f"Scene split into new scenes {new_lower_scene_name} and {new_upper_scene_name}"
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
@@ -1842,7 +2110,8 @@ class VideoRemixer(TabBase):
         if scene_index < 0 or scene_index > last_scene:
             return None
 
-        scene_name, _, num_frames, _, _, split_frame = self.compute_scene_split(scene_index, split_percent)
+        scene_name = self.state.scene_names[scene_index]
+        _, num_frames, _, _, split_frame = self.compute_scene_split(scene_name, split_percent)
         original_scene_path = os.path.join(self.state.scenes_path, scene_name)
         frame_files = self.valid_split_scene_cache(scene_index)
         if not frame_files:
@@ -1869,7 +2138,7 @@ class VideoRemixer(TabBase):
         _, _, _, scene_info = self.state.scene_chooser_details(scene_index)
         return display_frame, scene_info
 
-    def compute_advance_702(self, scene_index, split_percent, by_frame : bool, by_next : bool):
+    def compute_advance_702(self, scene_index, split_percent, by_next : bool, by_minute=False, by_second=False):
         if not isinstance(scene_index, (int, float)):
             return fill_empty_args(2)
 
@@ -1879,12 +2148,16 @@ class VideoRemixer(TabBase):
         num_frames = (last_frame - first_frame) + 1
         split_percent_frame = num_frames * split_percent / 100.0
 
-        if by_frame:
-            new_split_frame = split_percent_frame + 1 if by_next else split_percent_frame - 1
-        else:
+        if by_minute:
+            frames_60s = self.state.project_fps * 60
+            new_split_frame = \
+                split_percent_frame + frames_60s if by_next else split_percent_frame - frames_60s
+        elif by_second:
             frames_1s = self.state.project_fps
-            new_split_frame = split_percent_frame + frames_1s if by_next \
-                else split_percent_frame - frames_1s
+            new_split_frame = \
+                split_percent_frame + frames_1s if by_next else split_percent_frame - frames_1s
+        else: # by frame
+            new_split_frame = split_percent_frame + 1 if by_next else split_percent_frame - 1
 
         new_split_frame = 0 if new_split_frame < 0 else new_split_frame
         new_split_frame = num_frames if new_split_frame > num_frames else new_split_frame
@@ -1892,17 +2165,32 @@ class VideoRemixer(TabBase):
         new_split_percent = new_split_frame / num_frames
         return new_split_percent * 100.0
 
+    def goto_0_702(self):
+        return 0
+
+    def goto_50_702(self):
+        return 50
+
+    def goto_100_702(self):
+        return 100
+
+    def prev_minute_702(self, scene_index, split_percent):
+        return self.compute_advance_702(scene_index, split_percent, False, by_minute=True)
+
     def prev_second_702(self, scene_index, split_percent):
-        return self.compute_advance_702(scene_index, split_percent, by_frame=False, by_next=False)
+        return self.compute_advance_702(scene_index, split_percent, False, by_second=True)
 
     def prev_frame_702(self, scene_index, split_percent):
-        return self.compute_advance_702(scene_index, split_percent, by_frame=True, by_next=False)
+        return self.compute_advance_702(scene_index, split_percent, False)
 
     def next_frame_702(self, scene_index, split_percent):
-        return self.compute_advance_702(scene_index, split_percent, by_frame=True, by_next=True)
+        return self.compute_advance_702(scene_index, split_percent, True, )
 
     def next_second_702(self, scene_index, split_percent):
-        return self.compute_advance_702(scene_index, split_percent, by_frame=False, by_next=True)
+        return self.compute_advance_702(scene_index, split_percent, True, by_second=True)
+
+    def next_minute_702(self, scene_index, split_percent):
+        return self.compute_advance_702(scene_index, split_percent, True, by_minute=True)
 
     # TODO move logic to state class
     def export_project_703(self, new_project_path, new_project_name):
@@ -1924,10 +2212,10 @@ class VideoRemixer(TabBase):
             new_profile_filepath = self.state.copy_project_file(full_new_project_path)
 
             # load the copied project file
-            new_state = VideoRemixerState.load(new_profile_filepath)
+            new_state = VideoRemixerState.load(new_profile_filepath, self.log)
 
             # update project paths to the new one
-            new_state = VideoRemixerState.load_ported(new_state.project_path, new_profile_filepath, save_original=False)
+            new_state = VideoRemixerState.load_ported(new_state.project_path, new_profile_filepath, self.log, save_original=False)
 
             # ensure the project directories exist
             new_state.post_load_integrity_check()
@@ -1993,6 +2281,71 @@ class VideoRemixer(TabBase):
         return gr.update(selected=self.TAB_REMIX_HOME), \
             gr.update(value=new_project_path), \
             gr.update(value=format_markdown(self.TAB01_DEFAULT_MESSAGE))
+
+    CLEANSE_SCENES_PATH = "cleansed_scenes"
+    CLEANSE_SCENES_FACTOR = 4.0
+
+    def cleanse_button704(self):
+        kept_scenes = self.state.kept_scenes()
+        if len(kept_scenes) < 1:
+            return gr.update(value=format_markdown("No kept scenes were found", "warning"))
+        self.state.uncompile_scenes()
+
+        working_path = os.path.join(self.state.project_path, self.CLEANSE_SCENES_PATH)
+        if os.path.exists(working_path):
+            self.log(f"purging previous working directory {working_path}")
+            purge_path = self.state.purge_paths([working_path])
+            if purge_path:
+                self.state.copy_project_file(purge_path)
+        self.log(f"creating working directory {working_path}")
+        create_directory(working_path)
+
+        upscale_path = os.path.join(working_path, "upscaled")
+        downsample_path = os.path.join(working_path, "downsampled")
+        self.log(f"creating upscale directory {working_path}")
+        create_directory(upscale_path)
+        self.log(f"creating downsample directory {working_path}")
+        create_directory(downsample_path)
+
+        content_width = self.state.video_details["source_width"]
+        content_height = self.state.video_details["source_height"]
+        scale_type = self.config.remixer_settings["scale_type_down"]
+
+        upscaler = self.state.get_upscaler(self.log, self.config.realesrgan_settings, self.config.remixer_settings)
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Cleansing") as bar:
+            for scene_name in kept_scenes:
+                scene_path = os.path.join(self.state.scenes_path, scene_name)
+                upscale_scene_path = os.path.join(upscale_path, scene_name)
+                create_directory(upscale_scene_path)
+                self.state.upscale_scene(upscaler, scene_path, upscale_scene_path, self.CLEANSE_SCENES_FACTOR)
+
+                downsample_scene_path = os.path.join(downsample_path, scene_name)
+                create_directory(downsample_scene_path)
+                self.state.resize_scene(self.log,
+                                        upscale_scene_path,
+                                        downsample_scene_path,
+                                        content_width,
+                                        content_height,
+                                        scale_type)
+                Mtqdm().update_bar(bar)
+
+        self.log("purging scenes before replacing with cleansed scenes")
+        scene_paths = []
+        for scene_name in kept_scenes:
+            scene_path = os.path.join(self.state.scenes_path, scene_name)
+            scene_paths.append(scene_path)
+        self.state.purge_paths(scene_paths)
+
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Replacing") as bar:
+            for scene_name in kept_scenes:
+                downsample_scene_path = os.path.join(downsample_path, scene_name)
+                shutil.move(downsample_scene_path, self.state.scenes_path)
+                Mtqdm().update_bar(bar)
+
+        shutil.rmtree(working_path)
+        self.invalidate_split_scene_cache()
+        return gr.update(value=format_markdown("Kept scenes replaced with cleaned versions"))
+
 
     def delete_button710(self, delete_purged):
         if delete_purged:

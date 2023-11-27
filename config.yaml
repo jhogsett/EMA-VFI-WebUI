@@ -41,6 +41,11 @@ engine_settings:
   gpu_ids: "0"
   model: "ours"
   use_time_step: False
+enhance_images_settings:
+  threshold_min: 1
+  threshold_max: 50
+  threshold_step: 0.25
+  threshold_default: 2
 ffmpeg_settings:
   global_options: "-hide_banner -loglevel error -nostats"
 fps_change_settings:
@@ -102,11 +107,13 @@ remixer_settings:
   default_gif_fps: 10
   gif_end_delay: 1.0
   gif_factor: 10
+  labeled_ffmpeg_video: -vf "drawtext=<LABEL>" -c:v libx264 -crf <CRF>
+  labeled_ffmpeg_audio: -c:a aac -shortest
   marked_at_top: True
   marked_border_size: 5
   marked_box_color: black@0.5
   marked_draw_box: True
-  marked_ffmpeg_video: -vf "drawtext=<SCENE_INFO>" -c:v libx264 -crf 28
+  marked_ffmpeg_video: -vf "drawtext=<LABEL>" -c:v libx264 -crf 28
   marked_ffmpeg_audio: -c:a aac -shortest
   marked_font_color: white@0.9
   marked_font_size: 30
@@ -116,6 +123,7 @@ remixer_settings:
   maximum_crf: 28
   min_frames_per_scene: 10
   minimum_crf: 17
+  resynth_type: 2
   scale_type_up: "lanczos"
   scale_type_down: "area"
   source_audio_crf: 28

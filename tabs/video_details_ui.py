@@ -118,7 +118,9 @@ class VideoDetails(TabBase):
                     # capture video details from the first found video stream
                     if not video_summary and codec_type == "video":
                         video_summary["frame_rate"] = frame_rate
-                        video_summary["duration"] = duration[:duration.find(".")]
+                        decimal_position = duration.find(".")
+                        cut_off_decimal = None if decimal_position == -1 else decimal_position
+                        video_summary["duration"] = duration[:cut_off_decimal].zfill(8)
                         video_summary["dimensions"] = f"{stream['width']}x{stream['height']}"
                         video_summary["frame_count"] = frame_count
                         video_summary["file_size"] = file_size

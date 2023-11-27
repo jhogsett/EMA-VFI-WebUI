@@ -274,7 +274,9 @@ def get_essential_video_details(input_path : str, count_frames=False) -> dict:
             video_essentials["frame_rate"] = frame_rate
 
             duration = seconds_to_hms(float(stream_data.get("duration", 0)))
-            video_essentials["duration"] = "+" + duration[:duration.find(".")].zfill(8)
+            decimal_position = duration.find(".")
+            cut_off_decimal = None if decimal_position == -1 else decimal_position
+            video_essentials["duration"] = "+" + duration[:cut_off_decimal].zfill(8)
 
             width = stream_data.get("width")
             height = stream_data.get("height")
@@ -303,6 +305,20 @@ def get_essential_video_details(input_path : str, count_frames=False) -> dict:
 
             video_essentials["display_aspect_ratio"] = stream_data.get("display_aspect_ratio")
         return video_essentials
+
+def rate_adjusted_count(source_count : int, source_rate : float, new_rate : float):
+    """Compute a projected frame count and index width given a change in frame rate"""
+    if source_rate == new_rate or not new_rate:
+        adjusted_count = source_count
+    else:
+        rate_ratio = new_rate / source_rate
+        adjusted_count = int(source_count * rate_ratio) + 1
+
+    # use the large of the two computed index widths to ensure proper sorting
+    source_index_width = len(str(source_count))
+    adjusted_index_width = len(str(adjusted_count))
+    index_width = max(adjusted_index_width, source_index_width)
+    return adjusted_count, index_width
 
 def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group : int):
     """Use FFmpeg to get a list of duplicate frames without making changes

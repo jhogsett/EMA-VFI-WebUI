@@ -109,7 +109,7 @@ class SimpleIcons:
     PACKAGE = "📦"
     ROBOT = "🤖"
     ROCKET = "🚀"
-
+    SPARKLES = "✨"
     SCROLL = "📜"
     SEEDLING = "🌱"
     SOAP = "🧼"
@@ -191,12 +191,12 @@ class SimpleIcons:
         SCROLL,
         SEEDLING,
         SIX,
+        SPARKLES,
         SPONGE,
         STETHOSCOPE,
         STILL,
         TELEVISION,
         THREE,
-        TOOLBOX,
         TWO,
         TWO_HEARTS,
         VULCAN_HAND,

@@ -37,6 +37,7 @@ from tabs.strip_scenes_ui import StripScenes
 from tabs.video_remixer_ui import VideoRemixer
 from tabs.video_assembler_ui import VideoAssembler
 from tabs.transpose_png_files_ui import TransposePngFiles
+from tabs.enhance_frames_ui import EnhanceFrames
 
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
@@ -108,6 +109,7 @@ def create_ui(config : SimpleConfig,
                 SimplifyPngFiles(config, engine, log.log).render_tab()
                 VideoAssembler(config, engine, log.log).render_tab()
             ChangeFPS(config, engine, log.log).render_tab()
+            EnhanceFrames(config, engine, log.log).render_tab()
             GIFtoMP4(config, engine, log.log).render_tab()
             with gr.Tab(SimpleIcons.GEAR + "Application"):
                 LogViewer(config, engine, log.log, log).render_tab()
