@@ -91,19 +91,17 @@ class ResequenceFiles:
 
     ZERO_FILL_AUTO_DETECT = -1
 
-    def resequence_batch(self, contiguous=True):
-        """Resequence groups of files. Returns a string with any errors."""
-        group_names = sorted(get_directories(self.input_path), reverse=self.reverse)
-        self.log(f"Found {len(group_names)} file groups")
-
+    def resequence_groups(self, group_names : list, contiguous=True, ignore_name_clash=True):
+        """Resequence files contained in the specified directory names at the input path. Returns a string with any errors."""
         all_files_count = 0
         for group_name in group_names:
             check_path = self.input_path if self.rename else self.output_path
             group_check_path = os.path.join(check_path, group_name)
             try:
                 group_files = glob.glob(os.path.join(group_check_path, "*." + self.file_type))
-                check_for_name_clash(group_files, self.file_type, self.new_base_filename)
                 all_files_count += len(group_files)
+                if not ignore_name_clash:
+                    check_for_name_clash(group_files, self.file_type, self.new_base_filename)
             except ValueError as error:
                 return str(error)
 
@@ -115,7 +113,7 @@ class ResequenceFiles:
 
         errors = []
         if group_names:
-            with Mtqdm().open_bar(total=len(group_names), desc="Resequence Batch") as bar:
+            with Mtqdm().open_bar(total=len(group_names), desc="Resequence Groups") as bar:
                 running_start = self.start_index
                 for group_name in group_names:
                     group_input_path = os.path.join(self.input_path, group_name)
@@ -140,21 +138,30 @@ class ResequenceFiles:
                             self.rename,
                             self.log_fn,
                             group_output_path,
-                            self.reverse).resequence()
+                            self.reverse).resequence(ignore_name_clash=ignore_name_clash)
                     except ValueError as error:
                         errors.append(f"Error handling directory {group_name}: " + str(error))
                     Mtqdm().update_bar(bar)
         if errors:
             return "\r\n".join(errors)
 
-    def resequence(self) -> None:
-        """Resesequence files in the directory per settings. Raises ValueError."""
+    def resequence_batch(self, contiguous=True, ignore_name_clash=True):
+        """Resequence groups of files. Returns a string with any errors."""
+        group_names = sorted(get_directories(self.input_path), reverse=self.reverse)
+        self.log(f"Found {len(group_names)} file groups")
+        return self.resequence_groups(group_names,
+                                      contiguous=contiguous,
+                                      ignore_name_clash=ignore_name_clash)
+
+    def resequence(self, ignore_name_clash=True) -> None:
+        """Resesequence files in the directory per settings. Returns a count of the files resequenced. Raises ValueError on name clash."""
         files = sorted(glob.glob(os.path.join(self.input_path, "*." + self.file_type)),
                        reverse=self.reverse)
         num_files = len(files)
         self.log(f"Found {num_files} files")
 
-        check_for_name_clash(files, self.new_base_filename, self.file_type)
+        if not ignore_name_clash:
+            check_for_name_clash(files, self.new_base_filename, self.file_type)
 
         if self.zero_fill == self.ZERO_FILL_AUTO_DETECT:
             max_file_num = num_files * self.index_step
@@ -164,7 +171,7 @@ class ResequenceFiles:
 
         running_index = self.start_index
         sample_set = create_sample_set(files, self.sample_offset, self.sample_stride)
-        pbar_title = "Resequence rename" if self.rename else "Resequence copy"
+        pbar_title = "Resequence Rename" if self.rename else "Resequence Copy"
         with Mtqdm().open_bar(total=len(sample_set), desc=pbar_title) as bar:
             for file in sample_set:
                 new_filename = \

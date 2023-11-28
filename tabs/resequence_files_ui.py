@@ -164,7 +164,7 @@ class ResequenceFiles(TabBase):
                             self.log,
                             output_path=output_path,
                             reverse=input_reverse).resequence_batch(
-                                contiguous=input_batch_contiguous)
+                                contiguous=input_batch_contiguous, ignore_name_clash=False)
         if errors:
             return format_markdown(errors, "error")
         else:
@@ -259,7 +259,7 @@ class ResequenceFiles(TabBase):
                              input_rename,
                              self.log,
                              output_path=output_path,
-                             reverse=input_reverse).resequence()
+                             reverse=input_reverse).resequence(ignore_name_clash=False)
         except ValueError as error:
             message = f"Error: {error}"
             if interactive:
