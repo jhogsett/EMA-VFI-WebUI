@@ -2,13 +2,14 @@
 import os
 import shutil
 import math
+import time
 from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import format_markdown, style_report
 from webui_utils.file_utils import get_files, create_directory, get_directories, split_filepath, \
-    is_safe_path, duplicate_directory
+    is_safe_path, duplicate_directory, move_files
 from webui_utils.video_utils import details_from_group_name
 from webui_utils.jot import Jot
 from webui_tips import WebuiTips
@@ -18,6 +19,7 @@ from video_remixer import VideoRemixerState
 from webui_utils.mtqdm import Mtqdm
 from webui_utils.session import Session
 from ffmpy import FFRuntimeError
+from resequence_files import ResequenceFiles
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -534,7 +536,7 @@ class VideoRemixer(TabBase):
                         "Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
                         # MERGE SCENE RANGE
-                        with gr.Tab(SimpleIcons.LEFTRIGHT_ARROW + " Merge Scene Range",
+                        with gr.Tab(SimpleIcons.PACKAGE + " Merge Scene Range",
                                     id=self.TAB_EXTRA_MERGE_RANGE):
                             gr.Markdown("**_Merge a range of scenes into one scene_**")
                             with gr.Row():
@@ -1328,8 +1330,9 @@ class VideoRemixer(TabBase):
 
     # User has clicked on the Keep or Drop radio button
     def scene_state_button(self, scene_index, scene_label, scene_state):
-        self.state.scene_states[scene_label] = scene_state
-        self.state.save()
+        if scene_label:
+            self.state.scene_states[scene_label] = scene_state
+            self.state.save()
         return self.scene_chooser_details(self.state.current_scene)
 
     def go_to_frame(self, scene_index):
@@ -1868,60 +1871,6 @@ class VideoRemixer(TabBase):
         removed = "\r\n".join(removed)
         return gr.update(value=format_markdown(f"Removed:\r\n{removed}"))
 
-# go thru each scene
-# resequence the files sequentially among the scenes
-# move all the files from the non-first scenes to the first scene
-# rename the first scene using the last scene index
-# delete the excess scene directories
-# delete all affeced thumbnails
-# rename the group name, and group state
-# can't handle the processed scenes (for now)
-
-
-
-    def merge_button705(self, first_scene_index, last_scene_index):
-        num_scenes = len(self.state.scene_names)
-        last_scene = num_scenes - 1
-
-        if not isinstance(first_scene_index, (int, float)) \
-                or not isinstance(last_scene_index, (int, float)):
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-    gr.update(value=format_markdown("Please enter Scene Indexes to get started", "warning")), \
-                *self.empty_args(5)
-
-        first_scene_index = int(first_scene_index)
-        last_scene_index = int(last_scene_index)
-        if first_scene_index < 0 \
-                or first_scene_index > last_scene \
-                or last_scene_index < 0 \
-                or last_scene_index > last_scene:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                gr.update(value=format_markdown(f"Please enter valid Scene Indexes between 0 and {last_scene} to get started", "warning")), \
-                *self.empty_args(5)
-
-        if first_scene_index >= last_scene_index:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                gr.update(value=format_markdown(f"'Ending Scene Index' must be higher than 'Starting Scene Index'", "warning")), \
-                *self.empty_args(5)
-
-        for scene_index in range(first_scene_index, last_scene_index + 1):
-            scene_name = self.state.scene_names[scene_index]
-            # etc
-
-        # todo
-        first_scene_name = self.state.scene_names[first_scene_index]
-        last_scene_name = self.state.scene_names[last_scene_index]
-        message = f"Scenes {first_scene_name} through {last_scene_name} set to '{scene_state}'"
-        self.log(f"saving project after {message}")
-        self.state.save()
-
-        return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-            gr.update(value=format_markdown(message)), \
-            *self.scene_chooser_details(self.state.current_scene)
-
-
-
-
     def choose_button701(self, first_scene_index, last_scene_index, scene_state):
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
@@ -2397,6 +2346,133 @@ class VideoRemixer(TabBase):
         self.invalidate_split_scene_cache()
         return gr.update(value=format_markdown("Kept scenes replaced with cleaned versions"))
 
+    def merge_button705(self, first_scene_index, last_scene_index):
+        global_options = self.config.ffmpeg_settings["global_options"]
+        empty_args = self.empty_args(5)
+
+        if not isinstance(first_scene_index, (int, float)) \
+                or not isinstance(last_scene_index, (int, float)):
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown("Please enter Scene Indexes to get started", "warning"), \
+                *empty_args
+
+        first_scene_index = int(first_scene_index)
+        last_scene_index = int(last_scene_index)
+        num_scenes = len(self.state.scene_names)
+        last_scene = num_scenes - 1
+        if first_scene_index < 0 \
+                or first_scene_index > last_scene \
+                or last_scene_index < 0 \
+                or last_scene_index > last_scene:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown(f"Please enter valid Scene Indexes between 0 and {last_scene} to get started", "warning"), \
+                *empty_args
+
+        if first_scene_index >= last_scene_index:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown(f"'Ending Scene Index' must be higher than 'Starting Scene Index'", "warning"), \
+                *empty_args
+
+        selected_count = (last_scene_index - first_scene_index) + 1
+        if selected_count < 2:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown(f"There must be at least two scenes to merge", "warning"), \
+                *empty_args
+
+        self.state.uncompile_scenes()
+
+        # make a list of the selected scene names
+        selected_scene_names = []
+        for index, scene_name in enumerate(self.state.scene_names):
+            if index >= first_scene_index and index <= last_scene_index:
+                selected_scene_names.append(scene_name)
+        self.log(f"there are {len(selected_scene_names)} to merge")
+
+        # resequence the files within the selected scenes contiguously
+        self.log("about to call resequence_groups() with the selected scene names")
+        ResequenceFiles(self.state.scenes_path,
+                        "png",
+                        "merged_frame",
+                        0, 1,
+                        1, 0,
+                        -1,
+                        True,
+                        self.log).resequence_groups(selected_scene_names)
+
+        # consolidate all the files into the first scene
+        first_scene_name = selected_scene_names[0]
+        self.log("about to consoldate scene frames")
+        with Mtqdm().open_bar(total=len(selected_scene_names)-1, desc="Consolidating Frames") as bar:
+            for scene_name in selected_scene_names[1:]:
+                from_path = os.path.join(self.state.scenes_path, scene_name)
+                to_path = os.path.join(self.state.scenes_path, first_scene_name)
+                move_files(from_path, to_path)
+                Mtqdm().update_bar(bar)
+
+        # compute the new consolidated scene name
+        last_scene_name = selected_scene_names[-1]
+        first_index, _, _ = details_from_group_name(first_scene_name)
+        _, last_index, num_width = details_from_group_name(last_scene_name)
+        first_index = str(first_index).zfill(num_width)
+        last_index = str(last_index).zfill(num_width)
+        new_scene_name = f"{first_index}-{last_index}"
+        self.log(f"new scene name {new_scene_name}")
+
+        # rename the consolidated scene directory
+        original_scene_path = os.path.join(self.state.scenes_path, first_scene_name)
+        new_scene_path = os.path.join(self.state.scenes_path, new_scene_name)
+        self.log(f"about to rename '{original_scene_path}' to '{new_scene_path}'")
+        os.replace(original_scene_path, new_scene_path)
+
+        # delete the obsolete empty scene directories
+        self.log("about to delete obsolete scene directories")
+        for scene_name in selected_scene_names[1:]:
+            path = os.path.join(self.state.scenes_path, scene_name)
+            files = get_files(path)
+            if len(files) != 0:
+                raise RuntimeError(f"path '{path}' is expected to have zero files")
+            self.log(f"removing path {path}")
+            shutil.rmtree(path)
+
+        # delete the affected thumbnails
+        self.log("about to delete the original scenes' thumbnails")
+        thumbnail_files = sorted(get_files(self.state.thumbnail_path))
+        for index, thumbnail_file in enumerate(thumbnail_files):
+            if index < first_scene_index:
+                continue
+            if index > last_scene_index:
+                break
+            self.log(f"about to delete original thumbnail file '{thumbnail_file}'")
+            os.remove(thumbnail_file)
+
+        # set the new scene name
+        self.state.scene_names[first_scene_index] = new_scene_name
+
+        scene_state = self.state.scene_states[first_scene_name]
+        del self.state.scene_states[first_scene_name]
+        self.state.scene_states[new_scene_name] = scene_state
+
+        # delete the obsolete scene names and states
+        for scene_name in selected_scene_names[1:]:
+            self.state.scene_names.remove(scene_name)
+            del self.state.scene_states[scene_name]
+        self.state.scene_names = sorted(self.state.scene_names)
+
+        self.state.current_scene = first_scene_index
+
+        # create a new thumbnail for the consolidated scene
+        self.log("about to create a thumbnail for the consolidated scene")
+        self.state.create_thumbnail(new_scene_name, self.log, global_options,
+                                    self.config.remixer_settings)
+        self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
+
+        self.log("saving project after merging scenes")
+        self.state.save()
+
+        message = f"Scenes merged into new scene {new_scene_name}"
+        return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+            format_markdown(message), \
+            *self.scene_chooser_details(self.state.current_scene)
 
     def delete_button710(self, delete_purged):
         if delete_purged:
