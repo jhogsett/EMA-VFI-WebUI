@@ -129,6 +129,29 @@ class ResequenceFiles(TabBase):
             self.log(f"creating group output path {output_path}")
             create_directory(output_path)
 
+        if not input_filetype:
+            return format_markdown("Please enter the file type to begin", "warning")
+
+        if not input_newname:
+            return format_markdown("Please enter the base filename to begin", "warning")
+
+        input_start = int(input_start)
+        input_step = int(input_step)
+        if input_step == 0:
+            return format_markdown("Please enter a non-zero file number step to begin", "warning")
+
+        input_stride = int(input_stride)
+        if input_stride == 0:
+            return format_markdown("Please enter a non-zero sampling stride to begin", "warning")
+
+        input_offset = int(input_offset)
+        input_zerofill = int(input_zerofill) if input_zerofill \
+            else _ResequenceFiles.ZERO_FILL_AUTO_DETECT
+
+        if output_path != input_path and not input_rename:
+            self.log(f"creating group output path {output_path}")
+            create_directory(output_path)
+
         errors = _ResequenceFiles(input_path,
                             input_filetype,
                             input_newname,
@@ -143,8 +166,7 @@ class ResequenceFiles(TabBase):
                             reverse=input_reverse).resequence_batch(
                                 contiguous=input_batch_contiguous)
         if errors:
-            message = "\r\n".join(errors)
-            return format_markdown(message, "error")
+            return format_markdown(errors, "error")
         else:
             message = f"Batch processed resequenced files saved to {os.path.abspath(output_path)}"
             return format_markdown(message)
