@@ -946,7 +946,7 @@ class VideoRemixer(TabBase):
 
         cleanse_button704.click(self.cleanse_button704, outputs=message_box704)
 
-        merge_button705.click(self.marge_button705,
+        merge_button705.click(self.merge_button705,
                                inputs=[first_scene_id_705, last_scene_id_705],
                                outputs=[tabs_video_remixer, message_box705, scene_index,
                                         scene_label, scene_image, scene_state, scene_info])
@@ -1867,6 +1867,17 @@ class VideoRemixer(TabBase):
         self.state.save()
         removed = "\r\n".join(removed)
         return gr.update(value=format_markdown(f"Removed:\r\n{removed}"))
+
+# go thru each scene
+# resequence the files sequentially among the scenes
+# move all the files from the non-first scenes to the first scene
+# rename the first scene using the last scene index
+# delete the excess scene directories
+# delete all affeced thumbnails
+# rename the group name, and group state
+# can't handle the processed scenes (for now)
+
+
 
     def merge_button705(self, first_scene_index, last_scene_index):
         num_scenes = len(self.state.scene_names)
