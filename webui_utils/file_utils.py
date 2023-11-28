@@ -262,3 +262,11 @@ def clean_filename(filename, remove_strs=[" "], replace_str="_"):
     for _str in remove_strs:
         filename = filename.replace(_str, replace_str)
     return filename
+
+def check_for_name_clash(file_list, check_base_filename, check_file_type):
+    """Raises ValueError if files are present with the same base filename and file type"""
+    for file in file_list:
+        _, filename, file_type = split_filepath(file)
+        if file_type == check_file_type and filename.startswith(check_base_filename):
+            raise ValueError(
+                f"Existing files were found with the base filename {check_base_filename}")
