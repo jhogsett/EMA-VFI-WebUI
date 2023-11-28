@@ -184,12 +184,12 @@ def locate_frame_file(png_files_path : str, frame_number : int | float) -> str |
             return files[frame_number]
     return None
 
-def split_filepath(filepath : str):
+def split_filepath(filepath : str, include_extension_dot=True):
     """Split a filepath into path, filename, .extension"""
     if isinstance(filepath, str):
         path, filename = os.path.split(filepath)
         filename, ext = os.path.splitext(filename)
-        return path, filename, ext
+        return path, filename, ext[0 if include_extension_dot else 1:]
     else:
         raise ValueError("'filepath' must be a string")
 
@@ -266,7 +266,7 @@ def clean_filename(filename, remove_strs=[" "], replace_str="_"):
 def check_for_name_clash(file_list, check_base_filename, check_file_type):
     """Raises ValueError if files are present with the same base filename and file type"""
     for file in file_list:
-        _, filename, file_type = split_filepath(file)
+        _, filename, file_type = split_filepath(file, include_extension_dot=False)
         if file_type == check_file_type and filename.startswith(check_base_filename):
             raise ValueError(
                 f"Existing files were found with the base filename {check_base_filename}")
