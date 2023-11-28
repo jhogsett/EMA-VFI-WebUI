@@ -103,7 +103,7 @@ def _get_types(extension : str | list | None) -> list:
     return list(set(result)), unused
 
 def get_files(path : str, extension : list | str | None=None) -> list:
-    """Get a list of files in the path per the extension(s)"""
+    """Get a list of files in the path per the extension(s). Names include the path."""
     if isinstance(path, str):
         if isinstance(extension, (list, str, type(None))):
             files = []
@@ -147,6 +147,37 @@ def get_directories(path : str) -> list:
             raise ValueError("'path' does not exist")
     else:
         raise ValueError("'path' must be a string")
+
+def move_files(from_path : str, to_path : str, create_to_path=True, ignore_empty_directories=True):
+    """Move files from from_path to to_path. Returns the count of files moved"""
+    if not isinstance(from_path, str):
+        raise ValueError("'from_path' must be a string")
+    if not os.path.exists(from_path):
+        raise ValueError("'from_path' does not exist")
+    if not is_safe_path(from_path):
+        raise ValueError("'from_path' must be a legal path")
+    if not is_safe_path(to_path):
+        raise ValueError("'to_path' must be a legal path")
+
+    if not os.path.exists(to_path):
+        if create_to_path:
+            create_directory(to_path)
+        else:
+            raise ValueError("'to_path' does not exist")
+
+    files = get_files(from_path)
+    num_files = len(files)
+    if num_files == 0 and not ignore_empty_directories:
+        raise ValueError("'from_path' does not contain any files")
+
+    with Mtqdm().open_bar(total=num_files, desc="Moving Files") as bar:
+        for file in files:
+            from_filepath = file
+            _, filename, ext = split_filepath(file)
+            to_filepath = os.path.join(to_path, filename + ext)
+            shutil.move(from_filepath, to_filepath)
+            Mtqdm().update_bar(bar)
+    return num_files
 
 def create_zip(files : list, filepath : str):
     """Create a zip file from a list of files"""
