@@ -547,6 +547,7 @@ def scene_list_to_ranges(scene_list, num_files):
 # in: group name such as 000-123
 # out: first index, last index, num width
 def details_from_group_name(group_name : str):
+    """Get details from a frame group/scene name such as 0069-0420. Returns first index, last index, index width."""
     indexes = group_name.split("-")
     if len(indexes) != 2:
         raise RuntimeError(f"group name '{group_name}' cannot be parsed into indexes")
