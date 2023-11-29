@@ -2379,7 +2379,6 @@ class VideoRemixer(TabBase):
                 format_markdown(f"There must be at least two scenes to merge", "warning"), \
                 *empty_args
 
-        self.state.uncompile_scenes()
 
         # make a list of the selected scene names
         selected_scene_names = []
@@ -2387,6 +2386,19 @@ class VideoRemixer(TabBase):
             if index >= first_scene_index and index <= last_scene_index:
                 selected_scene_names.append(scene_name)
         self.log(f"there are {len(selected_scene_names)} to merge")
+
+        # check to see that the scene names are contiguous since they are the timing source for slicing audio
+        first_index, _, _ = details_from_group_name(selected_scene_names[0])
+        next_first_index = first_index
+        for scene_name in selected_scene_names:
+            first_index, last_index, _ = details_from_group_name(scene_name)
+            if first_index != next_first_index:
+                return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    format_markdown(f"Scenes to be merged must have contiguous scene name indexes", "warning"), \
+                    *empty_args
+            next_first_index = last_index + 1
+
+        self.state.uncompile_scenes()
 
         # resequence the files within the selected scenes contiguously
         self.log("about to call resequence_groups() with the selected scene names")
