@@ -6,7 +6,8 @@ import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.image_utils import create_gif
-from webui_utils.file_utils import get_files, create_directory, locate_frame_file, duplicate_directory
+from webui_utils.file_utils import get_files, create_directory, locate_frame_file, \
+    duplicate_directory, split_filepath
 from webui_utils.auto_increment import AutoIncrementDirectory, AutoIncrementFilename
 from webui_utils.video_utils import PNGtoMP4, QUALITY_SMALLER_SIZE, MP4toPNG
 from webui_tips import WebuiTips
@@ -656,16 +657,23 @@ class VideoBlender(TabBase):
                 self.log(
                     f"skipping creating repair frames, using frames from {resynth_frames_path}")
 
-            if step1_enabled and step2_enabled:
-                # If PNG frames were extracted from a video, and repair frames were synthesized,
-                # there are now two extra frames in the source set not present in the repair set:
-                # the outermost frames. Remove frame #0 from the source set so the sets can
-                # remain in sync
+            if step2_enabled:
+                # If repair frames were synthesized, there are now two extra frames in the
+                # source set not present in the repair set: # the outermost frames.
+                # Set aside frame #0 from the source set so the sets can # remain in sync
                 source_files = sorted(get_files(source_frames_path, "png"))
                 frame0_file = source_files[0]
-                self.log(
-                    f"deleting soure file {frame0_file} that cannot be sync with the repair set")
-                os.remove(frame0_file)
+                _, filename, ext = split_filepath(frame0_file)
+                set_aside_path = os.path.join(new_project_path, f"{filename}-(removed for sync){ext}")
+                self.log(f"setting aside {frame0_file} as {set_aside_path}")
+                os.replace(frame0_file, set_aside_path)
+
+            if self.config.blender_settings["clean_frames"]:
+                self.log(f"cleaning source files in {source_frames_path}")
+                SimplifyPngFiles(source_frames_path, self.log).simplify()
+
+                self.log(f"cleaning resynthesized files in {resynth_frames_path}")
+                SimplifyPngFiles(resynth_frames_path, self.log).simplify()
 
             if step3_enabled:
                 self.log(
@@ -691,16 +699,6 @@ class VideoBlender(TabBase):
                     self.log).resequence()
             else:
                 self.log("skipping synchronization of frame sets")
-
-            if self.config.blender_settings["clean_frames"]:
-                self.log(f"cleaning source files in {source_frames_path}")
-                SimplifyPngFiles(source_frames_path, self.log).simplify()
-
-                self.log(f"cleaning restored files in {restored_frames_path}")
-                SimplifyPngFiles(restored_frames_path, self.log).simplify()
-
-                self.log(f"cleaning resynthesized files in {resynth_frames_path}")
-                SimplifyPngFiles(resynth_frames_path, self.log).simplify()
 
             self.log(f"saving new project {new_project_name}")
             self.video_blender_projects.save_project(new_project_name, restored_frames_path,
