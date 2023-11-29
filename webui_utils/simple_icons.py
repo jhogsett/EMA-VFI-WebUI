@@ -183,6 +183,7 @@ class SimpleIcons:
         NOTEBOOK,
         NUMBERS,
         ONE,
+        PACKAGE,
         PINCHING_HAND,
         PROPERTIES,
         RECYCLE,

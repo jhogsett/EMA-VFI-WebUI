@@ -103,7 +103,7 @@ def _get_types(extension : str | list | None) -> list:
     return list(set(result)), unused
 
 def get_files(path : str, extension : list | str | None=None) -> list:
-    """Get a list of files in the path per the extension(s)"""
+    """Get a list of files in the path per the extension(s). Names include the path."""
     if isinstance(path, str):
         if isinstance(extension, (list, str, type(None))):
             files = []
@@ -148,6 +148,37 @@ def get_directories(path : str) -> list:
     else:
         raise ValueError("'path' must be a string")
 
+def move_files(from_path : str, to_path : str, create_to_path=True, ignore_empty_directories=True):
+    """Move files from from_path to to_path. Returns the count of files moved"""
+    if not isinstance(from_path, str):
+        raise ValueError("'from_path' must be a string")
+    if not os.path.exists(from_path):
+        raise ValueError("'from_path' does not exist")
+    if not is_safe_path(from_path):
+        raise ValueError("'from_path' must be a legal path")
+    if not is_safe_path(to_path):
+        raise ValueError("'to_path' must be a legal path")
+
+    if not os.path.exists(to_path):
+        if create_to_path:
+            create_directory(to_path)
+        else:
+            raise ValueError("'to_path' does not exist")
+
+    files = get_files(from_path)
+    num_files = len(files)
+    if num_files == 0 and not ignore_empty_directories:
+        raise ValueError("'from_path' does not contain any files")
+
+    with Mtqdm().open_bar(total=num_files, desc="Moving Files") as bar:
+        for file in files:
+            from_filepath = file
+            _, filename, ext = split_filepath(file)
+            to_filepath = os.path.join(to_path, filename + ext)
+            shutil.move(from_filepath, to_filepath)
+            Mtqdm().update_bar(bar)
+    return num_files
+
 def create_zip(files : list, filepath : str):
     """Create a zip file from a list of files"""
     if isinstance(files, list):
@@ -184,12 +215,12 @@ def locate_frame_file(png_files_path : str, frame_number : int | float) -> str |
             return files[frame_number]
     return None
 
-def split_filepath(filepath : str):
+def split_filepath(filepath : str, include_extension_dot=True):
     """Split a filepath into path, filename, .extension"""
     if isinstance(filepath, str):
         path, filename = os.path.split(filepath)
         filename, ext = os.path.splitext(filename)
-        return path, filename, ext
+        return path, filename, ext[0 if include_extension_dot else 1:]
     else:
         raise ValueError("'filepath' must be a string")
 
@@ -262,3 +293,11 @@ def clean_filename(filename, remove_strs=[" "], replace_str="_"):
     for _str in remove_strs:
         filename = filename.replace(_str, replace_str)
     return filename
+
+def check_for_name_clash(file_list, check_base_filename, check_file_type):
+    """Raises ValueError if files are present with the same base filename and file type"""
+    for file in file_list:
+        _, filename, file_type = split_filepath(file, include_extension_dot=False)
+        if file_type == check_file_type and filename.startswith(check_base_filename):
+            raise ValueError(
+                f"Existing files were found with the base filename {check_base_filename}")
