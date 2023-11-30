@@ -2365,39 +2365,24 @@ class VideoRemixer(TabBase):
         self.invalidate_split_scene_cache()
         return gr.update(value=format_markdown("Kept scenes replaced with cleaned versions"))
 
-    def merge_button705(self, first_scene_index, last_scene_index):
+    def merge_scenes(self, first_scene_index, last_scene_index):
+        """Merge the specified scenes. Returns the new scene name. Raises ValueError and RuntimeError."""
         global_options = self.config.ffmpeg_settings["global_options"]
-        empty_args = self.empty_args(5)
-
-        if not isinstance(first_scene_index, (int, float)) \
-                or not isinstance(last_scene_index, (int, float)):
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown("Please enter Scene Indexes to get started", "warning"), \
-                *empty_args
-
-        first_scene_index = int(first_scene_index)
-        last_scene_index = int(last_scene_index)
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
+
         if first_scene_index < 0 \
                 or first_scene_index > last_scene \
                 or last_scene_index < 0 \
                 or last_scene_index > last_scene:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown(f"Please enter valid Scene Indexes between 0 and {last_scene} to get started", "warning"), \
-                *empty_args
+            raise ValueError(f"Scene indexes must be in the range 0 to {last_scene}: {first_scene_index}, {last_scene_index}")
 
         if first_scene_index >= last_scene_index:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown(f"'Ending Scene Index' must be higher than 'Starting Scene Index'", "warning"), \
-                *empty_args
+            raise ValueError(f"Last scene index must be higher than first scene index: {first_scene_index}, {last_scene_index}")
 
         selected_count = (last_scene_index - first_scene_index) + 1
         if selected_count < 2:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown(f"There must be at least two scenes to merge", "warning"), \
-                *empty_args
-
+            raise ValueError(f"There must be at least two scenes to merge: {first_scene_index}, {last_scene_index}")
 
         # make a list of the selected scene names
         selected_scene_names = []
@@ -2412,9 +2397,7 @@ class VideoRemixer(TabBase):
         for scene_name in selected_scene_names:
             first_index, last_index, _ = details_from_group_name(scene_name)
             if first_index != next_first_index:
-                return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                    format_markdown(f"Scenes to be merged must have contiguous scene name indexes", "warning"), \
-                    *empty_args
+                raise ValueError(f"Scenes to be merged must be contiguous. Scene name: {scene_name}, expected first index {next_first_index}")
             next_first_index = last_index + 1
 
         self.state.uncompile_scenes()
@@ -2500,10 +2483,30 @@ class VideoRemixer(TabBase):
         self.log("saving project after merging scenes")
         self.state.save()
 
-        message = f"Scenes merged into new scene {new_scene_name}"
-        return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-            format_markdown(message), \
-            *self.scene_chooser_details(self.state.current_scene)
+        return new_scene_name
+
+    def merge_button705(self, first_scene_index, last_scene_index):
+        global_options = self.config.ffmpeg_settings["global_options"]
+        empty_args = self.empty_args(5)
+
+        if not isinstance(first_scene_index, (int, float)) \
+                or not isinstance(last_scene_index, (int, float)):
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown("Please enter Scene Indexes to get started", "warning"), \
+                *empty_args
+        first_scene_index = int(first_scene_index)
+        last_scene_index = int(last_scene_index)
+
+        try:
+            new_scene_name = self.merge_scenes(first_scene_index, last_scene_index)
+            message = f"Scenes merged into new scene {new_scene_name}"
+            return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+                format_markdown(message), \
+                *self.scene_chooser_details(self.state.current_scene)
+        except ValueError as error:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown(f"Error: {error}", "warning"), \
+                *empty_args
 
     def coalesce_button706(self, coalesce_scenes):
         empty_args = self.empty_args(5)
@@ -2549,26 +2552,49 @@ class VideoRemixer(TabBase):
         else:
             title="Scenes to be consolidated:"
         message = Jot(title=title)
-        for merge_pair in merge_pairs:
-            first_index = merge_pair[0]
-            last_index = merge_pair[1]
-            message_line = []
-            for index in range(first_index, last_index + 1):
-                scene_name = self.state.scene_names[index]
-                message_line.append(scene_name)
-            first_scene_name = self.state.scene_names[first_index]
-            last_scene_name = self.state.scene_names[last_index]
-            first_frame_index, _, num_width = details_from_group_name(first_scene_name)
-            _, last_frame_index, _ = details_from_group_name(last_scene_name)
-            new_scene_name = f"{str(first_frame_index).zfill(num_width)}-{str(last_frame_index).zfill(num_width)}"
-            message.add(f"{','.join(message_line)} -> {new_scene_name}")
-        report = message.report(separator_line="-")
+        if merge_pairs:
+            for merge_pair in merge_pairs:
+                first_index = merge_pair[0]
+                last_index = merge_pair[1]
+                message_line = []
+                for index in range(first_index, last_index + 1):
+                    scene_name = self.state.scene_names[index]
+                    message_line.append(scene_name)
+                first_scene_name = self.state.scene_names[first_index]
+                last_scene_name = self.state.scene_names[last_index]
+                first_frame_index, _, num_width = details_from_group_name(first_scene_name)
+                _, last_frame_index, _ = details_from_group_name(last_scene_name)
+                new_scene_name = f"{str(first_frame_index).zfill(num_width)}-{str(last_frame_index).zfill(num_width)}"
+                message.add(f"{','.join(message_line)} -> {new_scene_name}")
+        else:
+            message.add("None")
+        report = message.report()
 
         if coalesce_scenes:
-            pass
+            if not merge_pairs:
+                return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    format_markdown("No scenes were found to coalesce", "warning"), \
+                    *empty_args
 
-        return gr.update(selected=self.TAB_REMIX_EXTRA), format_markdown(report), *empty_args
+            with Mtqdm().open_bar(total=len(merge_pairs), desc="Coalescing Scenes") as bar:
+                for merge_pair in merge_pairs:
+                    first_index = merge_pair[0]
+                    last_index = merge_pair[1]
+                    try:
+                        self.merge_scenes(first_index, last_index)
+                    except ValueError as error:
+                        return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                            format_markdown(f"Error: {error}", "error"), \
+                            *empty_args
+                    Mtqdm().update_bar(bar)
+            self.state.current_scene = merge_pairs[0][0]
+            self.log("Saving project after consolidating scenes")
 
+            return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+                format_markdown(report), \
+                *self.scene_chooser_details(self.state.current_scene)
+        else:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), format_markdown(report), *empty_args
 
     def delete_button710(self, delete_purged):
         if delete_purged:

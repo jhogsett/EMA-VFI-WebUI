@@ -29,10 +29,8 @@ class Jot():
         _report = []
         if self.title:
             _report.append(f"{self.title}")
-            if len(separator_line) == 1:
-                # extend into a full line
-                separator_line = separator_line * len(self.title)
-            _report.append(separator_line)
+            if separator_line:
+                _report.append(separator_line)
         _report += self.lines
         return "\r\n".join(_report)
     report = grab
