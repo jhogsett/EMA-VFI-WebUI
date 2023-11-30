@@ -2520,10 +2520,8 @@ class VideoRemixer(TabBase):
 
         for index, this_scene_name in enumerate(kept_scenes[:-1]):
             next_scene_name = kept_scenes[index + 1]
-            print("@", this_scene_name, next_scene_name)
             this_scene_index = self.state.scene_names.index(this_scene_name)
             next_scene_index = self.state.scene_names.index(next_scene_name)
-            print("#", this_scene_index, next_scene_index)
             _, this_last_frame_index, _ = details_from_group_name(this_scene_name)
             next_first_frame_index, _, _ = details_from_group_name(next_scene_name)
             mergeable = next_first_frame_index == this_last_frame_index + 1
@@ -2540,36 +2538,36 @@ class VideoRemixer(TabBase):
                     last_merge_index = next_scene_index
                 else:
                     # not mergeable, end capture mode and save merge pair
-                    print("!" * 100, first_merge_index, last_merge_index)
                     merge_pairs.append([first_merge_index, last_merge_index])
                     capture_mode = False
 
         if capture_mode:
             merge_pairs.append([first_merge_index, last_merge_index])
 
-        if not coalesce_scenes:
-            message = Jot(title="The following scenes would be consolidated:")
-            for merge_pair in merge_pairs:
-                first_index = merge_pair[0]
-                last_index = merge_pair[1]
-                message_line = []
-                for index in range(first_index, last_index + 1):
-                    scene_name = self.state.scene_names[index]
-                    message_line.append(scene_name)
-                first_scene_name = self.state.scene_names[first_index]
-                last_scene_name = self.state.scene_names[last_index]
-                first_frame_index, _, num_width = details_from_group_name(first_scene_name)
-                _, last_frame_index, _ = details_from_group_name(last_scene_name)
-                new_scene_name = f"{str(first_frame_index).zfill(num_width)}-{str(last_frame_index).zfill(num_width)}"
-                message.add(f"{','.join(message_line)} -> {new_scene_name}")
-
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown(message.report()), \
-                *empty_args
+        if coalesce_scenes:
+            title="Scenes have been consolidated:"
         else:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown("To Be Implemented"), \
-                *empty_args
+            title="Scenes to be consolidated:"
+        message = Jot(title=title)
+        for merge_pair in merge_pairs:
+            first_index = merge_pair[0]
+            last_index = merge_pair[1]
+            message_line = []
+            for index in range(first_index, last_index + 1):
+                scene_name = self.state.scene_names[index]
+                message_line.append(scene_name)
+            first_scene_name = self.state.scene_names[first_index]
+            last_scene_name = self.state.scene_names[last_index]
+            first_frame_index, _, num_width = details_from_group_name(first_scene_name)
+            _, last_frame_index, _ = details_from_group_name(last_scene_name)
+            new_scene_name = f"{str(first_frame_index).zfill(num_width)}-{str(last_frame_index).zfill(num_width)}"
+            message.add(f"{','.join(message_line)} -> {new_scene_name}")
+        report = message.report(separator_line="-")
+
+        if coalesce_scenes:
+            pass
+
+        return gr.update(selected=self.TAB_REMIX_EXTRA), format_markdown(report), *empty_args
 
 
     def delete_button710(self, delete_purged):
