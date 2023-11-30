@@ -536,21 +536,34 @@ class VideoRemixer(TabBase):
                         "Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
                         # MERGE SCENE RANGE
-                        with gr.Tab(SimpleIcons.PACKAGE + " Merge Scene Range",
+                        with gr.Tab(SimpleIcons.PACKAGE + " Merge Scenes",
                                     id=self.TAB_EXTRA_MERGE_RANGE):
-                            gr.Markdown("**_Merge a range of scenes into one scene_**")
-                            with gr.Row():
-                                first_scene_id_705 = gr.Number(value=-1,
-                                                            label="Starting Scene Index")
-                                last_scene_id_705 = gr.Number(value=-1,
-                                                            label="Ending Scene Index")
-                            with gr.Row():
-                                message_box705 = gr.Markdown(
-                                    format_markdown(
-                        "Click Merge Scene Range to: Combine the chosen scenes into a single scene"))
-                            merge_button705 = gr.Button("Merge Scene Range",
-                                                    variant="stop", scale=0)
-
+                            with gr.Tabs():
+                                with gr.Tab("Merge Scene Range"):
+                                    gr.Markdown("**_Merge a range of scenes into one scene_**")
+                                    with gr.Row():
+                                        first_scene_id_705 = gr.Number(value=-1,
+                                                                    label="Starting Scene Index")
+                                        last_scene_id_705 = gr.Number(value=-1,
+                                                                    label="Ending Scene Index")
+                                    with gr.Row():
+                                        message_box705 = gr.Markdown(
+                                            format_markdown(
+                                    "Click Merge Scene Range to: Combine the chosen scenes into a single scene"))
+                                        merge_button705 = gr.Button("Merge Scene Range",
+                                                                variant="stop", scale=0)
+                                with gr.Tab("Coalesce Scenes"):
+                                    gr.Markdown("**_Consolidate all adjacent Kept scenes_**")
+                                    with gr.Row():
+                                        coalesce_scenes_706 = gr.Checkbox(value=False,
+                                                                        label="Coalesce Kept Scenes",
+                                    info="Leave unchecked to see which scenes will be consolidated")
+                                    with gr.Row():
+                                        message_box706 = gr.Markdown(
+                                            format_markdown(
+                                    "Click Coalesce to: Consolidate all adjacent kept scenes"))
+                                        coalesce_button706 = gr.Button("Coalesce Scenes",
+                                                                variant="stop", scale=0)
                         # EXPORT KEPT SCENES
                         with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_EXPORT_SCENES):
                             gr.Markdown("**_Save Kept Scenes as a New Project_**")
@@ -951,6 +964,10 @@ class VideoRemixer(TabBase):
         merge_button705.click(self.merge_button705,
                                inputs=[first_scene_id_705, last_scene_id_705],
                                outputs=[tabs_video_remixer, message_box705, scene_index,
+                                        scene_label, scene_image, scene_state, scene_info])
+
+        coalesce_button706.click(self.coalesce_button706, inputs=coalesce_scenes_706,
+                               outputs=[tabs_video_remixer, message_box706, scene_index,
                                         scene_label, scene_image, scene_state, scene_info])
 
         delete_button710.click(self.delete_button710,
@@ -2485,6 +2502,70 @@ class VideoRemixer(TabBase):
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
             format_markdown(message), \
             *self.scene_chooser_details(self.state.current_scene)
+
+    def coalesce_button706(self, coalesce_scenes):
+        empty_args = self.empty_args(5)
+        kept_scenes = self.state.kept_scenes()
+        if len(kept_scenes) < 2:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown("There must be at least two kept scenes to merge", "warning"), \
+                *empty_args
+
+        merge_pairs = []
+        capture_mode = False
+        first_merge_index = -1
+        last_merge_index = -1
+
+        for index, this_scene_name in enumerate(kept_scenes[:-1]):
+            next_scene_name = kept_scenes[index + 1]
+            this_scene_index = self.state.scene_names.index(this_scene_name)
+            next_scene_index = self.state.scene_names.index(next_scene_name)
+            _, this_last_frame_index, _ = details_from_group_name(this_scene_name)
+            next_first_frame_index, _, _ = details_from_group_name(next_scene_name)
+            mergeable = next_first_frame_index == this_last_frame_index + 1
+
+            if not capture_mode:
+                if mergeable:
+                    # mergeable pair, record initial bounds and start capturing
+                    first_merge_index = this_scene_index
+                    last_merge_index = next_scene_index
+                    capture_mode = True
+            else:
+                if mergeable:
+                    # extend current merge range
+                    last_merge_index = index + 1
+                else:
+                    # not mergeable, end capture mode and save merge pair
+                    merge_pairs.append([first_merge_index, last_merge_index])
+                    capture_mode = False
+
+        if capture_mode:
+            merge_pairs.append([first_merge_index, last_merge_index])
+
+        if not coalesce_scenes:
+            message = Jot(title="The following scenes would be consolidated:")
+            for merge_pair in merge_pairs:
+                first_index = merge_pair[0]
+                last_index = merge_pair[1]
+                message_line = []
+                for index in range(first_index, last_index + 1):
+                    scene_name = self.state.scene_names[index]
+                    message_line.append(scene_name)
+                first_scene_name = self.state.scene_names[first_index]
+                last_scene_name = self.state.scene_names[last_index]
+                first_frame_index, _, _ = details_from_group_name(first_scene_name)
+                _, last_frame_index, _ = details_from_group_name(last_scene_name)
+                new_scene_name = f"{first_frame_index}-{last_frame_index}"
+                message.add(f"{','.join(message_line)} -> {new_scene_name}")
+
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown(message.report()), \
+                *empty_args
+        else:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown("To Be Implemented"), \
+                *empty_args
+
 
     def delete_button710(self, delete_purged):
         if delete_purged:
