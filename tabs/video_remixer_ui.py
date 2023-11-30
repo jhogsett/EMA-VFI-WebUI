@@ -550,6 +550,7 @@ class VideoRemixer(TabBase):
                                         message_box705 = gr.Markdown(
                                             format_markdown(
                                     "Click Merge Scene Range to: Combine the chosen scenes into a single scene"))
+                                    with gr.Row():
                                         merge_button705 = gr.Button("Merge Scene Range",
                                                                 variant="stop", scale=0)
                                 with gr.Tab("Coalesce Scenes"):
@@ -562,6 +563,7 @@ class VideoRemixer(TabBase):
                                         message_box706 = gr.Markdown(
                                             format_markdown(
                                     "Click Coalesce to: Consolidate all adjacent kept scenes"))
+                                    with gr.Row():
                                         coalesce_button706 = gr.Button("Coalesce Scenes",
                                                                 variant="stop", scale=0)
                         # EXPORT KEPT SCENES
@@ -2536,6 +2538,7 @@ class VideoRemixer(TabBase):
                     last_merge_index = index + 1
                 else:
                     # not mergeable, end capture mode and save merge pair
+                    print("!" * 100, first_merge_index, last_merge_index)
                     merge_pairs.append([first_merge_index, last_merge_index])
                     capture_mode = False
 
@@ -2553,9 +2556,9 @@ class VideoRemixer(TabBase):
                     message_line.append(scene_name)
                 first_scene_name = self.state.scene_names[first_index]
                 last_scene_name = self.state.scene_names[last_index]
-                first_frame_index, _, _ = details_from_group_name(first_scene_name)
+                first_frame_index, _, num_width = details_from_group_name(first_scene_name)
                 _, last_frame_index, _ = details_from_group_name(last_scene_name)
-                new_scene_name = f"{first_frame_index}-{last_frame_index}"
+                new_scene_name = f"{str(first_frame_index).zfill(num_width)}-{str(last_frame_index).zfill(num_width)}"
                 message.add(f"{','.join(message_line)} -> {new_scene_name}")
 
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
