@@ -2573,6 +2573,8 @@ class VideoRemixer(TabBase):
                     format_markdown("No scenes were found to coalesce", "warning"), \
                     *empty_args
 
+            return_to_scene_index = self.state.scene_names.index(merge_pairs[0][0])
+
             with Mtqdm().open_bar(total=len(merge_pairs), desc="Coalescing Scenes") as bar:
                 for merge_pair in merge_pairs:
                     first_index = self.state.scene_names.index(merge_pair[0])
@@ -2585,7 +2587,7 @@ class VideoRemixer(TabBase):
                             *empty_args
                     Mtqdm().update_bar(bar)
 
-            self.state.current_scene = self.state.scene_names.index(merge_pairs[0][0])
+            self.state.current_scene = return_to_scene_index
             self.log("Saving project after consolidating scenes")
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
