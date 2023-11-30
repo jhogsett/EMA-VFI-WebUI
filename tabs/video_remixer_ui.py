@@ -2486,7 +2486,6 @@ class VideoRemixer(TabBase):
         return new_scene_name
 
     def merge_button705(self, first_scene_index, last_scene_index):
-        global_options = self.config.ffmpeg_settings["global_options"]
         empty_args = self.empty_args(5)
 
         if not isinstance(first_scene_index, (int, float)) \
@@ -2518,13 +2517,11 @@ class VideoRemixer(TabBase):
 
         merge_pairs = []
         capture_mode = False
-        first_merge_index = -1
-        last_merge_index = -1
+        first_merge_scene = None
+        last_merge_scene = None
 
         for index, this_scene_name in enumerate(kept_scenes[:-1]):
             next_scene_name = kept_scenes[index + 1]
-            this_scene_index = self.state.scene_names.index(this_scene_name)
-            next_scene_index = self.state.scene_names.index(next_scene_name)
             _, this_last_frame_index, _ = details_from_group_name(this_scene_name)
             next_first_frame_index, _, _ = details_from_group_name(next_scene_name)
             mergeable = next_first_frame_index == this_last_frame_index + 1
@@ -2532,20 +2529,20 @@ class VideoRemixer(TabBase):
             if not capture_mode:
                 if mergeable:
                     # mergeable pair, record initial bounds and start capturing
-                    first_merge_index = this_scene_index
-                    last_merge_index = next_scene_index
+                    first_merge_scene = this_scene_name
+                    last_merge_scene = next_scene_name
                     capture_mode = True
             else:
                 if mergeable:
-                    # extend current merge range
-                    last_merge_index = next_scene_index
+                    # extend current bounds
+                    last_merge_scene = next_scene_name
                 else:
                     # not mergeable, end capture mode and save merge pair
-                    merge_pairs.append([first_merge_index, last_merge_index])
+                    merge_pairs.append([first_merge_scene, last_merge_scene])
                     capture_mode = False
 
         if capture_mode:
-            merge_pairs.append([first_merge_index, last_merge_index])
+            merge_pairs.append([first_merge_scene, last_merge_scene])
 
         if coalesce_scenes:
             title="Scenes have been consolidated:"
@@ -2554,8 +2551,8 @@ class VideoRemixer(TabBase):
         message = Jot(title=title)
         if merge_pairs:
             for merge_pair in merge_pairs:
-                first_index = merge_pair[0]
-                last_index = merge_pair[1]
+                first_index = self.state.scene_names.index(merge_pair[0])
+                last_index = self.state.scene_names.index(merge_pair[1])
                 message_line = []
                 for index in range(first_index, last_index + 1):
                     scene_name = self.state.scene_names[index]
@@ -2587,7 +2584,8 @@ class VideoRemixer(TabBase):
                             format_markdown(f"Error: {error}", "error"), \
                             *empty_args
                     Mtqdm().update_bar(bar)
-            self.state.current_scene = merge_pairs[0][0]
+
+            self.state.current_scene = self.state.scene_names.index(merge_pairs[0][0])
             self.log("Saving project after consolidating scenes")
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
