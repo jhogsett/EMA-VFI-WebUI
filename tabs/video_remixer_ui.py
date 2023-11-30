@@ -2575,8 +2575,8 @@ class VideoRemixer(TabBase):
 
             with Mtqdm().open_bar(total=len(merge_pairs), desc="Coalescing Scenes") as bar:
                 for merge_pair in merge_pairs:
-                    first_index = merge_pair[0]
-                    last_index = merge_pair[1]
+                    first_index = self.state.scene_names.index(merge_pair[0])
+                    last_index = self.state.scene_names.index(merge_pair[1])
                     try:
                         self.merge_scenes(first_index, last_index)
                     except ValueError as error:
