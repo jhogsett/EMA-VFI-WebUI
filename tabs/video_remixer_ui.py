@@ -2520,8 +2520,10 @@ class VideoRemixer(TabBase):
 
         for index, this_scene_name in enumerate(kept_scenes[:-1]):
             next_scene_name = kept_scenes[index + 1]
+            print("@", this_scene_name, next_scene_name)
             this_scene_index = self.state.scene_names.index(this_scene_name)
             next_scene_index = self.state.scene_names.index(next_scene_name)
+            print("#", this_scene_index, next_scene_index)
             _, this_last_frame_index, _ = details_from_group_name(this_scene_name)
             next_first_frame_index, _, _ = details_from_group_name(next_scene_name)
             mergeable = next_first_frame_index == this_last_frame_index + 1
@@ -2535,7 +2537,7 @@ class VideoRemixer(TabBase):
             else:
                 if mergeable:
                     # extend current merge range
-                    last_merge_index = index + 1
+                    last_merge_index = next_scene_index
                 else:
                     # not mergeable, end capture mode and save merge pair
                     print("!" * 100, first_merge_index, last_merge_index)
