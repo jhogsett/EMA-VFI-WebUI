@@ -1017,7 +1017,7 @@ class VideoRemixer(TabBase):
 
     # User has clicked New Project > from Remix Home
     def next_button00(self, video_path):
-        empty_args = self.empty_args(7)
+        empty_args = self.empty_args(9)
         if not video_path:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=format_markdown("Enter a path to a video on this server to get started", "warning")), \
@@ -1432,6 +1432,8 @@ class VideoRemixer(TabBase):
 
     def save_scene_label(self, scene_index, scene_label):
         self.state.set_scene_label(scene_index, scene_label)
+        self.log("saving project after setting scene label")
+        self.state.save()
         return self.scene_chooser_details(self.state.current_scene)
 
     def keep_all_scenes(self, scene_index, scene_name):
