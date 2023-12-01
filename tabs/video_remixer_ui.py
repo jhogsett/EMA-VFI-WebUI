@@ -211,7 +211,7 @@ class VideoRemixer(TabBase):
                 ## CHOOSE SCENES
                 with gr.Tab(SimpleIcons.FOUR + " Choose Scenes", id=self.TAB_CHOOSE_SCENES):
                     with gr.Row():
-                        scene_label = gr.Text(label="Scene Name", interactive=False, scale=1)
+                        scene_name = gr.Text(label="Scene Name", interactive=False, scale=1)
                         scene_info = gr.Text(label="Scene Details", interactive=False, scale=1)
                         with gr.Column(scale=2):
                             with gr.Row():
@@ -250,7 +250,7 @@ class VideoRemixer(TabBase):
                             with gr.Row(variant="panel", equal_height=False):
                                 with gr.Accordion(label="Properties", open=False):
                                     with gr.Row():
-                                        scene_label = gr.Textbox(placeholder="Scene Label", max_lines=1, show_label=False, min_width=80, container=False)
+                                        set_scene_label = gr.Textbox(placeholder="Scene Label", max_lines=1, show_label=False, min_width=80, container=False)
                                         save_scene_label = gr.Button(value="Set", size="sm", scale=0, min_width=80)
                                 with gr.Accordion(label="Danger Zone", open=False):
                                     with gr.Row():
@@ -757,9 +757,10 @@ class VideoRemixer(TabBase):
                                 project_fps, deinterlace, split_type, split_time, scene_threshold,
                                 break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
                                 crop_offset_x, crop_offset_y, project_info2, thumbnail_type,
-                                min_frames_per_scene, scene_index, scene_label, scene_image,
-                                scene_state, scene_info, project_info4, resize, resynthesize,
-                                inflate, upscale, upscale_option, summary_info6, output_filepath])
+                                min_frames_per_scene, scene_index, scene_name, scene_image,
+                                scene_state, scene_info, set_scene_label, project_info4, resize,
+                                resynthesize, inflate, upscale, upscale_option, summary_info6,
+                                output_filepath])
 
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold,
@@ -772,61 +773,61 @@ class VideoRemixer(TabBase):
 
         next_button2.click(self.next_button2,
                            inputs=[thumbnail_type, min_frames_per_scene, skip_detection],
-                           outputs=[tabs_video_remixer, message_box2, scene_index, scene_label,
-                                    scene_image, scene_state, scene_info])
+                           outputs=[tabs_video_remixer, message_box2, scene_index, scene_name,
+                                    scene_image, scene_state, scene_info, set_scene_label])
 
         back_button2.click(self.back_button2, outputs=tabs_video_remixer)
 
         thumbnail_type.change(self.thumb_change, inputs=thumbnail_type, show_progress=False)
 
         scene_state.change(self.scene_state_button, show_progress=False,
-                            inputs=[scene_index, scene_label, scene_state],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
+                            inputs=[scene_index, scene_name, scene_state],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         scene_index.submit(self.go_to_frame, inputs=scene_index,
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         keep_next.click(self.keep_next, show_progress=False,
-                            inputs=[scene_index, scene_label],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
+                            inputs=[scene_index, scene_name],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         drop_next.click(self.drop_next, show_progress=False,
-                            inputs=[scene_index, scene_label],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
+                            inputs=[scene_index, scene_name],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         next_scene.click(self.next_scene, show_progress=False,
-                            inputs=[scene_index, scene_label],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
+                            inputs=[scene_index, scene_name],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         prev_scene.click(self.prev_scene, show_progress=False,
-                            inputs=[scene_index, scene_label],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
+                            inputs=[scene_index, scene_name],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         next_keep.click(self.next_keep, show_progress=False,
-                            inputs=[scene_index, scene_label],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
+                            inputs=[scene_index, scene_name],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         prev_keep.click(self.prev_keep, show_progress=False,
-                            inputs=[scene_index, scene_label],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
+                            inputs=[scene_index, scene_name],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         first_scene.click(self.first_scene, show_progress=False,
-                            inputs=[scene_index, scene_label],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
+                            inputs=[scene_index, scene_name],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         last_scene.click(self.last_scene, show_progress=False,
-                            inputs=[scene_index, scene_label],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
+                            inputs=[scene_index, scene_name],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         split_scene_button.click(self.split_scene_shortcut, inputs=scene_index,
             outputs=[tabs_video_remixer, tabs_remix_extra, scene_id_702,
@@ -835,20 +836,28 @@ class VideoRemixer(TabBase):
         choose_range_button.click(self.choose_range_shortcut, inputs=scene_index,
             outputs=[tabs_video_remixer, tabs_remix_extra, first_scene_id_701, last_scene_id_701])
 
+        set_scene_label.submit(self.save_scene_label, inputs=[scene_index, set_scene_label],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
+
+        save_scene_label.click(self.save_scene_label, inputs=[scene_index, set_scene_label],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
+
         keep_all_button.click(self.keep_all_scenes, show_progress=True,
-                            inputs=[scene_index, scene_label],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
+                            inputs=[scene_index, scene_name],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         drop_all_button.click(self.drop_all_scenes, show_progress=True,
-                            inputs=[scene_index, scene_label],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
+                            inputs=[scene_index, scene_name],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         invert_choices_button.click(self.invert_all_scenes, show_progress=True,
-                            inputs=[scene_index, scene_label],
-                            outputs=[scene_index, scene_label, scene_image, scene_state,
-                                     scene_info])
+                            inputs=[scene_index, scene_name],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         drop_processed_button.click(self.drop_processed_shortcut, inputs=scene_index,
             outputs=[tabs_video_remixer, tabs_remix_extra, scene_id_700])
@@ -905,7 +914,8 @@ class VideoRemixer(TabBase):
         choose_button701.click(self.choose_button701,
                                inputs=[first_scene_id_701, last_scene_id_701, scene_state_701],
                                outputs=[tabs_video_remixer, message_box701, scene_index,
-                                        scene_label, scene_image, scene_state, scene_info])
+                                        scene_name, scene_image, scene_state, scene_info,
+                                        set_scene_label])
 
         scene_id_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
                                 outputs=[preview_image702, scene_info_702], show_progress=False)
@@ -941,8 +951,8 @@ class VideoRemixer(TabBase):
                                 outputs=split_percent_702, show_progress=False)
 
         split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
-                              outputs=[tabs_video_remixer, message_box702, scene_index, scene_label,
-                                       scene_image, scene_state, scene_info])
+                              outputs=[tabs_video_remixer, message_box702, scene_index, scene_name,
+                                       scene_image, scene_state, scene_info, set_scene_label])
 
         export_project_703.click(self.export_project_703,
                                  inputs=[export_path_703, project_name_703],
@@ -956,7 +966,8 @@ class VideoRemixer(TabBase):
         merge_button705.click(self.merge_button705,
                                inputs=[first_scene_id_705, last_scene_id_705],
                                outputs=[tabs_video_remixer, message_box705, scene_index,
-                                        scene_label, scene_image, scene_state, scene_info])
+                                        scene_name, scene_image, scene_state, scene_info,
+                                        set_scene_label])
 
         delete_button710.click(self.delete_button710,
                                inputs=delete_purged_710,
@@ -991,7 +1002,8 @@ class VideoRemixer(TabBase):
         delete_button713.click(self.delete_button713, inputs=delete_all_713, outputs=message_box713)
 
         restore_button714.click(self.restore_button714, outputs=[tabs_video_remixer, message_box714,
-                                    scene_index, scene_label, scene_image, scene_state, scene_info])
+                                    scene_index, scene_name, scene_image, scene_state, scene_info,
+                                    set_scene_label])
 
     ### UTILITY FUNCTIONS
 
@@ -1042,7 +1054,7 @@ class VideoRemixer(TabBase):
 
     # User has clicked Open Project > from Remix Home
     def next_button01(self, project_path):
-        empty_args = self.empty_args(31)
+        empty_args = self.empty_args(32)
         if not project_path:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=format_markdown("Enter a path to a Video Remixer project directory on this server to get started", "warning")), \
@@ -1334,9 +1346,9 @@ class VideoRemixer(TabBase):
     ### SCENE CHOOSER EVENT HANDLERS
 
     # User has clicked on the Keep or Drop radio button
-    def scene_state_button(self, scene_index, scene_label, scene_state):
-        if scene_label:
-            self.state.scene_states[scene_label] = scene_state
+    def scene_state_button(self, scene_index, scene_name, scene_state):
+        if scene_name:
+            self.state.scene_states[scene_name] = scene_state
             self.state.save()
         return self.scene_chooser_details(self.state.current_scene)
 
@@ -1354,29 +1366,29 @@ class VideoRemixer(TabBase):
         self.state.current_scene = scene_index
         return self.scene_chooser_details(self.state.current_scene)
 
-    def keep_next(self, scene_index, scene_label):
-        self.state.scene_states[scene_label] = "Keep"
+    def keep_next(self, scene_index, scene_name):
+        self.state.scene_states[scene_name] = "Keep"
         self.state.save()
-        return self.next_scene(scene_index, scene_label)
+        return self.next_scene(scene_index, scene_name)
 
-    def drop_next(self, scene_index, scene_label):
-        self.state.scene_states[scene_label] = "Drop"
+    def drop_next(self, scene_index, scene_name):
+        self.state.scene_states[scene_name] = "Drop"
         self.state.save()
-        return self.next_scene(scene_index, scene_label)
+        return self.next_scene(scene_index, scene_name)
 
-    def next_scene(self, scene_index, scene_label):
+    def next_scene(self, scene_index, scene_name):
         if scene_index < len(self.state.scene_names)-1:
             scene_index += 1
             self.state.current_scene = scene_index
         return self.scene_chooser_details(self.state.current_scene)
 
-    def prev_scene(self, scene_index, scene_label):
+    def prev_scene(self, scene_index, scene_name):
         if scene_index > 0:
             scene_index -= 1
             self.state.current_scene = scene_index
         return self.scene_chooser_details(self.state.current_scene)
 
-    def next_keep(self, scene_index, scene_label):
+    def next_keep(self, scene_index, scene_name):
         for index in range(scene_index+1, len(self.state.scene_names)):
             scene_name = self.state.scene_names[index]
             if self.state.scene_states[scene_name] == "Keep":
@@ -1384,7 +1396,7 @@ class VideoRemixer(TabBase):
                 break
         return self.scene_chooser_details(self.state.current_scene)
 
-    def prev_keep(self, scene_index, scene_label):
+    def prev_keep(self, scene_index, scene_name):
         for index in range(scene_index-1, -1, -1):
             scene_name = self.state.scene_names[index]
             if self.state.scene_states[scene_name] == "Keep":
@@ -1392,11 +1404,11 @@ class VideoRemixer(TabBase):
                 break
         return self.scene_chooser_details(self.state.current_scene)
 
-    def first_scene(self, scene_index, scene_label):
+    def first_scene(self, scene_index, scene_name):
         self.state.current_scene = 0
         return self.scene_chooser_details(self.state.current_scene)
 
-    def last_scene(self, scene_index, scene_label):
+    def last_scene(self, scene_index, scene_name):
         self.state.current_scene = len(self.state.scene_names) - 1
         return self.scene_chooser_details(self.state.current_scene)
 
@@ -1404,7 +1416,7 @@ class VideoRemixer(TabBase):
         default_percent = 50.0
         scene_index = int(scene_index)
         display_frame = self.compute_preview_frame(scene_index, default_percent)
-        _, _, _, scene_info = self.state.scene_chooser_details(scene_index)
+        _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index)
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
             gr.update(selected=self.TAB_EXTRA_SPLIT_SCENE), \
             scene_index, \
@@ -1418,15 +1430,19 @@ class VideoRemixer(TabBase):
             scene_index, \
             scene_index
 
-    def keep_all_scenes(self, scene_index, scene_label):
+    def save_scene_label(self, scene_index, scene_label):
+        self.state.set_scene_label(scene_index, scene_label)
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def keep_all_scenes(self, scene_index, scene_name):
         self.state.keep_all_scenes()
         return self.scene_chooser_details(self.state.current_scene)
 
-    def drop_all_scenes(self, scene_index, scene_label):
+    def drop_all_scenes(self, scene_index, scene_name):
         self.state.drop_all_scenes()
         return self.scene_chooser_details(self.state.current_scene)
 
-    def invert_all_scenes(self, scene_index, scene_label):
+    def invert_all_scenes(self, scene_index, scene_name):
         self.state.invert_all_scenes()
         return self.scene_chooser_details(self.state.current_scene)
 
@@ -1440,14 +1456,14 @@ class VideoRemixer(TabBase):
     def scene_chooser_details(self, scene_index):
         if not self.state.thumbnails:
             self.log(f"thumbnails don't exist yet in scene_chooser_details()")
-            return self.empty_args(5)
+            return self.empty_args(6)
         try:
-            scene_name, thumbnail_path, scene_state, scene_info = \
+            scene_name, thumbnail_path, scene_state, scene_info, scene_label = \
                 self.state.scene_chooser_details(scene_index)
-            return scene_index, scene_name, thumbnail_path, scene_state, scene_info
+            return scene_index, scene_name, thumbnail_path, scene_state, scene_info, scene_label
         except ValueError as error:
             self.log(error)
-            return self.empty_args(5)
+            return self.empty_args(6)
 
     # User has clicked Done Choosing Scenes from Scene Chooser
     def next_button3(self):
@@ -2034,11 +2050,11 @@ class VideoRemixer(TabBase):
 
         new_lower_first_frame = first_frame
         new_lower_last_frame = first_frame + (split_frame - 1)
-        new_lower_scene_name = VideoRemixerState.encode_scene_label(num_width,
+        new_lower_scene_name = VideoRemixerState.encode_scene_name(num_width,
                                                 new_lower_first_frame, new_lower_last_frame, 0, 0)
         new_upper_first_frame = first_frame + split_frame
         new_upper_last_frame = last_frame
-        new_upper_scene_name = VideoRemixerState.encode_scene_label(num_width,
+        new_upper_scene_name = VideoRemixerState.encode_scene_name(num_width,
                                                 new_upper_first_frame, new_upper_last_frame, 0, 0)
         try:
             self.split_scene_content(self.state.scenes_path,
@@ -2141,7 +2157,7 @@ class VideoRemixer(TabBase):
             return self.empty_args(2)
 
         display_frame = self.compute_preview_frame(scene_index, split_percent)
-        _, _, _, scene_info = self.state.scene_chooser_details(scene_index)
+        _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index)
         return display_frame, scene_info
 
     def compute_advance_702(self, scene_index, split_percent, by_next : bool, by_minute=False, by_second=False):
