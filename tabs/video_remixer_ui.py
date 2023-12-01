@@ -426,7 +426,7 @@ class VideoRemixer(TabBase):
                         ### CREATE LABELED REMIX
                         with gr.Tab(label="Create Labeled Remix"):
                             with gr.Row():
-                                label_text = gr.Textbox(label="Label Text", max_lines=1, placeholder="Leave blank to use same label as Marked Remix tab")
+                                label_text = gr.Textbox(label="Label Text", max_lines=1, info="Scenes with set labels will override this label")
                                 label_at_top = gr.Checkbox(value=default_label_at_top, label="Label at Top", info="Whether to place the label at the top or at the bottom")
                             with gr.Row():
                                 label_font_file = gr.Textbox(value=default_label_font_file, label="Font File", max_lines=1, info="Font file within the application directory")
@@ -884,7 +884,8 @@ class VideoRemixer(TabBase):
                            outputs=[resynthesize, inflate, resize, upscale],
                            show_progress=False)
 
-        next_button60.click(self.next_button60, inputs=[output_filepath, quality_slider],
+        next_button60.click(self.next_button60,
+                            inputs=[output_filepath, quality_slider],
                            outputs=message_box60)
 
         back_button60.click(self.back_button6, outputs=tabs_video_remixer)
@@ -1431,9 +1432,14 @@ class VideoRemixer(TabBase):
             scene_index
 
     def save_scene_label(self, scene_index, scene_label):
-        self.state.set_scene_label(scene_index, scene_label)
-        self.log("saving project after setting scene label")
-        self.state.save()
+        if scene_label:
+            self.state.set_scene_label(scene_index, scene_label)
+            self.log("saving project after setting scene label")
+            self.state.save()
+        else:
+            self.state.clear_scene_label(scene_index)
+            self.log("saving project after clearing scene label")
+            self.state.save()
         return self.scene_chooser_details(self.state.current_scene)
 
     def keep_all_scenes(self, scene_index, scene_name):
@@ -1452,7 +1458,6 @@ class VideoRemixer(TabBase):
         return gr.update(selected=7), \
             gr.update(selected=self.TAB_EXTRA_DROP_PROCESSED), \
             scene_index
-
 
     # given scene name such as [042-420] compute details to display in Scene Chooser
     def scene_chooser_details(self, scene_index):
@@ -1640,7 +1645,7 @@ class VideoRemixer(TabBase):
 
     ### SAVE REMIX EVENT HANDLERS
 
-    def prepare_save_remix(self, output_filepath):
+    def prepare_save_remix(self, output_filepath : str):
         if not output_filepath:
             raise ValueError("Enter a path for the remixed video to proceed")
 
@@ -1700,7 +1705,8 @@ class VideoRemixer(TabBase):
                           kept_scenes,
                           custom_video_options,
                           custom_audio_options,
-                          draw_text_options=None):
+                          draw_text_options=None,
+                          labeled_scenes_first=True):
         _, _, output_ext = split_filepath(output_filepath)
         output_ext = output_ext[1:]
 
@@ -1723,7 +1729,8 @@ class VideoRemixer(TabBase):
             raise ValueError("No processed video clips were found")
 
         self.log("about to create remix viedeo")
-        ffcmd = self.state.create_remix_video(global_options, output_filepath)
+        ffcmd = self.state.create_remix_video(global_options, output_filepath,
+                                              labeled_scenes_first=labeled_scenes_first)
         self.log(f"FFmpeg command: {ffcmd}")
         self.log("saving project after creating remix video")
         self.state.save()
@@ -1859,7 +1866,7 @@ class VideoRemixer(TabBase):
 
             try:
                 self.save_custom_remix(output_filepath, global_options, kept_scenes,
-                                    labeled_video_options, labeled_audio_options, draw_text_options)
+                                    labeled_video_options, labeled_audio_options, draw_text_options, labeled_scenes_first=False)
                 return gr.update(value=format_markdown(f"Remixed labeled video {output_filepath} is complete.", "highlight"))
             except FFRuntimeError as error:
                 return gr.update(value=format_markdown(f"Error: {error}.", "error"))

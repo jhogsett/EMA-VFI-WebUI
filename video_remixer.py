@@ -692,8 +692,25 @@ class VideoRemixerState():
                 Mtqdm().update_bar(bar)
 
     def set_scene_label(self, scene_index, scene_label):
+        if scene_label:
+            this_scene_name = self.scene_names[scene_index]
+
+            # ensure label is not in use for another scene
+            for scene_name in self.scene_names:
+                if scene_name != this_scene_name:
+                    if self.scene_labels.get(scene_name) == scene_label:
+                        # add scene name to make the label unique
+                        scene_label = f"{scene_label} {this_scene_name}"
+                        break
+
+            self.scene_labels[this_scene_name] = scene_label
+
+        return scene_label
+
+    def clear_scene_label(self, scene_index):
         scene_name = self.scene_names[scene_index]
-        self.scene_labels[scene_name] = scene_label
+        if scene_name in self.scene_labels:
+            del self.scene_labels[scene_name]
 
     def keep_all_scenes(self):
         self.scene_states = {scene_name : "Keep" for scene_name in self.scene_names}
@@ -752,11 +769,22 @@ class VideoRemixerState():
             raise ValueError(
                 f"ValueError encountered while getting scene chooser data: {error}")
 
-    def kept_scenes(self):
+    def kept_scenes(self) -> list:
+        """Returns kept scene names sorted"""
         return sorted([scene for scene in self.scene_states if self.scene_states[scene] == "Keep"])
 
-    def dropped_scenes(self):
+    def dropped_scenes(self) -> list:
+        """Returns dropped scene names sorted"""
         return sorted([scene for scene in self.scene_states if self.scene_states[scene] == "Drop"])
+
+    def labeled_scenes(self) -> dict:
+        """Returns dict mapping scene label to scene name."""
+        result = {}
+        for scene_name in self.scene_names:
+            scene_label = self.scene_labels.get(scene_name)
+            if scene_label:
+                result[scene_label] = scene_name
+        return result
 
     def scene_frames(self, type : str="all") -> int:
         if type.lower() == "keep":
@@ -1533,10 +1561,45 @@ class VideoRemixerState():
         else:
             self.clips = sorted(get_files(self.video_clips_path))
 
-    def create_remix_video(self, global_options, output_filepath):
+    def assembly_list(self, clip_filepaths : list) -> list:
+        """Get list clips to assemble in order.
+        'clip_filepaths' is expected to be full path and filename to the remix clips, corresponding to the list of kept scenes.
+        If there are labeled scenes, they are arranged first in sorted order, followed by non-nolabeled scenes."""
+        if not self.scene_labels:
+            return clip_filepaths
+
+        # map scene names to clip filepaths
+        kept_scenes = self.kept_scenes()
+        map_scene_name_to_clip = {}
+        for index, scene_name in enumerate(kept_scenes):
+            map_scene_name_to_clip[scene_name] = clip_filepaths[index]
+
+        # assemble the labeled part of the clip list in label order
+        # and remove labele scenes from the unlabeled scene list
+        assembly = []
+        unlabeled_scenes = kept_scenes
+        labeled_scenes = self.labeled_scenes()
+        scene_labels = sorted(list(labeled_scenes.keys()))
+        for scene_label in scene_labels:
+            scene_name = labeled_scenes[scene_label]
+            assembly.append(map_scene_name_to_clip[scene_name])
+            unlabeled_scenes.remove(scene_name)
+
+        # add the unlabeled clips
+        for scene_name in unlabeled_scenes:
+            assembly.append(map_scene_name_to_clip[scene_name])
+
+        return assembly
+
+    def create_remix_video(self, global_options, output_filepath, labeled_scenes_first=True):
         with Mtqdm().open_bar(total=1, desc="Saving Remix") as bar:
             Mtqdm().message(bar, "Using FFmpeg to concatenate scene clips - no ETA")
-            ffcmd = combine_videos(self.clips,
+
+            if labeled_scenes_first:
+                assembly_list = self.assembly_list(self.clips)
+            else:
+                assembly_list = self.clips
+            ffcmd = combine_videos(assembly_list,
                                    output_filepath,
                                    global_options=global_options)
             Mtqdm().update_bar(bar)
