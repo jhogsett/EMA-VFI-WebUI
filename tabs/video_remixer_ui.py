@@ -247,17 +247,22 @@ class VideoRemixer(TabBase):
                                     choose_range_button = gr.Button(
                                         value="Choose Scene Range " + SimpleIcons.HEART_HANDS,
                                         variant="secondary")
-                            with gr.Accordion(label="Danger Zone", open=False):
-                                with gr.Row():
-                                    keep_all_button = gr.Button(value="Keep All Scenes",
-                                                                variant="stop")
-                                    drop_all_button = gr.Button(value="Drop All Scenes",
-                                                                variant="stop")
-                                with gr.Row():
-                                    invert_choices_button = gr.Button(value="Invert Scene Choices",
-                                                                variant="stop")
-                                    drop_processed_button = gr.Button(value="Drop Processed Scene",
-                                                                variant="stop")
+                            with gr.Row(variant="panel", equal_height=False):
+                                with gr.Accordion(label="Properties", open=False):
+                                    with gr.Row():
+                                        scene_label = gr.Textbox(placeholder="Scene Label", max_lines=1, show_label=False, min_width=80, container=False)
+                                        save_scene_label = gr.Button(value="Set", size="sm", scale=0, min_width=80)
+                                with gr.Accordion(label="Danger Zone", open=False):
+                                    with gr.Row():
+                                        keep_all_button = gr.Button(value="Keep All Scenes",
+                                                                    variant="stop", size="sm", min_width=80)
+                                        drop_all_button = gr.Button(value="Drop All Scenes",
+                                                                    variant="stop", size="sm", min_width=80)
+                                    with gr.Row():
+                                        invert_choices_button = gr.Button(value="Invert Scene Choices",
+                                                                    variant="stop", size="sm", min_width=80)
+                                        drop_processed_button = gr.Button(value="Drop Processed Scene",
+                                                                    variant="stop", size="sm", min_width=80)
                     with gr.Row():
                         back_button3 = gr.Button(value="< Back", variant="secondary", scale=0)
                         next_button3 = gr.Button(value="Done Choosing Scenes", variant="primary",
