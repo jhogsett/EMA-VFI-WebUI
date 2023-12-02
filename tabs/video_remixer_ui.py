@@ -81,7 +81,7 @@ class VideoRemixer(TabBase):
         default_label_draw_box = self.config.remixer_settings["marked_draw_box"]
         default_label_box_color = self.config.remixer_settings["marked_box_color"]
         default_label_border_size = self.config.remixer_settings["marked_border_size"]
-        default_label_at_top = self.config.remixer_settings["marked_at_top"]
+        default_label_position = self.config.remixer_settings["marked_position"]
         custom_ffmpeg_video = self.config.remixer_settings["custom_ffmpeg_video"]
         custom_ffmpeg_audio = self.config.remixer_settings["custom_ffmpeg_audio"]
 
@@ -429,7 +429,7 @@ class VideoRemixer(TabBase):
                         with gr.Tab(label="Create Labeled Remix"):
                             with gr.Row():
                                 label_text = gr.Textbox(label="Label Text", max_lines=1, info="Scenes with set labels will override this label")
-                                label_at_top = gr.Checkbox(value=default_label_at_top, label="Label at Top", info="Whether to place the label at the top or at the bottom")
+                                label_position = gr.Radio(choices=["Top", "Middle", "Bottom"], value=default_label_position, label="Label Position", info="Vertical location for the label")
                             with gr.Row():
                                 label_font_file = gr.Textbox(value=default_label_font_file, label="Font File", max_lines=1, info="Font file within the application directory")
                                 label_font_size = gr.Number(value=default_label_font_size, label="Font Factor", info="Size as a factor of frame width, smaller values produce larger text")
@@ -921,7 +921,7 @@ class VideoRemixer(TabBase):
 
         next_button63.click(self.next_button63,
                         inputs=[label_text, label_font_size, label_font_color, label_font_file,
-                                label_draw_box, label_box_color, label_border_size, label_at_top,
+                                label_draw_box, label_box_color, label_border_size, label_position,
                                 output_filepath_labeled, quality_slider_labeled],
                         outputs=message_box63)
 
@@ -1804,7 +1804,7 @@ class VideoRemixer(TabBase):
             draw_text_options["draw_box"] = self.config.remixer_settings["marked_draw_box"]
             draw_text_options["box_color"] = self.config.remixer_settings["marked_box_color"]
             draw_text_options["border_size"] = self.config.remixer_settings["marked_border_size"]
-            draw_text_options["marked_at_top"] = self.config.remixer_settings["marked_at_top"]
+            draw_text_options["marked_position"] = self.config.remixer_settings["marked_position"]
 
             # account for upscaling
             upscale_factor = 1
@@ -1841,7 +1841,7 @@ class VideoRemixer(TabBase):
                       label_draw_box,
                       label_box_color,
                       label_border_size,
-                      label_at_top,
+                      label_position,
                       output_filepath,
                       quality):
         if not self.state.project_path:
@@ -1878,7 +1878,7 @@ class VideoRemixer(TabBase):
             draw_text_options["draw_box"] = label_draw_box
             draw_text_options["box_color"] = label_box_color
             draw_text_options["border_size"] = label_border_size
-            draw_text_options["marked_at_top"] = label_at_top
+            draw_text_options["marked_position"] = label_position
 
             # account for upscaling
             upscale_factor = 1

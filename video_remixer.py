@@ -1484,7 +1484,7 @@ class VideoRemixerState():
                 draw_box = draw_text_options["draw_box"]
                 box_color = draw_text_options["box_color"]
                 border_factor = draw_text_options["border_size"]
-                marked_at_top = draw_text_options["marked_at_top"]
+                marked_position = draw_text_options["marked_position"]
                 crop_width = draw_text_options["crop_width"]
                 labels = draw_text_options["labels"]
             except IndexError as error:
@@ -1493,7 +1493,13 @@ class VideoRemixerState():
             font_size = crop_width / float(font_factor)
             border_size = font_size / float(border_factor)
             box_x = "(w-text_w)/2"
-            box_y = "(text_h*1)" if marked_at_top else f"h-(text_h*2)-({2*int(border_size)})"
+
+            if marked_position == "Bottom":
+                box_y = f"h-(text_h*2)-({2*int(border_size)})"
+            elif marked_position == "Middle":
+                box_y = f"(h/2)-(text_h/2)-({int(border_size)})"
+            else:
+                box_y = "(text_h*1)"
             box = "1" if draw_box else "0"
 
         video_clip_fps = 2 * self.project_fps if self.inflate else self.project_fps
