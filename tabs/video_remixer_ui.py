@@ -543,21 +543,36 @@ class VideoRemixer(TabBase):
                         "Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
                         # MERGE SCENE RANGE
-                        with gr.Tab(SimpleIcons.PACKAGE + " Merge Scene Range",
+                        with gr.Tab(SimpleIcons.PACKAGE + " Merge Scenes",
                                     id=self.TAB_EXTRA_MERGE_RANGE):
-                            gr.Markdown("**_Merge a range of scenes into one scene_**")
-                            with gr.Row():
-                                first_scene_id_705 = gr.Number(value=-1,
-                                                            label="Starting Scene Index")
-                                last_scene_id_705 = gr.Number(value=-1,
-                                                            label="Ending Scene Index")
-                            with gr.Row():
-                                message_box705 = gr.Markdown(
-                                    format_markdown(
-                        "Click Merge Scene Range to: Combine the chosen scenes into a single scene"))
-                            merge_button705 = gr.Button("Merge Scene Range",
-                                                    variant="stop", scale=0)
-
+                            with gr.Tabs():
+                                with gr.Tab("Merge Scene Range"):
+                                    gr.Markdown("**_Merge a range of scenes into one scene_**")
+                                    with gr.Row():
+                                        first_scene_id_705 = gr.Number(value=-1,
+                                                                    label="Starting Scene Index")
+                                        last_scene_id_705 = gr.Number(value=-1,
+                                                                    label="Ending Scene Index")
+                                    with gr.Row():
+                                        message_box705 = gr.Markdown(
+                                            format_markdown(
+                                    "Click Merge Scene Range to: Combine the chosen scenes into a single scene"))
+                                    with gr.Row():
+                                        merge_button705 = gr.Button("Merge Scene Range",
+                                                                variant="stop", scale=0)
+                                with gr.Tab("Coalesce Scenes"):
+                                    gr.Markdown("**_Consolidate all adjacent Kept scenes_**")
+                                    with gr.Row():
+                                        coalesce_scenes_706 = gr.Checkbox(value=False,
+                                                                        label="Coalesce Kept Scenes",
+                                    info="Leave unchecked to see which scenes will be consolidated")
+                                    with gr.Row():
+                                        message_box706 = gr.Markdown(
+                                            format_markdown(
+                                    "Click Coalesce to: Consolidate all adjacent kept scenes"))
+                                    with gr.Row():
+                                        coalesce_button706 = gr.Button("Coalesce Scenes",
+                                                                variant="stop", scale=0)
                         # EXPORT KEPT SCENES
                         with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_EXPORT_SCENES):
                             gr.Markdown("**_Save Kept Scenes as a New Project_**")
@@ -971,6 +986,10 @@ class VideoRemixer(TabBase):
                                outputs=[tabs_video_remixer, message_box705, scene_index,
                                         scene_name, scene_image, scene_state, scene_info,
                                         set_scene_label])
+
+        coalesce_button706.click(self.coalesce_button706, inputs=coalesce_scenes_706,
+                               outputs=[tabs_video_remixer, message_box706, scene_index,
+                                        scene_label, scene_image, scene_state, scene_info])
 
         delete_button710.click(self.delete_button710,
                                inputs=delete_purged_710,
@@ -2395,39 +2414,24 @@ class VideoRemixer(TabBase):
         self.invalidate_split_scene_cache()
         return gr.update(value=format_markdown("Kept scenes replaced with cleaned versions"))
 
-    def merge_button705(self, first_scene_index, last_scene_index):
+    def merge_scenes(self, first_scene_index, last_scene_index):
+        """Merge the specified scenes. Returns the new scene name. Raises ValueError and RuntimeError."""
         global_options = self.config.ffmpeg_settings["global_options"]
-        empty_args = self.empty_args(5)
-
-        if not isinstance(first_scene_index, (int, float)) \
-                or not isinstance(last_scene_index, (int, float)):
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown("Please enter Scene Indexes to get started", "warning"), \
-                *empty_args
-
-        first_scene_index = int(first_scene_index)
-        last_scene_index = int(last_scene_index)
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
+
         if first_scene_index < 0 \
                 or first_scene_index > last_scene \
                 or last_scene_index < 0 \
                 or last_scene_index > last_scene:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown(f"Please enter valid Scene Indexes between 0 and {last_scene} to get started", "warning"), \
-                *empty_args
+            raise ValueError(f"Scene indexes must be in the range 0 to {last_scene}: {first_scene_index}, {last_scene_index}")
 
         if first_scene_index >= last_scene_index:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown(f"'Ending Scene Index' must be higher than 'Starting Scene Index'", "warning"), \
-                *empty_args
+            raise ValueError(f"Last scene index must be higher than first scene index: {first_scene_index}, {last_scene_index}")
 
         selected_count = (last_scene_index - first_scene_index) + 1
         if selected_count < 2:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown(f"There must be at least two scenes to merge", "warning"), \
-                *empty_args
-
+            raise ValueError(f"There must be at least two scenes to merge: {first_scene_index}, {last_scene_index}")
 
         # make a list of the selected scene names
         selected_scene_names = []
@@ -2442,9 +2446,7 @@ class VideoRemixer(TabBase):
         for scene_name in selected_scene_names:
             first_index, last_index, _ = details_from_group_name(scene_name)
             if first_index != next_first_index:
-                return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                    format_markdown(f"Scenes to be merged must have contiguous scene name indexes", "warning"), \
-                    *empty_args
+                raise ValueError(f"Scenes to be merged must be contiguous. Scene name: {scene_name}, expected first index {next_first_index}")
             next_first_index = last_index + 1
 
         self.state.uncompile_scenes()
@@ -2530,10 +2532,118 @@ class VideoRemixer(TabBase):
         self.log("saving project after merging scenes")
         self.state.save()
 
-        message = f"Scenes merged into new scene {new_scene_name}"
-        return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-            format_markdown(message), \
-            *self.scene_chooser_details(self.state.current_scene)
+        return new_scene_name
+
+    def merge_button705(self, first_scene_index, last_scene_index):
+        empty_args = self.empty_args(5)
+
+        if not isinstance(first_scene_index, (int, float)) \
+                or not isinstance(last_scene_index, (int, float)):
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown("Please enter Scene Indexes to get started", "warning"), \
+                *empty_args
+        first_scene_index = int(first_scene_index)
+        last_scene_index = int(last_scene_index)
+
+        try:
+            new_scene_name = self.merge_scenes(first_scene_index, last_scene_index)
+            message = f"Scenes merged into new scene {new_scene_name}"
+            return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+                format_markdown(message), \
+                *self.scene_chooser_details(self.state.current_scene)
+        except ValueError as error:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown(f"Error: {error}", "warning"), \
+                *empty_args
+
+    def coalesce_button706(self, coalesce_scenes):
+        empty_args = self.empty_args(5)
+        kept_scenes = self.state.kept_scenes()
+        if len(kept_scenes) < 2:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown("There must be at least two kept scenes to merge", "warning"), \
+                *empty_args
+
+        merge_pairs = []
+        capture_mode = False
+        first_merge_scene = None
+        last_merge_scene = None
+
+        for index, this_scene_name in enumerate(kept_scenes[:-1]):
+            next_scene_name = kept_scenes[index + 1]
+            _, this_last_frame_index, _ = details_from_group_name(this_scene_name)
+            next_first_frame_index, _, _ = details_from_group_name(next_scene_name)
+            mergeable = next_first_frame_index == this_last_frame_index + 1
+
+            if not capture_mode:
+                if mergeable:
+                    # mergeable pair, record initial bounds and start capturing
+                    first_merge_scene = this_scene_name
+                    last_merge_scene = next_scene_name
+                    capture_mode = True
+            else:
+                if mergeable:
+                    # extend current bounds
+                    last_merge_scene = next_scene_name
+                else:
+                    # not mergeable, end capture mode and save merge pair
+                    merge_pairs.append([first_merge_scene, last_merge_scene])
+                    capture_mode = False
+
+        if capture_mode:
+            merge_pairs.append([first_merge_scene, last_merge_scene])
+
+        if coalesce_scenes:
+            title="Scenes have been consolidated:"
+        else:
+            title="Scenes to be consolidated:"
+        message = Jot(title=title)
+        if merge_pairs:
+            for merge_pair in merge_pairs:
+                first_index = self.state.scene_names.index(merge_pair[0])
+                last_index = self.state.scene_names.index(merge_pair[1])
+                message_line = []
+                for index in range(first_index, last_index + 1):
+                    scene_name = self.state.scene_names[index]
+                    message_line.append(scene_name)
+                first_scene_name = self.state.scene_names[first_index]
+                last_scene_name = self.state.scene_names[last_index]
+                first_frame_index, _, num_width = details_from_group_name(first_scene_name)
+                _, last_frame_index, _ = details_from_group_name(last_scene_name)
+                new_scene_name = f"{str(first_frame_index).zfill(num_width)}-{str(last_frame_index).zfill(num_width)}"
+                message.add(f"{','.join(message_line)} -> {new_scene_name}")
+        else:
+            message.add("None")
+        report = message.report()
+
+        if coalesce_scenes:
+            if not merge_pairs:
+                return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    format_markdown("No scenes were found to coalesce", "warning"), \
+                    *empty_args
+
+            return_to_scene_index = self.state.scene_names.index(merge_pairs[0][0])
+
+            with Mtqdm().open_bar(total=len(merge_pairs), desc="Coalescing Scenes") as bar:
+                for merge_pair in merge_pairs:
+                    first_index = self.state.scene_names.index(merge_pair[0])
+                    last_index = self.state.scene_names.index(merge_pair[1])
+                    try:
+                        self.merge_scenes(first_index, last_index)
+                    except ValueError as error:
+                        return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                            format_markdown(f"Error: {error}", "error"), \
+                            *empty_args
+                    Mtqdm().update_bar(bar)
+
+            self.state.current_scene = return_to_scene_index
+            self.log("Saving project after consolidating scenes")
+
+            return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+                format_markdown(report), \
+                *self.scene_chooser_details(self.state.current_scene)
+        else:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), format_markdown(report), *empty_args
 
     def delete_button710(self, delete_purged):
         if delete_purged:

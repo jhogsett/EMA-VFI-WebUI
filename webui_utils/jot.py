@@ -24,12 +24,13 @@ class Jot():
         self.lines.append(str(text))
     add = down
 
-    def grab(self):
+    def grab(self, separator_line = BLANK):
         """Grab a current version of the report"""
         _report = []
         if self.title:
             _report.append(f"{self.title}")
-            _report.append(self.BLANK)
+            if separator_line:
+                _report.append(separator_line)
         _report += self.lines
         return "\r\n".join(_report)
     report = grab
