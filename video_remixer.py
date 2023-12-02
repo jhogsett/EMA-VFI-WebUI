@@ -1489,9 +1489,15 @@ class VideoRemixerState():
         inflate_factor = 1.0
         if self.inflate:
             if self.inflate_by_option == "2X":
-                inflate_factor = 2.0
+                if self.inflate_slow_option:
+                    inflate_factor = 1.0
+                else:
+                    inflate_factor = 2.0
             elif self.inflate_by_option == "4X":
-                inflate_factor = 4.0
+                if self.inflate_slow_option:
+                    inflate_factor = 2.0
+                else:
+                    inflate_factor = 4.0
         video_clip_fps = inflate_factor * self.project_fps
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
