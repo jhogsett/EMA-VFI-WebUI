@@ -2551,6 +2551,8 @@ class VideoRemixer(TabBase):
         try:
             new_scene_name = self.merge_scenes(first_scene_index, last_scene_index)
             message = f"Scenes merged into new scene {new_scene_name}"
+            self.invalidate_split_scene_cache()
+
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                 format_markdown(message), \
                 *self.scene_chooser_details(self.state.current_scene)
@@ -2641,6 +2643,7 @@ class VideoRemixer(TabBase):
 
             self.state.current_scene = return_to_scene_index
             self.log("Saving project after consolidating scenes")
+            self.invalidate_split_scene_cache()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                 format_markdown(report), \
