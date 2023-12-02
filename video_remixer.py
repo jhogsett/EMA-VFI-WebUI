@@ -1303,6 +1303,12 @@ class VideoRemixerState():
             log_fn("copying instead of unneeded downscaling")
             copy_files(working_path, scene_output_path)
 
+        try:
+            log_fn(f"about to delete working path {working_path}")
+            shutil.rmtree(working_path)
+        except OSError as error:
+            log_fn(f"ignoring error deleting working path: {error}")
+
     def upscale_scenes(self, log_fn, kept_scenes, realesrgan_settings, remixer_settings):
         upscaler = self.get_upscaler(log_fn, realesrgan_settings, remixer_settings)
         scenes_base_path = self.scenes_source_path(self.UPSCALE_STEP)
