@@ -1572,7 +1572,7 @@ class VideoRemixerState():
             map_scene_name_to_clip[scene_name] = clip_filepaths[index]
 
         # assemble the labeled part of the clip list in label order
-        # and remove labele scenes from the unlabeled scene list
+        # and remove labeled scenes from the unlabeled scene list
         assembly = []
         unlabeled_scenes = kept_scenes
         labeled_scenes = self.labeled_scenes()
