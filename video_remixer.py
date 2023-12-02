@@ -1486,6 +1486,7 @@ class VideoRemixerState():
                 border_factor = draw_text_options["border_size"]
                 marked_at_top = draw_text_options["marked_at_top"]
                 crop_width = draw_text_options["crop_width"]
+                labels = draw_text_options["labels"]
             except IndexError as error:
                 raise RuntimeError(f"error retrieving 'draw_text_options': {error}")
 
@@ -1497,19 +1498,15 @@ class VideoRemixerState():
 
         video_clip_fps = 2 * self.project_fps if self.inflate else self.project_fps
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
-            for scene_name in kept_scenes:
+            for index, scene_name in enumerate(kept_scenes):
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_filepath = os.path.join(self.video_clips_path,
                                                      f"{scene_name}.{custom_ext}")
                 use_custom_video_options = custom_video_options
                 if use_custom_video_options.find("<LABEL>") != -1:
-                    label = draw_text_options.get("label")
-                    if not label:
-                        scene_index = self.scene_names.index(scene_name)
-                        _, _, _, _, scene_start, scene_duration, _, _ = \
-                            self.scene_chooser_data(scene_index)
-                        label = f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]"
                     try:
+                        label = labels[index]
+
                         # FFmpeg needs the colons escaped
                         label = label.replace(":", "\:")
                         if draw_box:

@@ -82,6 +82,8 @@ class VideoRemixer(TabBase):
         default_label_box_color = self.config.remixer_settings["marked_box_color"]
         default_label_border_size = self.config.remixer_settings["marked_border_size"]
         default_label_at_top = self.config.remixer_settings["marked_at_top"]
+        custom_ffmpeg_video = self.config.remixer_settings["custom_ffmpeg_video"]
+        custom_ffmpeg_audio = self.config.remixer_settings["custom_ffmpeg_audio"]
 
         with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Video Remixer"):
             gr.Markdown(
@@ -375,10 +377,10 @@ class VideoRemixer(TabBase):
 
                         ### CREATE CUSTOM REMIX
                         with gr.Tab(label="Create Custom Remix"):
-                            custom_video_options = gr.Textbox(
+                            custom_video_options = gr.Textbox(value=custom_ffmpeg_video,
                                 label="Custom FFmpeg Video Output Options",
                         info="Passed to FFmpeg as output video settings when converting PNG frames")
-                            custom_audio_options = gr.Textbox(
+                            custom_audio_options = gr.Textbox(value=custom_ffmpeg_audio,
                                 label="Custom FFmpeg Audio Output Options",
                         info="Passed to FFmpeg as output audio settings when combining with video")
                             output_filepath_custom = gr.Textbox(label="Output Filepath",
@@ -1793,6 +1795,16 @@ class VideoRemixer(TabBase):
             draw_text_options["crop_width"] = self.state.crop_w * upscale_factor
             draw_text_options["crop_height"] = self.state.crop_h * upscale_factor
 
+            # create labels
+            labels = []
+            kept_scenes = self.state.kept_scenes()
+            for scene_name in kept_scenes:
+                scene_index = self.state.scene_names.index(scene_name)
+                _, _, _, _, scene_start, scene_duration, _, _ = \
+                    self.state.scene_chooser_data(scene_index)
+                labels.append(f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]")
+            draw_text_options["labels"] = labels
+
             self.save_custom_remix(output_filepath, global_options, kept_scenes,
                                    marked_video_options, marked_audio_options, draw_text_options)
             return gr.update(value=format_markdown(f"Remixed marked video {output_filepath} is complete.", "highlight"))
@@ -1846,13 +1858,6 @@ class VideoRemixer(TabBase):
             draw_text_options["box_color"] = label_box_color
             draw_text_options["border_size"] = label_border_size
             draw_text_options["marked_at_top"] = label_at_top
-            draw_text_options["label"] = label_text
-
-            labeled_video_options = self.config.remixer_settings["labeled_ffmpeg_video"]
-            labeled_audio_options = self.config.remixer_settings["labeled_ffmpeg_audio"]
-            labeled_video_options = labeled_video_options.replace("<CRF>", str(quality))
-            self.log(f"using labeled video options: {labeled_video_options}")
-            self.log(f"using labeled audeo options: {labeled_audio_options}")
 
             # account for upscaling
             upscale_factor = 1
@@ -1863,6 +1868,20 @@ class VideoRemixer(TabBase):
                     upscale_factor = 4
             draw_text_options["crop_width"] = self.state.crop_w * upscale_factor
             draw_text_options["crop_height"] = self.state.crop_h * upscale_factor
+
+            # create labels
+            labels = []
+            kept_scenes = self.state.kept_scenes()
+            for scene_name in kept_scenes:
+                scene_label = self.state.scene_labels.get(scene_name, label_text)
+                labels.append(scene_label)
+            draw_text_options["labels"] = labels
+
+            labeled_video_options = self.config.remixer_settings["labeled_ffmpeg_video"]
+            labeled_audio_options = self.config.remixer_settings["labeled_ffmpeg_audio"]
+            labeled_video_options = labeled_video_options.replace("<CRF>", str(quality))
+            self.log(f"using labeled video options: {labeled_video_options}")
+            self.log(f"using labeled audeo options: {labeled_audio_options}")
 
             try:
                 self.save_custom_remix(output_filepath, global_options, kept_scenes,
