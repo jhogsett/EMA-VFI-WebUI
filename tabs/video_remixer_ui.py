@@ -2414,7 +2414,11 @@ class VideoRemixer(TabBase):
                 shutil.move(downsample_scene_path, self.state.scenes_path)
                 Mtqdm().update_bar(bar)
 
-        shutil.rmtree(working_path)
+        try:
+            shutil.rmtree(working_path)
+        except OSError as error:
+            self.log(f"Error removing path '{working_path}' ignored: {error}")
+
         self.invalidate_split_scene_cache()
         return gr.update(value=format_markdown("Kept scenes replaced with cleaned versions"))
 
