@@ -1489,15 +1489,9 @@ class VideoRemixerState():
         inflate_factor = 1.0
         if self.inflate:
             if self.inflate_by_option == "2X":
-                if self.inflate_slow_option:
-                    inflate_factor = 1.0
-                else:
-                    inflate_factor = 2.0
+                inflate_factor = 2.0
             elif self.inflate_by_option == "4X":
-                if self.inflate_slow_option:
-                    inflate_factor = 2.0
-                else:
-                    inflate_factor = 4.0
+                inflate_factor = 4.0
         video_clip_fps = inflate_factor * self.project_fps
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
@@ -1531,8 +1525,17 @@ class VideoRemixerState():
                     scene_video_path = self.video_clips[index]
                     scene_audio_path = self.audio_clips[index]
                     scene_output_filepath = os.path.join(self.clips_path, f"{scene_name}.mp4")
-                    combine_video_audio(scene_video_path, scene_audio_path,
-                                        scene_output_filepath, global_options=global_options)
+
+                    if self.inflate_slow_option:
+                        output_options = '-filter:a "atempo=0.5" -c:a aac -shortest'
+                    else:
+                        output_options = '-c:a aac -shortest'
+
+                    combine_video_audio(scene_video_path,
+                                        scene_audio_path,
+                                        scene_output_filepath,
+                                        global_options=global_options,
+                                        output_options=output_options)
                     Mtqdm().update_bar(bar)
             self.clips = sorted(get_files(self.clips_path))
         else:
