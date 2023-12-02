@@ -747,9 +747,11 @@ class VideoRemixerState():
                 f"ValueError encountered while getting scene chooser data: {error}")
 
     def kept_scenes(self):
+        "Returns scene names of kept scenes"
         return sorted([scene for scene in self.scene_states if self.scene_states[scene] == "Keep"])
 
     def dropped_scenes(self):
+        "Returns scene names of dropped scenes"
         return sorted([scene for scene in self.scene_states if self.scene_states[scene] == "Drop"])
 
     def scene_frames(self, type : str="all") -> int:
