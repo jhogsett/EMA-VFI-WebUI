@@ -946,6 +946,9 @@ class VideoRemixerState():
                 self.clips_path])
             self.clips = []
 
+    def clean_remix_audio(self):
+        clean_directories([self.audio_clips_path])
+
     RESIZE_PATH = "SCENES-RC"
     RESYNTH_PATH = "SCENES-RE"
     INFLATE_PATH = "SCENES-IN"

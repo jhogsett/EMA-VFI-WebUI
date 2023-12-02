@@ -2146,11 +2146,13 @@ class VideoRemixer(TabBase):
             self.state.inflation_path,
             self.state.upscale_path
         ]
+        processed_content_split = False
         for path in paths:
             if path and os.path.exists(path):
                 dirs = get_directories(path)
                 if scene_name in dirs:
                     try:
+                        processed_content_split = True
                         self.split_processed_content(path,
                                                     scene_name,
                                                     new_lower_scene_name,
@@ -2170,6 +2172,10 @@ class VideoRemixer(TabBase):
 
         self.log("invalidating scene split cache after splitting")
         self.invalidate_split_scene_cache()
+
+        if processed_content_split:
+            self.log("invalidating processed audio content after splitting")
+            self.state.clean_remix_audio()
 
         message = f"Scene split into new scenes {new_lower_scene_name} and {new_upper_scene_name}"
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
@@ -2265,7 +2271,7 @@ class VideoRemixer(TabBase):
     def next_minute_702(self, scene_index, split_percent):
         return self.compute_advance_702(scene_index, split_percent, True, by_minute=True)
 
-    def export_project_703(self, new_project_path, new_project_name):
+    def export_project_703(self, new_project_path : str, new_project_name : str):
         empty_args = [gr.update(visible=False), gr.update(visible=False)]
         if not new_project_path:
             return gr.update(value=format_markdown("Please enter a Project Path for the new project", "warning")), *empty_args
@@ -2278,6 +2284,7 @@ class VideoRemixer(TabBase):
         if not kept_scenes:
             return gr.update(value=format_markdown("No kept scenes were found", "warning")), *empty_args
 
+        new_project_name = new_project_name.strip()
         full_new_project_path = os.path.join(new_project_path, new_project_name)
         try:
             create_directory(full_new_project_path)
@@ -2414,7 +2421,11 @@ class VideoRemixer(TabBase):
                 shutil.move(downsample_scene_path, self.state.scenes_path)
                 Mtqdm().update_bar(bar)
 
-        shutil.rmtree(working_path)
+        try:
+            shutil.rmtree(working_path)
+        except OSError as error:
+            self.log(f"Error removing path '{working_path}' ignored: {error}")
+
         self.invalidate_split_scene_cache()
         return gr.update(value=format_markdown("Kept scenes replaced with cleaned versions"))
 
@@ -2551,6 +2562,8 @@ class VideoRemixer(TabBase):
         try:
             new_scene_name = self.merge_scenes(first_scene_index, last_scene_index)
             message = f"Scenes merged into new scene {new_scene_name}"
+            self.invalidate_split_scene_cache()
+
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                 format_markdown(message), \
                 *self.scene_chooser_details(self.state.current_scene)
@@ -2641,6 +2654,7 @@ class VideoRemixer(TabBase):
 
             self.state.current_scene = return_to_scene_index
             self.log("Saving project after consolidating scenes")
+            self.invalidate_split_scene_cache()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                 format_markdown(report), \
