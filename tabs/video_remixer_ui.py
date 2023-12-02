@@ -2271,7 +2271,7 @@ class VideoRemixer(TabBase):
     def next_minute_702(self, scene_index, split_percent):
         return self.compute_advance_702(scene_index, split_percent, True, by_minute=True)
 
-    def export_project_703(self, new_project_path, new_project_name):
+    def export_project_703(self, new_project_path : str, new_project_name : str):
         empty_args = [gr.update(visible=False), gr.update(visible=False)]
         if not new_project_path:
             return gr.update(value=format_markdown("Please enter a Project Path for the new project", "warning")), *empty_args
@@ -2284,6 +2284,7 @@ class VideoRemixer(TabBase):
         if not kept_scenes:
             return gr.update(value=format_markdown("No kept scenes were found", "warning")), *empty_args
 
+        new_project_name = new_project_name.strip()
         full_new_project_path = os.path.join(new_project_path, new_project_name)
         try:
             create_directory(full_new_project_path)
