@@ -15,7 +15,7 @@ def main():
     parser.add_argument("--input_path", default="./images", type=str,
         help="Path to files to resequence")
     parser.add_argument("--output_path", default="", type=str,
-        help="Path to store resequnced files (leave blank to use input path)")
+        help="Path to store resequenced files (leave blank to use input path)")
     parser.add_argument("--file_type", default="png", type=str,
         help="File type of the files to resequence")
     parser.add_argument("--new_name", default="pngsequence", type=str,
