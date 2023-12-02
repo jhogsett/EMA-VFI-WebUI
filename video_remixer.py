@@ -5,12 +5,12 @@ import yaml
 from yaml import Loader, YAMLError
 from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
 from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
-    clean_directories, clean_filename, remove_directories
+    clean_directories, clean_filename, remove_directories, copy_files
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
     MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom, SourceToMP4, \
-    rate_adjusted_count
+    rate_adjusted_count, image_size
 from webui_utils.jot import Jot
 from webui_utils.mtqdm import Mtqdm
 from split_scenes import SplitScenes
@@ -437,14 +437,13 @@ class VideoRemixerState():
             self.uncompile_scenes()
             first_scene_name = self.scene_names[0]
             first_scene_path = os.path.join(self.scenes_path, first_scene_name)
-            scene_files = sorted(get_files(first_scene_path))
+            scene_files = sorted(get_files(first_scene_path, "png"))
             if scene_files:
-                sample_frame = scene_files[0]
                 try:
-                    img = Image.open(sample_frame)
-                    self.video_details["source_width"] = img.width
-                    self.video_details["source_height"] = img.height
-                except Exception as error:
+                    width, height = image_size(scene_files[0])
+                    self.video_details["source_width"] = width
+                    self.video_details["source_height"] = height
+                except ValueError as error:
                     log_fn(f"Error: {error}")
                     if not ignore_errors:
                         raise error
@@ -1253,29 +1252,77 @@ class VideoRemixerState():
             tile_pad = 0
         return UpscaleSeries(model_name, gpu_ids, fp32, tiling, tile_pad, log_fn)
 
-    def upscale_scene(self, upscaler, scene_input_path, scene_output_path, upscale_factor):
+    FIXED_UPSCALE_FACTOR = 4.0
+    TEMP_UPSCALE_PATH = "upscaled_frames"
+    DEFAULT_DOWNSCALE_TYPE = "area"
+
+    def upscale_scene(self,
+                      log_fn,
+                      upscaler,
+                      scene_input_path,
+                      scene_output_path,
+                      upscale_factor,
+                      downscale_type=DEFAULT_DOWNSCALE_TYPE):
+        log_fn(f"creating scene output path {scene_output_path}")
         create_directory(scene_output_path)
+
+        working_path = os.path.join(scene_output_path, self.TEMP_UPSCALE_PATH)
+        log_fn(f"about to create working path {working_path}")
+        create_directory(working_path)
+
+        # upscale first at the engine's native scale
         file_list = sorted(get_files(scene_input_path))
         output_basename = "upscaled_frames"
-        upscaler.upscale_series(file_list, scene_output_path, upscale_factor, output_basename, "png")
+        log_fn(f"about to upscale images to {working_path}")
+        upscaler.upscale_series(file_list, working_path, self.FIXED_UPSCALE_FACTOR, output_basename,
+                                "png")
+
+        # get size of upscaled frames
+        upscaled_files = sorted(get_files(working_path))
+        width, height = image_size(upscaled_files[0])
+        log_fn(f"size of upscaled images: {width} x {height}")
+
+        # compute downscale factor
+        downscale_factor = self.FIXED_UPSCALE_FACTOR / upscale_factor
+        log_fn(f"downscale factor is {downscale_factor}")
+
+        downscaled_width = int(width / downscale_factor)
+        downscaled_height = int(height / downscale_factor)
+        log_fn(f"size of downscaled images: {downscaled_width} x {downscaled_height}")
+
+        if downscaled_width != width or downscaled_height != height:
+            # downsample to final size
+            log_fn(f"about to downscale images in {working_path} to {scene_output_path}")
+            self.resize_scene(log_fn,
+                                    working_path,
+                                    scene_output_path,
+                                    downscaled_width,
+                                    downscaled_height,
+                                    downscale_type)
+        else:
+            log_fn("copying instead of unneeded downscaling")
+            copy_files(working_path, scene_output_path)
 
     def upscale_scenes(self, log_fn, kept_scenes, realesrgan_settings, remixer_settings):
         upscaler = self.get_upscaler(log_fn, realesrgan_settings, remixer_settings)
         scenes_base_path = self.scenes_source_path(self.UPSCALE_STEP)
+        downscale_type = remixer_settings["scale_type_down"]
         create_directory(self.upscale_path)
 
-        if self.upscale_option == "1X":
-            upscale_factor = 1.0
-        elif self.upscale_option == "2X":
+        upscale_factor = 1.0
+        if self.upscale_option == "2X":
             upscale_factor = 2.0
-        else:
+        elif self.upscale_option == "3X":
+            upscale_factor = 3.0
+        elif self.upscale_option == "4X":
             upscale_factor = 4.0
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Upscale") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_path = os.path.join(self.upscale_path, scene_name)
-                self.upscale_scene(upscaler, scene_input_path, scene_output_path, upscale_factor)
+                self.upscale_scene(log_fn, upscaler, scene_input_path, scene_output_path, upscale_factor,
+                                   downscale_type=downscale_type)
                 Mtqdm().update_bar(bar)
 
     def remix_filename_suffix(self, extra_suffix):
