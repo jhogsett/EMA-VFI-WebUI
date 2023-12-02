@@ -1588,8 +1588,10 @@ class VideoRemixerState():
         scene_labels = sorted(list(labeled_scenes.keys()))
         for scene_label in scene_labels:
             scene_name = labeled_scenes[scene_label]
-            assembly.append(map_scene_name_to_clip[scene_name])
-            unlabeled_scenes.remove(scene_name)
+            kept_clip = map_scene_name_to_clip.get(scene_name)
+            if kept_clip:
+                assembly.append(kept_clip)
+                unlabeled_scenes.remove(scene_name)
 
         # add the unlabeled clips
         for scene_name in unlabeled_scenes:
