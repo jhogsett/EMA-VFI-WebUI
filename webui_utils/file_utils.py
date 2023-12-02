@@ -148,8 +148,23 @@ def get_directories(path : str) -> list:
     else:
         raise ValueError("'path' must be a string")
 
+def copy_files(from_path : str, to_path : str, create_to_path=True, ignore_empty_directories=True):
+    """Copy files from from_path to to_path. Returns the count of files copied"""
+    return _copy_or_move_files(from_path,
+                                to_path,
+                                copy=True,
+                                create_to_path=create_to_path,
+                                ignore_empty_directories=ignore_empty_directories)
+
 def move_files(from_path : str, to_path : str, create_to_path=True, ignore_empty_directories=True):
     """Move files from from_path to to_path. Returns the count of files moved"""
+    return _copy_or_move_files(from_path,
+                                to_path,
+                                copy=False,
+                                create_to_path=create_to_path,
+                                ignore_empty_directories=ignore_empty_directories)
+
+def _copy_or_move_files(from_path : str, to_path : str, copy=True, create_to_path=True, ignore_empty_directories=True):
     if not isinstance(from_path, str):
         raise ValueError("'from_path' must be a string")
     if not os.path.exists(from_path):
@@ -170,12 +185,16 @@ def move_files(from_path : str, to_path : str, create_to_path=True, ignore_empty
     if num_files == 0 and not ignore_empty_directories:
         raise ValueError("'from_path' does not contain any files")
 
-    with Mtqdm().open_bar(total=num_files, desc="Moving Files") as bar:
+    bar_desc = "Copying Files" if copy else "Moving Files"
+    with Mtqdm().open_bar(total=num_files, desc=bar_desc) as bar:
         for file in files:
             from_filepath = file
             _, filename, ext = split_filepath(file)
             to_filepath = os.path.join(to_path, filename + ext)
-            shutil.move(from_filepath, to_filepath)
+            if copy:
+                shutil.copy(from_filepath, to_filepath)
+            else:
+                shutil.move(from_filepath, to_filepath)
             Mtqdm().update_bar(bar)
     return num_files
 
