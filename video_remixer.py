@@ -72,6 +72,7 @@ class VideoRemixerState():
         self.scene_names = []
         self.scene_states = {}
         self.current_scene = None
+        self.scene_labels = {}
 
         # set when done choosing scenes
         self.project_info4 = None # re-set on re-opening project
@@ -522,30 +523,30 @@ class VideoRemixerState():
     # shrink low-frame count scenes related code
 
     @staticmethod
-    def decode_scene_label(scene_label):
-        if not scene_label:
-            raise ValueError("'scene_label' is required")
+    def decode_scene_name(scene_name):
+        if not scene_name:
+            raise ValueError("'scene_name' is required")
 
-        splits = scene_label.split("-")
+        splits = scene_name.split("-")
         if len(splits) != 2:
-            raise ValueError(f"scene_label ''{scene_label} is not parsable")
+            raise ValueError(f"scene_name ''{scene_name} is not parsable")
 
         first, last = int(splits[0]), int(splits[1])
         count = (last - first) + 1
         return first, last, count
 
     @staticmethod
-    def encode_scene_label(num_width, first, last, first_diff, last_diff):
+    def encode_scene_name(num_width, first, last, first_diff, last_diff):
         first = int(first) + int(first_diff)
         last = int(last) + int(last_diff)
         return f"{str(first).zfill(num_width)}-{str(last).zfill(num_width)}"
 
     @staticmethod
-    def move_frames(state, scene_label, scene_label_from):
+    def move_frames(state, scene_name, scene_name_from):
         log_fn = state["log_fn"]
         path = state["path"]
-        from_path = os.path.join(path, scene_label_from)
-        to_path = os.path.join(path, scene_label)
+        from_path = os.path.join(path, scene_name_from)
+        to_path = os.path.join(path, scene_name)
         files = get_files(from_path)
         for file in files:
             path, filename, ext = split_filepath(file)
@@ -554,36 +555,36 @@ class VideoRemixerState():
             shutil.move(file, new_file)
 
     @staticmethod
-    def remove_scene(state, scene_label):
+    def remove_scene(state, scene_name):
         log_fn = state["log_fn"]
         path = state["path"]
-        scene_label_path = os.path.join(path, scene_label)
-        log_fn(f"removing {scene_label_path}")
-        shutil.rmtree(scene_label_path)
+        scene_name_path = os.path.join(path, scene_name)
+        log_fn(f"removing {scene_name_path}")
+        shutil.rmtree(scene_name_path)
 
     @staticmethod
-    def rename_scene(state, scene_label, new_contents):
+    def rename_scene(state, scene_name, new_contents):
         log_fn = state["log_fn"]
         path = state["path"]
         num_width = state["num_width"]
-        first, last, _ = VideoRemixerState.decode_scene_label(scene_label)
-        new_scene_label = VideoRemixerState.encode_scene_label(num_width, first, last, 0,
+        first, last, _ = VideoRemixerState.decode_scene_name(scene_name)
+        new_scene_name = VideoRemixerState.encode_scene_name(num_width, first, last, 0,
                                                                new_contents)
-        scene_label_path = os.path.join(path, scene_label)
-        new_scene_label_path = os.path.join(path, new_scene_label)
-        log_fn(f"renaming {scene_label_path} to {new_scene_label_path}")
-        os.rename(scene_label_path, new_scene_label_path)
-        return new_scene_label
+        scene_name_path = os.path.join(path, scene_name)
+        new_scene_name_path = os.path.join(path, new_scene_name)
+        log_fn(f"renaming {scene_name_path} to {new_scene_name_path}")
+        os.rename(scene_name_path, new_scene_name_path)
+        return new_scene_name
 
     @staticmethod
     def get_container_data(path):
-        scene_labels = get_directories(path)
+        scene_names = get_directories(path)
         result = {}
-        for scene_label in scene_labels:
-            dir_path = os.path.join(path, scene_label)
+        for scene_name in scene_names:
+            dir_path = os.path.join(path, scene_name)
             count = len(get_files(dir_path))
-            result[scene_label] = count
-        num_width = len(scene_labels[0].split("-")[0])
+            result[scene_name] = count
+        num_width = len(scene_names[0].split("-")[0])
         return result, num_width
 
     def consolidate_scenes(self, log_fn):
@@ -690,6 +691,27 @@ class VideoRemixerState():
                 self.create_thumbnail(scene_name, log_fn, global_options, remixer_settings)
                 Mtqdm().update_bar(bar)
 
+    def set_scene_label(self, scene_index, scene_label):
+        if scene_label:
+            this_scene_name = self.scene_names[scene_index]
+
+            # ensure label is not in use for another scene
+            for scene_name in self.scene_names:
+                if scene_name != this_scene_name:
+                    if self.scene_labels.get(scene_name) == scene_label:
+                        # add scene name to make the label unique
+                        scene_label = f"{scene_label} {this_scene_name}"
+                        break
+
+            self.scene_labels[this_scene_name] = scene_label
+
+        return scene_label
+
+    def clear_scene_label(self, scene_index):
+        scene_name = self.scene_names[scene_index]
+        if scene_name in self.scene_labels:
+            del self.scene_labels[scene_name]
+
     def keep_all_scenes(self):
         self.scene_states = {scene_name : "Keep" for scene_name in self.scene_names}
 
@@ -724,8 +746,9 @@ class VideoRemixerState():
                 ((last_index + 1) - first_index) / self.project_fps,
                 self.project_fps)
             keep_state = True if scene_state == "Keep" else False
+            scene_label = self.scene_labels.get(scene_name)
             return scene_name, thumbnail_path, scene_state, scene_position, scene_start, \
-                scene_duration, keep_state
+                scene_duration, keep_state, scene_label
         except ValueError as error:
             raise ValueError(
                 f"ValueError encountered while computing scene chooser details: {error}")
@@ -736,23 +759,32 @@ class VideoRemixerState():
     def scene_chooser_details(self, scene_index):
         try:
             scene_name, thumbnail_path, scene_state, scene_position, scene_start, scene_duration, \
-                keep_state = self.scene_chooser_data(scene_index)
+                keep_state, scene_label = self.scene_chooser_data(scene_index)
 
             scene_time = f"{scene_start}{self.GAP}+{scene_duration}"
             keep_symbol = SimpleIcons.HEART if keep_state == True else ""
             scene_info = f"{scene_position}{self.GAP}{scene_time}{self.GAP}{keep_symbol}"
-            return scene_name, thumbnail_path, scene_state, scene_info
+            return scene_name, thumbnail_path, scene_state, scene_info, scene_label
         except ValueError as error:
             raise ValueError(
                 f"ValueError encountered while getting scene chooser data: {error}")
 
-    def kept_scenes(self):
-        "Returns scene names of kept scenes"
+    def kept_scenes(self) -> list:
+        """Returns kept scene names sorted"""
         return sorted([scene for scene in self.scene_states if self.scene_states[scene] == "Keep"])
 
-    def dropped_scenes(self):
-        "Returns scene names of dropped scenes"
+    def dropped_scenes(self) -> list:
+        """Returns dropped scene names sorted"""
         return sorted([scene for scene in self.scene_states if self.scene_states[scene] == "Drop"])
+
+    def labeled_scenes(self) -> dict:
+        """Returns dict mapping scene label to scene name."""
+        result = {}
+        for scene_name in self.scene_names:
+            scene_label = self.scene_labels.get(scene_name)
+            if scene_label:
+                result[scene_label] = scene_name
+        return result
 
     def scene_frames(self, type : str="all") -> int:
         if type.lower() == "keep":
@@ -1454,6 +1486,7 @@ class VideoRemixerState():
                 border_factor = draw_text_options["border_size"]
                 marked_at_top = draw_text_options["marked_at_top"]
                 crop_width = draw_text_options["crop_width"]
+                labels = draw_text_options["labels"]
             except IndexError as error:
                 raise RuntimeError(f"error retrieving 'draw_text_options': {error}")
 
@@ -1465,19 +1498,15 @@ class VideoRemixerState():
 
         video_clip_fps = 2 * self.project_fps if self.inflate else self.project_fps
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
-            for scene_name in kept_scenes:
+            for index, scene_name in enumerate(kept_scenes):
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_filepath = os.path.join(self.video_clips_path,
                                                      f"{scene_name}.{custom_ext}")
                 use_custom_video_options = custom_video_options
                 if use_custom_video_options.find("<LABEL>") != -1:
-                    label = draw_text_options.get("label")
-                    if not label:
-                        scene_index = self.scene_names.index(scene_name)
-                        _, _, _, _, scene_start, scene_duration, _ = \
-                            self.scene_chooser_data(scene_index)
-                        label = f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]"
                     try:
+                        label = labels[index]
+
                         # FFmpeg needs the colons escaped
                         label = label.replace(":", "\:")
                         if draw_box:
@@ -1529,10 +1558,45 @@ class VideoRemixerState():
         else:
             self.clips = sorted(get_files(self.video_clips_path))
 
-    def create_remix_video(self, global_options, output_filepath):
+    def assembly_list(self, clip_filepaths : list) -> list:
+        """Get list clips to assemble in order.
+        'clip_filepaths' is expected to be full path and filename to the remix clips, corresponding to the list of kept scenes.
+        If there are labeled scenes, they are arranged first in sorted order, followed by non-nolabeled scenes."""
+        if not self.scene_labels:
+            return clip_filepaths
+
+        # map scene names to clip filepaths
+        kept_scenes = self.kept_scenes()
+        map_scene_name_to_clip = {}
+        for index, scene_name in enumerate(kept_scenes):
+            map_scene_name_to_clip[scene_name] = clip_filepaths[index]
+
+        # assemble the labeled part of the clip list in label order
+        # and remove labeled scenes from the unlabeled scene list
+        assembly = []
+        unlabeled_scenes = kept_scenes
+        labeled_scenes = self.labeled_scenes()
+        scene_labels = sorted(list(labeled_scenes.keys()))
+        for scene_label in scene_labels:
+            scene_name = labeled_scenes[scene_label]
+            assembly.append(map_scene_name_to_clip[scene_name])
+            unlabeled_scenes.remove(scene_name)
+
+        # add the unlabeled clips
+        for scene_name in unlabeled_scenes:
+            assembly.append(map_scene_name_to_clip[scene_name])
+
+        return assembly
+
+    def create_remix_video(self, global_options, output_filepath, labeled_scenes_first=True):
         with Mtqdm().open_bar(total=1, desc="Saving Remix") as bar:
             Mtqdm().message(bar, "Using FFmpeg to concatenate scene clips - no ETA")
-            ffcmd = combine_videos(self.clips,
+
+            if labeled_scenes_first:
+                assembly_list = self.assembly_list(self.clips)
+            else:
+                assembly_list = self.clips
+            ffcmd = combine_videos(assembly_list,
                                    output_filepath,
                                    global_options=global_options)
             Mtqdm().update_bar(bar)
@@ -1753,7 +1817,12 @@ class VideoRemixerState():
                 except AttributeError:
                     state.crop_offset_x = -1
                     state.crop_offset_y = -1
-
+                # new scene labels
+                try:
+                    if state.scene_labels == None:
+                        state.scene_labels = {}
+                except AttributeError:
+                        state.scene_labels = {}
                 return state
             except YAMLError as error:
                 if hasattr(error, 'problem_mark'):

@@ -102,6 +102,8 @@ realesrgan_settings:
   tiling: 256
 remixer_settings:
   audio_format: wav
+  custom_ffmpeg_video: -c:v libx264 -crf 23
+  custom_ffmpeg_audio: -c:a aac -shortest
   default_crf: 23
   def_project_fps: 29.97
   default_gif_fps: 10
