@@ -2146,11 +2146,13 @@ class VideoRemixer(TabBase):
             self.state.inflation_path,
             self.state.upscale_path
         ]
+        processed_content_split = False
         for path in paths:
             if path and os.path.exists(path):
                 dirs = get_directories(path)
                 if scene_name in dirs:
                     try:
+                        processed_content_split = True
                         self.split_processed_content(path,
                                                     scene_name,
                                                     new_lower_scene_name,
@@ -2170,6 +2172,10 @@ class VideoRemixer(TabBase):
 
         self.log("invalidating scene split cache after splitting")
         self.invalidate_split_scene_cache()
+
+        if processed_content_split:
+            self.log("invalidating processed audio content after splitting")
+            self.state.clean_remix_audio()
 
         message = f"Scene split into new scenes {new_lower_scene_name} and {new_upper_scene_name}"
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
