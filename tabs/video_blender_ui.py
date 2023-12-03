@@ -38,219 +38,219 @@ class VideoBlender(TabBase):
         skip_frames = self.config.blender_settings["skip_frames"]
         frame_rate = self.config.blender_settings["frame_rate"]
         max_frame_rate = self.config.blender_settings["max_frame_rate"]
-        with gr.Tab("Video Blender"):
-            with gr.Tabs() as tabs_video_blender:
+        # with gr.Tab("Video Blender"):
+        with gr.Tabs() as tabs_video_blender:
 
-                ### PROJECT SETTINGS
-                with gr.Tab(SimpleIcons.NOTEBOOK + "Project Settings", id=0):
-                    with gr.Row():
-                        with gr.Column(scale=3, variant="compact"):
+            ### PROJECT SETTINGS
+            with gr.Tab(SimpleIcons.NOTEBOOK + "Project Settings", id=0):
+                with gr.Row():
+                    with gr.Column(scale=3, variant="compact"):
+                        with gr.Row():
+                            input_project_name_vb = gr.Textbox(label="Project Name")
+                    with gr.Column(scale=3, variant="compact", elem_id="mainhighlightdim"):
+                        with gr.Row():
+                            choices = self.video_blender_projects.get_project_names()
+                            projects_dropdown_vb = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
+                                " Saved Projects", choices=choices, value=choices[0])
+                            save_project_button_vb = gr.Button(SimpleIcons.PROP_SYMBOL +
+                                " Save", scale=0)
+                with gr.Row():
+                    input_main_path = gr.Textbox(label="Project Main Path",
+                                                    placeholder="Root path for the project")
+                    input_project_frame_rate = gr.Slider(value=frame_rate, minimum=1,
+                                        maximum=max_frame_rate, step=0.01, label="Frame Rate")
+                with gr.Row():
+                    input_project_path_vb = gr.Textbox(label="Project Frames Path",
+                        placeholder="Path to frame PNG files for video being restored")
+                with gr.Row():
+                    input_path1_vb = gr.Textbox(label="Original / Video #1 Frames Path",
+                        placeholder="Path to original or video #1 PNG files")
+                with gr.Row():
+                    input_path2_vb = gr.Textbox(label="Alternate / Video #2 Frames Path",
+                        placeholder="Path to alternate or video #2 PNG files")
+                load_button_vb = gr.Button("Open Video Blender Project " +
+                    SimpleIcons.ROCKET, variant="primary")
+                with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                    WebuiTips.video_blender_project_settings.render()
+
+            ### FRAME CHOOSER
+            with gr.Tab(SimpleIcons.CONTROLS + "Frame Chooser", id=1):
+                with gr.Row():
+                    with gr.Column():
+                        output_prev_frame_vb = gr.Image(label="Previous Frame",
+                            interactive=False, type="filepath", elem_id="sideimage", height=300)
+                    with gr.Column():
+                        output_curr_frame_vb = gr.Image(show_label=False,
+                            interactive=False, type="filepath", elem_id="actionimage", height=300)
+                    with gr.Column():
+                        output_next_frame_vb = gr.Image(label="Next Frame",
+                            interactive=False, type="filepath", elem_id="sideimage", height=300)
+                with gr.Row():
+                    with gr.Column():
+                        gr.Row()
+                        with gr.Row(variant="panel", elem_id="highlightbutton"):
+                            fix_frames_count = gr.Number(label="FIX ADJACENT DAMAGED FRAMES: " +
+                                SimpleIcons.ONE + " Go to the first damaged frame " +
+                                SimpleIcons.TWO + " Set count of damaged frames " +
+                                SimpleIcons.THREE + " Click Go To Frame Fixer", value=0,
+                                precision=0)
                             with gr.Row():
-                                input_project_name_vb = gr.Textbox(label="Project Name")
-                        with gr.Column(scale=3, variant="compact", elem_id="mainhighlightdim"):
-                            with gr.Row():
-                                choices = self.video_blender_projects.get_project_names()
-                                projects_dropdown_vb = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
-                                    " Saved Projects", choices=choices, value=choices[0])
-                                save_project_button_vb = gr.Button(SimpleIcons.PROP_SYMBOL +
-                                    " Save", scale=0)
-                    with gr.Row():
-                        input_main_path = gr.Textbox(label="Project Main Path",
-                                                     placeholder="Root path for the project")
-                        input_project_frame_rate = gr.Slider(value=frame_rate, minimum=1,
-                                            maximum=max_frame_rate, step=0.01, label="Frame Rate")
-                    with gr.Row():
-                        input_project_path_vb = gr.Textbox(label="Project Frames Path",
-                            placeholder="Path to frame PNG files for video being restored")
-                    with gr.Row():
-                        input_path1_vb = gr.Textbox(label="Original / Video #1 Frames Path",
-                            placeholder="Path to original or video #1 PNG files")
-                    with gr.Row():
-                        input_path2_vb = gr.Textbox(label="Alternate / Video #2 Frames Path",
-                            placeholder="Path to alternate or video #2 PNG files")
-                    load_button_vb = gr.Button("Open Video Blender Project " +
-                        SimpleIcons.ROCKET, variant="primary")
+                                fix_frames_last_before = gr.Number(
+                                    label="Last Frame Before Damage", value=0, precision=0,
+                                    interactive=False)
+                                fix_frames_first_after = gr.Number(
+                                    label="First Frame After Damage", value=0, precision=0,
+                                    interactive=False)
+                            fix_frames_button_vb = gr.Button("Go To " + SimpleIcons.HAMMER
+                                                                + " Frame Fixer")
+                        with gr.Row():
+                            preview_video_vb = gr.Button("Go To "  + SimpleIcons.TELEVISION
+                                                            + " Video Preview")
+
+                    with gr.Column():
+                        with gr.Tabs():
+                            with gr.Tab(label="Repair / Path 2 Frame"):
+                                output_img_path2_vb = gr.Image(show_label=False,
+                                    interactive=False, type="filepath", height=300)
+                            with gr.Tab(label="Original / Path 1 Frame"):
+                                output_img_path1_vb = gr.Image(show_label=False,
+                                    interactive=False, type="filepath", height=300)
+
+                    with gr.Column():
+                        gr.Row()
+                        use_path_1_button_vb = gr.Button("Use Path 1 Frame | Next >",
+                            variant="primary", elem_id="actionbutton")
+                        use_path_2_button_vb = gr.Button("Use Path 2 Frame | Next >",
+                            variant="primary", elem_id="actionbutton")
+                        with gr.Row():
+                            prev_frame_button_vb = gr.Button("< Prev Frame",
+                                variant="primary")
+                            next_frame_button_vb = gr.Button("Next Frame >",
+                                variant="primary")
+                        with gr.Row():
+                            prev_xframes_button_vb = gr.Button(f"<< {skip_frames}")
+                            next_xframes_button_vb = gr.Button(f"{skip_frames} >>")
+                        input_text_frame_vb = gr.Number(value=0, precision=0,
+                            label="Frame Number")
+
+                if self.config.user_interface["show_header"]:
                     with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-                        WebuiTips.video_blender_project_settings.render()
+                        WebuiTips.video_blender_frame_chooser.render()
 
-                ### FRAME CHOOSER
-                with gr.Tab(SimpleIcons.CONTROLS + "Frame Chooser", id=1):
-                    with gr.Row():
-                        with gr.Column():
-                            output_prev_frame_vb = gr.Image(label="Previous Frame",
-                                interactive=False, type="filepath", elem_id="sideimage", height=300)
-                        with gr.Column():
-                            output_curr_frame_vb = gr.Image(show_label=False,
-                                interactive=False, type="filepath", elem_id="actionimage", height=300)
-                        with gr.Column():
-                            output_next_frame_vb = gr.Image(label="Next Frame",
-                                interactive=False, type="filepath", elem_id="sideimage", height=300)
-                    with gr.Row():
-                        with gr.Column():
-                            gr.Row()
-                            with gr.Row(variant="panel", elem_id="highlightbutton"):
-                                fix_frames_count = gr.Number(label="FIX ADJACENT DAMAGED FRAMES: " +
-                                    SimpleIcons.ONE + " Go to the first damaged frame " +
-                                    SimpleIcons.TWO + " Set count of damaged frames " +
-                                    SimpleIcons.THREE + " Click Go To Frame Fixer", value=0,
-                                    precision=0)
+            ### FRAME FIXER
+            with gr.Tab(SimpleIcons.HAMMER + "Frame Fixer", id=2):
+                with gr.Row():
+                    with gr.Column():
+                        with gr.Row():
+                            project_path_ff = gr.Text(label="Video Blender Project Path",
+                                placeholder="Path to video frame PNG files")
+                        with gr.Row():
+                            input_clean_before_ff = gr.Number(
+                                label="Last clean frame BEFORE damaged ones", value=0,
+                                precision=0)
+                            input_clean_after_ff = gr.Number(
+                                label="First clean frame AFTER damaged ones", value=0,
+                                precision=0)
+                        with gr.Row():
+                            preview_button_ff = gr.Button(value="Preview Fixed Frames",
+                                variant="primary", elem_id="highlightbutton")
+                    with gr.Column():
+                        preview_image_ff = gr.Image(type="filepath",
+                            label="Fixed Frames Preview", interactive=False,
+                            elem_id="highlightoutput", height=300)
+                        fixed_path_ff = gr.Text(label="Path to Restored Frames",
+                            interactive=False)
+                        use_fixed_button_ff = gr.Button(value="Apply Fixed Frames",
+                            elem_id="actionbutton")
+                with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                    WebuiTips.video_blender_frame_fixer.render()
+
+            ### VIDEO PREVIEW
+            with gr.Tab(SimpleIcons.TELEVISION + "Video Preview", id=3):
+                with gr.Row():
+                    gr.Column(scale=1)
+                    with gr.Column():
+                        video_preview_vb = gr.Video(label="Preview", interactive=False,
+                            include_audio=False, width=800, container=True, scale=8)
+                    gr.Column(scale=1)
+                preview_path_vb = gr.Textbox(max_lines=1, label="Path to PNG Sequence",
+                    placeholder="Path on this server to the PNG files to be converted")
+                with gr.Row():
+                    render_video_vb = gr.Button("Render Video", variant="primary")
+                    input_frame_rate_vb = gr.Slider(value=frame_rate, minimum=1,
+                                        maximum=max_frame_rate, step=0.01, label="Frame Rate")
+                with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                    WebuiTips.video_blender_video_preview.render()
+
+            ### NEW PROJECT
+            with gr.Tab(SimpleIcons.SEEDLING + "New Project", id=4):
+                with gr.Row():
+                    with gr.Column(variant="compact"):
+                        gr.HTML("Define New Project")
+                        with gr.Row(variant="panel"):
+                            with gr.Column(scale=1):
+                                new_project_name = gr.Textbox(max_lines=1,
+                                    label="New Project Name",
+                                    placeholder="Name for the new project")
+                            with gr.Column(scale=12):
+                                new_project_path = gr.Textbox(max_lines=1,
+                                    label="New Project Path",
+                                    placeholder="Path on this server for the new project")
+                            with gr.Column(scale=1):
+                                new_project_frame_rate = gr.Slider(value=frame_rate, minimum=1,
+                                        maximum=max_frame_rate, step=0.01, label="Frame Rate")
+                with gr.Row():
+                    with gr.Column(variant="compact"):
+                        gr.HTML("Check Applicable Setup Steps")
+                        with gr.Row(variant="panel"):
+                            with gr.Column(scale=1):
+                                step1_enabled = gr.Checkbox(value=True, label=SimpleIcons.ONE +
+                                                            " Split MP4 to PNG Frames Set")
+                            with gr.Column(scale=12):
                                 with gr.Row():
-                                    fix_frames_last_before = gr.Number(
-                                        label="Last Frame Before Damage", value=0, precision=0,
-                                        interactive=False)
-                                    fix_frames_first_after = gr.Number(
-                                        label="First Frame After Damage", value=0, precision=0,
-                                        interactive=False)
-                                fix_frames_button_vb = gr.Button("Go To " + SimpleIcons.HAMMER
-                                                                 + " Frame Fixer")
-                            with gr.Row():
-                                preview_video_vb = gr.Button("Go To "  + SimpleIcons.TELEVISION
-                                                             + " Video Preview")
+                                    step1_input = gr.Textbox(max_lines=1, interactive=True,
+                                        label="MP4 Path",
+                                        placeholder="Path on this server to the source MP4 file")
+                        with gr.Row(variant="panel"):
+                            with gr.Column(scale=1):
+                                step2_enabled = gr.Checkbox(value=True, label=SimpleIcons.TWO +
+                                                            " Resynthesize Repair Frames Set")
+                            with gr.Column(scale=12):
+                                step2_input = gr.Textbox(max_lines=1, interactive=False,
+                                    label="n/a",
+                                placeholder="Repair frames set will be automatically created")
+                        with gr.Row(variant="panel"):
+                            with gr.Column(scale=1):
+                                step3_enabled = gr.Checkbox(value=True, label=SimpleIcons.THREE
+                                                            + " Init Restored Set from Source")
+                            with gr.Column(scale=12):
+                                step3_input = gr.Textbox(max_lines=1, interactive=False,
+                                    label="n/a",
+                                placeholder="Restored frames set will be automatically created")
+                        with gr.Row(variant="panel"):
+                            with gr.Column(scale=1):
+                                step4_enabled = gr.Checkbox(value=True, label=SimpleIcons.FOUR +
+                                                            " Sync Frame Numbers Across Sets")
+                            with gr.Column(scale=12):
+                                gr.Textbox(visible=False)
+                gr.Markdown("*Progress can be tracked in the console*")
+                new_project_button = gr.Button("Create New Project " + SimpleIcons.SLOW_SYMBOL,
+                                                variant="primary")
+                with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                    WebuiTips.video_blender_new_project.render()
 
-                        with gr.Column():
-                            with gr.Tabs():
-                                with gr.Tab(label="Repair / Path 2 Frame"):
-                                    output_img_path2_vb = gr.Image(show_label=False,
-                                        interactive=False, type="filepath", height=300)
-                                with gr.Tab(label="Original / Path 1 Frame"):
-                                    output_img_path1_vb = gr.Image(show_label=False,
-                                        interactive=False, type="filepath", height=300)
-
-                        with gr.Column():
-                            gr.Row()
-                            use_path_1_button_vb = gr.Button("Use Path 1 Frame | Next >",
-                                variant="primary", elem_id="actionbutton")
-                            use_path_2_button_vb = gr.Button("Use Path 2 Frame | Next >",
-                                variant="primary", elem_id="actionbutton")
-                            with gr.Row():
-                                prev_frame_button_vb = gr.Button("< Prev Frame",
-                                    variant="primary")
-                                next_frame_button_vb = gr.Button("Next Frame >",
-                                    variant="primary")
-                            with gr.Row():
-                                prev_xframes_button_vb = gr.Button(f"<< {skip_frames}")
-                                next_xframes_button_vb = gr.Button(f"{skip_frames} >>")
-                            input_text_frame_vb = gr.Number(value=0, precision=0,
-                                label="Frame Number")
-
-                    if self.config.user_interface["show_header"]:
-                        with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-                            WebuiTips.video_blender_frame_chooser.render()
-
-                ### FRAME FIXER
-                with gr.Tab(SimpleIcons.HAMMER + "Frame Fixer", id=2):
-                    with gr.Row():
-                        with gr.Column():
-                            with gr.Row():
-                                project_path_ff = gr.Text(label="Video Blender Project Path",
-                                    placeholder="Path to video frame PNG files")
-                            with gr.Row():
-                                input_clean_before_ff = gr.Number(
-                                    label="Last clean frame BEFORE damaged ones", value=0,
-                                    precision=0)
-                                input_clean_after_ff = gr.Number(
-                                    label="First clean frame AFTER damaged ones", value=0,
-                                    precision=0)
-                            with gr.Row():
-                                preview_button_ff = gr.Button(value="Preview Fixed Frames",
-                                    variant="primary", elem_id="highlightbutton")
-                        with gr.Column():
-                            preview_image_ff = gr.Image(type="filepath",
-                                label="Fixed Frames Preview", interactive=False,
-                                elem_id="highlightoutput", height=300)
-                            fixed_path_ff = gr.Text(label="Path to Restored Frames",
-                                interactive=False)
-                            use_fixed_button_ff = gr.Button(value="Apply Fixed Frames",
-                                elem_id="actionbutton")
-                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-                        WebuiTips.video_blender_frame_fixer.render()
-
-                ### VIDEO PREVIEW
-                with gr.Tab(SimpleIcons.TELEVISION + "Video Preview", id=3):
-                    with gr.Row():
-                        gr.Column(scale=1)
-                        with gr.Column():
-                            video_preview_vb = gr.Video(label="Preview", interactive=False,
-                                include_audio=False, width=800, container=True, scale=8)
-                        gr.Column(scale=1)
-                    preview_path_vb = gr.Textbox(max_lines=1, label="Path to PNG Sequence",
-                        placeholder="Path on this server to the PNG files to be converted")
-                    with gr.Row():
-                        render_video_vb = gr.Button("Render Video", variant="primary")
-                        input_frame_rate_vb = gr.Slider(value=frame_rate, minimum=1,
-                                            maximum=max_frame_rate, step=0.01, label="Frame Rate")
-                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-                        WebuiTips.video_blender_video_preview.render()
-
-                ### NEW PROJECT
-                with gr.Tab(SimpleIcons.SEEDLING + "New Project", id=4):
-                    with gr.Row():
-                        with gr.Column(variant="compact"):
-                            gr.HTML("Define New Project")
-                            with gr.Row(variant="panel"):
-                                with gr.Column(scale=1):
-                                    new_project_name = gr.Textbox(max_lines=1,
-                                        label="New Project Name",
-                                        placeholder="Name for the new project")
-                                with gr.Column(scale=12):
-                                    new_project_path = gr.Textbox(max_lines=1,
-                                        label="New Project Path",
-                                        placeholder="Path on this server for the new project")
-                                with gr.Column(scale=1):
-                                    new_project_frame_rate = gr.Slider(value=frame_rate, minimum=1,
-                                            maximum=max_frame_rate, step=0.01, label="Frame Rate")
-                    with gr.Row():
-                        with gr.Column(variant="compact"):
-                            gr.HTML("Check Applicable Setup Steps")
-                            with gr.Row(variant="panel"):
-                                with gr.Column(scale=1):
-                                    step1_enabled = gr.Checkbox(value=True, label=SimpleIcons.ONE +
-                                                                " Split MP4 to PNG Frames Set")
-                                with gr.Column(scale=12):
-                                    with gr.Row():
-                                        step1_input = gr.Textbox(max_lines=1, interactive=True,
-                                            label="MP4 Path",
-                                            placeholder="Path on this server to the source MP4 file")
-                            with gr.Row(variant="panel"):
-                                with gr.Column(scale=1):
-                                    step2_enabled = gr.Checkbox(value=True, label=SimpleIcons.TWO +
-                                                                " Resynthesize Repair Frames Set")
-                                with gr.Column(scale=12):
-                                    step2_input = gr.Textbox(max_lines=1, interactive=False,
-                                        label="n/a",
-                                    placeholder="Repair frames set will be automatically created")
-                            with gr.Row(variant="panel"):
-                                with gr.Column(scale=1):
-                                    step3_enabled = gr.Checkbox(value=True, label=SimpleIcons.THREE
-                                                                + " Init Restored Set from Source")
-                                with gr.Column(scale=12):
-                                    step3_input = gr.Textbox(max_lines=1, interactive=False,
-                                        label="n/a",
-                                    placeholder="Restored frames set will be automatically created")
-                            with gr.Row(variant="panel"):
-                                with gr.Column(scale=1):
-                                    step4_enabled = gr.Checkbox(value=True, label=SimpleIcons.FOUR +
-                                                                " Sync Frame Numbers Across Sets")
-                                with gr.Column(scale=12):
-                                    gr.Textbox(visible=False)
-                    gr.Markdown("*Progress can be tracked in the console*")
-                    new_project_button = gr.Button("Create New Project " + SimpleIcons.SLOW_SYMBOL,
-                                                   variant="primary")
-                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-                        WebuiTips.video_blender_new_project.render()
-
-                ### RESET PROJECT
-                with gr.Tab(SimpleIcons.RECYCLE + "Reset Project", id=5):
-                    with gr.Row():
-                        choices = self.video_blender_projects.get_project_names()
-                        reset_project_dropdown = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
-                            " Projects", choices=choices, value=choices[0])
-                    gr.Markdown(
-                "*Reset Project uses the New Project tab to selectively revert parts of a project*")
-                    with gr.Row():
-                        reset_project_button = gr.Button("Reset Project", variant="primary")
-                    with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
-                        WebuiTips.video_blender_reset_project.render()
+            ### RESET PROJECT
+            with gr.Tab(SimpleIcons.RECYCLE + "Reset Project", id=5):
+                with gr.Row():
+                    choices = self.video_blender_projects.get_project_names()
+                    reset_project_dropdown = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
+                        " Projects", choices=choices, value=choices[0])
+                gr.Markdown(
+            "*Reset Project uses the New Project tab to selectively revert parts of a project*")
+                with gr.Row():
+                    reset_project_button = gr.Button("Reset Project", variant="primary")
+                with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
+                    WebuiTips.video_blender_reset_project.render()
 
         projects_dropdown_vb.change(self.video_blender_choose_project,
             inputs=[projects_dropdown_vb],

@@ -39,6 +39,14 @@ from tabs.video_assembler_ui import VideoAssembler
 from tabs.transpose_png_files_ui import TransposePngFiles
 from tabs.enhance_frames_ui import EnhanceFrames
 
+APP_TAB_INTERPOLATE_FRAMES=0
+APP_TAB_INTERPOLATE_VIDEO=1
+APP_TAB_FILM_RESTORATION=2
+APP_TAB_VIDEO_RENOVATION=3
+APP_TAB_VIDEO_BLENDER=4
+APP_TAB_VIDEO_REMIXER=5
+APP_TAB_TOOLS=6
+
 def create_ui(config : SimpleConfig,
               engine : InterpolateEngine,
               log : SimpleLog,
@@ -60,61 +68,66 @@ def create_ui(config : SimpleConfig,
         if config.user_interface["show_header"]:
             app_header.render()
 
-        with gr.Tab("Interpolate Frames"):
-            FrameInterpolation(config, engine, log.log).render_tab()
-            FrameSearch(config, engine, log.log).render_tab()
+        with gr.Tabs() as main_tabs:
+            with gr.Tab("Interpolate Frames", id=APP_TAB_INTERPOLATE_FRAMES):
+                FrameInterpolation(config, engine, log.log).render_tab()
+                FrameSearch(config, engine, log.log).render_tab()
 
-        with gr.Tab("Interpolate Video"):
-            VideoInflation(config, engine, log.log).render_tab()
-            ResynthesizeVideo(config, engine, log.log).render_tab()
+            with gr.Tab("Interpolate Video", id=APP_TAB_INTERPOLATE_VIDEO):
+                VideoInflation(config, engine, log.log).render_tab()
+                ResynthesizeVideo(config, engine, log.log).render_tab()
 
-        with gr.Tab("Film Restoration"):
-            FrameRestoration(config, engine, log.log).render_tab()
-            UpscaleFrames(config, engine, log.log).render_tab()
+            with gr.Tab("Film Restoration", id=APP_TAB_FILM_RESTORATION):
+                FrameRestoration(config, engine, log.log).render_tab()
+                UpscaleFrames(config, engine, log.log).render_tab()
 
-        with gr.Tab("Video Renovation"):
-            with gr.Tab("Deduplication"):
-                gr.HTML(SimpleIcons.SCISSORS + "Detect & Replace Duplicate Frames",
+            with gr.Tab("Video Renovation", id=APP_TAB_VIDEO_RENOVATION):
+                with gr.Tab("Deduplication"):
+                    gr.HTML(SimpleIcons.SCISSORS + "Detect & Replace Duplicate Frames",
+                            elem_id="tabheading")
+                    DuplicateFramesReport(config, engine, log.log).render_tab()
+                    DuplicateTuning(config, engine, log.log).render_tab()
+                    DedupeFrames(config, engine, log.log).render_tab()
+                    AutofillFrames(config, engine, log.log).render_tab()
+
+                with gr.Tab("Split & Merge"):
+                    gr.HTML(SimpleIcons.SPLIT_MERGE_SYMBOL +
+                            "Split, Merge & Process PNG Frame Groups",
+                            elem_id="tabheading")
+                    SplitFrames(config, engine, log.log).render_tab()
+                    MergeFrames(config, engine, log.log).render_tab()
+                    SplitScenes(config, engine, log.log).render_tab()
+                    SliceVideo(config, engine, log.log).render_tab()
+                    StripScenes(config, engine, log.log).render_tab()
+
+            with gr.Tab("Video Blender", id=APP_TAB_VIDEO_BLENDER):
+                VideoBlender(config, engine, log.log).render_tab()
+
+            with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Video Remixer", id=APP_TAB_VIDEO_REMIXER):
+                VideoRemixer(config, engine, log.log).render_tab()
+
+            with gr.Tab(SimpleIcons.LABCOAT + "Tools", id=APP_TAB_TOOLS):
+                VideoDetails(config, engine, log.log).render_tab()
+                ResequenceFiles(config, engine, log.log).render_tab()
+                ResizeFrames(config, engine, log.log).render_tab()
+                with gr.Tab("File Conversion"):
+                    gr.HTML(SimpleIcons.HAMMER_WRENCH +
+                        "Tools for common video file conversion tasks",
                         elem_id="tabheading")
-                DuplicateFramesReport(config, engine, log.log).render_tab()
-                DuplicateTuning(config, engine, log.log).render_tab()
-                DedupeFrames(config, engine, log.log).render_tab()
-                AutofillFrames(config, engine, log.log).render_tab()
-
-            with gr.Tab("Split & Merge"):
-                gr.HTML(SimpleIcons.SPLIT_MERGE_SYMBOL +
-                        "Split, Merge & Process PNG Frame Groups",
-                        elem_id="tabheading")
-                SplitFrames(config, engine, log.log).render_tab()
-                MergeFrames(config, engine, log.log).render_tab()
-                SplitScenes(config, engine, log.log).render_tab()
-                SliceVideo(config, engine, log.log).render_tab()
-                StripScenes(config, engine, log.log).render_tab()
-        VideoBlender(config, engine, log.log).render_tab()
-        VideoRemixer(config, engine, log.log).render_tab()
-
-        with gr.Tab(SimpleIcons.LABCOAT + "Tools"):
-            VideoDetails(config, engine, log.log).render_tab()
-            ResequenceFiles(config, engine, log.log).render_tab()
-            ResizeFrames(config, engine, log.log).render_tab()
-            with gr.Tab("File Conversion"):
-                gr.HTML(SimpleIcons.HAMMER_WRENCH +
-                    "Tools for common video file conversion tasks",
-                    elem_id="tabheading")
-                MP4toPNG(config, engine, log.log).render_tab()
-                PNGtoMP4(config, engine, log.log).render_tab()
-                GIFtoPNG(config, engine, log.log).render_tab()
-                PNGtoGIF(config, engine, log.log).render_tab()
-                TransposePngFiles(config, engine, log.log).render_tab()
-                SimplifyPngFiles(config, engine, log.log).render_tab()
-                VideoAssembler(config, engine, log.log).render_tab()
-            ChangeFPS(config, engine, log.log).render_tab()
-            EnhanceFrames(config, engine, log.log).render_tab()
-            GIFtoMP4(config, engine, log.log).render_tab()
-            with gr.Tab(SimpleIcons.GEAR + "Application"):
-                LogViewer(config, engine, log.log, log).render_tab()
-                Resources(config, engine, log.log).render_tab()
-                Options(config, engine, log.log, restart_fn).render_tab()
+                    MP4toPNG(config, engine, log.log).render_tab()
+                    PNGtoMP4(config, engine, log.log).render_tab()
+                    GIFtoPNG(config, engine, log.log).render_tab()
+                    PNGtoGIF(config, engine, log.log).render_tab()
+                    TransposePngFiles(config, engine, log.log).render_tab()
+                    SimplifyPngFiles(config, engine, log.log).render_tab()
+                    VideoAssembler(config, engine, log.log).render_tab()
+                ChangeFPS(config, engine, log.log).render_tab()
+                EnhanceFrames(config, engine, log.log).render_tab()
+                GIFtoMP4(config, engine, log.log).render_tab()
+                with gr.Tab(SimpleIcons.GEAR + "Application"):
+                    LogViewer(config, engine, log.log, log).render_tab()
+                    Resources(config, engine, log.log).render_tab()
+                    Options(config, engine, log.log, restart_fn).render_tab()
 
         if config.user_interface["show_header"]:
             app_footer.render()
