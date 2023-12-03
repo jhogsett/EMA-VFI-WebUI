@@ -1470,6 +1470,29 @@ class VideoRemixerState():
 
     VIDEO_CLIPS_PATH = "VIDEO"
 
+    def compute_inflated_fps(self):
+        """Compute the video clip FPS considering project FPS and inflation settings.
+        For 2X and 4X inflation, when slow motion is enabled, the 50% audio slowdown will reduce the FPS by 2X.
+        For 8X inflation with slow motion, the 75% audio slowdown will reduce the FPS by 4X"""
+        inflate_factor = 1.0
+        if self.inflate:
+            if self.inflate_by_option == "2X":
+                if self.inflate_slow_option:
+                    inflate_factor = 1.0
+                else:
+                    inflate_factor = 2.0
+            elif self.inflate_by_option == "4X":
+                if self.inflate_slow_option:
+                    inflate_factor = 2.0
+                else:
+                    inflate_factor = 4.0
+            elif self.inflate_by_option == "8X":
+                if self.inflate_slow_option:
+                    inflate_factor = 2.0
+                else:
+                    inflate_factor = 8.0
+        return inflate_factor * self.project_fps
+
     def create_video_clips(self, log_fn, kept_scenes, global_options):
         self.video_clips_path = os.path.join(self.clips_path, self.VIDEO_CLIPS_PATH)
         create_directory(self.video_clips_path)
@@ -1488,24 +1511,7 @@ class VideoRemixerState():
         else:
             scenes_base_path = self.scenes_path
 
-        inflate_factor = 1.0
-        if self.inflate:
-            if self.inflate_by_option == "2X":
-                if self.inflate_slow_option:
-                    inflate_factor = 1.0
-                else:
-                    inflate_factor = 2.0
-            elif self.inflate_by_option == "4X":
-                if self.inflate_slow_option:
-                    inflate_factor = 2.0
-                else:
-                    inflate_factor = 4.0
-            elif self.inflate_by_option == "8X":
-                if self.inflate_slow_option:
-                    inflate_factor = 2.0
-                else:
-                    inflate_factor = 8.0
-        video_clip_fps = inflate_factor * self.project_fps
+        video_clip_fps = self.compute_inflated_fps()
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
             for scene_name in kept_scenes:
@@ -1607,7 +1613,8 @@ class VideoRemixerState():
                 box_y = "(text_h*1)"
             box = "1" if draw_box else "0"
 
-        video_clip_fps = 2 * self.project_fps if self.inflate else self.project_fps
+        video_clip_fps = self.compute_inflated_fps()
+
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
             for index, scene_name in enumerate(kept_scenes):
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
