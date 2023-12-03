@@ -659,14 +659,24 @@ class VideoBlender(TabBase):
 
             if step2_enabled:
                 # If repair frames were synthesized, there are now two extra frames in the
-                # source set not present in the repair set: # the outermost frames.
-                # Set aside frame #0 from the source set so the sets can # remain in sync
+                # source set not present in the repair set: the outermost frames.
+                # Copy the first and last frames from the source set to the repair set
+                # to keep frames aligned
                 source_files = sorted(get_files(source_frames_path, "png"))
-                frame0_file = source_files[0]
-                _, filename, ext = split_filepath(frame0_file)
-                set_aside_path = os.path.join(new_project_path, f"{filename}-(removed for sync){ext}")
-                self.log(f"setting aside {frame0_file} as {set_aside_path}")
-                os.replace(frame0_file, set_aside_path)
+                num_files = len(source_files)
+                lower_outer_frame = source_files[0]
+                upper_outer_frame = source_files[-1]
+                num_width = len(str(num_files))
+                lower_frame = 0
+                upper_frame = num_files
+                lower_filename = f"repair_frame{str(lower_frame).zfill(num_width)}.png"
+                upper_filename = f"repair_frame{str(upper_frame).zfill(num_width)}.png"
+                lower_filepath = os.path.join(resynth_frames_path, lower_filename)
+                upper_filepath = os.path.join(resynth_frames_path, upper_filename)
+                self.log(f"duplicating source frame {lower_outer_frame} to {lower_filepath} for frame syncing")
+                shutil.copy(lower_outer_frame, lower_filepath)
+                self.log(f"duplicating source frame {upper_outer_frame} to {upper_filepath} for frame syncing")
+                shutil.copy(upper_outer_frame, upper_filepath)
 
             if self.config.blender_settings["clean_frames"]:
                 self.log(f"cleaning source files in {source_frames_path}")
