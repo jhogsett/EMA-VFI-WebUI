@@ -1935,7 +1935,15 @@ class VideoRemixerState():
                     if state.scene_labels == None:
                         state.scene_labels = {}
                 except AttributeError:
-                        state.scene_labels = {}
+                    state.scene_labels = {}
+                # new inflation options
+                try:
+                    if state.inflate_by_option == None or state.inflate_slow_option == None:
+                        state.inflate_by_option = "2X"
+                        state.inflate_slow_option = False
+                except AttributeError:
+                    state.inflate_by_option = "2X"
+                    state.inflate_slow_option = False
                 return state
             except YAMLError as error:
                 if hasattr(error, 'problem_mark'):
