@@ -11,7 +11,7 @@
 1. Check _Upscale Frames_ to use AI to clean and enlarge frames
     - Choose whether to upscale by _1X_, _2X_ or _4X_
     - Upscaling at 1X will cleanse the frames without enlarging
-    - Upscaling at 2X or 4X will cleanse the frames and double or quadruple the frame size
+    - Upscaling at 2X - 4X will cleanse the frames and double or quadruple the frame size
 1. Click _Process Remix_ to kick off the processing
 - Progress can be tracked in the console
 

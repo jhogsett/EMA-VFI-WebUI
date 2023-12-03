@@ -319,7 +319,7 @@ class VideoRemixer(TabBase):
                     with gr.Row():
                         upscale = gr.Checkbox(label="Upscale Frames", value=True, scale=1)
                         upscale_option = gr.Radio(label="Upscale By", value="2X", scale=1,
-                                                  choices=["1X", "2X", "4X"])
+                                                  choices=["1X", "2X", "3X", "4X"])
                         with gr.Column(variant="compact", scale=2):
                             gr.Markdown(format_markdown(
                                 "Clean and Enlarge frames using Real-ESRGAN 4x+ upscaler\r\n" +
@@ -1811,6 +1811,8 @@ class VideoRemixer(TabBase):
             if self.state.upscale:
                 if self.state.upscale_option == "2X":
                     upscale_factor = 2
+                elif self.state.upscale_option == "3X":
+                    upscale_factor = 3
                 elif self.state.upscale_option == "4X":
                     upscale_factor = 4
             draw_text_options["crop_width"] = self.state.crop_w * upscale_factor
@@ -1885,6 +1887,8 @@ class VideoRemixer(TabBase):
             if self.state.upscale:
                 if self.state.upscale_option == "2X":
                     upscale_factor = 2
+                elif self.state.upscale_option == "3X":
+                    upscale_factor = 3
                 elif self.state.upscale_option == "4X":
                     upscale_factor = 4
             draw_text_options["crop_width"] = self.state.crop_w * upscale_factor
@@ -2396,7 +2400,8 @@ class VideoRemixer(TabBase):
                 scene_path = os.path.join(self.state.scenes_path, scene_name)
                 upscale_scene_path = os.path.join(upscale_path, scene_name)
                 create_directory(upscale_scene_path)
-                self.state.upscale_scene(upscaler, scene_path, upscale_scene_path, self.CLEANSE_SCENES_FACTOR)
+                self.state.upscale_scene(self.log, upscaler, scene_path, upscale_scene_path,
+                                         self.CLEANSE_SCENES_FACTOR, downscale_type=scale_type)
 
                 downsample_scene_path = os.path.join(downsample_path, scene_name)
                 create_directory(downsample_scene_path)
