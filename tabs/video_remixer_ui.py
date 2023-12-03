@@ -309,10 +309,10 @@ class VideoRemixer(TabBase):
 
                     with gr.Row():
                         inflate = gr.Checkbox(label="Inflate New Frames",value=True, scale=2)
-                        inflate_by_option = gr.Radio(label="Inflate By", value="2X", scale=1,
-                                                   choices=["2X", "4X"])
-                        inflate_slow_option = gr.Checkbox(label="Slow Motion & Audio", value=False, scale=1, info="Audio slowed up to 50%")
-                        with gr.Column(variant="compact", scale=4):
+                        inflate_by_option = gr.Radio(label="Inflate By", value="2X", scale=2,
+                                                   choices=["2X", "4X", "8X"])
+                        inflate_slow_option = gr.Checkbox(label="Slow Motion", value=False, scale=2, info="Interpolates Audio to match")
+                        with gr.Column(variant="compact", scale=6):
                             gr.Markdown(format_markdown(
                             "Insert Between-Frames using Interpolation of existing frames\r\n" +
                             "- Double the frame rate for smooth motion\r\n" +
