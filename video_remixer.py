@@ -1668,9 +1668,18 @@ class VideoRemixerState():
                     scene_audio_path = self.audio_clips[index]
                     scene_output_filepath = os.path.join(self.clips_path,
                                                          f"{scene_name}.{custom_ext}")
+
+                    if self.inflate_slow_option:
+                        if self.inflate_by_option == "8X":
+                            output_options = '-filter:a "atempo=0.5,atempo=0.5" ' + custom_audio_options
+                        else:
+                            output_options = '-filter:a "atempo=0.5" ' + custom_audio_options
+                    else:
+                        output_options = custom_audio_options
+
                     combine_video_audio(scene_video_path, scene_audio_path,
                                         scene_output_filepath, global_options=global_options,
-                                        output_options=custom_audio_options)
+                                        output_options=output_options)
                     Mtqdm().update_bar(bar)
             self.clips = sorted(get_files(self.clips_path))
         else:
