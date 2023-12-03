@@ -1571,8 +1571,6 @@ class VideoRemixer(TabBase):
                 self.state.inflate_by_option != inflate_by_option:
             inflate_option_changed = True
         self.state.inflate_by_option = inflate_by_option
-        if self.state.inflate_slow_option != inflate_slow_option:
-            inflate_option_changed = True
         self.state.inflate_slow_option = inflate_slow_option
 
         self.state.upscale = upscale
