@@ -547,7 +547,7 @@ class VideoRemixer(TabBase):
                                 format_markdown(
                 "Click Video Blend Scene to: Create a Video Blender project for the scene"))
                         export_button707 = gr.Button(
-                    "Video Blend Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
+                    "Video Blend Scene", variant="stop", scale=0)
 
                     # DROP PROCESSED SCENE
                     with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene",
