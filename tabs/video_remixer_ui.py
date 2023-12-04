@@ -2741,7 +2741,7 @@ class VideoRemixer(TabBase):
         self.log(f"duplicating files from {scene_path} to {original_frames_path}")
         duplicate_directory(scene_path, original_frames_path)
 
-        return format_markdown("testing"), \
+        return format_markdown(f"Ready to continue on Video Blender New Project tab"), \
             gr.update(selected=self.APP_TAB_VIDEO_BLENDER), \
             gr.update(selected=VideoBlender.TAB_NEW_PROJECT), \
             vb_project_name, \
