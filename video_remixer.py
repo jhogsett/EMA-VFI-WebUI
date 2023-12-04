@@ -1257,19 +1257,59 @@ class VideoRemixerState():
         create_directory(scene_output_path)
         file_list = sorted(get_files(scene_input_path))
         output_basename = "upscaled_frames"
-        upscaler.upscale_series(file_list, scene_output_path, upscale_factor, output_basename, "png")
+        log_fn(f"about to upscale images to {working_path}")
+        upscaler.upscale_series(file_list, working_path, self.FIXED_UPSCALE_FACTOR, output_basename,
+                                "png")
+
+        # get size of upscaled frames
+        upscaled_files = sorted(get_files(working_path))
+        width, height = image_size(upscaled_files[0])
+        log_fn(f"size of upscaled images: {width} x {height}")
+
+        # compute downscale factor
+        downscale_factor = self.FIXED_UPSCALE_FACTOR / upscale_factor
+        log_fn(f"downscale factor is {downscale_factor}")
+
+        downscaled_width = int(width / downscale_factor)
+        downscaled_height = int(height / downscale_factor)
+        log_fn(f"size of downscaled images: {downscaled_width} x {downscaled_height}")
+
+        if downscaled_width != width or downscaled_height != height:
+            # downsample to final size
+            log_fn(f"about to downscale images in {working_path} to {scene_output_path}")
+            self.resize_scene(log_fn,
+                                    working_path,
+                                    scene_output_path,
+                                    downscaled_width,
+                                    downscaled_height,
+                                    downscale_type)
+        else:
+            log_fn("copying instead of unneeded downscaling")
+            copy_files(working_path, scene_output_path)
+
+        try:
+            log_fn(f"about to delete working path {working_path}")
+            shutil.rmtree(working_path)
+        except OSError as error:
+            log_fn(f"ignoring error deleting working path: {error}")
+
+    def upscale_factor_from_options(self) -> float:
+        upscale_factor = 1.0
+        if self.upscale:
+            if self.upscale_option == "2X":
+                upscale_factor = 2.0
+            elif self.upscale_option == "3X":
+                upscale_factor = 3.0
+            elif self.upscale_option == "4X":
+                upscale_factor = 4.0
+        return upscale_factor
 
     def upscale_scenes(self, log_fn, kept_scenes, realesrgan_settings, remixer_settings):
         upscaler = self.get_upscaler(log_fn, realesrgan_settings, remixer_settings)
         scenes_base_path = self.scenes_source_path(self.UPSCALE_STEP)
         create_directory(self.upscale_path)
 
-        if self.upscale_option == "1X":
-            upscale_factor = 1.0
-        elif self.upscale_option == "2X":
-            upscale_factor = 2.0
-        else:
-            upscale_factor = 4.0
+        upscale_factor = self.upscale_factor_from_options()
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Upscale") as bar:
             for scene_name in kept_scenes:
