@@ -2708,39 +2708,42 @@ class VideoRemixer(TabBase):
             return gr.update(selected=self.TAB_REMIX_EXTRA), format_markdown(report), *empty_args
 
     APP_TAB_VIDEO_BLENDER=4
+    APP_TAB_VIDEO_REMIXER=5
 
     def export_button707(self, scene_index):
+        empty_args = self.empty_args(12)
+        num_scenes = len(self.state.scene_names)
+        last_scene = num_scenes - 1
 
+        if not isinstance(scene_index, (int, float)):
+            return gr.update(value=format_markdown(f"Please enter a Scene Index to get started", "warning")), \
+                *empty_args
 
+        scene_index = int(scene_index)
+        if scene_index < 0 or scene_index > last_scene:
+            return gr.update(value=format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning")), \
+                *empty_args
 
-        # _, filename, _ = split_filepath(self.state.project_filepath)
-        # project_name =
+        _, filename, _ = split_filepath(self.state.project_path)
+        scene_name = self.state.scene_names[scene_index]
+        vb_project_name = f"{filename} {scene_name}"
+        vb_project_path = os.path.join(self.state.project_path, vb_project_name)
+        scene_path = os.path.join(self.state.scenes_path, scene_name)
+        create_directory(vb_project_path)
 
         return format_markdown("testing"), \
             gr.update(selected=self.APP_TAB_VIDEO_BLENDER), \
             gr.update(selected=VideoBlender.TAB_NEW_PROJECT), \
-            "new project name", \
-            "new project path", \
-            12.34, \
+            vb_project_name, \
+            vb_project_path, \
+            self.state.project_fps, \
             False, \
-            "existing frames path", \
+            scene_path, \
             True, \
             None, \
             True, \
             None, \
             True
-        #                        outputs=[message_box707,
-        #                                 self.video_blender.video_blender_tabs,
-        #                                 self.video_blender.new_project_name,
-        #                                 self.video_blender.new_project_path,
-        #                                 self.video_blender.new_project_frame_rate,
-        #                                 self.video_blender.step_1_enabled,
-        #                                 self.video_blender.step_1_input,
-        #                                 self.video_blender.step_2_enabled,
-        #                                 self.video_blender.step_2_input,
-        #                                 self.video_blender.step_3_enabled,
-        #                                 self.video_blender.step_3_input,
-        #                                 self.video_blender.step_4_enabled])
 
     def delete_button710(self, delete_purged):
         if delete_purged:
