@@ -4,9 +4,10 @@ import glob
 import subprocess
 import json
 from fractions import Fraction
+from PIL import Image
 from ffmpy import FFmpeg, FFprobe, FFRuntimeError
 from .image_utils import gif_frame_count
-from .file_utils import split_filepath, get_directories
+from .file_utils import split_filepath, get_directories, is_safe_path
 from .simple_utils import seconds_to_hms, get_frac_str_as_float
 from .jot import Jot
 
@@ -851,3 +852,18 @@ def SourceToMP4(input_path : str, # pylint: disable=invalid-name
     cmd = ffcmd.cmd
     ffcmd.run()
     return cmd
+
+def image_size(path : str):
+    """Get size of an image. Returns width, height. Raises ValueError."""
+    if not path:
+        raise ValueError("'path' must have a value")
+    if not os.path.exists(path):
+        raise ValueError(f"path '{path}' does not exist")
+    if not is_safe_path(path):
+        raise ValueError(f"path '{path}' is not valid")
+
+    try:
+        image = Image.open(path)
+        return image.width, image.height
+    except OSError as error:
+        raise ValueError(f"error with path '{path}': {error}")

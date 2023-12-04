@@ -308,8 +308,11 @@ class VideoRemixer(TabBase):
                                 color="more", bold_heading_only=True))
 
                     with gr.Row():
-                        inflate = gr.Checkbox(label="Inflate New Frames",value=True)
-                        with gr.Column(variant="compact"):
+                        inflate = gr.Checkbox(label="Inflate New Frames",value=True, scale=2)
+                        inflate_by_option = gr.Radio(label="Inflate By", value="2X", scale=2,
+                                                   choices=["2X", "4X", "8X"])
+                        inflate_slow_option = gr.Checkbox(label="Slow Motion", value=False, scale=2, info="Interpolates Audio to match")
+                        with gr.Column(variant="compact", scale=6):
                             gr.Markdown(format_markdown(
                             "Insert Between-Frames using Interpolation of existing frames\r\n" +
                             "- Double the frame rate for smooth motion\r\n" +
@@ -317,10 +320,10 @@ class VideoRemixer(TabBase):
                             color="more", bold_heading_only=True))
 
                     with gr.Row():
-                        upscale = gr.Checkbox(label="Upscale Frames", value=True, scale=1)
-                        upscale_option = gr.Radio(label="Upscale By", value="2X", scale=1,
-                                                  choices=["1X", "2X", "4X"])
-                        with gr.Column(variant="compact", scale=2):
+                        upscale = gr.Checkbox(label="Upscale Frames", value=True, scale=2)
+                        upscale_option = gr.Radio(label="Upscale By", value="2X", scale=4,
+                                                  choices=["1X", "2X", "3X", "4X"])
+                        with gr.Column(variant="compact", scale=6):
                             gr.Markdown(format_markdown(
                                 "Clean and Enlarge frames using Real-ESRGAN 4x+ upscaler\r\n" +
                                 "- Remove grime, noise, and digital artifacts\r\n" +
@@ -776,8 +779,8 @@ class VideoRemixer(TabBase):
                                 crop_offset_x, crop_offset_y, project_info2, thumbnail_type,
                                 min_frames_per_scene, scene_index, scene_name, scene_image,
                                 scene_state, scene_info, set_scene_label, project_info4, resize,
-                                resynthesize, inflate, upscale, upscale_option, summary_info6,
-                                output_filepath])
+                                resynthesize, inflate, inflate_by_option, inflate_slow_option,
+                                upscale, upscale_option, summary_info6, output_filepath])
 
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold,
@@ -890,7 +893,8 @@ class VideoRemixer(TabBase):
         back_button4.click(self.back_button4, outputs=tabs_video_remixer)
 
         next_button5.click(self.next_button5,
-                    inputs=[resynthesize, inflate, resize, upscale, upscale_option],
+                    inputs=[resynthesize, inflate, resize, upscale, upscale_option,
+                            inflate_by_option, inflate_slow_option],
                     outputs=[tabs_video_remixer, message_box5, summary_info6, output_filepath,
                              output_filepath_custom, output_filepath_marked, output_filepath_labeled,
                              message_box60, message_box61, message_box62, message_box63])
@@ -1077,7 +1081,7 @@ class VideoRemixer(TabBase):
 
     # User has clicked Open Project > from Remix Home
     def next_button01(self, project_path):
-        empty_args = self.empty_args(32)
+        empty_args = self.empty_args(34)
         if not project_path:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    gr.update(value=format_markdown("Enter a path to a Video Remixer project directory on this server to get started", "warning")), \
@@ -1150,6 +1154,8 @@ class VideoRemixer(TabBase):
             self.state.tryattr("resize", self.state.UI_SAFETY_DEFAULTS["resize"]), \
             self.state.tryattr("resynthesize", self.state.UI_SAFETY_DEFAULTS["resynthesize"]), \
             self.state.tryattr("inflate", self.state.UI_SAFETY_DEFAULTS["inflate"]), \
+            self.state.tryattr("inflate_by_option", self.state.UI_SAFETY_DEFAULTS["inflate_by_option"]), \
+            self.state.tryattr("inflate_slow_option", self.state.UI_SAFETY_DEFAULTS["inflate_slow_option"]), \
             self.state.tryattr("upscale", self.state.UI_SAFETY_DEFAULTS["upscale"]), \
             self.state.tryattr("upscale_option", self.state.UI_SAFETY_DEFAULTS["upscale_option"]), \
             self.state.tryattr("summary_info6"), \
@@ -1542,7 +1548,13 @@ class VideoRemixer(TabBase):
     ### PROCESS REMIX EVENT HANDLERS
 
     # User has clicked Process Remix from Process Remix
-    def next_button5(self, resynthesize, inflate, resize, upscale, upscale_option):
+    def next_button5(self,
+                     resynthesize,
+                     inflate, resize,
+                     upscale,
+                     upscale_option,
+                     inflate_by_option,
+                     inflate_slow_option):
         noop_args = self.noop_args(9)
         if not self.state.project_path or not self.state.scenes_path:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
@@ -1550,9 +1562,17 @@ class VideoRemixer(TabBase):
                     "The project has not yet been set up from the Set Up Project tab.", "error")), \
                    *noop_args
 
-        self.state.resynthesize = resynthesize
-        self.state.inflate = inflate
         self.state.resize = resize
+        self.state.resynthesize = resynthesize
+
+        self.state.inflate = inflate
+        inflate_option_changed = False
+        if self.state.inflate_by_option != None and \
+                self.state.inflate_by_option != inflate_by_option:
+            inflate_option_changed = True
+        self.state.inflate_by_option = inflate_by_option
+        self.state.inflate_slow_option = inflate_slow_option
+
         self.state.upscale = upscale
         upscale_option_changed = False
         if self.state.upscale_option != None and self.state.upscale_option != upscale_option:
@@ -1574,7 +1594,8 @@ class VideoRemixer(TabBase):
                 self.state.processed_content_invalid = False
             else:
                 self.log("purging stale content")
-                self.state.purge_stale_processed_content(upscale_option_changed)
+                self.state.purge_stale_processed_content(upscale_option_changed,
+                                                         inflate_option_changed)
                 self.log("purging incomplete content")
                 self.state.purge_incomplete_processed_content()
             self.log("saving project after purging stale and incomplete content")
@@ -2386,7 +2407,8 @@ class VideoRemixer(TabBase):
                 scene_path = os.path.join(self.state.scenes_path, scene_name)
                 upscale_scene_path = os.path.join(upscale_path, scene_name)
                 create_directory(upscale_scene_path)
-                self.state.upscale_scene(upscaler, scene_path, upscale_scene_path, self.CLEANSE_SCENES_FACTOR)
+                self.state.upscale_scene(self.log, upscaler, scene_path, upscale_scene_path,
+                                         self.CLEANSE_SCENES_FACTOR, downscale_type=scale_type)
 
                 downsample_scene_path = os.path.join(downsample_path, scene_name)
                 create_directory(downsample_scene_path)
