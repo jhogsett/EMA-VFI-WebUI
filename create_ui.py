@@ -101,10 +101,11 @@ def create_ui(config : SimpleConfig,
                     StripScenes(config, engine, log.log).render_tab()
 
             with gr.Tab("Video Blender", id=APP_TAB_VIDEO_BLENDER):
-                VideoBlender(config, engine, log.log).render_tab()
+                video_blender = VideoBlender(config, engine, log.log)
+                video_blender.render_tab()
 
             with gr.Tab(SimpleIcons.SPOTLIGHT_SYMBOL + "Video Remixer", id=APP_TAB_VIDEO_REMIXER):
-                VideoRemixer(config, engine, log.log).render_tab()
+                VideoRemixer(config, engine, log.log, main_tabs, video_blender).render_tab()
 
             with gr.Tab(SimpleIcons.LABCOAT + "Tools", id=APP_TAB_TOOLS):
                 VideoDetails(config, engine, log.log).render_tab()

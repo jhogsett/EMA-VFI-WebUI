@@ -19,14 +19,19 @@ from webui_utils.mtqdm import Mtqdm
 from webui_utils.session import Session
 from ffmpy import FFRuntimeError
 from resequence_files import ResequenceFiles
+from .video_blender_ui import VideoBlender
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
     def __init__(self,
                  config : SimpleConfig,
                  engine : InterpolateEngine,
-                 log_fn : Callable):
+                 log_fn : Callable,
+                 main_tabs : any,
+                 video_blender : VideoBlender):
         TabBase.__init__(self, config, engine, log_fn)
+        self.main_tabs = main_tabs
+        self.video_blender = video_blender
         self.new_project()
 
     # TODO this only runs at app start-up
@@ -51,6 +56,7 @@ class VideoRemixer(TabBase):
     TAB_EXTRA_CLEANSE_SCENES = 4
     TAB_EXTRA_MANAGE_STORAGE = 5
     TAB_EXTRA_MERGE_RANGE = 6
+    TAB_EXTRA_VIDEO_BLEND_SCENE = 7
 
     TAB00_DEFAULT_MESSAGE = "Click New Project to: Inspect Video and Count Frames (can take a minute or more)"
     TAB01_DEFAULT_MESSAGE = "Click Open Project to: Resume Editing an Existing Project"
@@ -530,6 +536,19 @@ class VideoRemixer(TabBase):
                         cleanse_button704 = gr.Button(
                         "Cleanse Scenes " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
+                    # EXPORT TO VIDEO BLENDER
+                    with gr.Tab(SimpleIcons.MICROSCOPE + " Video Blend Scene",
+                                id=self.TAB_EXTRA_VIDEO_BLEND_SCENE):
+                        gr.Markdown(
+                    "**_Create a Video Blender project for advanced scene restoration_**")
+                        scene_id_707 = gr.Number(value=-1, label="Scene Index")
+                        with gr.Row():
+                            message_box707 = gr.Markdown(
+                                format_markdown(
+                "Click Video Blend Scene to: Create a Video Blender project for the scene"))
+                        export_button707 = gr.Button(
+                    "Video Blend Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
+
                     # DROP PROCESSED SCENE
                     with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene",
                                 id=self.TAB_EXTRA_DROP_PROCESSED):
@@ -993,6 +1012,22 @@ class VideoRemixer(TabBase):
                                outputs=[tabs_video_remixer, message_box706, scene_index,
                                         scene_name, scene_image, scene_state, scene_info,
                                         set_scene_label])
+
+        export_button707.click(self.export_button707,
+                               inputs=scene_id_707,
+                               outputs=[message_box707,
+                                        self.main_tabs,
+                                        self.video_blender.video_blender_tabs,
+                                        self.video_blender.new_project_name,
+                                        self.video_blender.new_project_path,
+                                        self.video_blender.new_project_frame_rate,
+                                        self.video_blender.step1_enabled,
+                                        self.video_blender.step1_input,
+                                        self.video_blender.step2_enabled,
+                                        self.video_blender.step2_input,
+                                        self.video_blender.step3_enabled,
+                                        self.video_blender.step3_input,
+                                        self.video_blender.step4_enabled])
 
         delete_button710.click(self.delete_button710,
                                inputs=delete_purged_710,
@@ -2671,6 +2706,35 @@ class VideoRemixer(TabBase):
                 *self.scene_chooser_details(self.state.current_scene)
         else:
             return gr.update(selected=self.TAB_REMIX_EXTRA), format_markdown(report), *empty_args
+
+    APP_TAB_VIDEO_BLENDER=4
+
+    def export_button707(self, scene_index):
+        return format_markdown("testing"), \
+            gr.update(selected=self.APP_TAB_VIDEO_BLENDER), \
+            gr.update(selected=VideoBlender.TAB_NEW_PROJECT), \
+            "new project name", \
+            "new project path", \
+            12.34, \
+            False, \
+            "existing frames path", \
+            True, \
+            None, \
+            True, \
+            None, \
+            True
+        #                        outputs=[message_box707,
+        #                                 self.video_blender.video_blender_tabs,
+        #                                 self.video_blender.new_project_name,
+        #                                 self.video_blender.new_project_path,
+        #                                 self.video_blender.new_project_frame_rate,
+        #                                 self.video_blender.step_1_enabled,
+        #                                 self.video_blender.step_1_input,
+        #                                 self.video_blender.step_2_enabled,
+        #                                 self.video_blender.step_2_input,
+        #                                 self.video_blender.step_3_enabled,
+        #                                 self.video_blender.step_3_input,
+        #                                 self.video_blender.step_4_enabled])
 
     def delete_button710(self, delete_purged):
         if delete_purged:

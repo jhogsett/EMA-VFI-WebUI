@@ -32,6 +32,24 @@ class VideoBlender(TabBase):
         self.video_blender_state = None
         self.video_blender_projects = VideoBlenderProjects(self.config.
             blender_settings["projects_file"])
+        self.video_blender_tabs = None
+        self.new_project_name = None
+        self.new_project_path = None
+        self.new_project_frame_rate = None
+        self.step1_enabled = None
+        self.step1_input = None
+        self.step2_enabled = None
+        self.step2_input = None
+        self.step3_enabled = None
+        self.step3_input = None
+        self.step4_enabled = None
+
+    TAB_PROJECT_SETTINGS = 0
+    TAB_FRAME_CHOOSER = 1
+    TAB_FRAME_FIXER = 2
+    TAB_VIDEO_PREVIEW = 3
+    TAB_NEW_PROJECT = 4
+    TAB_RESET_PROJECT = 5
 
     def render_tab(self):
         """Render tab into UI"""
@@ -40,9 +58,10 @@ class VideoBlender(TabBase):
         max_frame_rate = self.config.blender_settings["max_frame_rate"]
         # with gr.Tab("Video Blender"):
         with gr.Tabs() as tabs_video_blender:
+            self.video_blender_tabs = tabs_video_blender
 
             ### PROJECT SETTINGS
-            with gr.Tab(SimpleIcons.NOTEBOOK + "Project Settings", id=0):
+            with gr.Tab(SimpleIcons.NOTEBOOK + "Project Settings", id=self.TAB_PROJECT_SETTINGS):
                 with gr.Row():
                     with gr.Column(scale=3, variant="compact"):
                         with gr.Row():
@@ -74,7 +93,7 @@ class VideoBlender(TabBase):
                     WebuiTips.video_blender_project_settings.render()
 
             ### FRAME CHOOSER
-            with gr.Tab(SimpleIcons.CONTROLS + "Frame Chooser", id=1):
+            with gr.Tab(SimpleIcons.CONTROLS + "Frame Chooser", id=self.TAB_FRAME_CHOOSER):
                 with gr.Row():
                     with gr.Column():
                         output_prev_frame_vb = gr.Image(label="Previous Frame",
@@ -138,7 +157,7 @@ class VideoBlender(TabBase):
                         WebuiTips.video_blender_frame_chooser.render()
 
             ### FRAME FIXER
-            with gr.Tab(SimpleIcons.HAMMER + "Frame Fixer", id=2):
+            with gr.Tab(SimpleIcons.HAMMER + "Frame Fixer", id=self.TAB_FRAME_FIXER):
                 with gr.Row():
                     with gr.Column():
                         with gr.Row():
@@ -166,7 +185,7 @@ class VideoBlender(TabBase):
                     WebuiTips.video_blender_frame_fixer.render()
 
             ### VIDEO PREVIEW
-            with gr.Tab(SimpleIcons.TELEVISION + "Video Preview", id=3):
+            with gr.Tab(SimpleIcons.TELEVISION + "Video Preview", id=self.TAB_VIDEO_PREVIEW):
                 with gr.Row():
                     gr.Column(scale=1)
                     with gr.Column():
@@ -183,7 +202,7 @@ class VideoBlender(TabBase):
                     WebuiTips.video_blender_video_preview.render()
 
             ### NEW PROJECT
-            with gr.Tab(SimpleIcons.SEEDLING + "New Project", id=4):
+            with gr.Tab(SimpleIcons.SEEDLING + "New Project", id=self.TAB_NEW_PROJECT):
                 with gr.Row():
                     with gr.Column(variant="compact"):
                         gr.HTML("Define New Project")
@@ -240,7 +259,7 @@ class VideoBlender(TabBase):
                     WebuiTips.video_blender_new_project.render()
 
             ### RESET PROJECT
-            with gr.Tab(SimpleIcons.RECYCLE + "Reset Project", id=5):
+            with gr.Tab(SimpleIcons.RECYCLE + "Reset Project", id=self.TAB_RESET_PROJECT):
                 with gr.Row():
                     choices = self.video_blender_projects.get_project_names()
                     reset_project_dropdown = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
@@ -350,6 +369,18 @@ class VideoBlender(TabBase):
                 step1_input, step2_enabled, step2_input, step3_enabled, step3_input, step4_enabled,
                 new_project_frame_rate],
             show_progress=False)
+
+        self.video_blender_tabs = tabs_video_blender
+        self.new_project_name = new_project_name
+        self.new_project_path = new_project_path
+        self.new_project_frame_rate = new_project_frame_rate
+        self.step1_enabled = step1_enabled
+        self.step1_input = step1_input
+        self.step2_enabled = step2_enabled
+        self.step2_input = step2_input
+        self.step3_enabled = step3_enabled
+        self.step3_input = step3_input
+        self.step4_enabled = step4_enabled
 
     def video_blender_load(self, project_path, frames_path1, frames_path2, main_path, fps):
         """Open Project button handler"""
