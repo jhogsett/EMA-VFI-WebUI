@@ -2727,9 +2727,15 @@ class VideoRemixer(TabBase):
         _, filename, _ = split_filepath(self.state.project_path)
         scene_name = self.state.scene_names[scene_index]
         vb_project_name = f"{filename} {scene_name}"
-        vb_project_path = os.path.join(self.state.project_path, vb_project_name)
-        scene_path = os.path.join(self.state.scenes_path, scene_name)
+        vb_project_path_name = f"vb_project {scene_name}"
+        vb_project_path = os.path.join(self.state.project_path, vb_project_path_name)
+        self.log(f"creating video blender project directory {vb_project_path}")
         create_directory(vb_project_path)
+
+        scene_path = os.path.join(self.state.scenes_path, scene_name)
+        original_frames_path = os.path.join(vb_project_path, "original_frames")
+        self.log(f"duplicating files from {scene_path} to {original_frames_path}")
+        duplicate_directory(scene_path, original_frames_path)
 
         return format_markdown("testing"), \
             gr.update(selected=self.APP_TAB_VIDEO_BLENDER), \
@@ -2738,11 +2744,11 @@ class VideoRemixer(TabBase):
             vb_project_path, \
             self.state.project_fps, \
             False, \
+            original_frames_path, \
+            True, \
+            None, \
+            False, \
             scene_path, \
-            True, \
-            None, \
-            True, \
-            None, \
             True
 
     def delete_button710(self, delete_purged):
