@@ -19,7 +19,7 @@ from webui_utils.mtqdm import Mtqdm
 from webui_utils.session import Session
 from ffmpy import FFRuntimeError
 from resequence_files import ResequenceFiles
-from .video_blender_ui import VideoBlender
+from . import video_blender_ui as VideoBlender
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
