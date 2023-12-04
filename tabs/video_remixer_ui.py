@@ -19,7 +19,7 @@ from webui_utils.mtqdm import Mtqdm
 from webui_utils.session import Session
 from ffmpy import FFRuntimeError
 from resequence_files import ResequenceFiles
-from . import video_blender_ui as VideoBlender
+from .video_blender_ui import VideoBlender
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -2710,6 +2710,12 @@ class VideoRemixer(TabBase):
     APP_TAB_VIDEO_BLENDER=4
 
     def export_button707(self, scene_index):
+
+
+
+        # _, filename, _ = split_filepath(self.state.project_filepath)
+        # project_name =
+
         return format_markdown("testing"), \
             gr.update(selected=self.APP_TAB_VIDEO_BLENDER), \
             gr.update(selected=VideoBlender.TAB_NEW_PROJECT), \
