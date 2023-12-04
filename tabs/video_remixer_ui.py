@@ -2711,17 +2711,21 @@ class VideoRemixer(TabBase):
     APP_TAB_VIDEO_REMIXER=5
 
     def export_button707(self, scene_index):
-        empty_args = self.empty_args(12)
+        empty_args = self.empty_args(10)
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
 
         if not isinstance(scene_index, (int, float)):
             return gr.update(value=format_markdown(f"Please enter a Scene Index to get started", "warning")), \
+                gr.update(selected=self.APP_TAB_VIDEO_REMIXER), \
+                gr.update(selected=VideoBlender.TAB_NEW_PROJECT), \
                 *empty_args
 
         scene_index = int(scene_index)
         if scene_index < 0 or scene_index > last_scene:
             return gr.update(value=format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning")), \
+                gr.update(selected=self.APP_TAB_VIDEO_REMIXER), \
+                gr.update(selected=VideoBlender.TAB_NEW_PROJECT), \
                 *empty_args
 
         _, filename, _ = split_filepath(self.state.project_path)
