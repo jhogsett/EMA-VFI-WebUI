@@ -294,8 +294,8 @@ class VideoRemixer(TabBase):
                 gr.Markdown("**Ready to Process Content for Remix Video**")
 
                 with gr.Row():
-                    resize = gr.Checkbox(label="Resize / Crop Frames", value=True)
-                    with gr.Column(variant="compact"):
+                    resize = gr.Checkbox(label="Resize / Crop Frames", value=True, scale=7)
+                    with gr.Column(variant="compact", scale=5):
                         gr.Markdown(format_markdown(
                             "Resize and Crop Frames according to project settings\r\n"+
                             "- Adjust aspect ratio\r\n" +
@@ -303,8 +303,8 @@ class VideoRemixer(TabBase):
                             color="more", bold_heading_only=True))
 
                 with gr.Row():
-                    resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True)
-                    with gr.Column(variant="compact"):
+                    resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True, scale=7)
+                    with gr.Column(variant="compact", scale=5):
                         gr.Markdown(format_markdown(
                             "Recreate Frames using Interpolation of adjacent frames\r\n" +
                             "- Remove grime and single-frame noise\r\n" +
@@ -312,11 +312,13 @@ class VideoRemixer(TabBase):
                             color="more", bold_heading_only=True))
 
                 with gr.Row():
-                    inflate = gr.Checkbox(label="Inflate New Frames",value=True, scale=2)
-                    inflate_by_option = gr.Radio(label="Inflate By", value="2X", scale=2,
+                    inflate = gr.Checkbox(label="Inflate New Frames",value=True, scale=1)
+                    inflate_by_option = gr.Radio(label="Inflate By", value="2X", scale=3,
                                                 choices=["2X", "4X", "8X"])
-                    inflate_slow_option = gr.Checkbox(label="Slow Motion", value=False, scale=2, info="Interpolates Audio to match")
-                    with gr.Column(variant="compact", scale=6):
+                    inflate_slow_option = gr.Radio(label="Slow Motion", value="No",
+                                                   choices=["No", "Audio", "Silent"],
+                                                   scale=3, info="Audio: Pitch adjusted to match slow motion")
+                    with gr.Column(variant="compact", scale=5):
                         gr.Markdown(format_markdown(
                         "Insert Between-Frames using Interpolation of existing frames\r\n" +
                         "- Double the frame rate for smooth motion\r\n" +
@@ -324,10 +326,10 @@ class VideoRemixer(TabBase):
                         color="more", bold_heading_only=True))
 
                 with gr.Row():
-                    upscale = gr.Checkbox(label="Upscale Frames", value=True, scale=2)
-                    upscale_option = gr.Radio(label="Upscale By", value="2X", scale=4,
+                    upscale = gr.Checkbox(label="Upscale Frames", value=True, scale=1)
+                    upscale_option = gr.Radio(label="Upscale By", value="2X", scale=6,
                                                 choices=["1X", "2X", "3X", "4X"])
-                    with gr.Column(variant="compact", scale=6):
+                    with gr.Column(variant="compact", scale=5):
                         gr.Markdown(format_markdown(
                             "Clean and Enlarge frames using Real-ESRGAN 4x+ upscaler\r\n" +
                             "- Remove grime, noise, and digital artifacts\r\n" +
@@ -335,8 +337,8 @@ class VideoRemixer(TabBase):
                             color="more", bold_heading_only=True))
 
                 with gr.Row():
-                    process_all = gr.Checkbox(label="Select All", value=True)
-                    with gr.Column(variant="compact"):
+                    process_all = gr.Checkbox(label="Select All", value=True, scale=7)
+                    with gr.Column(variant="compact", scale=5):
                         gr.Markdown(format_markdown(
                             "Deselect All Steps to use original source content for remix video",
                             color="more", bold=True))
@@ -1823,6 +1825,8 @@ class VideoRemixer(TabBase):
         self.log("saving after storing remix output choices")
         self.state.save()
 
+        self.state.recompile_scenes()
+
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             self.save_remix(global_options, kept_scenes)
@@ -1836,6 +1840,9 @@ class VideoRemixer(TabBase):
         if not self.state.project_path:
             return gr.update(value=format_markdown(
                     "The project has not yet been set up from the Set Up Project tab.", "error"))
+
+        self.state.recompile_scenes()
+
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             self.save_custom_remix(output_filepath, global_options, kept_scenes,
@@ -1849,6 +1856,9 @@ class VideoRemixer(TabBase):
         if not self.state.project_path:
             return gr.update(value=format_markdown(
                     "The project has not yet been set up from the Set Up Project tab.", "error"))
+
+        self.state.recompile_scenes()
+
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             draw_text_options = {}
@@ -1918,6 +1928,9 @@ class VideoRemixer(TabBase):
         if not label_box_color:
            return gr.update(value=format_markdown(
                 "The Background Color must not be blank", "warning"))
+
+        self.state.recompile_scenes()
+
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             draw_text_options = {}

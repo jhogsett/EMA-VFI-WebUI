@@ -795,12 +795,12 @@ def combine_video_audio(video_path : str,
                         audio_path : str,
                         output_filepath : str,
                         global_options : str = "",
-                        output_options : str = "-c:a aac -shortest"):
+                        output_options : str = "-c:v copy -c:a aac -shortest"):
 # ffmpeg -y -i "MALE Me-TV-03192023-0335PM[000001-001245].wav" -i "MALE Me-TV-03192023-0335PM[000001-001245].mp4" -c:v copy -c:a aac output1.mp4
     ffcmd = FFmpeg(
         inputs= {video_path : None,
                  audio_path : None},
-        outputs={output_filepath : f"-c:v copy {output_options}"},
+        outputs={output_filepath : f"{output_options}"},
         global_options="-y " + global_options)
     cmd = ffcmd.cmd
     ffcmd.run()
