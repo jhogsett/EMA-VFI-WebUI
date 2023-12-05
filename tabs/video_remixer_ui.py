@@ -1828,7 +1828,7 @@ class VideoRemixer(TabBase):
             draw_text_options["marked_position"] = self.config.remixer_settings["marked_position"]
 
             # account for upscaling
-            upscale_factor = self.state.upscale_factor_from_option(self.state.upscale_option)
+            upscale_factor = self.state.upscale_factor_from_options()
             draw_text_options["crop_width"] = self.state.crop_w * upscale_factor
             draw_text_options["crop_height"] = self.state.crop_h * upscale_factor
 
@@ -1897,7 +1897,7 @@ class VideoRemixer(TabBase):
             draw_text_options["marked_position"] = label_position
 
             # account for upscaling
-            upscale_factor = self.state.upscale_factor_from_option(self.state.upscale_option)
+            upscale_factor = self.state.upscale_factor_from_options()
             draw_text_options["crop_width"] = self.state.crop_w * upscale_factor
             draw_text_options["crop_height"] = self.state.crop_h * upscale_factor
 

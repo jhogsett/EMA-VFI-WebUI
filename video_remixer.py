@@ -1321,14 +1321,15 @@ class VideoRemixerState():
         except OSError as error:
             log_fn(f"ignoring error deleting working path: {error}")
 
-    def upscale_factor_from_option(self, upscale_type : str) -> float:
+    def upscale_factor_from_options(self) -> float:
         upscale_factor = 1.0
-        if self.upscale_option == "2X":
-            upscale_factor = 2.0
-        elif self.upscale_option == "3X":
-            upscale_factor = 3.0
-        elif self.upscale_option == "4X":
-            upscale_factor = 4.0
+        if self.upscale:
+            if self.upscale_option == "2X":
+                upscale_factor = 2.0
+            elif self.upscale_option == "3X":
+                upscale_factor = 3.0
+            elif self.upscale_option == "4X":
+                upscale_factor = 4.0
         return upscale_factor
 
     def upscale_scenes(self, log_fn, kept_scenes, realesrgan_settings, remixer_settings):
@@ -1337,7 +1338,7 @@ class VideoRemixerState():
         downscale_type = remixer_settings["scale_type_down"]
         create_directory(self.upscale_path)
 
-        upscale_factor = self.upscale_factor_from_option(self.upscale_option)
+        upscale_factor = self.upscale_factor_from_options()
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Upscale") as bar:
             for scene_name in kept_scenes:
