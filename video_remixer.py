@@ -122,7 +122,7 @@ class VideoRemixerState():
         "split_time" : 60,
         "crop_offsets" : -1,
         "inflate_by_option" : "2X",
-        "inflate_slow_option" : False
+        "inflate_slow_option" : "No"
     }
 
     # set project settings UI defaults in case the project is reopened
@@ -1354,8 +1354,10 @@ class VideoRemixerState():
         label += "-re" if self.resynthesize else ""
         if self.inflate:
             label += "-in" + self.inflate_by_option[0]
-            if self.inflate_slow_option:
-                label += "S"
+            if self.inflate_slow_option == "Audio":
+                label += "SA"
+            elif self.inflate_slow_option == "Silent":
+                label += "SM"
         label += "-up" + self.upscale_option[0] if self.upscale else ""
         label += "-" + extra_suffix if extra_suffix else ""
         return label
@@ -1475,23 +1477,29 @@ class VideoRemixerState():
         """Compute the video clip FPS considering project FPS and inflation settings.
         For 2X and 4X inflation, when slow motion is enabled, the 50% audio slowdown will reduce the FPS by 2X.
         For 8X inflation with slow motion, the 75% audio slowdown will reduce the FPS by 4X"""
-        inflate_factor = 1.0
         if self.inflate:
-            if self.inflate_by_option == "2X":
-                if self.inflate_slow_option:
-                    inflate_factor = 1.0
-                else:
+            if self.inflate_slow_option == "No":
+                # Set FPS for maximum smoothness
+                if self.inflate_by_option == "2X":
                     inflate_factor = 2.0
-            elif self.inflate_by_option == "4X":
-                if self.inflate_slow_option:
-                    inflate_factor = 2.0
-                else:
+                elif self.inflate_by_option == "4X":
                     inflate_factor = 4.0
-            elif self.inflate_by_option == "8X":
-                if self.inflate_slow_option:
-                    inflate_factor = 2.0
-                else:
+                elif self.inflate_by_option == "8X":
                     inflate_factor = 8.0
+            elif self.inflate_slow_option == "Audio":
+                # Set FPS for maximum audio quality
+                if self.inflate_by_option == "2X":
+                    inflate_factor = 1.0
+                elif self.inflate_by_option == "4X":
+                    inflate_factor = 2.0
+                elif self.inflate_by_option == "8X":
+                    inflate_factor = 2.0
+            elif self.inflate_slow_option == "Silent":
+                # Set FPS for maximum slow motion
+                inflate_factor = 1.0
+        else:
+            # Keep project FPS unchanged
+            inflate_factor = 1.0
         return inflate_factor * self.project_fps
 
     def create_video_clips(self, log_fn, kept_scenes, global_options):
@@ -1538,6 +1546,21 @@ class VideoRemixerState():
                 Mtqdm().update_bar(bar)
         self.video_clips = sorted(get_files(self.video_clips_path))
 
+    def compute_inflated_audio_options(self, custom_audio_options):
+        if self.inflate:
+            if self.inflate_slow_option == "Audio":
+                if self.inflate_by_option == "8X":
+                    output_options = '-filter:a "atempo=0.5,atempo=0.5" -c:v copy ' + custom_audio_options
+                else:
+                    output_options = '-filter:a "atempo=0.5" -c:v copy ' + custom_audio_options
+            elif self.inflate_slow_option == "Silent":
+                output_options = '-f lavfi -i anullsrc -ac 2 -ar 48000 -map 0:v:0 -map 2:a:0 -c:v copy -shortest ' + custom_audio_options
+            else:
+                output_options = custom_audio_options
+        else:
+            output_options = custom_audio_options
+        return output_options
+
     def create_scene_clips(self, kept_scenes, global_options):
         if self.video_details["has_audio"]:
             with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
@@ -1546,13 +1569,7 @@ class VideoRemixerState():
                     scene_audio_path = self.audio_clips[index]
                     scene_output_filepath = os.path.join(self.clips_path, f"{scene_name}.mp4")
 
-                    if self.inflate_slow_option:
-                        if self.inflate_by_option == "8X":
-                            output_options = '-filter:a "atempo=0.5,atempo=0.5" -c:a aac -shortest'
-                        else:
-                            output_options = '-filter:a "atempo=0.5" -c:a aac -shortest'
-                    else:
-                        output_options = '-c:a aac -shortest'
+                    output_options = self.compute_inflated_audio_options("-c:a aac -shortest")
 
                     combine_video_audio(scene_video_path,
                                         scene_audio_path,
@@ -1670,13 +1687,7 @@ class VideoRemixerState():
                     scene_output_filepath = os.path.join(self.clips_path,
                                                          f"{scene_name}.{custom_ext}")
 
-                    if self.inflate_slow_option:
-                        if self.inflate_by_option == "8X":
-                            output_options = '-filter:a "atempo=0.5,atempo=0.5" ' + custom_audio_options
-                        else:
-                            output_options = '-filter:a "atempo=0.5" ' + custom_audio_options
-                    else:
-                        output_options = custom_audio_options
+                    output_options = self.compute_inflated_audio_options(custom_audio_options)
 
                     combine_video_audio(scene_video_path, scene_audio_path,
                                         scene_output_filepath, global_options=global_options,
@@ -1955,13 +1966,21 @@ class VideoRemixerState():
                     state.scene_labels = {}
                 # new inflation options
                 try:
-                    if state.inflate_by_option == None or state.inflate_slow_option == None:
+                    if state.inflate_by_option == None:
                         state.inflate_by_option = "2X"
-                        state.inflate_slow_option = False
                 except AttributeError:
                     state.inflate_by_option = "2X"
-                    state.inflate_slow_option = False
+                # new inflation slow options
+                try:
+                    if isinstance(state.inflate_slow_option, bool):
+                        if state.inflate_slow_option:
+                            state.inflate_slow_option = "Audio"
+                        else:
+                            state.inflate_slow_option = "No"
+                except AttributeError:
+                    state.inflate_slow_option = "No"
                 return state
+
             except YAMLError as error:
                 if hasattr(error, 'problem_mark'):
                     mark = error.problem_mark
