@@ -317,7 +317,7 @@ class VideoRemixer(TabBase):
                                                 choices=["2X", "4X", "8X"])
                     inflate_slow_option = gr.Radio(label="Slow Motion", value="No",
                                                    choices=["No", "Audio", "Silent"],
-                                                   scale=3, info="Audio: Pitch adjusted to match slow motion")
+                                                   scale=3, info="Audio: Pitch and FPS adjusted, Silent: No FPS adjustment")
                     with gr.Column(variant="compact", scale=5):
                         gr.Markdown(format_markdown(
                         "Insert Between-Frames using Interpolation of existing frames\r\n" +
