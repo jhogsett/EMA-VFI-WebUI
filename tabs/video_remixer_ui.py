@@ -1386,6 +1386,10 @@ class VideoRemixer(TabBase):
         self.log("saving project after creating scene thumbnails")
         self.state.save()
 
+        # thumbnails may be being recreated
+        # clear cache to avoid display problems with cached thumbnails
+        self.invalidate_split_scene_cache()
+
         # TODO this is fine as part of project setup but does it belong here?
         self.state.clips_path = os.path.join(self.state.project_path, "CLIPS")
         self.log(f"creating clips directory {self.state.clips_path}")
