@@ -4,10 +4,10 @@ import glob
 import argparse
 import cv2
 from typing import Callable
-from tqdm import tqdm
 from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import split_filepath, create_directory
 import numpy as np
+from webui_utils.mtqdm import Mtqdm
 
 def main():
     """Use the Split Channels feature from the command line"""
@@ -58,30 +58,31 @@ class ImageEnhancement:
         clahe = cv2.createCLAHE(
              clipLimit=self.clip_limit, tileGridSize=(self.tile_grid_size, self.tile_grid_size))
 
-        pbar_title = "Enhancing"
-        for file in tqdm(files, desc=pbar_title):
-            self.log(f"enhancing {file}")
-            img = cv2.imread(file)
+        with Mtqdm().open_bar(total=num_files, desc="Enhancing") as bar:
+            for file in files:
+                self.log(f"enhancing {file}")
+                img = cv2.imread(file)
 
-            # this works but seemed too sensitive to blue
-            # lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
-            # lab[...,0] = clahe.apply(lab[...,0])
-            # img_clahe = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+                # RGB - don't use - simple, but colors diverge
+                # img_b = clahe_model.apply(img[:,:,0])
+                # img_g = clahe_model.apply(img[:,:,1])
+                # img_r = clahe_model.apply(img[:,:,2])
+                # img_clahe = np.stack((img_b, img_g, img_r), axis=2)
 
-            # better overall results
-            hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS_FULL)
-            hls[...,1] = clahe.apply(hls[...,1])
-            img_clahe = cv2.cvtColor(hls, cv2.COLOR_HLS2BGR_FULL)
+                # LAB - don't use - works but seems too sensitive to blue
+                # lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+                # lab[...,0] = clahe.apply(lab[...,0])
+                # img_clahe = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
 
-            # simple, but colors diverge
-            # img_b = clahe_model.apply(img[:,:,0])
-            # img_g = clahe_model.apply(img[:,:,1])
-            # img_r = clahe_model.apply(img[:,:,2])
-            # img_clahe = np.stack((img_b, img_g, img_r), axis=2)
+                # HSL - best overall results
+                hls = cv2.cvtColor(img, cv2.COLOR_BGR2HLS_FULL)
+                hls[...,1] = clahe.apply(hls[...,1])
+                img_clahe = cv2.cvtColor(hls, cv2.COLOR_HLS2BGR_FULL)
 
-            _, name, ext = split_filepath(file)
-            new_file_path = os.path.join(self.output_path, name + ext)
-            cv2.imwrite(new_file_path, img_clahe)
+                _, name, ext = split_filepath(file)
+                new_file_path = os.path.join(self.output_path, name + ext)
+                cv2.imwrite(new_file_path, img_clahe)
+                Mtqdm().update_bar(bar)
 
     def log(self, message : str) -> None:
         """Logging"""

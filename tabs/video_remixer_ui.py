@@ -507,6 +507,39 @@ class VideoRemixer(TabBase):
                         split_button702 = gr.Button(
                             "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
+                    # MERGE SCENES
+                    with gr.Tab(SimpleIcons.PACKAGE + " Merge Scenes",
+                                id=self.TAB_EXTRA_MERGE_RANGE):
+                        gr.Markdown("Removed unneeded splits between adjacent scenes")
+                        with gr.Tabs():
+                            with gr.Tab(SimpleIcons.PACKAGE + " Merge Scene Range"):
+                                gr.Markdown("**_Merge a range of scenes into one scene_**")
+                                with gr.Row():
+                                    first_scene_id_705 = gr.Number(value=-1,
+                                                                label="Starting Scene Index")
+                                    last_scene_id_705 = gr.Number(value=-1,
+                                                                label="Ending Scene Index")
+                                with gr.Row():
+                                    message_box705 = gr.Markdown(
+                                        format_markdown(
+                                "Click Merge Scene Range to: Combine the chosen scenes into a single scene"))
+                                with gr.Row():
+                                    merge_button705 = gr.Button("Merge Scene Range",
+                                                            variant="stop", scale=0)
+                            with gr.Tab(SimpleIcons.BROOM + " Coalesce Scenes"):
+                                gr.Markdown("**_Consolidate all adjacent Kept scenes_**")
+                                with gr.Row():
+                                    coalesce_scenes_706 = gr.Checkbox(value=False,
+                                                                    label="Coalesce Kept Scenes",
+                                info="Leave unchecked to see which scenes will be consolidated")
+                                with gr.Row():
+                                    message_box706 = gr.Markdown(
+                                        format_markdown(
+                                "Click Coalesce to: Consolidate all adjacent kept scenes"))
+                                with gr.Row():
+                                    coalesce_button706 = gr.Button("Coalesce Scenes",
+                                                            variant="stop", scale=0)
+
                     # CHOOSE SCENE RANGE
                     with gr.Tab(SimpleIcons.HEART_HANDS + " Choose Scene Range",
                                 id=self.TAB_EXTRA_CHOOSE_RANGE):
@@ -527,30 +560,6 @@ class VideoRemixer(TabBase):
                         choose_button701 = gr.Button("Choose Scene Range",
                                                 variant="stop", scale=0)
 
-                    # CLEANSE SCENES
-                    with gr.Tab(SimpleIcons.SOAP + " Cleanse Scenes",
-                                id=self.TAB_EXTRA_CLEANSE_SCENES):
-                        gr.Markdown("**_Remove noise and artifacts from kept scenes_**")
-                        with gr.Row():
-                            message_box704 = gr.Markdown(
-                                format_markdown(
-                        "Click Cleanse Scene to: Remove noise and artifacts from kept scenes"))
-                        cleanse_button704 = gr.Button(
-                        "Cleanse Scenes " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
-
-                    # EXPORT TO VIDEO BLENDER
-                    with gr.Tab(SimpleIcons.MICROSCOPE + " Video Blend Scene",
-                                id=self.TAB_EXTRA_VIDEO_BLEND_SCENE):
-                        gr.Markdown(
-                    "**_Create a Video Blender project for advanced scene restoration_**")
-                        scene_id_707 = gr.Number(value=-1, label="Scene Index")
-                        with gr.Row():
-                            message_box707 = gr.Markdown(
-                                format_markdown(
-                "Click Video Blend Scene to: Create a Video Blender project for the scene"))
-                        export_button707 = gr.Button(
-                    "Video Blend Scene", variant="stop", scale=0)
-
                     # DROP PROCESSED SCENE
                     with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene",
                                 id=self.TAB_EXTRA_DROP_PROCESSED):
@@ -564,37 +573,33 @@ class VideoRemixer(TabBase):
                         drop_button700 = gr.Button(
                     "Drop Processed Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
-                    # MERGE SCENE RANGE
-                    with gr.Tab(SimpleIcons.PACKAGE + " Merge Scenes",
-                                id=self.TAB_EXTRA_MERGE_RANGE):
-                        with gr.Tabs():
-                            with gr.Tab("Merge Scene Range"):
-                                gr.Markdown("**_Merge a range of scenes into one scene_**")
-                                with gr.Row():
-                                    first_scene_id_705 = gr.Number(value=-1,
-                                                                label="Starting Scene Index")
-                                    last_scene_id_705 = gr.Number(value=-1,
-                                                                label="Ending Scene Index")
-                                with gr.Row():
-                                    message_box705 = gr.Markdown(
-                                        format_markdown(
-                                "Click Merge Scene Range to: Combine the chosen scenes into a single scene"))
-                                with gr.Row():
-                                    merge_button705 = gr.Button("Merge Scene Range",
-                                                            variant="stop", scale=0)
-                            with gr.Tab("Coalesce Scenes"):
-                                gr.Markdown("**_Consolidate all adjacent Kept scenes_**")
-                                with gr.Row():
-                                    coalesce_scenes_706 = gr.Checkbox(value=False,
-                                                                    label="Coalesce Kept Scenes",
-                                info="Leave unchecked to see which scenes will be consolidated")
-                                with gr.Row():
-                                    message_box706 = gr.Markdown(
-                                        format_markdown(
-                                "Click Coalesce to: Consolidate all adjacent kept scenes"))
-                                with gr.Row():
-                                    coalesce_button706 = gr.Button("Coalesce Scenes",
-                                                            variant="stop", scale=0)
+                    # SCENE CLEANING
+                    with gr.Tab(SimpleIcons.SOAP + " Scene Cleaning",
+                                id=self.TAB_EXTRA_CLEANSE_SCENES):
+                        gr.Markdown("Scene Deep Cleaning and Restoration")
+                        # CLEANSE SCENES
+                        with gr.Tab(SimpleIcons.SOAP + " Cleanse Scenes"):
+                            gr.Markdown("**_Remove noise and artifacts from kept scenes_**")
+                            with gr.Row():
+                                message_box704 = gr.Markdown(
+                                    format_markdown(
+                            "Click Cleanse Scene to: Remove noise and artifacts from kept scenes"))
+                            cleanse_button704 = gr.Button(
+                            "Cleanse Scenes " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
+
+                        # EXPORT TO VIDEO BLENDER
+                        with gr.Tab(SimpleIcons.MICROSCOPE + " Video Blend Scene",
+                                    id=self.TAB_EXTRA_VIDEO_BLEND_SCENE):
+                            gr.Markdown(
+                        "**_Create a Video Blender project for advanced scene restoration_**")
+                            scene_id_707 = gr.Number(value=-1, label="Scene Index")
+                            with gr.Row():
+                                message_box707 = gr.Markdown(
+                                    format_markdown(
+                    "Click Video Blend Scene to: Create a Video Blender project for the scene"))
+                            export_button707 = gr.Button(
+                        "Video Blend Scene", variant="stop", scale=0)
+
                     # EXPORT KEPT SCENES
                     with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_EXPORT_SCENES):
                         gr.Markdown("**_Save Kept Scenes as a New Project_**")
@@ -1385,6 +1390,10 @@ class VideoRemixer(TabBase):
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
         self.log("saving project after creating scene thumbnails")
         self.state.save()
+
+        # thumbnails may be being recreated
+        # clear cache to avoid display problems with cached thumbnails
+        self.invalidate_split_scene_cache()
 
         # TODO this is fine as part of project setup but does it belong here?
         self.state.clips_path = os.path.join(self.state.project_path, "CLIPS")

@@ -83,6 +83,7 @@ class SimpleIcons:
     BANDAGE = "🩹"
     BOMB = "💣"
     BROKEN_HEART = "💔"
+    BROOM = "🧹"
     CHERRY_BLOSSOM = "🌸"
     COCKTAIL = "🍸"
     COOL = "🆒"
@@ -150,6 +151,7 @@ class SimpleIcons:
         BANDAGE,
         BAR_CHART,
         BROKEN_HEART,
+        BROOM,
         CHECKMARK,
         CINEMA,
         CLAPPER,
