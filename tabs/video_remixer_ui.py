@@ -2452,6 +2452,13 @@ class VideoRemixer(TabBase):
         self.log(f"creating downsample directory {working_path}")
         create_directory(downsample_path)
 
+        # the native size of the on-disk PNG frames is needed
+        # older project.yaml files won't have this data
+        try:
+            self.state.enhance_video_info(self.log, ignore_errors=False)
+        except ValueError as error:
+            return gr.update(value=format_markdown(f"Error: {error}", "error"))
+
         content_width = self.state.video_details["source_width"]
         content_height = self.state.video_details["source_height"]
         scale_type = self.config.remixer_settings["scale_type_down"]
