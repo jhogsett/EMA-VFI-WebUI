@@ -175,7 +175,7 @@ class VideoRemixer(TabBase):
                             crop_h = gr.Number(label="Crop Height")
                         with gr.Accordion(label="More Settings", open=False):
                             with gr.Row():
-                                crop_offset_x = gr.Number(label="Crop X Ofset", value=-1, info="Set to -1 for auto-centering")
+                                crop_offset_x = gr.Number(label="Crop X Offset", value=-1, info="Set to -1 for auto-centering")
                                 crop_offset_y = gr.Number(label="Crop Y Offset", value=-1, info="Set to -1 for auto-centering")
 
                 message_box1 = gr.Markdown(value=format_markdown(self.TAB1_DEFAULT_MESSAGE))
@@ -2451,6 +2451,13 @@ class VideoRemixer(TabBase):
         create_directory(upscale_path)
         self.log(f"creating downsample directory {working_path}")
         create_directory(downsample_path)
+
+        # the native size of the on-disk PNG frames is needed
+        # older project.yaml files won't have this data
+        try:
+            self.state.enhance_video_info(self.log, ignore_errors=False)
+        except ValueError as error:
+            return gr.update(value=format_markdown(f"Error: {error}", "error"))
 
         content_width = self.state.video_details["source_width"]
         content_height = self.state.video_details["source_height"]

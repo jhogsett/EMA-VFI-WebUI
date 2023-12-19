@@ -439,7 +439,7 @@ class VideoRemixerState():
     # this is intended to be called after source frames have been rendered
     def enhance_video_info(self, log_fn, ignore_errors=True):
         """Get the actual dimensions of the PNG frame files"""
-        if self.scene_names:
+        if self.scene_names and not self.video_details.get("source_width", None):
             self.uncompile_scenes()
             first_scene_name = self.scene_names[0]
             first_scene_path = os.path.join(self.scenes_path, first_scene_name)
@@ -1948,8 +1948,12 @@ class VideoRemixerState():
                         state.source_audio = state.source_video
                 except AttributeError:
                     state.source_audio = state.source_video
+
                 # new source video properties
-                state.enhance_video_info(log_fn)
+                # doing this now causes a problem with ported projecs
+                # since the portability handling comes later
+                # state.enhance_video_info(log_fn)
+
                 # new crop offsets
                 try:
                     if state.crop_offset_x == None or state.crop_offset_y == None:
