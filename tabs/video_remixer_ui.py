@@ -175,7 +175,7 @@ class VideoRemixer(TabBase):
                             crop_h = gr.Number(label="Crop Height")
                         with gr.Accordion(label="More Settings", open=False):
                             with gr.Row():
-                                crop_offset_x = gr.Number(label="Crop X Ofset", value=-1, info="Set to -1 for auto-centering")
+                                crop_offset_x = gr.Number(label="Crop X Offset", value=-1, info="Set to -1 for auto-centering")
                                 crop_offset_y = gr.Number(label="Crop Y Offset", value=-1, info="Set to -1 for auto-centering")
 
                 message_box1 = gr.Markdown(value=format_markdown(self.TAB1_DEFAULT_MESSAGE))
