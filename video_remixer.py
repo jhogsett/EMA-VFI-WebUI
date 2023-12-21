@@ -454,11 +454,11 @@ class VideoRemixerState():
                     if not ignore_errors:
                         raise error
                 return
-        message = f"Error: no frame PNG files found in {self.scenes_path}"
-        if ignore_errors:
-            log_fn(message)
-        else:
-            raise ValueError(message)
+            message = f"no frame PNG files found in {first_scene_path}"
+            if ignore_errors:
+                log_fn(message)
+            else:
+                raise ValueError(message)
 
     def scenes_present(self):
         self.uncompile_scenes()
