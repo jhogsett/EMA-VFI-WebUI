@@ -6,11 +6,12 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.file_utils import create_directory, get_files, split_filepath
+from webui_utils.file_utils import create_directory, get_files, split_filepath, is_safe_path
 from webui_utils.auto_increment import AutoIncrementDirectory
 from webui_utils.video_utils import GIFtoPNG, PNGtoMP4
-from webui_utils.simple_utils import is_power_of_two
+from webui_utils.simple_utils import is_power_of_two, format_markdown
 from webui_tips import WebuiTips
+from webui_utils.mtqdm import Mtqdm
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
 from interpolation_target import TargetInterpolate
@@ -28,6 +29,9 @@ class GIFtoMP4(TabBase):
                     engine : InterpolateEngine,
                     log_fn : Callable):
         TabBase.__init__(self, config, engine, log_fn)
+
+    DEFAULT_MESSAGE_SINGLE = "Click Convert to: Create a MP4 video for the specified GIF/video"
+    DEFAULT_MESSAGE_BATCH = "Click Convert Batch to: Create MP4 videos for GIF files/videos at the input path"
 
     def render_tab(self):
         """Render tab into UI"""
@@ -63,6 +67,7 @@ class GIFtoMP4(TabBase):
                         input_path_text = gr.Text(max_lines=1,
                             label="GIF File (MP4 and others work too)",
                         placeholder="Path on this server to the GIF or MP4 file to be converted")
+                        message_box_single = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_SINGLE))
                         gr.Markdown("*Progress can be tracked in the console*")
                         convert_button = gr.Button("Convert " + SimpleIcons.SLOW_SYMBOL,
                                                    variant="primary")
@@ -70,38 +75,94 @@ class GIFtoMP4(TabBase):
                         input_path_text_batch = gr.Text(max_lines=1,
                             label="Path to GIF Files (MP4 and others work too)",
                 placeholder="Path on this server to the set of GIF or MP4 files to be converted")
+                        message_box_batch = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_BATCH))
                         gr.Markdown("*Progress can be tracked in the console*")
                         convert_button_batch = gr.Button("Convert Batch " + SimpleIcons.SLOW_SYMBOL,
                                                          variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.gif_to_mp4.render()
-        convert_button.click(self.convert, inputs=[input_path_text, output_path_text,
-            upscale_input, inflation_input, order_input, input_frame_rate, quality_slider])
-        convert_button_batch.click(self.convert_batch, inputs=[input_path_text_batch,
-            output_path_text, upscale_input, inflation_input, order_input, input_frame_rate,
-            quality_slider])
 
-    def convert(self, *args):
+        convert_button.click(self.convert,
+                             inputs=[input_path_text, output_path_text,upscale_input,
+                                inflation_input, order_input, input_frame_rate, quality_slider],
+                            outputs=message_box_single)
+
+        convert_button_batch.click(self.convert_batch,
+                                   inputs=[input_path_text_batch, output_path_text,
+                                        upscale_input, inflation_input, order_input,
+                                        input_frame_rate, quality_slider],
+                                    outputs=message_box_batch)
+
+    def convert(self,
+                input_path : str,
+                output_path : str,
+                upscaling : float,
+                inflation : float,
+                order : str,
+                frame_rate : float,
+                quality : int):
         """Convert button handler"""
-        self._convert(*args)
+        if not input_path:
+            return format_markdown("Please enter an input path to begin", "warning")
+        if not os.path.exists(input_path):
+            return format_markdown(f"The input path {input_path} was not found", "error")
+        if not is_safe_path(input_path):
+            return format_markdown(f"The input path {input_path} is not valid", "error")
+        if output_path and not is_safe_path(output_path):
+            return format_markdown(f"The output path {output_path} is not valid", "error")
+
+        with Mtqdm().open_bar(total=1, desc="Converting") as bar:
+            try:
+                created_file = self._convert(
+                    input_path, output_path, upscaling, inflation, order, frame_rate, quality)
+            except Exception as error:
+                return format_markdown(f"Error: {error}")
+            Mtqdm().update_bar(bar)
+
+        return format_markdown(f"The video {created_file} has been created")
 
     def convert_batch(self,
-                input_filepath : str,
-                output_filepath : str,
+                input_path : str,
+                output_path : str,
                 upscaling : float,
                 inflation : float,
                 order : str,
                 frame_rate : float,
                 quality : int):
         """Convert Batch button handler"""
+        if not input_path:
+            return format_markdown("Please enter an input path to begin", "warning")
+        if not os.path.exists(input_path):
+            return format_markdown(f"The input path {input_path} was not found", "error")
+        if not is_safe_path(input_path):
+            return format_markdown(f"The input path {input_path} is not valid", "error")
+        if output_path and not is_safe_path(output_path):
+            return format_markdown(f"The output path {output_path} is not valid", "error")
 
         file_types = ",".join(self.config.gif_to_mp4_settings["file_types"])
-        self.log(f"beginning GIF-to-MP4 batch processing at {input_filepath}")
-        file_list = get_files(input_filepath, file_types)
+        self.log(f"beginning GIF-to-MP4 batch processing at {input_path}")
+        file_list = get_files(input_path, file_types)
         self.log(f"GIF-to-MP4 batch processing found {len(file_list)} files")
-        for filepath in file_list:
-            self._convert(filepath, output_filepath, upscaling, inflation, order, frame_rate,
-                          quality)
+
+        num_files = len(file_list)
+        if num_files == 0:
+            return format_markdown("No processable files at the input path", "warning")
+
+        errors = []
+        with Mtqdm().open_bar(total=len(file_list), desc="Converting") as bar:
+            for filepath in file_list:
+                try:
+                    self._convert(filepath, output_path, upscaling, inflation, order, frame_rate,
+                                quality)
+                except Exception as error:
+                    errors.append(str(error))
+                Mtqdm().update_bar(bar)
+
+        if errors:
+            message = "\r\n".join(errors)
+            return format_markdown(f"Errors during processing:\r\n{message}", "error")
+
+        return format_markdown(f"Videos have been created at {output_path or input_path}")
 
     def _convert(self,
                 input_filepath : str,
@@ -112,41 +173,41 @@ class GIFtoMP4(TabBase):
                 frame_rate : float,
                 quality : int):
         """Convert base handler"""
-        if input_filepath:
-            working_path, run_index = AutoIncrementDirectory(
-                self.config.directories["output_gif_to_mp4"]).next_directory("run")
-            precision = self.config.gif_to_mp4_settings["resampling_precision"]
-            size_first = True if order[0] == "S" else False
+        working_path, _ = AutoIncrementDirectory(
+            self.config.directories["output_gif_to_mp4"]).next_directory("run")
+        precision = self.config.gif_to_mp4_settings["resampling_precision"]
+        size_first = True if order[0] == "S" else False
 
-            frames_path = os.path.join(working_path, "1-gif_to_png")
-            create_directory(frames_path)
-            self.convert_gif_to_png_frames(input_filepath, frames_path)
+        frames_path = os.path.join(working_path, "1-gif_to_png")
+        create_directory(frames_path)
+        self.convert_gif_to_png_frames(input_filepath, frames_path)
 
-            if size_first:
-                upscaled_path = os.path.join(working_path, "2-png_to_upscaled")
-                create_directory(upscaled_path)
-                self.upscale_png_frames_to_path(frames_path, upscaled_path, upscaling)
+        if size_first:
+            upscaled_path = os.path.join(working_path, "2-png_to_upscaled")
+            create_directory(upscaled_path)
+            self.upscale_png_frames_to_path(frames_path, upscaled_path, upscaling)
 
-                inflated_path = os.path.join(working_path, "3-upscaled_to_inflated")
-                create_directory(inflated_path)
-                self.inflate_png_frames_to_path(upscaled_path, inflated_path, inflation, precision)
-                frames_path = inflated_path
-            else:
-                inflated_path = os.path.join(working_path, "2-png_to_inflated")
-                create_directory(inflated_path)
-                self.inflate_png_frames_to_path(frames_path, inflated_path, inflation, precision)
+            inflated_path = os.path.join(working_path, "3-upscaled_to_inflated")
+            create_directory(inflated_path)
+            self.inflate_png_frames_to_path(upscaled_path, inflated_path, inflation, precision)
+            frames_path = inflated_path
+        else:
+            inflated_path = os.path.join(working_path, "2-png_to_inflated")
+            create_directory(inflated_path)
+            self.inflate_png_frames_to_path(frames_path, inflated_path, inflation, precision)
 
-                upscaled_path = os.path.join(working_path, "3-inflated_to_upscaled")
-                create_directory(upscaled_path)
-                self.upscale_png_frames_to_path(inflated_path, upscaled_path, upscaling)
-                frames_path = upscaled_path
+            upscaled_path = os.path.join(working_path, "3-inflated_to_upscaled")
+            create_directory(upscaled_path)
+            self.upscale_png_frames_to_path(inflated_path, upscaled_path, upscaling)
+            frames_path = upscaled_path
 
-            if not output_filepath:
-                path, filename, _ = split_filepath(input_filepath)
-                filename = f"{filename}-up{upscaling}-in{inflation}.mp4"
-                output_filepath = os.path.join(path, filename)
+        if not output_filepath:
+            path, filename, _ = split_filepath(input_filepath)
+            filename = f"{filename}-up{upscaling}-in{inflation}.mp4"
+            output_filepath = os.path.join(path, filename)
 
-            self.convert_png_frames_to_mp4(frames_path, output_filepath, frame_rate, quality)
+        self.convert_png_frames_to_mp4(frames_path, output_filepath, frame_rate, quality)
+        return output_filepath
 
     def convert_gif_to_png_frames(self, gif_path : str, png_path : str):
         """Use GIFtoPNG to convert to a PNG sequence"""
