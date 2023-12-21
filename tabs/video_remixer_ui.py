@@ -2434,7 +2434,15 @@ class VideoRemixer(TabBase):
         kept_scenes = self.state.kept_scenes()
         if len(kept_scenes) < 1:
             return gr.update(value=format_markdown("No kept scenes were found", "warning"))
+
         self.state.uncompile_scenes()
+
+        # the native size of the on-disk PNG frames is needed
+        # older project.yaml files won't have this data
+        try:
+            self.state.enhance_video_info(self.log, ignore_errors=False)
+        except ValueError as error:
+            return gr.update(value=format_markdown(f"Error: {error}", "error"))
 
         working_path = os.path.join(self.state.project_path, self.CLEANSE_SCENES_PATH)
         if os.path.exists(working_path):
@@ -2451,13 +2459,6 @@ class VideoRemixer(TabBase):
         create_directory(upscale_path)
         self.log(f"creating downsample directory {working_path}")
         create_directory(downsample_path)
-
-        # the native size of the on-disk PNG frames is needed
-        # older project.yaml files won't have this data
-        try:
-            self.state.enhance_video_info(self.log, ignore_errors=False)
-        except ValueError as error:
-            return gr.update(value=format_markdown(f"Error: {error}", "error"))
 
         content_width = self.state.video_details["source_width"]
         content_height = self.state.video_details["source_height"]
