@@ -8,7 +8,7 @@ from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.file_utils import create_directory, get_files, split_filepath, is_safe_path
 from webui_utils.auto_increment import AutoIncrementDirectory
-from webui_utils.video_utils import GIFtoPNG, PNGtoMP4
+from webui_utils.video_utils import GIFtoPNG, PNGtoMP4, get_essential_video_details, combine_videos
 from webui_utils.simple_utils import is_power_of_two, format_markdown
 from webui_tips import WebuiTips
 from webui_utils.mtqdm import Mtqdm
@@ -119,17 +119,19 @@ class GIFtoMP4(TabBase):
         if output_path and not is_safe_path(output_path):
             return format_markdown(f"The output path {output_path} is not valid", "error")
 
+        filename = None
+        if output_path:
+            path, filename, ext = split_filepath(output_path)
+            if ext:
+                # if a filename was specified, use it and adjust the output path
+                output_path = path
+                filename = filename + ext
+            create_directory(output_path)
+
         with Mtqdm().open_bar(total=1, desc="Converting") as bar:
             try:
-                path, filename, ext = split_filepath(output_path)
-                if ext:
-                    filename = filename + ext
-                else:
-                    path = output_path
-                    filename = None
-                create_directory(path)
                 created_file = self._convert(input_path,
-                                             path,
+                                             output_path,
                                              filename,
                                              upscaling,
                                              inflation,
@@ -137,7 +139,7 @@ class GIFtoMP4(TabBase):
                                              frame_rate,
                                              quality,
                                              min_duration)
-            except Exception as error:
+            except ValueError as error:
                 return format_markdown(f"Error: {error}", "error")
             finally:
                 Mtqdm().update_bar(bar)
@@ -160,14 +162,15 @@ class GIFtoMP4(TabBase):
             return format_markdown(f"The input path {input_path} was not found", "error")
         if not is_safe_path(input_path):
             return format_markdown(f"The input path {input_path} is not valid", "error")
-        if output_path and not is_safe_path(output_path):
-            return format_markdown(f"The output path {output_path} is not valid", "error")
-
-        _, _, ext = split_filepath(output_path)
-        if ext:
-            return format_markdown("The output path must specify a directory", "warning")
 
         if output_path:
+            if not is_safe_path(output_path):
+                return format_markdown(f"The output path {output_path} is not valid", "error")
+
+            _, _, ext = split_filepath(output_path)
+            if ext:
+                return format_markdown("The output path must specify a directory", "warning")
+
             create_directory(output_path)
 
         file_types = ",".join(self.config.gif_to_mp4_settings["file_types"])
@@ -253,6 +256,26 @@ class GIFtoMP4(TabBase):
         output_filepath = os.path.join(output_path, output_filename)
 
         self.convert_png_frames_to_mp4(frames_path, output_filepath, frame_rate, quality)
+
+        if min_duration > 0:
+            video_details = get_essential_video_details(output_filepath)
+            duration = video_details["duration_float"]
+            self.log(f"converted video duration is {duration} seconds")
+            if duration < min_duration:
+                self.log(f"looping video to meet minimum duration of {min_duration} seconds")
+
+                loop_filepath = os.path.join(output_path, "LOOP-" + output_filename)
+                self.log(f"loop_filepath is {loop_filepath}")
+                os.replace(output_filepath, loop_filepath)
+
+                loop_times = math.ceil(min_duration / duration)
+                self.log(f"looping {loop_times} times")
+
+                loop_list = [loop_filepath for n in range(loop_times)]
+                global_options = self.config.ffmpeg_settings["global_options"]
+                combine_videos(loop_list, output_filepath, global_options=global_options)
+                os.remove(loop_filepath)
+
         return output_filepath
 
     def convert_gif_to_png_frames(self, gif_path : str, png_path : str):
