@@ -6,7 +6,7 @@ from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import format_markdown
 from webui_utils.file_utils import create_directory, get_files, get_directories, is_safe_path
-from webui_utils.ui_utils import update_splits_info
+# from webui_utils.ui_utils import update_splits_info
 from webui_utils.mtqdm import Mtqdm
 from webui_tips import WebuiTips
 from upscale_series import UpscaleSeries
@@ -47,8 +47,8 @@ class UpscaleFrames(TabBase):
                     output_path_text = gr.Text(max_lines=1, label="Output Path",
                                         placeholder="Where to place the upscaled frames",
                                         info="Leave blank save to Input Path")
-                    gr.Markdown("*Progress can be tracked in the console*")
                     message_box_single = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_SINGLE))
+                    gr.Markdown("*Progress can be tracked in the console*")
                     upscale_button = gr.Button("Upscale Frames " + SimpleIcons.SLOW_SYMBOL,
                                             variant="primary")
                 with gr.Tab(label="Batch Processing"):
@@ -56,8 +56,8 @@ class UpscaleFrames(TabBase):
                                         placeholder="Path on this server to the PNG frame groups")
                     output_path_batch = gr.Text(max_lines=1, label="Output Path",
                                         placeholder="Where to place the upscaled frame groups")
-                    gr.Markdown("*Progress can be tracked in the console*")
                     message_box_batch = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_BATCH))
+                    gr.Markdown("*Progress can be tracked in the console*")
                     upscale_batch = gr.Button("Upscale Batch " + SimpleIcons.SLOW_SYMBOL,
                                             variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -88,7 +88,7 @@ class UpscaleFrames(TabBase):
                 f"The input path {input_path} is not valid", "error"))
         if not is_safe_path(output_path):
             return gr.update(value=format_markdown(
-                f"The input path {output_path} is not valid", "error"))
+                f"The output path {output_path} is not valid", "error"))
 
         group_names = get_directories(input_path)
         if not group_names:

@@ -45,8 +45,8 @@ class VideoInflation(TabBase):
                     output_path_text = gr.Text(max_lines=1, label="Output Path",
                         placeholder="Where to place the generated frames",
                         info="Leave blank to use default path")
-                    gr.Markdown("*Progress can be tracked in the console*")
                     message_box_single = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_SINGLE))
+                    gr.Markdown("*Progress can be tracked in the console*")
                     interpolate_button = gr.Button("Inflate Video " + SimpleIcons.SLOW_SYMBOL,
                         variant="primary")
                 with gr.Tab(label="Batch Processing"):
@@ -56,8 +56,8 @@ class VideoInflation(TabBase):
                     output_path_batch = gr.Text(max_lines=1,
                         placeholder="Where to place the inflated frame groups",
                         label="Output Path")
-                    gr.Markdown("*Progress can be tracked in the console*")
                     message_box_batch = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_BATCH))
+                    gr.Markdown("*Progress can be tracked in the console*")
                     interpolate_batch = gr.Button("Inflate Batch " + SimpleIcons.SLOW_SYMBOL,
                         variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
