@@ -56,6 +56,7 @@ class VideoRemixerState():
         # set on confirming set up options
         self.split_frames = None
         self.project_info2 = None # re-set on re-opening project
+        self.source_frames_invalid = False # ensure source frames are purged on deinterlace change
         self.processed_content_invalid = False # ensure processed content is purged on redo
 
         # set on confirming project setup
@@ -1948,12 +1949,6 @@ class VideoRemixerState():
                         state.source_audio = state.source_video
                 except AttributeError:
                     state.source_audio = state.source_video
-
-                # new source video properties
-                # doing this now causes a problem with ported projecs
-                # since the portability handling comes later
-                # state.enhance_video_info(log_fn)
-
                 # new crop offsets
                 try:
                     if state.crop_offset_x == None or state.crop_offset_y == None:
@@ -1983,6 +1978,9 @@ class VideoRemixerState():
                             state.inflate_slow_option = "No"
                 except AttributeError:
                     state.inflate_slow_option = "No"
+                # new attribute
+                state.source_frames_invalid = False
+
                 return state
 
             except YAMLError as error:

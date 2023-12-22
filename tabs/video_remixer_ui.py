@@ -1249,7 +1249,13 @@ class VideoRemixer(TabBase):
             self.state.crop_h = int(crop_h)
             self.state.crop_offset_x = int(crop_offset_x)
             self.state.crop_offset_y = int(crop_offset_y)
+
+            # if redoing this step to save settings and the deinterlace option changed,
+            # the source frames will need to be rendered again from the source video
+            # if the video is processed again on the next tab
+            self.state.source_frames_invalid = deinterlace != self.state.deinterlace
             self.state.deinterlace = deinterlace
+
             self.state.split_time = split_time
             self.state.project_info2 = self.state.project_settings_report()
             self.state.processed_content_invalid = True
@@ -1322,9 +1328,11 @@ class VideoRemixer(TabBase):
             self.state.reset_at_project_settings()
 
             # split video into raw PNG frames, avoid doing again if redoing setup
+            # unless the source frames were flagged invalid in the previous step
             self.log("splitting source video into PNG frames")
+            prevent_overwrite = not self.state.source_frames_invalid
             ffcmd = self.state.render_source_frames(global_options=global_options,
-                                                    prevent_overwrite=True)
+                                                    prevent_overwrite=prevent_overwrite)
             if not ffcmd:
                 self.log("rendering source frames skipped")
             else:
