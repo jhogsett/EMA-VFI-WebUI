@@ -498,14 +498,17 @@ class VideoRemixer(TabBase):
                                     goto_50_702 = gr.Button(value="Middle", scale=1, min_width=90, size="sm")
                                     goto_100_702 = gr.Button(value="Last >", scale=1, min_width=90, size="sm")
                                     next_minute_702 = gr.Button(value="Minute >", scale=1, min_width=90, size="sm")
-                                with gr.Row(equal_height=True):
-                                    go_to_s_702 = gr.Number(value=0, show_label=False,
-                                                            info="Second", minimum=0,
-                                                            precision=0, container=False,
-                                                            min_width=90, scale=0)
-                                    go_to_s_button702 = gr.Button(value="Go",
-                                                                    variant="secondary",
-                                                                    size="sm", min_width=90, scale=0)
+                                with gr.Row():
+                                    with gr.Column(scale=1):
+                                        with gr.Row(equal_height=True, variant="panel", elem_id="highlightbutton"):
+                                            go_to_s_button702 = gr.Button(value="Go to Second",
+                                                                            variant="secondary",
+                                                                            size="sm", min_width=120)
+                                            go_to_s_702 = gr.Number(value=0, show_label=False,
+                                                                    info=None, minimum=0,
+                                                                    precision=0, container=False,
+                                                                    min_width=120)
+                                    gr.Column(scale=7)
                             with gr.Column():
                                 preview_image702 = gr.Image(type="filepath",
                         label="Split Frame Preview", tool=None, height=max_thumb_size)
@@ -1008,9 +1011,14 @@ class VideoRemixer(TabBase):
                                 inputs=[scene_id_702, split_percent_702, go_to_s_702],
                                 outputs=split_percent_702, show_progress=False)
 
-        split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
-                              outputs=[tabs_video_remixer, message_box702, scene_index, scene_name,
-                                       scene_image, scene_state, scene_info, set_scene_label])
+        go_to_s_702.change(self.go_to_s_button702,
+                                inputs=[scene_id_702, split_percent_702, go_to_s_702],
+                                outputs=split_percent_702, show_progress=False)
+
+        # this makes the UI a bit wacky to use if typing
+        # split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
+        #                       outputs=[tabs_video_remixer, message_box702, scene_index, scene_name,
+        #                                scene_image, scene_state, scene_info, set_scene_label])
 
         export_project_703.click(self.export_project_703,
                                  inputs=[export_path_703, project_name_703],
