@@ -498,6 +498,14 @@ class VideoRemixer(TabBase):
                                     goto_50_702 = gr.Button(value="Middle", scale=1, min_width=90, size="sm")
                                     goto_100_702 = gr.Button(value="Last >", scale=1, min_width=90, size="sm")
                                     next_minute_702 = gr.Button(value="Minute >", scale=1, min_width=90, size="sm")
+                                with gr.Row(equal_height=True):
+                                    go_to_s_702 = gr.Number(value=0, show_label=False,
+                                                            info="Second", minimum=0,
+                                                            precision=0, container=False,
+                                                            min_width=90, scale=0)
+                                    go_to_s_button702 = gr.Button(value="Go",
+                                                                    variant="secondary",
+                                                                    size="sm", min_width=90, scale=0)
                             with gr.Column():
                                 preview_image702 = gr.Image(type="filepath",
                         label="Split Frame Preview", tool=None, height=max_thumb_size)
@@ -505,7 +513,7 @@ class VideoRemixer(TabBase):
                             message_box702 = gr.Markdown(format_markdown(
         "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
                         split_button702 = gr.Button(
-                            "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
+                            "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="primary")
 
                     # MERGE SCENES
                     with gr.Tab(SimpleIcons.PACKAGE + " Merge Scenes",
@@ -558,7 +566,7 @@ class VideoRemixer(TabBase):
                                 format_markdown(
                     "Click Choose Scene Range to: Set the Scene Range to the specified state"))
                         choose_button701 = gr.Button("Choose Scene Range",
-                                                variant="stop", scale=0)
+                                                variant="primary")
 
                     # DROP PROCESSED SCENE
                     with gr.Tab(SimpleIcons.BROKEN_HEART + " Drop Processed Scene",
@@ -994,6 +1002,10 @@ class VideoRemixer(TabBase):
                                 outputs=split_percent_702, show_progress=False)
 
         next_second_702.click(self.next_second_702, inputs=[scene_id_702, split_percent_702],
+                                outputs=split_percent_702, show_progress=False)
+
+        go_to_s_button702.click(self.go_to_s_button702,
+                                inputs=[scene_id_702, split_percent_702, go_to_s_702],
                                 outputs=split_percent_702, show_progress=False)
 
         split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
@@ -2291,7 +2303,14 @@ class VideoRemixer(TabBase):
         _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index)
         return display_frame, scene_info
 
-    def compute_advance_702(self, scene_index, split_percent, by_next : bool, by_minute=False, by_second=False):
+    def compute_advance_702(self,
+                            scene_index,
+                            split_percent,
+                            by_next : bool,
+                            by_minute=False,
+                            by_second=False,
+                            by_exact_second=False,
+                            exact_second=0):
         if not isinstance(scene_index, (int, float)):
             return self.empty_args(2)
 
@@ -2301,7 +2320,10 @@ class VideoRemixer(TabBase):
         num_frames = (last_frame - first_frame) + 1
         split_percent_frame = num_frames * split_percent / 100.0
 
-        if by_minute:
+        if by_exact_second:
+            frames_1s = self.state.project_fps
+            new_split_frame = frames_1s * exact_second
+        elif by_minute:
             frames_60s = self.state.project_fps * 60
             new_split_frame = \
                 split_percent_frame + frames_60s if by_next else split_percent_frame - frames_60s
@@ -2344,6 +2366,10 @@ class VideoRemixer(TabBase):
 
     def next_minute_702(self, scene_index, split_percent):
         return self.compute_advance_702(scene_index, split_percent, True, by_minute=True)
+
+    def go_to_s_button702(self, scene_index, split_percent, go_to_second):
+        return self.compute_advance_702(scene_index, split_percent, False, by_exact_second=True,
+                                        exact_second=go_to_second)
 
     def export_project_703(self, new_project_path : str, new_project_name : str):
         empty_args = [gr.update(visible=False), gr.update(visible=False)]
