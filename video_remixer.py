@@ -1260,8 +1260,12 @@ class VideoRemixerState():
         model_name = realesrgan_settings["model_name"]
         gpu_ids = realesrgan_settings["gpu_ids"]
         fp32 = realesrgan_settings["fp32"]
-        use_tiling = remixer_settings["use_tiling"]
-        if use_tiling:
+
+        # determine if cropped image size is above memory threshold requiring tiling
+        use_tiling_over = remixer_settings["use_tiling_over"]
+        size = self.crop_w * self.crop_h
+
+        if size > use_tiling_over:
             tiling = realesrgan_settings["tiling"]
             tile_pad = realesrgan_settings["tile_pad"]
         else:

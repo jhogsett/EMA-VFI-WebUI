@@ -130,7 +130,7 @@ remixer_settings:
   scale_type_down: "area"
   source_audio_crf: 28
   thumb_scale: 0.5
-  use_tiling: False
+  use_tiling_over: 921600
 restoration_settings:
   create_gif: True
   create_zip: True
