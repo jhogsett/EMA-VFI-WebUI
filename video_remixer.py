@@ -718,6 +718,10 @@ class VideoRemixerState():
         if scene_name in self.scene_labels:
             del self.scene_labels[scene_name]
 
+    def clear_all_scene_labels(self):
+        for scene_index in range(len(self.scene_names)):
+            self.clear_scene_label(scene_index)
+
     def keep_all_scenes(self):
         self.scene_states = {scene_name : "Keep" for scene_name in self.scene_names}
 
