@@ -1654,6 +1654,9 @@ class VideoRemixerState():
                             if endpoint != -1:
                                 label = label[endpoint + 1:]
 
+                        # trim whitespace
+                        label = label.strip()
+
                         # FFmpeg needs the colons escaped
                         label = label.replace(":", "\:")
                         if draw_box:
