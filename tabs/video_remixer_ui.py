@@ -258,6 +258,9 @@ class VideoRemixer(TabBase):
                                 with gr.Row():
                                     set_scene_label = gr.Textbox(placeholder="Scene Label", max_lines=1, show_label=False, min_width=80, container=False)
                                     save_scene_label = gr.Button(value="Set", size="sm", scale=0, min_width=80)
+                                with gr.Row():
+                                    auto_label_scenes = gr.Button(value="Auto Label Scenes", size="sm", min_width=80)
+                                    reset_scene_labels = gr.Button(value="Reset Scene Labels", size="sm", min_width=80)
                             with gr.Accordion(label="Danger Zone", open=False):
                                 with gr.Row():
                                     keep_all_button = gr.Button(value="Keep All Scenes",
@@ -898,6 +901,13 @@ class VideoRemixer(TabBase):
         save_scene_label.click(self.save_scene_label, inputs=[scene_index, set_scene_label],
                             outputs=[scene_index, scene_name, scene_image, scene_state,
                                      scene_info, set_scene_label])
+
+        auto_label_scenes.click(self.auto_label_scenes,
+                                outputs=[scene_index, scene_name, scene_image, scene_state,
+                                         scene_info, set_scene_label])
+        reset_scene_labels.click(self.reset_scene_labels,
+                                outputs=[scene_index, scene_name, scene_image, scene_state,
+                                        scene_info, set_scene_label])
 
         keep_all_button.click(self.keep_all_scenes, show_progress=True,
                             inputs=[scene_index, scene_name],
@@ -1541,6 +1551,19 @@ class VideoRemixer(TabBase):
             self.state.clear_scene_label(scene_index)
             self.log("saving project after clearing scene label")
             self.state.save()
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def auto_label_scenes(self):
+        num_scenes = len(self.state.scene_names)
+        num_width = len(str(num_scenes))
+        for scene_index in range(len(self.state.scene_names)):
+            label = str(scene_index).zfill(num_width)
+            formatted_label = f"[{label}]"
+            self.state.set_scene_label(scene_index, formatted_label)
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def reset_scene_labels(self):
+        self.state.clear_all_scene_labels()
         return self.scene_chooser_details(self.state.current_scene)
 
     def keep_all_scenes(self, scene_index, scene_name):

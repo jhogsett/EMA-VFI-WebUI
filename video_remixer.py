@@ -718,6 +718,10 @@ class VideoRemixerState():
         if scene_name in self.scene_labels:
             del self.scene_labels[scene_name]
 
+    def clear_all_scene_labels(self):
+        for scene_index in range(len(self.scene_names)):
+            self.clear_scene_label(scene_index)
+
     def keep_all_scenes(self):
         self.scene_states = {scene_name : "Keep" for scene_name in self.scene_names}
 
@@ -1642,7 +1646,16 @@ class VideoRemixerState():
                 use_custom_video_options = custom_video_options
                 if use_custom_video_options.find("<LABEL>") != -1:
                     try:
-                        label = labels[index]
+                        label : str = labels[index]
+
+                        # remove the sorting mark if present
+                        if label.startswith("["):
+                            endpoint = label.find("]")
+                            if endpoint != -1:
+                                label = label[endpoint + 1:]
+
+                        # trim whitespace
+                        label = label.strip()
 
                         # FFmpeg needs the colons escaped
                         label = label.replace(":", "\:")
@@ -1701,7 +1714,7 @@ class VideoRemixerState():
     def assembly_list(self, clip_filepaths : list) -> list:
         """Get list clips to assemble in order.
         'clip_filepaths' is expected to be full path and filename to the remix clips, corresponding to the list of kept scenes.
-        If there are labeled scenes, they are arranged first in sorted order, followed by non-nolabeled scenes."""
+        If there are labeled scenes, they are arranged first in sorted order, followed by non-labeled scenes."""
         if not self.scene_labels:
             return clip_filepaths
 
