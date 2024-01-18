@@ -1653,8 +1653,8 @@ class VideoRemixerState():
                         label : str = labels[index]
 
                         # remove the sorting mark if present
-                        if label.startswith("["):
-                            endpoint = label.find("]")
+                        if label.startswith("("):
+                            endpoint = label.find(")")
                             if endpoint != -1:
                                 label = label[endpoint + 1:]
 

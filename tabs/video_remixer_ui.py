@@ -1558,7 +1558,7 @@ class VideoRemixer(TabBase):
         num_width = len(str(num_scenes))
         for scene_index in range(len(self.state.scene_names)):
             label = str(scene_index).zfill(num_width)
-            formatted_label = f"[{label}]"
+            formatted_label = f"({label})"
             self.state.set_scene_label(scene_index, formatted_label)
         return self.scene_chooser_details(self.state.current_scene)
 
