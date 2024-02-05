@@ -2002,6 +2002,12 @@ class VideoRemixerState():
                     state.inflate_slow_option = "No"
                 # new attribute
                 state.source_frames_invalid = False
+                # new resynthesis option
+                try:
+                    if not state.resynth_option:
+                        state.resynth_option = "Scrub"
+                except AttributeError:
+                        state.resynth_option = "Scrub"
 
                 return state
 
