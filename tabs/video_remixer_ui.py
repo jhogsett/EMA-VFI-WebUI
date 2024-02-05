@@ -308,7 +308,7 @@ class VideoRemixer(TabBase):
                 with gr.Row():
                     resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True, scale=1)
                     resynth_option = gr.Radio(label="Resynthesis Type", value="Clean", scale=6,
-                                        choices=["Clean", "Scrub", "Replace"])
+                                        choices=["Clean", "Scrub", "Replace"], info="Clean-Fastest, Scrub-Best Overall, Replace-Deepest")
                     with gr.Column(variant="compact", scale=5):
                         gr.Markdown(format_markdown(
                             "Recreate Frames using Interpolation of adjacent frames\r\n" +
@@ -319,7 +319,7 @@ class VideoRemixer(TabBase):
                 with gr.Row():
                     inflate = gr.Checkbox(label="Inflate New Frames",value=True, scale=1)
                     inflate_by_option = gr.Radio(label="Inflate By", value="2X", scale=3,
-                                                choices=["2X", "4X", "8X"])
+                                                choices=["2X", "4X", "8X"], info="Adds 1, 3 or 7 Between Frames")
                     inflate_slow_option = gr.Radio(label="Slow Motion", value="No",
                                                    choices=["No", "Audio", "Silent"],
                                                    scale=3, info="Audio: Pitch and FPS adjusted, Silent: No FPS adjustment")
@@ -333,7 +333,7 @@ class VideoRemixer(TabBase):
                 with gr.Row():
                     upscale = gr.Checkbox(label="Upscale Frames", value=True, scale=1)
                     upscale_option = gr.Radio(label="Upscale By", value="2X", scale=6,
-                                                choices=["1X", "2X", "3X", "4X"])
+                                                choices=["1X", "2X", "3X", "4X"], info="Option '1X' Cleans Frames Without Enlarging")
                     with gr.Column(variant="compact", scale=5):
                         gr.Markdown(format_markdown(
                             "Clean and Enlarge frames using Real-ESRGAN 4x+ upscaler\r\n" +
