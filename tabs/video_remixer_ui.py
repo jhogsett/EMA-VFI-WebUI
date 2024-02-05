@@ -1023,10 +1023,9 @@ class VideoRemixer(TabBase):
                                 inputs=[scene_id_702, split_percent_702, go_to_s_702],
                                 outputs=split_percent_702, show_progress=False)
 
-        # this makes the UI a bit wacky to use if typing
-        # go_to_s_702.change(self.go_to_s_button702,
-        #                         inputs=[scene_id_702, split_percent_702, go_to_s_702],
-        #                         outputs=split_percent_702, show_progress=False)
+        go_to_s_702.submit(self.go_to_s_button702,
+                                inputs=[scene_id_702, split_percent_702, go_to_s_702],
+                                outputs=split_percent_702, show_progress=False)
 
         split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
                               outputs=[tabs_video_remixer, message_box702, scene_index, scene_name,
