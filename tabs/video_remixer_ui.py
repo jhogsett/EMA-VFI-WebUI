@@ -168,15 +168,16 @@ class VideoRemixer(TabBase):
                             deinterlace = gr.Checkbox(
                                 label="Deinterlace Source Video")
                         with gr.Row():
-                            resize_w = gr.Number(label="Resize Width")
-                            resize_h = gr.Number(label="Resize Height")
+                            resize_w = gr.Number(1920, label="Resize Width", precision=0)
+                            resize_h = gr.Number(1080, label="Resize Height", precision=0)
                         with gr.Row():
-                            crop_w = gr.Number(label="Crop Width")
-                            crop_h = gr.Number(label="Crop Height")
-                        with gr.Accordion(label="More Settings", open=False):
-                            with gr.Row():
-                                crop_offset_x = gr.Number(label="Crop X Offset", value=-1, info="Set to -1 for auto-centering")
-                                crop_offset_y = gr.Number(label="Crop Y Offset", value=-1, info="Set to -1 for auto-centering")
+                            crop_w = gr.Number(1920, label="Crop Width", precision=0)
+                            crop_h = gr.Number(1080, label="Crop Height", precision=0)
+                        with gr.Accordion(label="More Options", open=False):
+                            reuse_prev_settings = gr.Button(value="Reuse Last-Used Settings", size="sm", scale=0)
+                            with gr.Row(variant="compact"):
+                                crop_offset_x = gr.Number(label="Crop X Offset", value=-1, info="-1 to auto-center", container=False)
+                                crop_offset_y = gr.Number(label="Crop Y Offset", value=-1, info="-1 to auto-center", container=False)
 
                 message_box1 = gr.Markdown(value=format_markdown(self.TAB1_DEFAULT_MESSAGE))
                 with gr.Row():
@@ -308,7 +309,7 @@ class VideoRemixer(TabBase):
                 with gr.Row():
                     resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True, scale=1)
                     resynth_option = gr.Radio(label="Resynthesis Type", value="Clean", scale=6,
-                                        choices=["Clean", "Scrub", "Replace"])
+                                        choices=["Clean", "Scrub", "Replace"], info="Clean-Fastest, Scrub-Best Overall, Replace-Deepest")
                     with gr.Column(variant="compact", scale=5):
                         gr.Markdown(format_markdown(
                             "Recreate Frames using Interpolation of adjacent frames\r\n" +
@@ -319,7 +320,7 @@ class VideoRemixer(TabBase):
                 with gr.Row():
                     inflate = gr.Checkbox(label="Inflate New Frames",value=True, scale=1)
                     inflate_by_option = gr.Radio(label="Inflate By", value="2X", scale=3,
-                                                choices=["2X", "4X", "8X"])
+                                                choices=["2X", "4X", "8X"], info="Adds 1, 3 or 7 Between Frames")
                     inflate_slow_option = gr.Radio(label="Slow Motion", value="No",
                                                    choices=["No", "Audio", "Silent"],
                                                    scale=3, info="Audio: Pitch and FPS adjusted, Silent: No FPS adjustment")
@@ -333,7 +334,7 @@ class VideoRemixer(TabBase):
                 with gr.Row():
                     upscale = gr.Checkbox(label="Upscale Frames", value=True, scale=1)
                     upscale_option = gr.Radio(label="Upscale By", value="2X", scale=6,
-                                                choices=["1X", "2X", "3X", "4X"])
+                                                choices=["1X", "2X", "3X", "4X"], info="Option '1X' Cleans Frames Without Enlarging")
                     with gr.Column(variant="compact", scale=5):
                         gr.Markdown(format_markdown(
                             "Clean and Enlarge frames using Real-ESRGAN 4x+ upscaler\r\n" +
@@ -520,8 +521,10 @@ class VideoRemixer(TabBase):
                         with gr.Row():
                             message_box702 = gr.Markdown(format_markdown(
         "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
-                        split_button702 = gr.Button(
-                            "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="primary")
+                        with gr.Row():
+                            back_button702 = gr.Button(value="< Back to Scene Chooser", variant="secondary", scale=1)
+                            split_button702 = gr.Button(
+                                "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="primary", scale=7)
 
                     # MERGE SCENES
                     with gr.Tab(SimpleIcons.PACKAGE + " Merge Scenes",
@@ -621,7 +624,8 @@ class VideoRemixer(TabBase):
                         gr.Markdown("**_Save Kept Scenes as a New Project_**")
                         with gr.Row():
                             export_path_703 = gr.Textbox(label="Exported Project Root Directory", max_lines=1,
-                                    info="Enter a path on this server for the root directory of the new project")
+                                    info="Enter a path on this server for the root directory of the new project",
+                                    value=lambda : Session().get("last-video-remixer-export-dir"))
                             project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
                                     info="Enter a name for the new project")
                         with gr.Row():
@@ -710,26 +714,26 @@ class VideoRemixer(TabBase):
                                         gr.Markdown(
             "Delete Kept Scene files used when compiling scenes after making scene choices.")
                                 with gr.Row():
-                                    delete_resized_712 = gr.Checkbox(
+                                    delete_resized_712 = gr.Checkbox(value=True,
                                         label="Remove Resized Frames")
                                     with gr.Column(variant="compact"):
                                         gr.Markdown(
 "Delete Resized PNG frame files used as inputs for processing and creating remix video clips.")
                                 with gr.Row():
-                                    delete_resynth_712 = gr.Checkbox(
+                                    delete_resynth_712 = gr.Checkbox(value=True,
                                         label="Remove Resynthesized Frames")
                                     with gr.Column(variant="compact"):
                                         gr.Markdown(
                                     "Delete Resynthesized PNG frame files used as inputs " +\
                                     "for processing and creating remix video clips.")
                                 with gr.Row():
-                                    delete_inflated_712 = gr.Checkbox(
+                                    delete_inflated_712 = gr.Checkbox(value=True,
                                         label="Remove Inflated Frames")
                                     with gr.Column(variant="compact"):
                                         gr.Markdown(
 "Delete Inflated PNG frame files used as inputs for processing and creating remix video clips.")
                                 with gr.Row():
-                                    delete_upscaled_712 = gr.Checkbox(
+                                    delete_upscaled_712 = gr.Checkbox(value=True,
                                         label="Remove Upscaled Frames")
                                     with gr.Column(variant="compact"):
                                         gr.Markdown(
@@ -830,6 +834,12 @@ class VideoRemixer(TabBase):
                                 project_load_path])
 
         back_button1.click(self.back_button1, outputs=tabs_video_remixer)
+
+        reuse_prev_settings.click(self.reuse_prev_settings,
+                                  outputs=[project_fps, split_type, scene_threshold,
+                                           break_duration, break_ratio, resize_w, resize_h,
+                                           crop_w, crop_h, crop_offset_x, crop_offset_y,
+                                           deinterlace, split_time])
 
         next_button2.click(self.next_button2,
                            inputs=[thumbnail_type, min_frames_per_scene, skip_detection],
@@ -1023,14 +1033,15 @@ class VideoRemixer(TabBase):
                                 inputs=[scene_id_702, split_percent_702, go_to_s_702],
                                 outputs=split_percent_702, show_progress=False)
 
-        # this makes the UI a bit wacky to use if typing
-        # go_to_s_702.change(self.go_to_s_button702,
-        #                         inputs=[scene_id_702, split_percent_702, go_to_s_702],
-        #                         outputs=split_percent_702, show_progress=False)
+        go_to_s_702.submit(self.go_to_s_button702,
+                                inputs=[scene_id_702, split_percent_702, go_to_s_702],
+                                outputs=split_percent_702, show_progress=False)
 
         split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
                               outputs=[tabs_video_remixer, message_box702, scene_index, scene_name,
                                        scene_image, scene_state, scene_info, set_scene_label])
+
+        back_button702.click(self.back_button702, outputs=tabs_video_remixer)
 
         export_project_703.click(self.export_project_703,
                                  inputs=[export_path_703, project_name_703],
@@ -1300,6 +1311,23 @@ class VideoRemixer(TabBase):
 
             Session().set("last-video-remixer-project", project_path)
 
+            # memorize these settings
+            last_settings = {}
+            last_settings["project_fps"] = self.state.project_fps
+            last_settings["split_type"] = self.state.split_type
+            last_settings["scene_threshold"] = self.state.scene_threshold
+            last_settings["break_duration"] = self.state.break_duration
+            last_settings["break_ratio"] = self.state.break_ratio
+            last_settings["resize_w"] = self.state.resize_w
+            last_settings["resize_h"] = self.state.resize_h
+            last_settings["crop_w"] = self.state.crop_w
+            last_settings["crop_h"] = self.state.crop_h
+            last_settings["crop_offset_x"] = self.state.crop_offset_x
+            last_settings["crop_offset_y"] = self.state.crop_offset_y
+            last_settings["deinterlace"] = self.state.deinterlace
+            last_settings["split_time"] = self.state.split_time
+            Session().set("last-video-remixer-settings", last_settings)
+
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                 gr.update(value=format_markdown(self.TAB1_DEFAULT_MESSAGE)), \
                 self.state.project_info2, \
@@ -1313,6 +1341,39 @@ class VideoRemixer(TabBase):
 
     def back_button1(self):
         return gr.update(selected=self.TAB_REMIX_HOME)
+
+    def reuse_prev_settings(self):
+            last_settings = Session().get("last-video-remixer-settings")
+            if last_settings:
+                return \
+                    last_settings["project_fps"], \
+                    last_settings["split_type"], \
+                    last_settings["scene_threshold"], \
+                    last_settings["break_duration"], \
+                    last_settings["break_ratio"], \
+                    last_settings["resize_w"], \
+                    last_settings["resize_h"], \
+                    last_settings["crop_w"], \
+                    last_settings["crop_h"], \
+                    last_settings["crop_offset_x"], \
+                    last_settings["crop_offset_y"], \
+                    last_settings["deinterlace"], \
+                    last_settings["split_time"]
+            else:
+                return \
+                    self.config.remixer_settings["def_project_fps"], \
+                    self.state.UI_SAFETY_DEFAULTS["split_type"], \
+                    self.state.UI_SAFETY_DEFAULTS["scene_threshold"], \
+                    self.state.UI_SAFETY_DEFAULTS["break_duration"], \
+                    self.state.UI_SAFETY_DEFAULTS["break_ratio"], \
+                    self.state.UI_SAFETY_DEFAULTS["resize_w"], \
+                    self.state.UI_SAFETY_DEFAULTS["resize_h"], \
+                    self.state.UI_SAFETY_DEFAULTS["crop_w"], \
+                    self.state.UI_SAFETY_DEFAULTS["crop_h"], \
+                    self.state.UI_SAFETY_DEFAULTS["crop_offsets"], \
+                    self.state.UI_SAFETY_DEFAULTS["crop_offsets"], \
+                    self.state.UI_SAFETY_DEFAULTS["deinterlace"], \
+                    self.state.UI_SAFETY_DEFAULTS["split_time"]
 
     ### SET UP PROJECT EVENT HANDLERS
 
@@ -2309,6 +2370,9 @@ class VideoRemixer(TabBase):
             gr.update(value=format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
 
+    def back_button702(self):
+        return gr.update(selected=self.TAB_CHOOSE_SCENES)
+
     def compute_preview_frame(self, scene_index, split_percent):
         scene_index = int(scene_index)
         num_scenes = len(self.state.scene_names)
@@ -2489,6 +2553,8 @@ class VideoRemixer(TabBase):
             new_state.progress = "choose"
 
             new_state.save()
+
+            Session().set("last-video-remixer-export-dir", new_project_path)
 
             return gr.update(value=format_markdown(f"Kept scenes saved as new project: {full_new_project_path} ")), \
                 gr.update(visible=True, value=full_new_project_path), \

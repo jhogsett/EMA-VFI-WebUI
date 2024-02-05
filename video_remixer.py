@@ -125,7 +125,11 @@ class VideoRemixerState():
         "crop_offsets" : -1,
         "inflate_by_option" : "2X",
         "inflate_slow_option" : "No",
-        "resynth_option" : "Scrub"
+        "resynth_option" : "Scrub",
+        "resize_w" : 1920,
+        "resize_h" : 1080,
+        "crop_w" : 1920,
+        "crop_h" : 1080
     }
 
     # set project settings UI defaults in case the project is reopened
