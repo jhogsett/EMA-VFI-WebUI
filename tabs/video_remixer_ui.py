@@ -621,7 +621,8 @@ class VideoRemixer(TabBase):
                         gr.Markdown("**_Save Kept Scenes as a New Project_**")
                         with gr.Row():
                             export_path_703 = gr.Textbox(label="Exported Project Root Directory", max_lines=1,
-                                    info="Enter a path on this server for the root directory of the new project")
+                                    info="Enter a path on this server for the root directory of the new project",
+                                    value=lambda : Session().get("last-video-remixer-export-dir"))
                             project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
                                     info="Enter a name for the new project")
                         with gr.Row():
@@ -2488,6 +2489,8 @@ class VideoRemixer(TabBase):
             new_state.progress = "choose"
 
             new_state.save()
+
+            Session().set("last-video-remixer-export-dir", new_project_path)
 
             return gr.update(value=format_markdown(f"Kept scenes saved as new project: {full_new_project_path} ")), \
                 gr.update(visible=True, value=full_new_project_path), \
