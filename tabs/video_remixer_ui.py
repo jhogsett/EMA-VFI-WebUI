@@ -306,7 +306,9 @@ class VideoRemixer(TabBase):
                             color="more", bold_heading_only=True))
 
                 with gr.Row():
-                    resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True, scale=7)
+                    resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True, scale=1)
+                    resynth_option = gr.Radio(label="Resynthesis Type", value="Clean", scale=6,
+                                        choices=["Clean", "Scrub", "Replace"])
                     with gr.Column(variant="compact", scale=5):
                         gr.Markdown(format_markdown(
                             "Recreate Frames using Interpolation of adjacent frames\r\n" +
@@ -817,7 +819,7 @@ class VideoRemixer(TabBase):
                                 crop_offset_x, crop_offset_y, project_info2, thumbnail_type,
                                 min_frames_per_scene, scene_index, scene_name, scene_image,
                                 scene_state, scene_info, set_scene_label, project_info4, resize,
-                                resynthesize, inflate, inflate_by_option, inflate_slow_option,
+                                resynthesize, resynth_option, inflate, inflate_by_option, inflate_slow_option,
                                 upscale, upscale_option, summary_info6, output_filepath])
 
         next_button1.click(self.next_button1,
@@ -939,7 +941,7 @@ class VideoRemixer(TabBase):
 
         next_button5.click(self.next_button5,
                     inputs=[resynthesize, inflate, resize, upscale, upscale_option,
-                            inflate_by_option, inflate_slow_option],
+                            inflate_by_option, inflate_slow_option, resynth_option],
                     outputs=[tabs_video_remixer, message_box5, summary_info6, output_filepath,
                              output_filepath_custom, output_filepath_marked, output_filepath_labeled,
                              message_box60, message_box61, message_box62, message_box63])
@@ -1223,6 +1225,7 @@ class VideoRemixer(TabBase):
             self.state.tryattr("project_info4"), \
             self.state.tryattr("resize", self.state.UI_SAFETY_DEFAULTS["resize"]), \
             self.state.tryattr("resynthesize", self.state.UI_SAFETY_DEFAULTS["resynthesize"]), \
+            self.state.tryattr("resynth_option", self.state.UI_SAFETY_DEFAULTS["resynth_option"]), \
             self.state.tryattr("inflate", self.state.UI_SAFETY_DEFAULTS["inflate"]), \
             self.state.tryattr("inflate_by_option", self.state.UI_SAFETY_DEFAULTS["inflate_by_option"]), \
             self.state.tryattr("inflate_slow_option", self.state.UI_SAFETY_DEFAULTS["inflate_slow_option"]), \
@@ -1649,7 +1652,8 @@ class VideoRemixer(TabBase):
                      upscale,
                      upscale_option,
                      inflate_by_option,
-                     inflate_slow_option):
+                     inflate_slow_option,
+                     resynth_option):
         noop_args = self.noop_args(9)
         if not self.state.project_path or not self.state.scenes_path:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
@@ -1658,7 +1662,13 @@ class VideoRemixer(TabBase):
                    *noop_args
 
         self.state.resize = resize
+
         self.state.resynthesize = resynthesize
+        resynth_option_changed = False
+        if self.state.resynth_option != None and \
+                self.state.resynth_option != resynth_option:
+            resynth_option_changed = True
+        self.state.resynth_option = resynth_option
 
         self.state.inflate = inflate
         inflate_option_changed = False
@@ -1690,7 +1700,7 @@ class VideoRemixer(TabBase):
             else:
                 self.log("purging stale content")
                 self.state.purge_stale_processed_content(upscale_option_changed,
-                                                         inflate_option_changed)
+                                                    inflate_option_changed, resynth_option_changed)
                 self.log("purging incomplete content")
                 self.state.purge_incomplete_processed_content()
             self.log("saving project after purging stale and incomplete content")
@@ -1714,12 +1724,12 @@ class VideoRemixer(TabBase):
 
             if self.state.resynthesize:
                 if not self.state.processed_content_complete(self.state.RESYNTH_STEP):
-                    two_pass_resynth = self.config.remixer_settings["resynth_type"] == 2
+                    # two_pass_resynth = self.config.remixer_settings["resynth_type"] == 2
                     self.state.resynthesize_scenes(self.log,
                                                 kept_scenes,
                                                 self.engine,
                                                 self.config.engine_settings,
-                                                two_pass=two_pass_resynth)
+                                                self.state.resynth_option)
                     self.log("saving project after resynthesizing frames")
                     self.state.save()
                 jot.down(f"Resynthesized scenes in {self.state.resynthesis_path}")
