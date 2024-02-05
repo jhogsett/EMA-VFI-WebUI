@@ -1300,6 +1300,21 @@ class VideoRemixer(TabBase):
 
             Session().set("last-video-remixer-project", project_path)
 
+            # memorize these settings
+            last_settings = {}
+            last_settings["project_fps"] = self.state.project_fps
+            last_settings["split_type"] = self.state.split_type
+            last_settings["scene_threshold"] = self.state.scene_threshold
+            last_settings["break_duration"] = self.state.break_duration
+            last_settings["break_ratio"] = self.state.break_ratio
+            last_settings["resize_w"] = self.state.resize_w
+            last_settings["resize_h"] = self.state.resize_h
+            last_settings["crop_w"] = self.state.crop_w
+            last_settings["crop_h"] = self.state.crop_h
+            last_settings["crop_offset_x"] = self.state.crop_offset_x
+            last_settings["crop_offset_y"] = self.state.crop_offset_y
+            Session().set("last-video-remixer-settings", last_settings)
+
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                 gr.update(value=format_markdown(self.TAB1_DEFAULT_MESSAGE)), \
                 self.state.project_info2, \
