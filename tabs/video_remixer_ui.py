@@ -714,26 +714,26 @@ class VideoRemixer(TabBase):
                                         gr.Markdown(
             "Delete Kept Scene files used when compiling scenes after making scene choices.")
                                 with gr.Row():
-                                    delete_resized_712 = gr.Checkbox(
+                                    delete_resized_712 = gr.Checkbox(value=True,
                                         label="Remove Resized Frames")
                                     with gr.Column(variant="compact"):
                                         gr.Markdown(
 "Delete Resized PNG frame files used as inputs for processing and creating remix video clips.")
                                 with gr.Row():
-                                    delete_resynth_712 = gr.Checkbox(
+                                    delete_resynth_712 = gr.Checkbox(value=True,
                                         label="Remove Resynthesized Frames")
                                     with gr.Column(variant="compact"):
                                         gr.Markdown(
                                     "Delete Resynthesized PNG frame files used as inputs " +\
                                     "for processing and creating remix video clips.")
                                 with gr.Row():
-                                    delete_inflated_712 = gr.Checkbox(
+                                    delete_inflated_712 = gr.Checkbox(value=True,
                                         label="Remove Inflated Frames")
                                     with gr.Column(variant="compact"):
                                         gr.Markdown(
 "Delete Inflated PNG frame files used as inputs for processing and creating remix video clips.")
                                 with gr.Row():
-                                    delete_upscaled_712 = gr.Checkbox(
+                                    delete_upscaled_712 = gr.Checkbox(value=True,
                                         label="Remove Upscaled Frames")
                                     with gr.Column(variant="compact"):
                                         gr.Markdown(
