@@ -521,8 +521,10 @@ class VideoRemixer(TabBase):
                         with gr.Row():
                             message_box702 = gr.Markdown(format_markdown(
         "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
-                        split_button702 = gr.Button(
-                            "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="primary")
+                        with gr.Row():
+                            back_button702 = gr.Button(value="< Back to Scene Chooser", variant="secondary", scale=1)
+                            split_button702 = gr.Button(
+                                "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="primary", scale=7)
 
                     # MERGE SCENES
                     with gr.Tab(SimpleIcons.PACKAGE + " Merge Scenes",
@@ -1038,6 +1040,8 @@ class VideoRemixer(TabBase):
         split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
                               outputs=[tabs_video_remixer, message_box702, scene_index, scene_name,
                                        scene_image, scene_state, scene_info, set_scene_label])
+
+        back_button702.click(self.back_button702, outputs=tabs_video_remixer)
 
         export_project_703.click(self.export_project_703,
                                  inputs=[export_path_703, project_name_703],
@@ -2365,6 +2369,9 @@ class VideoRemixer(TabBase):
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
             gr.update(value=format_markdown(message)), \
             *self.scene_chooser_details(self.state.current_scene)
+
+    def back_button702(self):
+        return gr.update(selected=self.TAB_CHOOSE_SCENES)
 
     def compute_preview_frame(self, scene_index, split_percent):
         scene_index = int(scene_index)
