@@ -86,6 +86,7 @@ class VideoRemixerState():
         self.upscale_option = None
         self.inflate_by_option = None
         self.inflate_slow_option = None
+        self.resynth_option = None
 
         # set during processing
         self.audio_clips_path = None
@@ -123,7 +124,8 @@ class VideoRemixerState():
         "split_time" : 60,
         "crop_offsets" : -1,
         "inflate_by_option" : "2X",
-        "inflate_slow_option" : "No"
+        "inflate_slow_option" : "No",
+        "resynth_option" : "Clean"
     }
 
     # set project settings UI defaults in case the project is reopened
@@ -145,6 +147,7 @@ class VideoRemixerState():
         self.split_time = self.UI_SAFETY_DEFAULTS["split_time"]
         self.inflate_by_option = self.UI_SAFETY_DEFAULTS["inflate_by_option"]
         self.inflate_slow_option = self.UI_SAFETY_DEFAULTS["inflate_slow_option"]
+        self.resynth_option = self.UI_SAFETY_DEFAULTS["resynth_option"]
 
     # how far progressed into project and the tab ID to return to on re-opening
     PROGRESS_STEPS = {
@@ -1008,11 +1011,11 @@ class VideoRemixerState():
 
     # content is stale if it is present on disk but not currently selected
     # stale content and its derivative content should be purged
-    def purge_stale_processed_content(self, purge_upscale, purge_inflation):
+    def purge_stale_processed_content(self, purge_upscale, purge_inflation, purge_resynth):
         if self.processed_content_stale(self.resize, self.resize_path):
             self.purge_processed_content(purge_from=self.RESIZE_STEP)
 
-        if self.processed_content_stale(self.resynthesize, self.resynthesis_path):
+        if self.processed_content_stale(self.resynthesize, self.resynthesis_path) or purge_resynth:
             self.purge_processed_content(purge_from=self.RESYNTH_STEP)
 
         if self.processed_content_stale(self.inflate, self.inflation_path) or purge_inflation:
@@ -1153,48 +1156,131 @@ class VideoRemixerState():
                         True, # rename
                         log_fn).resequence()
 
-    def two_pass_resynthesis(self, log_fn, input_path, output_path, output_basename, engine):
-        interframes_path1 = os.path.join(output_path, "interframes-pass1")
-        interframes_path2 = os.path.join(output_path, "interframes-pass2")
-        interframes_path3 = os.path.join(output_path, "interframes-final")
-        create_directory(interframes_path1)
-        create_directory(interframes_path2)
-        create_directory(interframes_path3)
+    def two_pass_resynth_pass(self, log_fn, input_path, output_path, output_basename, engine):
+        file_list = sorted(get_files(input_path, extension="png"))
 
-        with Mtqdm().open_bar(total=2, desc="Two-Pass Resynthesis") as bar:
-            file_list = sorted(get_files(input_path, extension="png"))
-            log_fn(f"beginning pass #1 of series of frame recreations at {interframes_path1}")
-            engine.interpolate_series(file_list, interframes_path1, 1, "interframe")
+        inflated_frames = os.path.join(output_path, "inflated_frames")
+        log_fn(f"beginning series of interframe recreations at {inflated_frames}")
+        create_directory(inflated_frames)
+        engine.interpolate_series(file_list, inflated_frames, 1, "interframe")
 
-            log_fn(f"selecting odd interframes only at {interframes_path1}")
-            ResequenceFiles(interframes_path1,
-                            "png", "odd_interframe",
-                            1, 1,  # start, step
-                            2, 1,  # stride, offset
-                            -1,    # auto-zero fill
-                            False, # rename
-                            log_fn,
-                            output_path=interframes_path2).resequence()
-            Mtqdm().update_bar(bar)
+        log_fn(f"selecting odd interframes only at {inflated_frames}")
+        ResequenceFiles(inflated_frames,
+                        "png",
+                        output_basename,
+                        1, 1,  # start, step
+                        2, 1,  # stride, offset
+                        -1,    # auto-zero fill
+                        False, # rename
+                        log_fn,
+                        output_path=output_path).resequence()
+        remove_directories([inflated_frames])
 
-            file_list = sorted(get_files(interframes_path2, extension="png"))
-            log_fn(f"beginning pass #2 of series of frame recreations at {interframes_path2}")
-            engine.interpolate_series(file_list, interframes_path3, 1, "interframe")
+    def two_pass_resynthesis(self, log_fn, input_path, output_path, output_basename, engine, one_pass_only=False):
+        passes = 1 if one_pass_only else 2
+        with Mtqdm().open_bar(total=passes, desc="Two-Pass Resynthesis") as bar:
+            if not one_pass_only:
+                interframes = os.path.join(output_path, "interframes")
+                create_directory(interframes)
+                self.two_pass_resynth_pass(log_fn, input_path, interframes, "odd_interframe", engine)
+                input_path = interframes
 
-            log_fn(f"selecting odd interframes only at {interframes_path3}")
-            ResequenceFiles(interframes_path3,
-                            "png",
-                            output_basename,
-                            1, 1, # start, step
-                            2, 1, # stride, offset
-                            -1,   # auto-zero fill
-                            False, # rename
-                            log_fn,
-                            output_path=output_path).resequence()
-            Mtqdm().update_bar(bar)
-            remove_directories([interframes_path1, interframes_path2, interframes_path3])
+            self.two_pass_resynth_pass(log_fn, input_path, output_path, output_basename, engine)
 
-    def resynthesize_scenes(self, log_fn, kept_scenes, engine, engine_settings, two_pass=True):
+            if not one_pass_only:
+                remove_directories([interframes])
+
+    # def two_pass_resynthesis(self, log_fn, input_path, output_path, output_basename, engine, one_pass_only=False):
+    #     interframes_path1 = os.path.join(output_path, "interframes-pass1")
+    #     interframes_path2 = os.path.join(output_path, "interframes-pass2")
+    #     interframes_path3 = os.path.join(output_path, "interframes-final")
+    #     create_directory(interframes_path1)
+    #     create_directory(interframes_path2)
+    #     create_directory(interframes_path3)
+
+    #     passes = 1 if one_pass_only else 2
+    #     with Mtqdm().open_bar(total=passes, desc="Two-Pass Resynthesis") as bar:
+    #         file_list = sorted(get_files(input_path, extension="png"))
+    #         log_fn(f"beginning pass #1 of series of frame recreations at {interframes_path1}")
+    #         engine.interpolate_series(file_list, interframes_path1, 1, "interframe")
+
+    #         log_fn(f"selecting odd interframes only at {interframes_path1}")
+    #         ResequenceFiles(interframes_path1,
+    #                         "png", "odd_interframe",
+    #                         1, 1,  # start, step
+    #                         2, 1,  # stride, offset
+    #                         -1,    # auto-zero fill
+    #                         False, # rename
+    #                         log_fn,
+    #                         output_path=interframes_path2).resequence()
+    #         Mtqdm().update_bar(bar)
+
+    #         if not one_pass_only:
+    #             file_list = sorted(get_files(interframes_path2, extension="png"))
+    #             log_fn(f"beginning pass #2 of series of frame recreations at {interframes_path2}")
+    #             engine.interpolate_series(file_list, interframes_path3, 1, "interframe")
+
+    #             log_fn(f"selecting odd interframes only at {interframes_path3}")
+    #             ResequenceFiles(interframes_path3,
+    #                             "png",
+    #                             output_basename,
+    #                             1, 1, # start, step
+    #                             2, 1, # stride, offset
+    #                             -1,   # auto-zero fill
+    #                             False, # rename
+    #                             log_fn,
+    #                             output_path=output_path).resequence()
+    #             Mtqdm().update_bar(bar)
+
+    #         remove_directories([interframes_path1, interframes_path2, interframes_path3])
+
+    # def two_pass_resynthesis(self, log_fn, input_path, output_path, output_basename, engine, one_pass_only=False):
+    #     interframes_path1 = os.path.join(output_path, "interframes-pass1")
+    #     interframes_path2 = os.path.join(output_path, "interframes-pass2")
+    #     interframes_path3 = os.path.join(output_path, "interframes-final")
+    #     create_directory(interframes_path1)
+    #     create_directory(interframes_path2)
+    #     create_directory(interframes_path3)
+
+    #     passes = 1 if one_pass_only else 2
+    #     with Mtqdm().open_bar(total=passes, desc="Two-Pass Resynthesis") as bar:
+    #         file_list = sorted(get_files(input_path, extension="png"))
+    #         log_fn(f"beginning pass #1 of series of frame recreations at {interframes_path1}")
+    #         engine.interpolate_series(file_list, interframes_path1, 1, "interframe")
+
+    #         log_fn(f"selecting odd interframes only at {interframes_path1}")
+    #         ResequenceFiles(interframes_path1,
+    #                         "png", "odd_interframe",
+    #                         1, 1,  # start, step
+    #                         2, 1,  # stride, offset
+    #                         -1,    # auto-zero fill
+    #                         False, # rename
+    #                         log_fn,
+    #                         output_path=interframes_path2).resequence()
+    #         Mtqdm().update_bar(bar)
+
+    #         if not one_pass_only:
+    #             file_list = sorted(get_files(interframes_path2, extension="png"))
+    #             log_fn(f"beginning pass #2 of series of frame recreations at {interframes_path2}")
+    #             engine.interpolate_series(file_list, interframes_path3, 1, "interframe")
+
+    #             log_fn(f"selecting odd interframes only at {interframes_path3}")
+    #             ResequenceFiles(interframes_path3,
+    #                             "png",
+    #                             output_basename,
+    #                             1, 1, # start, step
+    #                             2, 1, # stride, offset
+    #                             -1,   # auto-zero fill
+    #                             False, # rename
+    #                             log_fn,
+    #                             output_path=output_path).resequence()
+    #             Mtqdm().update_bar(bar)
+
+    #         remove_directories([interframes_path1, interframes_path2, interframes_path3])
+
+
+
+    def resynthesize_scenes(self, log_fn, kept_scenes, engine, engine_settings, resynth_option):
         interpolater = Interpolate(engine.model, log_fn)
         use_time_step = engine_settings["use_time_step"]
         deep_interpolater = DeepInterpolate(interpolater, use_time_step, log_fn)
@@ -1210,10 +1296,11 @@ class VideoRemixerState():
                 scene_output_path = os.path.join(self.resynthesis_path, scene_name)
                 create_directory(scene_output_path)
 
-                if two_pass:
-                    self.two_pass_resynthesis(log_fn, scene_input_path, scene_output_path, output_basename, series_interpolater)
-                else:
+                if resynth_option == "Replace":
                     self.one_pass_resynthesis(log_fn, scene_input_path, scene_output_path, output_basename, series_interpolater)
+                else:
+                    one_pass_only = resynth_option == "Clean"
+                    self.two_pass_resynthesis(log_fn, scene_input_path, scene_output_path, output_basename, series_interpolater, one_pass_only=one_pass_only)
 
                 Mtqdm().update_bar(bar)
 
@@ -1360,13 +1447,21 @@ class VideoRemixerState():
     def remix_filename_suffix(self, extra_suffix):
         label = "remix"
         label += "-rc" if self.resize else "-or"
-        label += "-re" if self.resynthesize else ""
+        if self.resynthesize:
+            label += "-re"
+            if self.resynth_option == "Clean":
+                label += "C"
+            elif self.resynth_option == "Scrub":
+                label += "S"
+            elif self.resynth_option == "Replace":
+                label += "R"
         if self.inflate:
             label += "-in" + self.inflate_by_option[0]
             if self.inflate_slow_option == "Audio":
                 label += "SA"
             elif self.inflate_slow_option == "Silent":
                 label += "SM"
+
         label += "-up" + self.upscale_option[0] if self.upscale else ""
         label += "-" + extra_suffix if extra_suffix else ""
         return label
