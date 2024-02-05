@@ -51,4 +51,16 @@ If creating slow-motion videos to combine with real-time videos, note the follow
 | :-: | :-: | :-: | :-: |
 | 2X | FPS x 2 | FPS x 1, Audio Pitch x .50 | FPS x 1 |
 | 4X | FPS x 4 | FPS x 2, Audio Pitch x .50 | FPS x 1 |
-| 8X | FPS x 8 | FPS x 4, Audio Pitch x .25 | FPS x 1 |
+| 8X | FPS x 8 | FPS x 2, Audio Pitch x .25 | FPS x 1 |
+
+### Examples
+
+_Tip:_ Use the _Video Assembler_ tab under _Tools_, _File Conversion_ to assemble video clips sharing like characteristics
+
+- Make a video combining real-time footage and 8X silent slow motion
+    - Create the real-time remix video **_without_** using Inflation
+    - Create the slow-motion remix video with the "8X" and "Silent" Inflation options
+
+- Make a smoothed video combining real-time footage with 2X and 4X slow motion
+    - Create the real-time remix video with the "2X" and "No" Inflation options
+    - Create the slow-motion remix video with the "2X" and "4X", and "Audio" Inflation options
