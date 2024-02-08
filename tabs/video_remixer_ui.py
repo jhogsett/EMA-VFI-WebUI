@@ -522,7 +522,7 @@ class VideoRemixer(TabBase):
                             message_box702 = gr.Markdown(format_markdown(
         "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
                         with gr.Row():
-                            back_button702 = gr.Button(value="< Back to Scene Chooser", variant="secondary", scale=1)
+                            back_button702 = gr.Button(value="< Back", variant="secondary", scale=1)
                             split_button702 = gr.Button(
                                 "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="primary", scale=7)
 
