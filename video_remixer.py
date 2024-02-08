@@ -1,5 +1,6 @@
 """Video Remixer UI state management"""
 import os
+import math
 import shutil
 import yaml
 from yaml import Loader, YAMLError
@@ -870,6 +871,184 @@ class VideoRemixerState():
     def recompile_scenes(self):
         self.uncompile_scenes()
         self.compile_scenes()
+
+    ## Scene Splitter Functions ##
+
+    def compute_scene_split(self, scene_name : str, split_percent : float, override_num_frames=0):
+        split_percent = 0.0 if isinstance(split_percent, type(None)) else split_percent
+        split_point = split_percent / 100.0
+
+        # these are not reliable if override_num_frames is in use
+        first_frame, last_frame, num_width = details_from_group_name(scene_name)
+
+        num_frames = override_num_frames or ((last_frame - first_frame) + 1)
+        split_frame = math.ceil(num_frames * split_point)
+
+        # ensure at least one frame remains in the lower scene
+        split_frame = 1 if split_frame == 0 else split_frame
+        # ensure at least one frame remains in the upper scene
+        split_frame = num_frames-1 if split_frame >= num_frames else split_frame
+
+        return num_width, num_frames, first_frame, last_frame, split_frame
+
+    def split_scene_content(self,
+                            content_path : str,
+                            scene_name : str,
+                            new_lower_scene_name : str,
+                            new_upper_scene_name : str,
+                            num_frames : int,
+                            split_frame : int):
+        original_scene_path = os.path.join(content_path, scene_name)
+        new_lower_scene_path = os.path.join(content_path, new_lower_scene_name)
+        new_upper_scene_path = os.path.join(content_path, new_upper_scene_name)
+
+        frame_files = sorted(get_files(original_scene_path))
+        num_frame_files = len(frame_files)
+        if num_frame_files != num_frames:
+            message = f"Mismatch between expected frames ({num_frames}) and found frames " + \
+                f"({num_frame_files}) in content path '{original_scene_path}'"
+            raise ValueError(message)
+
+        create_directory(new_upper_scene_path)
+
+        for index, frame_file in enumerate(frame_files):
+            if index < split_frame:
+                continue
+            frame_path = os.path.join(original_scene_path, frame_file)
+            _, filename, ext = split_filepath(frame_path)
+            new_frame_path = os.path.join(new_upper_scene_path, filename + ext)
+            shutil.move(frame_path, new_frame_path)
+        os.replace(original_scene_path, new_lower_scene_path)
+
+    def split_processed_content(self,
+                                content_path : str,
+                                scene_name : str,
+                                new_lower_scene_name : str,
+                                new_upper_scene_name : str,
+                                split_percent : float):
+        original_scene_path = os.path.join(content_path, scene_name)
+        new_lower_scene_path = os.path.join(content_path, new_lower_scene_name)
+        new_upper_scene_path = os.path.join(content_path, new_upper_scene_name)
+
+        frame_files = sorted(get_files(original_scene_path))
+        create_directory(new_upper_scene_path)
+
+        _, _, _, _, split_frame = self.compute_scene_split(
+            scene_name, split_percent, override_num_frames=len(frame_files))
+        for index, frame_file in enumerate(frame_files):
+            if index < split_frame:
+                continue
+            frame_path = os.path.join(original_scene_path, frame_file)
+            _, filename, ext = split_filepath(frame_path)
+            new_frame_path = os.path.join(new_upper_scene_path, filename + ext)
+            shutil.move(frame_path, new_frame_path)
+        os.replace(original_scene_path, new_lower_scene_path)
+
+    def split_scene(self, log_fn, scene_index, split_percent, remixer_settings, global_options, keep_before=False, keep_after=False):
+        # global_options = self.config.ffmpeg_settings["global_options"]
+
+        if not isinstance(scene_index, (int, float)):
+            raise ValueError("Scene index must be an int or float")
+
+        num_scenes = len(self.scene_names)
+        last_scene = num_scenes - 1
+        scene_index = int(scene_index)
+
+        if scene_index < 0 or scene_index > last_scene:
+            raise ValueError(f"Scene index is outside of valid range 0 to {last_scene}")
+
+        # ensure all scenes are in the scenes directory
+        self.uncompile_scenes()
+
+        scene_name = self.scene_names[scene_index]
+        num_width, num_frames, first_frame, last_frame, split_frame = self.compute_scene_split(
+            scene_name, split_percent)
+
+        if num_frames < 2:
+            raise ValueError(f"Scene has fewer than two frames")
+
+        new_lower_first_frame = first_frame
+        new_lower_last_frame = first_frame + (split_frame - 1)
+        new_lower_scene_name = VideoRemixerState.encode_scene_name(num_width,
+                                                new_lower_first_frame, new_lower_last_frame, 0, 0)
+        new_upper_first_frame = first_frame + split_frame
+        new_upper_last_frame = last_frame
+        new_upper_scene_name = VideoRemixerState.encode_scene_name(num_width,
+                                                new_upper_first_frame, new_upper_last_frame, 0, 0)
+        try:
+            self.split_scene_content(self.scenes_path,
+                                    scene_name,
+                                    new_lower_scene_name,
+                                    new_upper_scene_name,
+                                    num_frames,
+                                    split_frame)
+        except ValueError as error:
+            raise ValueError(f"Error '{error}' encountered while splitting scene")
+
+        self.scene_names[scene_index] = new_lower_scene_name
+        self.scene_names.append(new_upper_scene_name)
+        self.scene_names = sorted(self.scene_names)
+
+        # remember original scene's state before splitting
+        scene_state = self.scene_states[scene_name]
+        del self.scene_states[scene_name]
+
+        if keep_before:
+            self.scene_states[new_lower_scene_name] = "Keep"
+            self.scene_states[new_upper_scene_name] = "Drop"
+            self.current_scene = scene_index
+        elif keep_after:
+            self.scene_states[new_lower_scene_name] = "Drop"
+            self.scene_states[new_upper_scene_name] = "Keep"
+            self.current_scene = scene_index + 1
+        else:
+            # retain original scene state for both splits
+            self.scene_states[new_lower_scene_name] = scene_state
+            self.scene_states[new_upper_scene_name] = scene_state
+            self.current_scene = scene_index
+
+        thumbnail_file = self.thumbnails[scene_index]
+        log_fn(f"about to delete original thumbnail file '{thumbnail_file}'")
+        os.remove(thumbnail_file)
+        self.create_thumbnail(new_lower_scene_name, log_fn, global_options,
+                                    remixer_settings)
+        log_fn(f"about to create thumbnail for new upper scene {new_upper_scene_name}")
+        self.create_thumbnail(new_upper_scene_name, log_fn, global_options,
+                                    remixer_settings)
+        self.thumbnails = sorted(get_files(self.thumbnail_path))
+
+        paths = [
+            self.resize_path,
+            self.resynthesis_path,
+            self.inflation_path,
+            self.upscale_path
+        ]
+        processed_content_split = False
+        for path in paths:
+            if path and os.path.exists(path):
+                dirs = get_directories(path)
+                if scene_name in dirs:
+                    try:
+                        processed_content_split = True
+                        self.split_processed_content(path,
+                                                    scene_name,
+                                                    new_lower_scene_name,
+                                                    new_upper_scene_name,
+                                                    split_percent)
+                    except ValueError as error:
+                        log_fn(
+                            f"Error splitting processed content path {path}: {error} - ignored")
+                        continue
+                else:
+                    log_fn(f"Planned skip of splitting processed content path {path}: scene {scene_name} not found")
+            else:
+                log_fn(f"Planned skip of splitting processed content path {path}: path not found")
+
+        if processed_content_split:
+            self.log("invalidating processed audio content after splitting")
+            self.state.clean_remix_audio()
+
+        return f"Scene split into new scenes {new_lower_scene_name} and {new_upper_scene_name}"
 
     ## Main Processing ##
 
