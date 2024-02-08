@@ -996,15 +996,16 @@ class VideoRemixerState():
         if keep_before:
             self.scene_states[new_lower_scene_name] = "Keep"
             self.scene_states[new_upper_scene_name] = "Drop"
+            self.current_scene = scene_index
         elif keep_after:
             self.scene_states[new_lower_scene_name] = "Drop"
             self.scene_states[new_upper_scene_name] = "Keep"
+            self.current_scene = scene_index + 1
         else:
             # retain original scene state for both splits
             self.scene_states[new_lower_scene_name] = scene_state
             self.scene_states[new_upper_scene_name] = scene_state
-
-        self.current_scene = scene_index
+            self.current_scene = scene_index
 
         thumbnail_file = self.thumbnails[scene_index]
         log_fn(f"about to delete original thumbnail file '{thumbnail_file}'")
