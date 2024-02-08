@@ -1745,8 +1745,10 @@ class VideoRemixer(TabBase):
             upscale_option_changed = True
         self.state.upscale_option = upscale_option
         self.state.setup_processing_paths()
-        self.log("saving project after storing processing choices")
-        self.state.save()
+
+        # saving now causes the project file saved with the purged directories to not match them
+        # self.log("saving project after storing processing choices")
+        # self.state.save()
 
         # user may have changed scene choices and skipped compiling scenes
         self.state.recompile_scenes()
