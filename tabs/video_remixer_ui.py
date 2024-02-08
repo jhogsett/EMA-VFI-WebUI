@@ -1841,7 +1841,7 @@ class VideoRemixer(TabBase):
                    gr.update(value=format_markdown(self.TAB63_DEFAULT_MESSAGE))
         else:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
-                   gr.update(value=format_markdown("At least one scene must be set to 'Keep' before processing can proceed", "error")), \
+                   gr.update(value=format_markdown("At least one scene must be set to 'Keep' before processing can proceed", "warning")), \
                    *noop_args
 
     def back_button5(self):
