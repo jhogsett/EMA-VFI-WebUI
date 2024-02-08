@@ -522,9 +522,13 @@ class VideoRemixer(TabBase):
                             message_box702 = gr.Markdown(format_markdown(
         "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))
                         with gr.Row():
-                            back_button702 = gr.Button(value="< Back", variant="secondary", scale=1)
+                            back_button702 = gr.Button(value="< Back", variant="secondary", scale=0)
+                            split_keep_before_702 = gr.Button("Split - Keep Before",
+                                                        variant="primary", elem_id="actionbutton")
+                            split_keep_after_702 = gr.Button("Split - Keep After",
+                                                        variant="primary", elem_id="actionbutton")
                             split_button702 = gr.Button(
-                                "Split Scene " + SimpleIcons.SLOW_SYMBOL, variant="primary", scale=7)
+                                "Split Scene", variant="primary", scale=3)
 
                     # MERGE SCENES
                     with gr.Tab(SimpleIcons.PACKAGE + " Merge Scenes",
@@ -1040,6 +1044,18 @@ class VideoRemixer(TabBase):
         split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
                               outputs=[tabs_video_remixer, message_box702, scene_index, scene_name,
                                        scene_image, scene_state, scene_info, set_scene_label])
+
+        split_keep_before_702.click(self.split_keep_before_702,
+                                    inputs=[scene_id_702, split_percent_702],
+                                    outputs=[tabs_video_remixer, message_box702, scene_index,
+                                             scene_name, scene_image, scene_state, scene_info,
+                                             set_scene_label])
+
+        split_keep_after_702.click(self.split_keep_after_702,
+                                    inputs=[scene_id_702, split_percent_702],
+                                    outputs=[tabs_video_remixer, message_box702, scene_index,
+                                             scene_name, scene_image, scene_state, scene_info,
+                                             set_scene_label])
 
         back_button702.click(self.back_button702, outputs=tabs_video_remixer)
 
@@ -2262,32 +2278,28 @@ class VideoRemixer(TabBase):
             shutil.move(frame_path, new_frame_path)
         os.replace(original_scene_path, new_lower_scene_path)
 
-    def split_button702(self, scene_index, split_percent):
+    def split_scene(self, scene_index, split_percent, keep_before=False, keep_after=False):
         global_options = self.config.ffmpeg_settings["global_options"]
-        empty_args = self.empty_args(6)
 
         if not isinstance(scene_index, (int, float)):
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                gr.update(value=format_markdown("Please enter a Scene Index to get started", "warning")), \
-                *empty_args
+            raise ValueError("Scene index must be an int or float")
+
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
         scene_index = int(scene_index)
 
         if scene_index < 0 or scene_index > last_scene:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                gr.update(value=format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning")), \
-                *empty_args
+            raise ValueError(f"Scene index is outside of valid range 0 to {last_scene}")
 
+        # ensure all scenes are in the scenes directory
         self.state.uncompile_scenes()
 
         scene_name = self.state.scene_names[scene_index]
         num_width, num_frames, first_frame, last_frame, split_frame = self.compute_scene_split(
             scene_name, split_percent)
+
         if num_frames < 2:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                gr.update(value=format_markdown("Scene must have at least two frames to be split", "error")), \
-                *empty_args
+            raise ValueError(f"Scene has fewer than two frames")
 
         new_lower_first_frame = first_frame
         new_lower_last_frame = first_frame + (split_frame - 1)
@@ -2305,18 +2317,26 @@ class VideoRemixer(TabBase):
                                     num_frames,
                                     split_frame)
         except ValueError as error:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                gr.update(value=format_markdown(f"Error: {error}", "error")), \
-                *empty_args
+            raise ValueError(f"Error '{error}' encountered while splitting scene")
 
         self.state.scene_names[scene_index] = new_lower_scene_name
         self.state.scene_names.append(new_upper_scene_name)
         self.state.scene_names = sorted(self.state.scene_names)
 
+        # remember original scene's state before splitting
         scene_state = self.state.scene_states[scene_name]
         del self.state.scene_states[scene_name]
-        self.state.scene_states[new_lower_scene_name] = scene_state
-        self.state.scene_states[new_upper_scene_name] = scene_state
+
+        if keep_before:
+            self.state.scene_states[new_lower_scene_name] = "Keep"
+            self.state.scene_states[new_upper_scene_name] = "Drop"
+        elif keep_after:
+            self.state.scene_states[new_lower_scene_name] = "Drop"
+            self.state.scene_states[new_upper_scene_name] = "Keep"
+        else:
+            # retain original scene state for both splits
+            self.state.scene_states[new_lower_scene_name] = scene_state
+            self.state.scene_states[new_upper_scene_name] = scene_state
 
         self.state.current_scene = scene_index
 
@@ -2350,7 +2370,7 @@ class VideoRemixer(TabBase):
                                                     split_percent)
                     except ValueError as error:
                         self.log(
-                            f"Error splitted processed content path {path}: {error} - ignored")
+                            f"Error splitting processed content path {path}: {error} - ignored")
                         continue
                 else:
                     self.log(f"Planned skip of splitting processed content path {path}: scene {scene_name} not found")
@@ -2368,9 +2388,43 @@ class VideoRemixer(TabBase):
             self.state.clean_remix_audio()
 
         message = f"Scene split into new scenes {new_lower_scene_name} and {new_upper_scene_name}"
-        return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-            gr.update(value=format_markdown(message)), \
-            *self.scene_chooser_details(self.state.current_scene)
+        return message
+
+    def split_button702(self, scene_index, split_percent):
+        try:
+            message = self.split_scene(scene_index, split_percent)
+            return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+                format_markdown(message), \
+                *self.scene_chooser_details(self.state.current_scene)
+
+        except ValueError as error:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown(f"Unable to split scene: {error}", "warning"), \
+                *self.empty_args(6)
+
+    def split_keep_before_702(self, scene_index, split_percent):
+        try:
+            message = self.split_scene(scene_index, split_percent, keep_before=True)
+            return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+                format_markdown(message), \
+                *self.scene_chooser_details(self.state.current_scene)
+
+        except ValueError as error:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown(f"Unable to split scene: {error}", "warning"), \
+                *self.empty_args(6)
+
+    def split_keep_after_702(self, scene_index, split_percent):
+        try:
+            message = self.split_scene(scene_index, split_percent, keep_after=True)
+            return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+                format_markdown(message), \
+                *self.scene_chooser_details(self.state.current_scene)
+
+        except ValueError as error:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown(f"Unable to split scene: {error}", "warning"), \
+                *self.empty_args(6)
 
     def back_button702(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
