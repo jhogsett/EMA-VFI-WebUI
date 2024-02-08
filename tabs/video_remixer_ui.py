@@ -309,7 +309,7 @@ class VideoRemixer(TabBase):
                 with gr.Row():
                     resynthesize = gr.Checkbox(label="Resynthesize Frames",value=True, scale=1)
                     resynth_option = gr.Radio(label="Resynthesis Type", value="Clean", scale=6,
-                                        choices=["Clean", "Scrub", "Replace"], info="Clean-Fastest, Scrub-Best Overall, Replace-Deepest")
+                                        choices=["Clean", "Scrub", "Replace"], info="Clean: Fastest, Scrub: Best, Replace: Deepest")
                     with gr.Column(variant="compact", scale=5):
                         gr.Markdown(format_markdown(
                             "Recreate Frames using Interpolation of adjacent frames\r\n" +
