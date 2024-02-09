@@ -1111,47 +1111,49 @@ class VideoRemixerState():
             return None
 
     def purge_processed_content(self, purge_from):
-        if purge_from == self.RESIZE_STEP:
-            purge_path = self.purge_paths([
-                self.resize_path,
-                self.resynthesis_path,
-                self.inflation_path,
-                self.upscale_path])
-        elif purge_from == self.RESYNTH_STEP:
-            purge_path = self.purge_paths([
-                self.resynthesis_path,
-                self.inflation_path,
-                self.upscale_path])
-        elif purge_from == self.INFLATE_STEP:
-            purge_path = self.purge_paths([
-                self.inflation_path,
-                self.upscale_path])
-        elif purge_from == self.UPSCALE_STEP:
-            purge_path = self.purge_paths([
-                self.upscale_path])
-        if purge_path:
-            self.copy_project_file(purge_path)
-        self.clean_remix_content(purge_from="audio_clips")
+        purge_paths = [self.resize_path,
+                       self.resynthesis_path,
+                       self.inflation_path,
+                       self.upscale_path]
 
-    def clean_remix_content(self, purge_from):
+        if purge_from == self.RESIZE_STEP:
+            purge_paths = purge_paths[0:]
+        elif purge_from == self.RESYNTH_STEP:
+            purge_paths = purge_paths[1:]
+        elif purge_from == self.INFLATE_STEP:
+            purge_paths = purge_paths[2:]
+        elif purge_from == self.UPSCALE_STEP:
+            purge_paths = purge_paths[3:]
+        else:
+            raise RuntimeError(f"Unrecognized value {purge_from} passed to purge_processed_content()")
+
+        purge_root = self.purge_paths(purge_paths)
+        # get root again, may have been no processed content to purge, with remix content to purge
+        purge_root = self.clean_remix_content(purge_from="audio_clips", purge_root=purge_root)
+        if purge_root:
+            self.copy_project_file(purge_root)
+
+    def clean_remix_content(self, purge_from, purge_root):
+        clean_paths = [self.audio_clips_path,
+                       self.video_clips_path,
+                       self.clips_path]
+
         if purge_from == "audio_clips":
-            clean_directories([
-                self.audio_clips_path,
-                self.video_clips_path,
-                self.clips_path])
+            clean_paths = clean_paths[0:]
             self.audio_clips = []
             self.video_clips = []
             self.clips = []
         elif purge_from == "video_clips":
-            clean_directories([
-                self.video_clips_path,
-                self.clips_path])
+            clean_paths = clean_paths[1:]
             self.video_clips = []
             self.clips = []
         elif purge_from == "scene_clips":
-            clean_directories([
-                self.clips_path])
+            clean_paths = clean_paths[2:]
             self.clips = []
+
+        purge_root = self.purge_paths(clean_paths, keep_original=True, purged_path=purge_root)
+        clean_directories(clean_paths)
+        return purge_root
 
     def clean_remix_audio(self):
         clean_directories([self.audio_clips_path])
@@ -1609,15 +1611,6 @@ class VideoRemixerState():
                 if len(files) == 0:
                     self.drop_kept_scene(scene_name)
                 Mtqdm().update_bar(bar)
-
-    def delete_processed_scene(self, path, scene_name):
-        removed = []
-        if path and os.path.exists(path):
-            full_path = os.path.join(path, scene_name)
-            if os.path.exists(full_path):
-                shutil.rmtree(full_path)
-                removed.append(full_path)
-        return removed
 
     def delete_processed_clip(self, path, scene_name):
         removed = []
