@@ -1449,8 +1449,10 @@ class VideoRemixer(TabBase):
                 self.state.save()
                 self.log(f"FFmpeg command: {ffcmd}")
 
-            self.state.scenes_path = os.path.join(self.state.project_path, "SCENES")
-            self.state.dropped_scenes_path = os.path.join(self.state.project_path, "DROPPED_SCENES")
+            self.state.scenes_path = os.path.join(self.state.project_path,
+                                                  VideoRemixerState.SCENES_PATH)
+            self.state.dropped_scenes_path = os.path.join(self.state.project_path,
+                                                          VideoRemixerState.DROPPED_SCENES_PATH)
             self.log(f"creating scenes directory {self.state.scenes_path}")
             create_directory(self.state.scenes_path)
             self.log(f"creating dropped scenes directory {self.state.dropped_scenes_path}")

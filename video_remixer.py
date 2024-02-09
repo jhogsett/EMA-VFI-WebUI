@@ -395,6 +395,9 @@ class VideoRemixerState():
         shutil.copy(project_file, saved_project_file)
         return saved_project_file
 
+    SCENES_PATH = "SCENES"
+    DROPPED_SCENES_PATH = "DROPPED_SCENES"
+
     # when advancing forward from the Set Up Project step
     # the user may be redoing the project from this step
     # need to purge anything created based on old settings
@@ -977,7 +980,7 @@ class VideoRemixerState():
 
         # this may fail, so copy the original scene and project file to the purged content directory
         scene_path = os.path.join(self.scenes_path, scene_name)
-        purge_path = self.purge_paths([scene_path], keep_original=True)
+        purge_path = self.purge_paths([scene_path], keep_original=True, additional_path=self.SCENES_PATH)
         if purge_path:
             self.copy_project_file(purge_path)
 
@@ -1067,8 +1070,14 @@ class VideoRemixerState():
 
     PURGED_CONTENT = "purged_content"
 
-    # returns auto-generated purge path or None if nothing to purge
-    def purge_paths(self, path_list : list, keep_original=False, purged_path=None, skip_empty_paths=False):
+    def purge_paths(self, path_list : list, keep_original=False, purged_path=None, skip_empty_paths=False, additional_path=""):
+        """Purge a list of paths to the purged content directory
+        keep_original: True=don't remove original content when purging
+        purged_path: Used if calling multiple times to store purged content in the same purge directory
+        skip_empty_paths: True=don't purge directories that have no files inside
+        additional_path: If set, adds an additional segment onto the storage path (not returned)
+        Returns: Path to the purged content directory (not incl. additional_path)
+        """
         paths_to_purge = []
         for path in path_list:
             if path and os.path.exists(path):
@@ -1084,12 +1093,13 @@ class VideoRemixerState():
             purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory("purged")
 
         for path in paths_to_purge:
+            use_purged_path = os.path.join(purged_path, additional_path)
             if keep_original:
                 _, last_path, _ = split_filepath(path)
-                copy_path = os.path.join(purged_path, last_path)
+                copy_path = os.path.join(use_purged_path, last_path)
                 copy_files(path, copy_path)
             else:
-                shutil.move(path, purged_path)
+                shutil.move(path, use_purged_path)
         return purged_path
 
     def delete_purged_content(self):
