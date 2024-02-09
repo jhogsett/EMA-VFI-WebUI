@@ -249,10 +249,10 @@ class VideoRemixer(TabBase):
                         with gr.Row():
                                 split_scene_button = gr.Button(
                                     value="Split Scene " + SimpleIcons.AXE,
-                                    variant="secondary")
+                                    variant="secondary", elem_id="highlightbutton")
                                 choose_range_button = gr.Button(
                                     value="Choose Scene Range " + SimpleIcons.HEART_HANDS,
-                                    variant="secondary")
+                                    variant="secondary", elem_id="highlightbutton")
                         with gr.Row(variant="panel", equal_height=False):
                             with gr.Accordion(label="Properties", open=False):
                                 with gr.Row():
@@ -1872,6 +1872,7 @@ class VideoRemixer(TabBase):
 
     ### SAVE REMIX EVENT HANDLERS
 
+    # TODO move to state
     def prepare_save_remix(self, output_filepath : str):
         if not output_filepath:
             raise ValueError("Enter a path for the remixed video to proceed")
@@ -1906,6 +1907,7 @@ class VideoRemixer(TabBase):
         self.state.clean_remix_content(purge_from="video_clips")
         return global_options, kept_scenes
 
+    # TODO move to state
     def save_remix(self, global_options, kept_scenes):
         self.log(f"about to create video clips")
         self.state.create_video_clips(self.log, kept_scenes, global_options)

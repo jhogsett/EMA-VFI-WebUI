@@ -6,7 +6,7 @@ import yaml
 from yaml import Loader, YAMLError
 from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
 from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
-    clean_directories, clean_filename, remove_directories, copy_files
+    clean_directories, clean_filename, remove_directories, copy_files, directory_populated
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
@@ -409,6 +409,7 @@ class VideoRemixerState():
             self.resynthesis_path,
             self.inflation_path,
             self.upscale_path])
+
         if purge_path:
             self.copy_project_file(purge_path)
         self.scene_names = []
@@ -978,8 +979,7 @@ class VideoRemixerState():
         scene_path = os.path.join(self.scenes_path, scene_name)
         purge_path = self.purge_paths([scene_path], keep_original=True)
         if purge_path:
-            purged_scene_path = os.path.join(purge_path, scene_name)
-            self.copy_project_file(purged_scene_path)
+            self.copy_project_file(purge_path)
 
         try:
             self.split_scene_content(self.scenes_path,
@@ -1068,11 +1068,12 @@ class VideoRemixerState():
     PURGED_CONTENT = "purged_content"
 
     # returns auto-generated purge path or None if nothing to purge
-    def purge_paths(self, path_list : list, keep_original=False, purged_path=None):
+    def purge_paths(self, path_list : list, keep_original=False, purged_path=None, skip_empty_paths=False):
         paths_to_purge = []
         for path in path_list:
             if path and os.path.exists(path):
-                paths_to_purge.append(path)
+                if not skip_empty_paths or directory_populated(path, files_only=True):
+                    paths_to_purge.append(path)
         if not paths_to_purge:
             return None
 
@@ -1084,7 +1085,9 @@ class VideoRemixerState():
 
         for path in paths_to_purge:
             if keep_original:
-                copy_files(path, purged_path)
+                _, last_path, _ = split_filepath(path)
+                copy_path = os.path.join(purged_path, last_path)
+                copy_files(path, copy_path)
             else:
                 shutil.move(path, purged_path)
         return purged_path
@@ -1128,15 +1131,18 @@ class VideoRemixerState():
             raise RuntimeError(f"Unrecognized value {purge_from} passed to purge_processed_content()")
 
         purge_root = self.purge_paths(purge_paths)
-        # get root again, may have been no processed content to purge, with remix content to purge
-        purge_root = self.clean_remix_content(purge_from="audio_clips", purge_root=purge_root)
-        if purge_root:
-            self.copy_project_file(purge_root)
+        self.clean_remix_content(purge_from="audio_clips", purge_root=purge_root)
 
-    def clean_remix_content(self, purge_from, purge_root):
+    def clean_remix_content(self, purge_from, purge_root=None):
         clean_paths = [self.audio_clips_path,
                        self.video_clips_path,
                        self.clips_path]
+
+        # purge all of the paths, keeping the originals, for safekeeping ahead of reprocessing
+        purge_root = self.purge_paths(clean_paths, keep_original=True, purged_path=purge_root,
+                                      skip_empty_paths=True)
+        if purge_root:
+            self.copy_project_file(purge_root)
 
         if purge_from == "audio_clips":
             clean_paths = clean_paths[0:]
@@ -1151,7 +1157,8 @@ class VideoRemixerState():
             clean_paths = clean_paths[2:]
             self.clips = []
 
-        purge_root = self.purge_paths(clean_paths, keep_original=True, purged_path=purge_root)
+        # clean directories as needed by purge_from
+        # audio wav files can be slow to extract, so they are carefully not cleaned unless needed
         clean_directories(clean_paths)
         return purge_root
 
