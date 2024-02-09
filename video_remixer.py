@@ -980,9 +980,9 @@ class VideoRemixerState():
 
         # this may fail, so copy the original scene and project file to the purged content directory
         scene_path = os.path.join(self.scenes_path, scene_name)
-        purge_path = self.purge_paths([scene_path], keep_original=True, additional_path=self.SCENES_PATH)
-        if purge_path:
-            self.copy_project_file(purge_path)
+        purge_root = self.purge_paths([scene_path], keep_original=True, additional_path=self.SCENES_PATH)
+        if purge_root:
+            self.copy_project_file(purge_root)
 
         try:
             self.split_scene_content(self.scenes_path,
@@ -1037,6 +1037,13 @@ class VideoRemixerState():
             if path and os.path.exists(path):
                 dirs = get_directories(path)
                 if scene_name in dirs:
+
+                    # this may fail, so copy the processed content to the purged content directory
+                    processed_path = os.path.join(path, scene_name)
+                    _, last_path, _ = split_filepath(path)
+                    purge_root = self.purge_paths([processed_path], purged_path=purge_root,
+                                            keep_original=True, additional_path=last_path)
+
                     try:
                         processed_content_split = True
                         self.split_processed_content(path,
@@ -1660,10 +1667,10 @@ class VideoRemixerState():
             content_path = os.path.join(path, scene_name)
             if os.path.exists(content_path):
                 purge_dirs.append(content_path)
-        purge_path = self.purge_paths(purge_dirs)
+        purge_root = self.purge_paths(purge_dirs)
         removed += purge_dirs
-        if purge_path:
-            self.copy_project_file(purge_path)
+        if purge_root:
+            self.copy_project_file(purge_root)
 
         if self.audio_clips_path:
             self.audio_clips = sorted(get_files(self.audio_clips_path))
