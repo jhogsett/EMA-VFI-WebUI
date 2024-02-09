@@ -945,8 +945,6 @@ class VideoRemixerState():
         os.replace(original_scene_path, new_lower_scene_path)
 
     def split_scene(self, log_fn, scene_index, split_percent, remixer_settings, global_options, keep_before=False, keep_after=False):
-        # global_options = self.config.ffmpeg_settings["global_options"]
-
         if not isinstance(scene_index, (int, float)):
             raise ValueError("Scene index must be an int or float")
 
@@ -975,6 +973,14 @@ class VideoRemixerState():
         new_upper_last_frame = last_frame
         new_upper_scene_name = VideoRemixerState.encode_scene_name(num_width,
                                                 new_upper_first_frame, new_upper_last_frame, 0, 0)
+
+        # this may fail, so copy the original scene and project file to the purged content directory
+        scene_path = os.path.join(self.scenes_path, scene_name)
+        purge_path = self.purge_paths([scene_path], keep_original=True)
+        if purge_path:
+            purged_scene_path = os.path.join(purge_path, scene_name)
+            self.copy_project_file(purged_scene_path)
+
         try:
             self.split_scene_content(self.scenes_path,
                                     scene_name,
@@ -1062,7 +1068,7 @@ class VideoRemixerState():
     PURGED_CONTENT = "purged_content"
 
     # returns auto-generated purge path or None if nothing to purge
-    def purge_paths(self, path_list : list):
+    def purge_paths(self, path_list : list, keep_original=False):
         paths_to_purge = []
         for path in path_list:
             if path and os.path.exists(path):
@@ -1075,7 +1081,10 @@ class VideoRemixerState():
         purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory("purged")
 
         for path in paths_to_purge:
-            shutil.move(path, purged_path)
+            if keep_original:
+                copy_files(path, purged_path)
+            else:
+                shutil.move(path, purged_path)
         return purged_path
 
     def delete_purged_content(self):
