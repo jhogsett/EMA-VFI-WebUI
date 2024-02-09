@@ -1068,7 +1068,7 @@ class VideoRemixerState():
     PURGED_CONTENT = "purged_content"
 
     # returns auto-generated purge path or None if nothing to purge
-    def purge_paths(self, path_list : list, keep_original=False):
+    def purge_paths(self, path_list : list, keep_original=False, purged_path=None):
         paths_to_purge = []
         for path in path_list:
             if path and os.path.exists(path):
@@ -1078,7 +1078,9 @@ class VideoRemixerState():
 
         purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
         create_directory(purged_root_path)
-        purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory("purged")
+
+        if not purged_path:
+            purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory("purged")
 
         for path in paths_to_purge:
             if keep_original:
@@ -1635,21 +1637,27 @@ class VideoRemixerState():
         scene_name = self.scene_names[scene_index]
         self.drop_kept_scene(scene_name)
         removed = []
+        purge_dirs = []
         for path in [
             self.resize_path,
             self.resynthesis_path,
             self.inflation_path,
-            self.upscale_path
-        ]:
-            removed += self.delete_processed_scene(path, scene_name)
-        for path in [
+            self.upscale_path,
             self.audio_clips_path,
             self.video_clips_path,
             self.clips_path
         ]:
-            removed += self.delete_processed_clip(path, scene_name)
+            content_path = os.path.join(path, scene_name)
+            if os.path.exists(content_path):
+                purge_dirs.append(content_path)
+        purge_path = self.purge_paths(purge_dirs)
+        removed += purge_dirs
+        if purge_path:
+            self.copy_project_file(purge_path)
+
         if self.audio_clips_path:
             self.audio_clips = sorted(get_files(self.audio_clips_path))
+
         return removed
 
     AUDIO_CLIPS_PATH = "AUDIO"
