@@ -1045,8 +1045,8 @@ class VideoRemixerState():
                 log_fn(f"Planned skip of splitting processed content path {path}: path not found")
 
         if processed_content_split:
-            self.log("invalidating processed audio content after splitting")
-            self.state.clean_remix_audio()
+            log_fn("invalidating processed audio content after splitting")
+            self.clean_remix_audio()
 
         return f"Scene split into new scenes {new_lower_scene_name} and {new_upper_scene_name}"
 
