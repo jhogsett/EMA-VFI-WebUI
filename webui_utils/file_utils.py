@@ -78,6 +78,18 @@ def duplicate_directory(source_dir, dest_dir):
     shutil.copytree(source_dir, dest_dir, copy_function=_copy, dirs_exist_ok=True)
     Mtqdm().leave_bar(_duplicate_directory_progress)
 
+def directory_populated(path : str, files_only=False):
+    """Returns True if the directory exists and has contents"""
+    if not is_safe_path(path):
+        raise ValueError("'path' must be a legal path")
+    if os.path.exists(path):
+        iter = os.scandir(path)
+        if files_only:
+            return any([item.is_file() for item in iter])
+        elif next(iter, False):
+            return True
+    return False
+
 def _get_files(path : str):
     entries = glob.glob(path)
     files = []
