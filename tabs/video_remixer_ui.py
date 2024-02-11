@@ -677,7 +677,7 @@ class VideoRemixer(TabBase):
                                 gr.Markdown(
                         "**_Delete source PNG frame files, thumbnails and dropped scenes_**")
                                 with gr.Row():
-                                    delete_source_711 = gr.Checkbox(
+                                    delete_source_711 = gr.Checkbox(value=True,
                                         label="Remove Source Video Frames")
                                     with gr.Column(variant="compact"):
                                         gr.Markdown(
