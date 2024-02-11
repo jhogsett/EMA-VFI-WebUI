@@ -1953,7 +1953,7 @@ class VideoRemixer(TabBase):
             return gr.update(value="No processed video clips were found", visible=True)
 
         self.log("about to create remix viedeo")
-        ffcmd = self.state.create_remix_video(global_options, self.state.output_filepath)
+        ffcmd = self.state.create_remix_video(self.log, global_options, self.state.output_filepath)
         self.log(f"FFmpeg command: {ffcmd}")
         self.log("saving project after creating remix video")
         self.state.save()
@@ -1965,7 +1965,7 @@ class VideoRemixer(TabBase):
                           custom_video_options,
                           custom_audio_options,
                           draw_text_options=None,
-                          labeled_scenes_first=True):
+                          use_scene_sorting=True):
         _, _, output_ext = split_filepath(output_filepath)
         output_ext = output_ext[1:]
 
@@ -1988,8 +1988,8 @@ class VideoRemixer(TabBase):
             raise ValueError("No processed video clips were found")
 
         self.log("about to create remix viedeo")
-        ffcmd = self.state.create_remix_video(global_options, output_filepath,
-                                              labeled_scenes_first=labeled_scenes_first)
+        ffcmd = self.state.create_remix_video(self.log, global_options, output_filepath,
+                                              use_scene_sorting=use_scene_sorting)
         self.log(f"FFmpeg command: {ffcmd}")
         self.log("saving project after creating remix video")
         self.state.save()
@@ -2143,8 +2143,10 @@ class VideoRemixer(TabBase):
 
             try:
                 self.save_custom_remix(output_filepath, global_options, kept_scenes,
-                                    labeled_video_options, labeled_audio_options, draw_text_options, labeled_scenes_first=False)
-                return gr.update(value=format_markdown(f"Remixed labeled video {output_filepath} is complete.", "highlight"))
+                                       labeled_video_options, labeled_audio_options,
+                                       draw_text_options, use_scene_sorting=True)
+                return format_markdown(
+                    f"Remixed labeled video {output_filepath} is complete.", "highlight")
             except FFRuntimeError as error:
                 return gr.update(value=format_markdown(f"Error: {error}.", "error"))
 

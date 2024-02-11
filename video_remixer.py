@@ -7,7 +7,8 @@ import yaml
 from yaml import Loader, YAMLError
 from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
 from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
-    clean_directories, clean_filename, remove_directories, copy_files, directory_populated
+    clean_directories, clean_filename, remove_directories, copy_files, directory_populated, \
+    simple_sanitize_filename
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
@@ -1940,6 +1941,7 @@ class VideoRemixerState():
                 marked_position = draw_text_options["marked_position"]
                 crop_width = draw_text_options["crop_width"]
                 labels = draw_text_options["labels"]
+
             except IndexError as error:
                 raise RuntimeError(f"error retrieving 'draw_text_options': {error}")
 
@@ -2032,15 +2034,18 @@ class VideoRemixerState():
                                 if "1" in inflation_hint:
                                     # TODO disable inflation
                                     # force_inflate_by = "1X"
+                                    # for now don't affect the inflation amount
                                     pass
                                 elif "2" in inflation_hint:
                                     # TODO re-enable inflation
                                     # force_inflate_by = "2X"
+                                    # for now don't affect the inflation amount
                                     pass
                                 elif "4" in inflation_hint:
                                     force_inflate_by = "4X"
                                 elif "8" in inflation_hint:
                                     force_inflate_by = "8X"
+
                                 if "A" in inflation_hint:
                                     force_audio = True
                                 elif "S" in inflation_hint:
@@ -2059,7 +2064,7 @@ class VideoRemixerState():
         else:
             self.clips = sorted(get_files(self.video_clips_path))
 
-    def assembly_list(self, clip_filepaths : list) -> list:
+    def assembly_list(self, log_fn, clip_filepaths : list, rename_clips=True) -> list:
         """Get list clips to assemble in order.
         'clip_filepaths' is expected to be full path and filename to the remix clips, corresponding to the list of kept scenes.
         If there are labeled scenes, they are arranged first in sorted order, followed by non-labeled scenes."""
@@ -2072,9 +2077,6 @@ class VideoRemixerState():
         for index, scene_name in enumerate(kept_scenes):
             map_scene_name_to_clip[scene_name] = clip_filepaths[index]
 
-# re.sub(r' +', '_', re.sub(r'[^A-Za-z0-9 ]+', '', "testing $lkjs09)(UDFhg 9\\:/"))
-# 'testing_lkjs09UDFhg_9'
-
         # assemble scenes with sorting marks ahead of unmarked scenes
         assembly = []
         unlabeled_scenes = kept_scenes
@@ -2085,6 +2087,17 @@ class VideoRemixerState():
             scene_name = sort_marked_scenes[sort_mark]
             kept_clip_filepath = map_scene_name_to_clip.get(scene_name)
             if kept_clip_filepath:
+                if rename_clips:
+                    scene_label = self.scene_labels.get(scene_name)
+                    if scene_label:
+                        _, _, title = self.split_label(scene_label)
+                        new_filename = simple_sanitize_filename(title)
+                        path, _, ext = split_filepath(kept_clip_filepath)
+                        new_filepath = os.path.join(path, new_filename + ext)
+                        log_fn(f"renaming clip {kept_clip_filepath} to {new_filepath}")
+                        os.replace(kept_clip_filepath, new_filepath)
+                        kept_clip_filepath = new_filepath
+
                 assembly.append(kept_clip_filepath)
                 unlabeled_scenes.remove(scene_name)
 
@@ -2094,14 +2107,11 @@ class VideoRemixerState():
 
         return assembly
 
-    def create_remix_video(self, global_options, output_filepath, labeled_scenes_first=True):
+    def create_remix_video(self, log_fn, global_options, output_filepath, use_scene_sorting=True):
         with Mtqdm().open_bar(total=1, desc="Saving Remix") as bar:
             Mtqdm().message(bar, "Using FFmpeg to concatenate scene clips - no ETA")
-
-            if labeled_scenes_first:
-                assembly_list = self.assembly_list(self.clips)
-            else:
-                assembly_list = self.clips
+            assembly_list = self.assembly_list(log_fn, self.clips) \
+                if use_scene_sorting else self.clips
             ffcmd = combine_videos(assembly_list,
                                    output_filepath,
                                    global_options=global_options)
