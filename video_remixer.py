@@ -726,6 +726,18 @@ class VideoRemixerState():
         except Exception:
             return None, None, None
 
+    def compose_label(self, sort_mark, hint_mark, title):
+        composed = []
+        if sort_mark:
+            composed.append(f"({sort_mark})")
+        if hint_mark:
+            composed.append(f"{{{hint_mark}}}")
+        if title:
+            if(len(composed)):
+                composed.append(" ")
+            composed.append(title)
+        return "".join(composed)
+
     def split_hint(self, hint : str):
         """Splits a processing hint string such as 'a:1,B:22,C:3c3' into a dict"""
         hints = hint.split(",")
