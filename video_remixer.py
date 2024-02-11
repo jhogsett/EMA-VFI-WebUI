@@ -1,6 +1,7 @@
 """Video Remixer UI state management"""
 import os
 import math
+import re
 import shutil
 import yaml
 from yaml import Loader, YAMLError
@@ -709,6 +710,32 @@ class VideoRemixerState():
                 self.create_thumbnail(scene_name, log_fn, global_options, remixer_settings)
                 Mtqdm().update_bar(bar)
 
+    SPLIT_LABELS = r"(?P<sort>\(.*?\))?(?P<hint>\{.*?\})?\s*(?P<title>.*)?"
+
+    def split_label(self, label):
+        """Splits a label such as '(01){I:2S} My Title (part1){b}' into
+        sort: '01', hint: 'I:2S' label: 'My Title (part1){b}' parts """
+        try:
+            matches = re.search(self.SPLIT_LABELS, label)
+            groups = matches.groups()
+            sort = groups[0][1:-1] if groups[0] else None
+            hint = groups[1][1:-1] if groups[1] else None
+            title = groups[2].strip() if groups[2] else None
+            return sort, hint, title
+        except Exception:
+            return None, None, None
+
+    def split_hint(self, hint : str):
+        """Splits a processing hint string such as 'a:1,B:22,C:3c3' into a dict"""
+        hints = hint.split(",")
+        results = {}
+        hint : str
+        for hint in hints:
+            parts = hint.split(":")
+            if len(parts) == 2:
+                results[parts[0].upper()] = parts[1].upper()
+        return results
+
     def set_scene_label(self, scene_index, scene_label):
         if scene_label:
             this_scene_name = self.scene_names[scene_index]
@@ -799,13 +826,14 @@ class VideoRemixerState():
         """Returns dropped scene names sorted"""
         return sorted([scene for scene in self.scene_states if self.scene_states[scene] == "Drop"])
 
-    def labeled_scenes(self) -> dict:
-        """Returns dict mapping scene label to scene name."""
+    def sort_marked_scenes(self) -> dict:
+        """Returns dict mapping scene sort mark to scene name."""
         result = {}
         for scene_name in self.scene_names:
             scene_label = self.scene_labels.get(scene_name)
-            if scene_label:
-                result[scene_label] = scene_name
+            sort, _, _ = self.split_label(scene_label)
+            if sort:
+                result[sort] = scene_name
         return result
 
     def scene_frames(self, type : str="all") -> int:
@@ -1449,11 +1477,38 @@ class VideoRemixerState():
                 scene_output_path = os.path.join(self.inflation_path, scene_name)
                 create_directory(scene_output_path)
 
-                num_splits = 1
-                if self.inflate_by_option == "4X":
-                    num_splits = 2
-                elif self.inflate_by_option == "8X":
-                    num_splits = 3
+                num_splits = 0
+
+                # see if the scene has a processing hint such as 'I:4A'
+                label = self.scene_labels.get(scene_name)
+                if label:
+                    _, hint, _ = self.split_label(label)
+                    if hint:
+                        log_fn(f"inflate_scenes(): found processing hint: {hint}")
+                        hints = self.split_hint(hint)
+                        inflation_hint = hints.get("I")
+                        if inflation_hint:
+                            log_fn(f"found inflation processing hint: {inflation_hint}")
+                            if "1" in inflation_hint:
+                                # TODO disable inflation
+                                num_splits = 1
+                            elif "2" in inflation_hint:
+                                # TODO re-enable inflation
+                                num_splits = 1
+                            elif "4" in inflation_hint:
+                                log_fn("forcing 4X inflation")
+                                num_splits = 2
+                            elif "8" in inflation_hint:
+                                log_fn("forcing 8X inflation")
+                                num_splits = 3
+
+                if num_splits == 0:
+                    if self.inflate_by_option == "4X":
+                        num_splits = 2
+                    elif self.inflate_by_option == "8X":
+                        num_splits = 3
+                    else:
+                        num_splits = 1
 
                 output_basename = "interpolated_frames"
                 file_list = sorted(get_files(scene_input_path, extension="png"))
@@ -1777,14 +1832,14 @@ class VideoRemixerState():
                 Mtqdm().update_bar(bar)
         self.video_clips = sorted(get_files(self.video_clips_path))
 
-    def compute_inflated_audio_options(self, custom_audio_options):
+    def compute_inflated_audio_options(self, custom_audio_options, force_audio=False, force_inflate_by=None, force_silent=False):
         if self.inflate:
-            if self.inflate_slow_option == "Audio":
-                if self.inflate_by_option == "8X":
+            if self.inflate_slow_option == "Audio" or force_audio:
+                if self.inflate_by_option == "8X" or force_inflate_by == "8X":
                     output_options = '-filter:a "atempo=0.5,atempo=0.5" -c:v copy ' + custom_audio_options
                 else:
                     output_options = '-filter:a "atempo=0.5" -c:v copy ' + custom_audio_options
-            elif self.inflate_slow_option == "Silent":
+            elif self.inflate_slow_option == "Silent" or force_silent:
                 output_options = '-f lavfi -i anullsrc -ac 2 -ar 48000 -map 0:v:0 -map 2:a:0 -c:v copy -shortest ' + custom_audio_options
             else:
                 output_options = custom_audio_options
@@ -1792,7 +1847,7 @@ class VideoRemixerState():
             output_options = custom_audio_options
         return output_options
 
-    def create_scene_clips(self, kept_scenes, global_options):
+    def create_scene_clips(self, log_fn, kept_scenes, global_options):
         if self.video_details["has_audio"]:
             with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
                 for index, scene_name in enumerate(kept_scenes):
@@ -1800,7 +1855,45 @@ class VideoRemixerState():
                     scene_audio_path = self.audio_clips[index]
                     scene_output_filepath = os.path.join(self.clips_path, f"{scene_name}.mp4")
 
-                    output_options = self.compute_inflated_audio_options("-c:a aac -shortest")
+                    force_audio = False
+                    force_inflate_by = None
+                    force_silent = False
+
+                    # see if the scene has a processing hint such as 'I:4A'
+                    label = self.scene_labels.get(scene_name)
+                    if label:
+                        _, hint, _ = self.split_label(label)
+                        if hint:
+                            log_fn(f"create_scene_clips(): found processing hint: {hint}")
+                            hints = self.split_hint(hint)
+                            inflation_hint = hints.get("I")
+                            if inflation_hint:
+                                log_fn(f"found inflation processing hint: {hint}")
+                                if "1" in inflation_hint:
+                                    # TODO disable inflation
+                                    # force_inflate_by = "1X"
+                                    pass
+                                elif "2" in inflation_hint:
+                                    # TODO re-enable inflation
+                                    # force_inflate_by = "2X"
+                                    pass
+                                elif "4" in inflation_hint:
+                                    log_fn("force 4X inflation")
+                                    force_inflate_by = "4X"
+                                elif "8" in inflation_hint:
+                                    log_fn("force 8X inflation")
+                                    force_inflate_by = "8X"
+                                if "A" in inflation_hint:
+                                    log_fn("force audio slow motion")
+                                    force_audio = True
+                                elif "S" in inflation_hint:
+                                    log_fn("force silent slow motion")
+                                    force_silent = True
+
+                    output_options = self.compute_inflated_audio_options("-c:a aac -shortest",
+                                                                         force_audio,
+                                                                         force_inflate_by,
+                                                                         force_silent)
 
                     combine_video_audio(scene_video_path,
                                         scene_audio_path,
@@ -1874,11 +1967,8 @@ class VideoRemixerState():
                     try:
                         label : str = labels[index]
 
-                        # remove the sorting mark if present
-                        if label.startswith("("):
-                            endpoint = label.find(")")
-                            if endpoint != -1:
-                                label = label[endpoint + 1:]
+                        # strip the sort and hint marks in case present
+                        _, _, label = self.split_label(label)
 
                         # trim whitespace
                         label = label.strip()
@@ -1927,7 +2017,39 @@ class VideoRemixerState():
                     scene_output_filepath = os.path.join(self.clips_path,
                                                          f"{scene_name}.{custom_ext}")
 
-                    output_options = self.compute_inflated_audio_options(custom_audio_options)
+                    force_audio = False
+                    force_inflate_by = None
+                    force_silent = False
+
+                    # see if the scene has a processing hint such as 'I:4A'
+                    label = self.scene_labels.get(scene_name)
+                    if label:
+                        _, hint, _ = self.split_label(label)
+                        if hint:
+                            hints = self.split_hint(hint)
+                            inflation_hint = hints.get("I")
+                            if inflation_hint:
+                                if "1" in inflation_hint:
+                                    # TODO disable inflation
+                                    # force_inflate_by = "1X"
+                                    pass
+                                elif "2" in inflation_hint:
+                                    # TODO re-enable inflation
+                                    # force_inflate_by = "2X"
+                                    pass
+                                elif "4" in inflation_hint:
+                                    force_inflate_by = "4X"
+                                elif "8" in inflation_hint:
+                                    force_inflate_by = "8X"
+                                if "A" in inflation_hint:
+                                    force_audio = True
+                                elif "S" in inflation_hint:
+                                    force_silent = True
+
+                    output_options = self.compute_inflated_audio_options(custom_audio_options,
+                                                                force_audio=force_audio,
+                                                                force_inflate_by=force_inflate_by,
+                                                                force_silent=force_silent)
 
                     combine_video_audio(scene_video_path, scene_audio_path,
                                         scene_output_filepath, global_options=global_options,
@@ -1950,17 +2072,20 @@ class VideoRemixerState():
         for index, scene_name in enumerate(kept_scenes):
             map_scene_name_to_clip[scene_name] = clip_filepaths[index]
 
-        # assemble the labeled part of the clip list in label order
-        # and remove labeled scenes from the unlabeled scene list
+# re.sub(r' +', '_', re.sub(r'[^A-Za-z0-9 ]+', '', "testing $lkjs09)(UDFhg 9\\:/"))
+# 'testing_lkjs09UDFhg_9'
+
+        # assemble scenes with sorting marks ahead of unmarked scenes
         assembly = []
         unlabeled_scenes = kept_scenes
-        labeled_scenes = self.labeled_scenes()
-        scene_labels = sorted(list(labeled_scenes.keys()))
-        for scene_label in scene_labels:
-            scene_name = labeled_scenes[scene_label]
-            kept_clip = map_scene_name_to_clip.get(scene_name)
-            if kept_clip:
-                assembly.append(kept_clip)
+
+        sort_marked_scenes = self.sort_marked_scenes()
+        sort_marks = sorted(list(sort_marked_scenes.keys()))
+        for sort_mark in sort_marks:
+            scene_name = sort_marked_scenes[sort_mark]
+            kept_clip_filepath = map_scene_name_to_clip.get(scene_name)
+            if kept_clip_filepath:
+                assembly.append(kept_clip_filepath)
                 unlabeled_scenes.remove(scene_name)
 
         # add the unlabeled clips

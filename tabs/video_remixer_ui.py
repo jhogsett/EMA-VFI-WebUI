@@ -1945,7 +1945,7 @@ class VideoRemixer(TabBase):
         self.state.save()
 
         self.log("about to create scene clips")
-        self.state.create_scene_clips(kept_scenes, global_options)
+        self.state.create_scene_clips(self.log, kept_scenes, global_options)
         self.log("saving project after creating scene clips")
         self.state.save()
 
