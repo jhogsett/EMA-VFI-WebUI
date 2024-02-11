@@ -256,8 +256,10 @@ class VideoRemixer(TabBase):
                         with gr.Row(variant="panel", equal_height=False):
                             with gr.Accordion(label="Properties", open=False):
                                 with gr.Row():
-                                    set_scene_label = gr.Textbox(placeholder="Scene Label", max_lines=1, show_label=False, min_width=80, container=False)
-                                    save_scene_label = gr.Button(value="Set", size="sm", scale=0, min_width=80)
+                                    set_scene_label = gr.Textbox(placeholder="Scene Label", max_lines=1, show_label=False, min_width=100, scale=3, container=False)
+                                    save_scene_label = gr.Button(value="Set", size="sm", scale=0, min_width=40)
+                                    prev_labeled_scene = gr.Button("<", size="sm", min_width=20, scale=0)
+                                    next_labeled_scene = gr.Button(">", size="sm", min_width=20, scale=0)
                                 with gr.Row():
                                     auto_label_scenes = gr.Button(value="Auto Label Scenes", size="sm", min_width=80)
                                     reset_scene_labels = gr.Button(value="Reset Scene Labels", size="sm", min_width=80)
@@ -914,6 +916,16 @@ class VideoRemixer(TabBase):
                                      scene_info, set_scene_label])
 
         save_scene_label.click(self.save_scene_label, inputs=[scene_index, set_scene_label],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
+
+        prev_labeled_scene.click(self.prev_labeled_scene, show_progress=False,
+                            inputs=[scene_index, scene_name],
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
+
+        next_labeled_scene.click(self.next_labeled_scene, show_progress=False,
+                            inputs=[scene_index, scene_name],
                             outputs=[scene_index, scene_name, scene_image, scene_state,
                                      scene_info, set_scene_label])
 
@@ -1632,6 +1644,22 @@ class VideoRemixer(TabBase):
             self.state.clear_scene_label(scene_index)
             self.log("saving project after clearing scene label")
             self.state.save()
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def next_labeled_scene(self, scene_index, scene_name):
+        for index in range(scene_index+1, len(self.state.scene_names)):
+            scene_name = self.state.scene_names[index]
+            if scene_name in self.state.scene_labels:
+                self.state.current_scene = index
+                break
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def prev_labeled_scene(self, scene_index, scene_name):
+        for index in range(scene_index-1, -1, -1):
+            scene_name = self.state.scene_names[index]
+            if scene_name in self.state.scene_labels:
+                self.state.current_scene = index
+                break
         return self.scene_chooser_details(self.state.current_scene)
 
     def auto_label_scenes(self):
