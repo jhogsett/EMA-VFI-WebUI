@@ -263,6 +263,9 @@ class VideoRemixer(TabBase):
                                 with gr.Row():
                                     auto_label_scenes = gr.Button(value="Auto Label Scenes", size="sm", min_width=80)
                                     reset_scene_labels = gr.Button(value="Reset Scene Labels", size="sm", min_width=80)
+                                with gr.Row():
+                                    add_2x_slomo = gr.Button(value="Add 2X Audio Slo Mo", size="sm", min_width=80, elem_id="highlightbutton")
+                                    add_4x_slomo = gr.Button(value="Add 4X Audio Slo Mo", size="sm", min_width=80, elem_id="highlightbutton")
                             with gr.Accordion(label="Danger Zone", open=False):
                                 with gr.Row():
                                     keep_all_button = gr.Button(value="Keep All Scenes",
@@ -935,6 +938,14 @@ class VideoRemixer(TabBase):
         reset_scene_labels.click(self.reset_scene_labels,
                                 outputs=[scene_index, scene_name, scene_image, scene_state,
                                         scene_info, set_scene_label])
+
+        add_2x_slomo.click(self.add_2x_slomo, inputs=scene_index,
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
+
+        add_4x_slomo.click(self.add_4x_slomo, inputs=scene_index,
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         keep_all_button.click(self.keep_all_scenes, show_progress=True,
                             inputs=[scene_index, scene_name],
@@ -1678,6 +1689,24 @@ class VideoRemixer(TabBase):
 
     def reset_scene_labels(self):
         self.state.clear_all_scene_labels()
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def add_slomo(self, scene_index, slomo_hint):
+        scene_name = self.state.scene_names[scene_index]
+        scene_label = self.state.scene_labels.get(scene_name) or ""
+        # TODO later if adding other hint types, might want to overwrite only what changed here
+        sort_mark, _, title = self.state.split_label(scene_label)
+        new_label = self.state.compose_label(sort_mark, slomo_hint, title)
+        self.state.set_scene_label(scene_index, new_label)
+        self.log("saving project after adding slomo hint")
+        self.state.save()
+
+    def add_2x_slomo(self, scene_index):
+        self.add_slomo(scene_index, "I:4A")
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def add_4x_slomo(self, scene_index):
+        self.add_slomo(scene_index, "I:8A")
         return self.scene_chooser_details(self.state.current_scene)
 
     def keep_all_scenes(self, scene_index, scene_name):
