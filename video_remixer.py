@@ -1888,8 +1888,8 @@ class VideoRemixerState():
                                     pass
                                 elif "2" in inflation_hint:
                                     # TODO re-enable inflation
-                                    # force_inflate_by = "2X"
-                                    pass
+                                    log_fn("force 2X inflation")
+                                    force_inflate_by = "2X"
                                 elif "4" in inflation_hint:
                                     log_fn("force 4X inflation")
                                     force_inflate_by = "4X"
@@ -2050,9 +2050,7 @@ class VideoRemixerState():
                                     pass
                                 elif "2" in inflation_hint:
                                     # TODO re-enable inflation
-                                    # force_inflate_by = "2X"
-                                    # for now don't affect the inflation amount
-                                    pass
+                                    force_inflate_by = "2X"
                                 elif "4" in inflation_hint:
                                     force_inflate_by = "4X"
                                 elif "8" in inflation_hint:
