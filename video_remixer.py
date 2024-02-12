@@ -2101,12 +2101,13 @@ class VideoRemixerState():
                     scene_label = self.scene_labels.get(scene_name)
                     if scene_label:
                         _, _, title = self.split_label(scene_label)
-                        new_filename = simple_sanitize_filename(title)
-                        path, filename, ext = split_filepath(kept_clip_filepath)
-                        new_filepath = os.path.join(path, f"{new_filename}_{filename}" + ext)
-                        log_fn(f"renaming clip {kept_clip_filepath} to {new_filepath}")
-                        os.replace(kept_clip_filepath, new_filepath)
-                        kept_clip_filepath = new_filepath
+                        if title:
+                            new_filename = simple_sanitize_filename(title)
+                            path, filename, ext = split_filepath(kept_clip_filepath)
+                            new_filepath = os.path.join(path, f"{new_filename}_{filename}" + ext)
+                            log_fn(f"renaming clip {kept_clip_filepath} to {new_filepath}")
+                            os.replace(kept_clip_filepath, new_filepath)
+                            kept_clip_filepath = new_filepath
 
                 assembly.append(kept_clip_filepath)
                 unlabeled_scenes.remove(scene_name)
