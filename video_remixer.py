@@ -2102,8 +2102,8 @@ class VideoRemixerState():
                     if scene_label:
                         _, _, title = self.split_label(scene_label)
                         new_filename = simple_sanitize_filename(title)
-                        path, _, ext = split_filepath(kept_clip_filepath)
-                        new_filepath = os.path.join(path, new_filename + ext)
+                        path, filename, ext = split_filepath(kept_clip_filepath)
+                        new_filepath = os.path.join(path, f"{new_filename}_{filename}" + ext)
                         log_fn(f"renaming clip {kept_clip_filepath} to {new_filepath}")
                         os.replace(kept_clip_filepath, new_filepath)
                         kept_clip_filepath = new_filepath
