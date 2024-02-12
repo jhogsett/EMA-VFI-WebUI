@@ -1985,7 +1985,7 @@ class VideoRemixerState():
                         _, _, label = self.split_label(label)
 
                         # trim whitespace
-                        label = label.strip()
+                        label = label.strip() if label else ""
 
                         # FFmpeg needs the colons escaped
                         label = label.replace(":", "\:")
