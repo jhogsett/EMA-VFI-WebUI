@@ -1,5 +1,6 @@
 """Functions for dealing with files"""
 import os
+import re
 import shutil
 import glob
 from zipfile import ZipFile
@@ -332,3 +333,19 @@ def check_for_name_clash(file_list, check_base_filename, check_file_type):
         if file_type == check_file_type and filename.startswith(check_base_filename):
             raise ValueError(
                 f"Existing files were found with the base filename {check_base_filename}")
+
+def simple_sanitize_filename(filename, default_filename=None):
+    """Given an arbitrary string, produce a safe filename
+       Uses the default_filename if a safe filename cannot be produced
+       Raises ValueError if default_filename is not provided
+    """
+    # Keep only alphanumeric chars and spaces, and convert all space sequences into underscores
+    safe_name = re.sub(r' +',
+                       '_',
+                       re.sub(r'[^A-Za-z0-9 ]+',
+                              '',
+                              filename)) or default_filename
+    if safe_name:
+        return safe_name
+    raise ValueError(
+        f"simple_sanitize_filename(): unable to produce safe filename from input string {filename}")

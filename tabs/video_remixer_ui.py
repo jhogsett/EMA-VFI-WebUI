@@ -263,6 +263,9 @@ class VideoRemixer(TabBase):
                                 with gr.Row():
                                     auto_label_scenes = gr.Button(value="Auto Label Scenes", size="sm", min_width=80)
                                     reset_scene_labels = gr.Button(value="Reset Scene Labels", size="sm", min_width=80)
+                                with gr.Row():
+                                    add_2x_slomo = gr.Button(value="Add 2X Audio Slo Mo", size="sm", min_width=80, elem_id="highlightbutton")
+                                    add_4x_slomo = gr.Button(value="Add 4X Audio Slo Mo", size="sm", min_width=80, elem_id="highlightbutton")
                             with gr.Accordion(label="Danger Zone", open=False):
                                 with gr.Row():
                                     keep_all_button = gr.Button(value="Keep All Scenes",
@@ -677,7 +680,7 @@ class VideoRemixer(TabBase):
                                 gr.Markdown(
                         "**_Delete source PNG frame files, thumbnails and dropped scenes_**")
                                 with gr.Row():
-                                    delete_source_711 = gr.Checkbox(
+                                    delete_source_711 = gr.Checkbox(value=True,
                                         label="Remove Source Video Frames")
                                     with gr.Column(variant="compact"):
                                         gr.Markdown(
@@ -935,6 +938,14 @@ class VideoRemixer(TabBase):
         reset_scene_labels.click(self.reset_scene_labels,
                                 outputs=[scene_index, scene_name, scene_image, scene_state,
                                         scene_info, set_scene_label])
+
+        add_2x_slomo.click(self.add_2x_slomo, inputs=scene_index,
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
+
+        add_4x_slomo.click(self.add_4x_slomo, inputs=scene_index,
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
 
         keep_all_button.click(self.keep_all_scenes, show_progress=True,
                             inputs=[scene_index, scene_name],
@@ -1666,13 +1677,36 @@ class VideoRemixer(TabBase):
         num_scenes = len(self.state.scene_names)
         num_width = len(str(num_scenes))
         for scene_index in range(len(self.state.scene_names)):
-            label = str(scene_index).zfill(num_width)
-            formatted_label = f"({label})"
+            scene_name = self.state.scene_names[scene_index]
+            scene_label = self.state.scene_labels.get(scene_name)
+            hint_mark, title = None, None
+            if scene_label:
+                _, hint_mark, title = self.state.split_label(scene_label)
+            sort_mark = str(scene_index).zfill(num_width)
+            formatted_label = self.state.compose_label(sort_mark, hint_mark, title)
             self.state.set_scene_label(scene_index, formatted_label)
         return self.scene_chooser_details(self.state.current_scene)
 
     def reset_scene_labels(self):
         self.state.clear_all_scene_labels()
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def add_slomo(self, scene_index, slomo_hint):
+        scene_name = self.state.scene_names[scene_index]
+        scene_label = self.state.scene_labels.get(scene_name) or ""
+        # TODO later if adding other hint types, might want to overwrite only what changed here
+        sort_mark, _, title = self.state.split_label(scene_label)
+        new_label = self.state.compose_label(sort_mark, slomo_hint, title)
+        self.state.set_scene_label(scene_index, new_label)
+        self.log("saving project after adding slomo hint")
+        self.state.save()
+
+    def add_2x_slomo(self, scene_index):
+        self.add_slomo(scene_index, "I:4A")
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def add_4x_slomo(self, scene_index):
+        self.add_slomo(scene_index, "I:8A")
         return self.scene_chooser_details(self.state.current_scene)
 
     def keep_all_scenes(self, scene_index, scene_name):
@@ -1945,7 +1979,7 @@ class VideoRemixer(TabBase):
         self.state.save()
 
         self.log("about to create scene clips")
-        self.state.create_scene_clips(kept_scenes, global_options)
+        self.state.create_scene_clips(self.log, kept_scenes, global_options)
         self.log("saving project after creating scene clips")
         self.state.save()
 
@@ -1953,7 +1987,7 @@ class VideoRemixer(TabBase):
             return gr.update(value="No processed video clips were found", visible=True)
 
         self.log("about to create remix viedeo")
-        ffcmd = self.state.create_remix_video(global_options, self.state.output_filepath)
+        ffcmd = self.state.create_remix_video(self.log, global_options, self.state.output_filepath)
         self.log(f"FFmpeg command: {ffcmd}")
         self.log("saving project after creating remix video")
         self.state.save()
@@ -1965,7 +1999,7 @@ class VideoRemixer(TabBase):
                           custom_video_options,
                           custom_audio_options,
                           draw_text_options=None,
-                          labeled_scenes_first=True):
+                          use_scene_sorting=True):
         _, _, output_ext = split_filepath(output_filepath)
         output_ext = output_ext[1:]
 
@@ -1988,8 +2022,8 @@ class VideoRemixer(TabBase):
             raise ValueError("No processed video clips were found")
 
         self.log("about to create remix viedeo")
-        ffcmd = self.state.create_remix_video(global_options, output_filepath,
-                                              labeled_scenes_first=labeled_scenes_first)
+        ffcmd = self.state.create_remix_video(self.log, global_options, output_filepath,
+                                              use_scene_sorting=use_scene_sorting)
         self.log(f"FFmpeg command: {ffcmd}")
         self.log("saving project after creating remix video")
         self.state.save()
@@ -2143,8 +2177,10 @@ class VideoRemixer(TabBase):
 
             try:
                 self.save_custom_remix(output_filepath, global_options, kept_scenes,
-                                    labeled_video_options, labeled_audio_options, draw_text_options, labeled_scenes_first=False)
-                return gr.update(value=format_markdown(f"Remixed labeled video {output_filepath} is complete.", "highlight"))
+                                       labeled_video_options, labeled_audio_options,
+                                       draw_text_options, use_scene_sorting=True)
+                return format_markdown(
+                    f"Remixed labeled video {output_filepath} is complete.", "highlight")
             except FFRuntimeError as error:
                 return gr.update(value=format_markdown(f"Error: {error}.", "error"))
 
