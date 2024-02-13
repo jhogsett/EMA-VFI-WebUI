@@ -49,7 +49,9 @@ class SplitScenes(TabBase):
                                                    variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.split_scenes.render()
+
         split_scenes.click(self.split_scenes, inputs=[input_path, output_path, scene_threshold])
+
         split_breaks.click(self.split_breaks, inputs=[input_path, output_path, break_duration,
                                                       break_ratio])
 

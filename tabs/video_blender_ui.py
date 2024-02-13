@@ -7,7 +7,7 @@ from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.image_utils import create_gif
 from webui_utils.file_utils import get_files, create_directory, locate_frame_file, \
-    duplicate_directory, split_filepath
+    duplicate_directory
 from webui_utils.auto_increment import AutoIncrementDirectory, AutoIncrementFilename
 from webui_utils.video_utils import PNGtoMP4, QUALITY_SMALLER_SIZE, MP4toPNG
 from webui_tips import WebuiTips
@@ -30,8 +30,8 @@ class VideoBlender(TabBase):
                     log_fn : Callable):
         TabBase.__init__(self, config, engine, log_fn)
         self.video_blender_state = None
-        self.video_blender_projects = VideoBlenderProjects(self.config.
-            blender_settings["projects_file"])
+        self.video_blender_projects = VideoBlenderProjects(
+            self.config.blender_settings["projects_file"])
         self.video_blender_tabs = None
         self.new_project_name = None
         self.new_project_path = None
@@ -65,7 +65,7 @@ class VideoBlender(TabBase):
                 with gr.Row():
                     with gr.Column(scale=3, variant="compact"):
                         with gr.Row():
-                            input_project_name_vb = gr.Textbox(label="Project Name")
+                            input_project_name_vb = gr.Textbox(label="Project Name", max_lines=1)
                     with gr.Column(scale=3, variant="compact", elem_id="mainhighlightdim"):
                         with gr.Row():
                             choices = self.video_blender_projects.get_project_names()
@@ -74,19 +74,19 @@ class VideoBlender(TabBase):
                             save_project_button_vb = gr.Button(SimpleIcons.PROP_SYMBOL +
                                 " Save", scale=0)
                 with gr.Row():
-                    input_main_path = gr.Textbox(label="Project Main Path",
+                    input_main_path = gr.Textbox(label="Project Main Path", max_lines=1,
                                                     placeholder="Root path for the project")
                     input_project_frame_rate = gr.Slider(value=frame_rate, minimum=1,
                                         maximum=max_frame_rate, step=0.01, label="Frame Rate")
                 with gr.Row():
-                    input_project_path_vb = gr.Textbox(label="Project Frames Path",
+                    input_project_path_vb = gr.Textbox(label="Project Frames Path", max_lines=1,
                         placeholder="Path to frame PNG files for video being restored")
                 with gr.Row():
                     input_path1_vb = gr.Textbox(label="Original / Video #1 Frames Path",
-                        placeholder="Path to original or video #1 PNG files")
+                                max_lines=1, placeholder="Path to original or video #1 PNG files")
                 with gr.Row():
                     input_path2_vb = gr.Textbox(label="Alternate / Video #2 Frames Path",
-                        placeholder="Path to alternate or video #2 PNG files")
+                                max_lines=1, placeholder="Path to alternate or video #2 PNG files")
                 load_button_vb = gr.Button("Open Video Blender Project " +
                     SimpleIcons.ROCKET, variant="primary")
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -192,7 +192,7 @@ class VideoBlender(TabBase):
                         video_preview_vb = gr.Video(label="Preview", interactive=False,
                             include_audio=False, width=800, container=True, scale=8)
                     gr.Column(scale=1)
-                preview_path_vb = gr.Textbox(max_lines=1, label="Path to PNG Sequence",
+                preview_path_vb = gr.Textbox(label="Path to PNG Sequence", max_lines=1,
                     placeholder="Path on this server to the PNG files to be converted")
                 with gr.Row():
                     render_video_vb = gr.Button("Render Video", variant="primary")
@@ -208,12 +208,10 @@ class VideoBlender(TabBase):
                         gr.HTML("Define New Project")
                         with gr.Row(variant="panel"):
                             with gr.Column(scale=1):
-                                new_project_name = gr.Textbox(max_lines=1,
-                                    label="New Project Name",
+                                new_project_name = gr.Textbox(label="New Project Name", max_lines=1,
                                     placeholder="Name for the new project")
                             with gr.Column(scale=12):
-                                new_project_path = gr.Textbox(max_lines=1,
-                                    label="New Project Path",
+                                new_project_path = gr.Textbox(label="New Project Path", max_lines=1,
                                     placeholder="Path on this server for the new project")
                             with gr.Column(scale=1):
                                 new_project_frame_rate = gr.Slider(value=frame_rate, minimum=1,
@@ -223,35 +221,35 @@ class VideoBlender(TabBase):
                         gr.HTML("Check Applicable Setup Steps")
                         with gr.Row(variant="panel"):
                             with gr.Column(scale=1):
-                                step1_enabled = gr.Checkbox(value=True, label=SimpleIcons.ONE +
-                                                            " Split MP4 to PNG Frames Set")
+                                step1_enabled = gr.Checkbox(value=True,
+                                            label=SimpleIcons.ONE + " Split MP4 to PNG Frames Set")
                             with gr.Column(scale=12):
                                 with gr.Row():
-                                    step1_input = gr.Textbox(max_lines=1, interactive=True,
-                                        label="MP4 Path",
+                                    step1_input = gr.Textbox(label="MP4 Path", max_lines=1,
+                                        interactive=True,
                                         placeholder="Path on this server to the source MP4 file")
                         with gr.Row(variant="panel"):
                             with gr.Column(scale=1):
-                                step2_enabled = gr.Checkbox(value=True, label=SimpleIcons.TWO +
-                                                            " Resynthesize Repair Frames Set")
+                                step2_enabled = gr.Checkbox(value=True,
+                                        label=SimpleIcons.TWO + " Resynthesize Repair Frames Set")
                             with gr.Column(scale=12):
-                                step2_input = gr.Textbox(max_lines=1, interactive=False,
-                                    label="n/a",
-                                placeholder="Repair frames set will be automatically created")
+                                step2_input = gr.Textbox(label="n/a", max_lines=1,
+                                    interactive=False,
+                                    placeholder="Repair frames set will be automatically created")
                         with gr.Row(variant="panel"):
                             with gr.Column(scale=1):
-                                step3_enabled = gr.Checkbox(value=True, label=SimpleIcons.THREE
-                                                            + " Init Restored Set from Source")
+                                step3_enabled = gr.Checkbox(value=True,
+                                        label=SimpleIcons.THREE + " Init Restored Set from Source")
                             with gr.Column(scale=12):
-                                step3_input = gr.Textbox(max_lines=1, interactive=False,
-                                    label="n/a",
-                                placeholder="Restored frames set will be automatically created")
+                                step3_input = gr.Textbox(label="n/a", max_lines=1,
+                                    interactive=False,
+                                    placeholder="Restored frames set will be automatically created")
                         with gr.Row(variant="panel"):
                             with gr.Column(scale=1):
-                                step4_enabled = gr.Checkbox(value=True, label=SimpleIcons.FOUR +
-                                                            " Sync Frame Numbers Across Sets")
+                                step4_enabled = gr.Checkbox(value=True,
+                                        label=SimpleIcons.FOUR + " Sync Frame Numbers Across Sets")
                             with gr.Column(scale=12):
-                                gr.Textbox(visible=False)
+                                gr.Textbox(visible=False, max_lines=1)
                 gr.Markdown("*Progress can be tracked in the console*")
                 new_project_button = gr.Button("Create New Project " + SimpleIcons.SLOW_SYMBOL,
                                                 variant="primary")
@@ -704,9 +702,11 @@ class VideoBlender(TabBase):
                 upper_filename = f"repair_frame{str(upper_frame).zfill(num_width)}.png"
                 lower_filepath = os.path.join(resynth_frames_path, lower_filename)
                 upper_filepath = os.path.join(resynth_frames_path, upper_filename)
-                self.log(f"duplicating source frame {lower_outer_frame} to {lower_filepath} for frame syncing")
+                self.log(
+            f"duplicating source frame {lower_outer_frame} to {lower_filepath} for frame syncing")
                 shutil.copy(lower_outer_frame, lower_filepath)
-                self.log(f"duplicating source frame {upper_outer_frame} to {upper_filepath} for frame syncing")
+                self.log(
+            f"duplicating source frame {upper_outer_frame} to {upper_filepath} for frame syncing")
                 shutil.copy(upper_outer_frame, upper_filepath)
 
             if self.config.blender_settings["clean_frames"]:
