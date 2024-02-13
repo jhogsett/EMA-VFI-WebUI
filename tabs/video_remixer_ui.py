@@ -99,7 +99,7 @@ class VideoRemixer(TabBase):
                     with gr.Column():
                         gr.Markdown("**Input a video to get started remixing**")
                         with gr.Row():
-                            video_path = gr.Textbox(label="Video Path",
+                            video_path = gr.Textbox(label="Video Path", max_lines=1,
                                 placeholder="Path on this server to the video to be remixed")
                         with gr.Row():
                             message_box00 = gr.Markdown(
@@ -111,7 +111,7 @@ class VideoRemixer(TabBase):
                     with gr.Column():
                         gr.Markdown("**Open an existing Video Remixer project**")
                         with gr.Row():
-                            project_load_path = gr.Textbox(label="Project Path",
+                            project_load_path = gr.Textbox(label="Project Path", max_lines=1,
             placeholder="Path on this server to the Video Remixer project directory or file",
                                 value=lambda : Session().get("last-video-remixer-project"))
                         with gr.Row():
@@ -134,7 +134,7 @@ class VideoRemixer(TabBase):
                 with gr.Row():
                     with gr.Column():
                         with gr.Row():
-                            project_path = gr.Textbox(label="Set Project Path",
+                            project_path = gr.Textbox(label="Set Project Path", max_lines=1,
                                         placeholder="Path on this server to store project data")
                         with gr.Row():
                             split_type = gr.Radio(label="Split Type", value="Scene",
@@ -217,8 +217,10 @@ class VideoRemixer(TabBase):
             ## CHOOSE SCENES
             with gr.Tab(SimpleIcons.FOUR + " Choose Scenes", id=self.TAB_CHOOSE_SCENES):
                 with gr.Row():
-                    scene_name = gr.Text(label="Scene Name", interactive=False, scale=1)
-                    scene_info = gr.Text(label="Scene Details", interactive=False, scale=1)
+                    scene_name = gr.Text(label="Scene Name", max_lines=1, interactive=False,
+                                         scale=1)
+                    scene_info = gr.Text(label="Scene Details", max_lines=1, interactive=False,
+                                         scale=1)
                     with gr.Column(scale=2):
                         with gr.Row():
                             scene_state = gr.Radio(label="Choose", value=None,
@@ -396,10 +398,10 @@ class VideoRemixer(TabBase):
 
                     ### CREATE CUSTOM REMIX
                     with gr.Tab(label="Create Custom Remix"):
-                        custom_video_options = gr.Textbox(value=custom_ffmpeg_video,
+                        custom_video_options = gr.Textbox(value=custom_ffmpeg_video, max_lines=1,
                             label="Custom FFmpeg Video Output Options",
                     info="Passed to FFmpeg as output video settings when converting PNG frames")
-                        custom_audio_options = gr.Textbox(value=custom_ffmpeg_audio,
+                        custom_audio_options = gr.Textbox(value=custom_ffmpeg_audio, max_lines=1,
                             label="Custom FFmpeg Audio Output Options",
                     info="Passed to FFmpeg as output audio settings when combining with video")
                         output_filepath_custom = gr.Textbox(label="Output Filepath",
@@ -421,10 +423,10 @@ class VideoRemixer(TabBase):
 
                     ### CREATE MARKED REMIX
                     with gr.Tab(label="Create Marked Remix"):
-                        marked_video_options = gr.Textbox(value=marked_ffmpeg_video,
+                        marked_video_options = gr.Textbox(value=marked_ffmpeg_video, max_lines=1,
                             label="Marked FFmpeg Video Output Options",
                     info="Passed to FFmpeg as output video settings when converting PNG frames")
-                        marked_audio_options = gr.Textbox(value=marked_ffmpeg_audio,
+                        marked_audio_options = gr.Textbox(value=marked_ffmpeg_audio, max_lines=1,
                             label="Marked FFmpeg Audio Output Options",
                     info="Passed to FFmpeg as output audio settings when combining with video")
                         output_filepath_marked = gr.Textbox(label="Output Filepath",
@@ -490,7 +492,7 @@ class VideoRemixer(TabBase):
                                 with gr.Row():
                                     scene_id_702 = gr.Number(value=-1,
                                                                 label="Scene Index")
-                                    scene_info_702 = gr.Text(label="Scene Details",
+                                    scene_info_702 = gr.Textbox(label="Scene Details", max_lines=1,
                                                                 interactive=False)
                                 with gr.Row():
                                     split_percent_702 = gr.Slider(value=50.0,
