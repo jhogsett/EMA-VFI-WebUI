@@ -274,11 +274,13 @@ class VideoBlender(TabBase):
             outputs=[input_project_name, input_project_path, input_path1,
                 input_path2, input_main_path, input_project_frame_rate],
             show_progress=False)
+
         save_project_button.click(self.video_blender_save_project,
             inputs=[input_project_name, input_project_path, input_path1, input_path2,
                     input_main_path, input_project_frame_rate],
             outputs=[projects_dropdown, reset_project_dropdown],
             show_progress=False)
+
         load_button.click(self.video_blender_load,
             inputs=[input_project_path, input_path1, input_path2, input_main_path,
                 input_project_frame_rate],
@@ -286,81 +288,100 @@ class VideoBlender(TabBase):
                 output_prev_frame, output_curr_frame, output_next_frame,
                 output_img_path2, fix_frames_count],
             show_progress=False)
+
         prev_frame_button.click(self.video_blender_prev_frame,
             inputs=[input_text_frame],
             outputs=[input_text_frame, output_img_path1, output_prev_frame,
                 output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
+
         next_frame_button.click(self.video_blender_next_frame,
             inputs=[input_text_frame],
             outputs=[input_text_frame, output_img_path1, output_prev_frame,
                 output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
+
         input_text_frame.submit(self.video_blender_goto_frame,
             inputs=[input_text_frame],
             outputs=[input_text_frame, output_img_path1, output_prev_frame,
                 output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
+
         input_text_frame.change(self.video_blender_goto_frame2,
             inputs=[input_text_frame],
             outputs=[output_img_path1, output_prev_frame,
                 output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
+
         use_path_1_button.click(self.video_blender_use_path1,
             inputs=[input_text_frame],
             outputs=[input_text_frame, output_img_path1, output_prev_frame,
                 output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
+
         use_path_2_button.click(self.video_blender_use_path2,
             inputs=[input_text_frame],
             outputs=[input_text_frame, output_img_path1, output_prev_frame,
                 output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
+
         prev_xframes_button.click(self.video_blender_skip_prev,
             inputs=[input_text_frame],
             outputs=[input_text_frame, output_img_path1, output_prev_frame,
                 output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
+
         next_xframes_button.click(self.video_blender_skip_next,
             inputs=[input_text_frame],
             outputs=[input_text_frame, output_img_path1, output_prev_frame,
                 output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
+
         preview_video.click(self.video_blender_preview_video,
             inputs=input_project_path, outputs=[tabs_video_blender, preview_path])
+
         fix_frames_count.change(self.video_blender_compute_fix_frames,
                                 inputs=[input_text_frame, fix_frames_count],
                                 outputs=[fix_frames_last_before, fix_frames_first_after,
                                          fix_frames_count],
                                 show_progress=False)
+
         fix_frames_button.click(self.video_blender_fix_frames,
             inputs=[input_project_path, fix_frames_count, fix_frames_last_before,
                     fix_frames_first_after],
             outputs=[tabs_video_blender, project_path_ff, input_clean_before_ff,
                 input_clean_after_ff, fixed_path_ff])
+
         preview_button_ff.click(self.video_blender_preview_fixed,
             inputs=[project_path_ff, input_clean_before_ff, input_clean_after_ff],
             outputs=[preview_image_ff, fixed_path_ff])
+
         use_fixed_button_ff.click(self.video_blender_use_fixed,
             inputs=[project_path_ff, fixed_path_ff, input_clean_before_ff],
             outputs=[tabs_video_blender, fixed_path_ff, input_text_frame, output_img_path1,
                 output_prev_frame,output_curr_frame, output_next_frame,
                 output_img_path2, fix_frames_count, preview_image_ff, fixed_path_ff])
+
         render_video.click(self.video_blender_render_preview,
             inputs=[preview_path, input_frame_rate], outputs=[video_preview])
-        step1_enabled.change(self.video_blender_new_project_ui_switch,
+
+        step1_enabled.change(self.video_blender_new_project_ui_switch_1,
             inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
             outputs=[step1_input, step2_input, step3_input], show_progress=False)
-        step2_enabled.change(self.video_blender_new_project_ui_switch,
+
+        step2_enabled.change(self.video_blender_new_project_ui_switch_2,
             inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
             outputs=[step1_input, step2_input, step3_input], show_progress=False)
-        step3_enabled.change(self.video_blender_new_project_ui_switch,
+
+        step3_enabled.change(self.video_blender_new_project_ui_switch_3,
             inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
             outputs=[step1_input, step2_input, step3_input], show_progress=False)
+
         new_project_button.click(self.video_blender_new_project,
             inputs=[new_project_name, new_project_path, step1_enabled, step2_enabled, step3_enabled,
                 step4_enabled, step1_input, step2_input, step3_input, new_project_frame_rate],
             outputs=[projects_dropdown, reset_project_dropdown], show_progress=False)
+
         reset_project_button.click(self.video_blender_reset_project,
             inputs=reset_project_dropdown,
             outputs=[tabs_video_blender, new_project_name, new_project_path, step1_enabled,
@@ -566,7 +587,35 @@ class VideoBlender(TabBase):
                 crf=QUALITY_SMALLER_SIZE, global_options=global_options)
             return output_filepath
 
-    def video_blender_new_project_ui_switch(self,
+    def video_blender_new_project_ui_switch_1(self,
+                                            step1_enabled,
+                                            step2_enabled,
+                                            step3_enabled,
+                                            step4_enabled):
+        return self.video_blender_new_project_ui_switch_shared(step1_enabled,
+                                                               step2_enabled,
+                                                               step3_enabled,
+                                                               step4_enabled)
+    def video_blender_new_project_ui_switch_2(self,
+                                            step1_enabled,
+                                            step2_enabled,
+                                            step3_enabled,
+                                            step4_enabled):
+        return self.video_blender_new_project_ui_switch_shared(step1_enabled,
+                                                               step2_enabled,
+                                                               step3_enabled,
+                                                               step4_enabled)
+    def video_blender_new_project_ui_switch_3(self,
+                                            step1_enabled,
+                                            step2_enabled,
+                                            step3_enabled,
+                                            step4_enabled):
+        return self.video_blender_new_project_ui_switch_shared(step1_enabled,
+                                                               step2_enabled,
+                                                               step3_enabled,
+                                                               step4_enabled)
+
+    def video_blender_new_project_ui_switch_shared(self,
                                             step1_enabled,
                                             step2_enabled,
                                             step3_enabled,
