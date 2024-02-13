@@ -21,7 +21,8 @@ class FrameSearch(TabBase):
                     log_fn : Callable):
         TabBase.__init__(self, config, engine, log_fn)
 
-    DEFAULT_MESSAGE = "Click Search to: Create a frame at the requested moment (can take from seconds to minutes)"
+    DEFAULT_MESSAGE = \
+        "Click Search to: Create a frame at the requested moment (can take from seconds to minutes)"
 
     def render_tab(self):
         """Render tab into UI"""
@@ -33,15 +34,17 @@ class FrameSearch(TabBase):
                 elem_id="tabheading")
             with gr.Row():
                 with gr.Column():
-                    img1_input = gr.Image(type="filepath", label="Before Frame", tool=None, height=250)
-                    img2_input = gr.Image(type="filepath", label="After Frame", tool=None, height=250)
+                    img1_input = gr.Image(type="filepath", label="Before Frame", tool=None,
+                                          height=250)
+                    img2_input = gr.Image(type="filepath", label="After Frame", tool=None,
+                                          height=250)
                     with gr.Row():
                         splits_input = gr.Slider(value=default_splits, minimum=1,
                                             maximum=max_splits, step=1, label="Search Precision")
-                        min_input_text = gr.Text(placeholder="0.0-1.0",
-                            label="Lower Bound")
-                        max_input_text = gr.Text(placeholder="0.0-1.0",
-                            label="Upper Bound")
+                        min_input_text = gr.Text(placeholder="0.0-1.0", label="Lower Bound",
+                                                 max_lines=1)
+                        max_input_text = gr.Text(placeholder="0.0-1.0", label="Upper Bound",
+                                                 max_lines=1)
                 with gr.Column():
                     img_output = gr.Image(type="filepath", label="Found Frame",
                         interactive=False, elem_id="mainoutput", height=250)
@@ -74,11 +77,13 @@ class FrameSearch(TabBase):
             max_target = float(max_target)
         except ValueError:
             return None, None, gr.update(value=format_markdown(
-                "Please enter a Lower Bound and Upper Bound between 0.0 and 1.0 to begin", "warning"))
+                "Please enter a Lower Bound and Upper Bound between 0.0 and 1.0 to begin",
+                "warning"))
 
         if min_target < 0.0 or min_target > 1.0 or max_target < 0.0 or max_target > 1.0:
             return None, None, gr.update(value=format_markdown(
-                "Please enter a Lower Bound and Upper Bound between 0.0 and 1.0 to begin", "warning"))
+                "Please enter a Lower Bound and Upper Bound between 0.0 and 1.0 to begin",
+                "warning"))
 
         base_output_path = self.config.directories["output_search"]
         use_time_step = self.config.engine_settings["use_time_step"]
@@ -103,6 +108,7 @@ class FrameSearch(TabBase):
             target_interpolater.split_frames(img_before_file, img_after_file, num_splits,
                 float(min_target), float(max_target), output_path, output_basename)
             output_paths = target_interpolater.output_paths
-        return gr.update(value=output_paths[0]), \
+
+        return output_paths[0], \
             gr.update(value=output_paths, visible=True), \
-            gr.update(value=format_markdown(self.DEFAULT_MESSAGE))
+            format_markdown(self.DEFAULT_MESSAGE)
