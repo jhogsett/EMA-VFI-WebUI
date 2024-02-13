@@ -65,13 +65,13 @@ class VideoBlender(TabBase):
                 with gr.Row():
                     with gr.Column(scale=3, variant="compact"):
                         with gr.Row():
-                            input_project_name_vb = gr.Textbox(label="Project Name", max_lines=1)
+                            input_project_name = gr.Textbox(label="Project Name", max_lines=1)
                     with gr.Column(scale=3, variant="compact", elem_id="mainhighlightdim"):
                         with gr.Row():
                             choices = self.video_blender_projects.get_project_names()
-                            projects_dropdown_vb = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
+                            projects_dropdown = gr.Dropdown(label=SimpleIcons.PROP_SYMBOL +
                                 " Saved Projects", choices=choices, value=choices[0])
-                            save_project_button_vb = gr.Button(SimpleIcons.PROP_SYMBOL +
+                            save_project_button = gr.Button(SimpleIcons.PROP_SYMBOL +
                                 " Save", scale=0)
                 with gr.Row():
                     input_main_path = gr.Textbox(label="Project Main Path", max_lines=1,
@@ -79,15 +79,15 @@ class VideoBlender(TabBase):
                     input_project_frame_rate = gr.Slider(value=frame_rate, minimum=1,
                                         maximum=max_frame_rate, step=0.01, label="Frame Rate")
                 with gr.Row():
-                    input_project_path_vb = gr.Textbox(label="Project Frames Path", max_lines=1,
+                    input_project_path = gr.Textbox(label="Project Frames Path", max_lines=1,
                         placeholder="Path to frame PNG files for video being restored")
                 with gr.Row():
-                    input_path1_vb = gr.Textbox(label="Original / Video #1 Frames Path",
+                    input_path1 = gr.Textbox(label="Original / Video #1 Frames Path",
                                 max_lines=1, placeholder="Path to original or video #1 PNG files")
                 with gr.Row():
-                    input_path2_vb = gr.Textbox(label="Alternate / Video #2 Frames Path",
+                    input_path2 = gr.Textbox(label="Alternate / Video #2 Frames Path",
                                 max_lines=1, placeholder="Path to alternate or video #2 PNG files")
-                load_button_vb = gr.Button("Open Video Blender Project " +
+                load_button = gr.Button("Open Video Blender Project " +
                     SimpleIcons.ROCKET, variant="primary")
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_blender_project_settings.render()
@@ -96,13 +96,13 @@ class VideoBlender(TabBase):
             with gr.Tab(SimpleIcons.CONTROLS + "Frame Chooser", id=self.TAB_FRAME_CHOOSER):
                 with gr.Row():
                     with gr.Column():
-                        output_prev_frame_vb = gr.Image(label="Previous Frame",
+                        output_prev_frame = gr.Image(label="Previous Frame",
                             interactive=False, type="filepath", elem_id="sideimage", height=300)
                     with gr.Column():
-                        output_curr_frame_vb = gr.Image(show_label=False,
+                        output_curr_frame = gr.Image(show_label=False,
                             interactive=False, type="filepath", elem_id="actionimage", height=300)
                     with gr.Column():
-                        output_next_frame_vb = gr.Image(label="Next Frame",
+                        output_next_frame = gr.Image(label="Next Frame",
                             interactive=False, type="filepath", elem_id="sideimage", height=300)
                 with gr.Row():
                     with gr.Column():
@@ -120,36 +120,36 @@ class VideoBlender(TabBase):
                                 fix_frames_first_after = gr.Number(
                                     label="First Frame After Damage", value=0, precision=0,
                                     interactive=False)
-                            fix_frames_button_vb = gr.Button("Go To " + SimpleIcons.HAMMER
+                            fix_frames_button = gr.Button("Go To " + SimpleIcons.HAMMER
                                                                 + " Frame Fixer")
                         with gr.Row():
-                            preview_video_vb = gr.Button("Go To "  + SimpleIcons.TELEVISION
+                            preview_video = gr.Button("Go To "  + SimpleIcons.TELEVISION
                                                             + " Video Preview")
 
                     with gr.Column():
                         with gr.Tabs():
                             with gr.Tab(label="Repair / Path 2 Frame"):
-                                output_img_path2_vb = gr.Image(show_label=False,
+                                output_img_path2 = gr.Image(show_label=False,
                                     interactive=False, type="filepath", height=300)
                             with gr.Tab(label="Original / Path 1 Frame"):
-                                output_img_path1_vb = gr.Image(show_label=False,
+                                output_img_path1 = gr.Image(show_label=False,
                                     interactive=False, type="filepath", height=300)
 
                     with gr.Column():
                         gr.Row()
-                        use_path_1_button_vb = gr.Button("Use Path 1 Frame | Next >",
+                        use_path_1_button = gr.Button("Use Path 1 Frame | Next >",
                             variant="primary", elem_id="actionbutton")
-                        use_path_2_button_vb = gr.Button("Use Path 2 Frame | Next >",
+                        use_path_2_button = gr.Button("Use Path 2 Frame | Next >",
                             variant="primary", elem_id="actionbutton")
                         with gr.Row():
-                            prev_frame_button_vb = gr.Button("< Prev Frame",
+                            prev_frame_button = gr.Button("< Prev Frame",
                                 variant="primary")
-                            next_frame_button_vb = gr.Button("Next Frame >",
+                            next_frame_button = gr.Button("Next Frame >",
                                 variant="primary")
                         with gr.Row():
-                            prev_xframes_button_vb = gr.Button(f"<< {skip_frames}")
-                            next_xframes_button_vb = gr.Button(f"{skip_frames} >>")
-                        input_text_frame_vb = gr.Number(value=0, precision=0,
+                            prev_xframes_button = gr.Button(f"<< {skip_frames}")
+                            next_xframes_button = gr.Button(f"{skip_frames} >>")
+                        input_text_frame = gr.Number(value=0, precision=0,
                             label="Frame Number")
 
                 if self.config.user_interface["show_header"]:
@@ -189,14 +189,14 @@ class VideoBlender(TabBase):
                 with gr.Row():
                     gr.Column(scale=1)
                     with gr.Column():
-                        video_preview_vb = gr.Video(label="Preview", interactive=False,
+                        video_preview = gr.Video(label="Preview", interactive=False,
                             include_audio=False, width=800, container=True, scale=8)
                     gr.Column(scale=1)
-                preview_path_vb = gr.Textbox(label="Path to PNG Sequence", max_lines=1,
+                preview_path = gr.Textbox(label="Path to PNG Sequence", max_lines=1,
                     placeholder="Path on this server to the PNG files to be converted")
                 with gr.Row():
-                    render_video_vb = gr.Button("Render Video", variant="primary")
-                    input_frame_rate_vb = gr.Slider(value=frame_rate, minimum=1,
+                    render_video = gr.Button("Render Video", variant="primary")
+                    input_frame_rate = gr.Slider(value=frame_rate, minimum=1,
                                         maximum=max_frame_rate, step=0.01, label="Frame Rate")
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_blender_video_preview.render()
@@ -269,72 +269,72 @@ class VideoBlender(TabBase):
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_blender_reset_project.render()
 
-        projects_dropdown_vb.change(self.video_blender_choose_project,
-            inputs=[projects_dropdown_vb],
-            outputs=[input_project_name_vb, input_project_path_vb, input_path1_vb,
-                input_path2_vb, input_main_path, input_project_frame_rate],
+        projects_dropdown.change(self.video_blender_choose_project,
+            inputs=[projects_dropdown],
+            outputs=[input_project_name, input_project_path, input_path1,
+                input_path2, input_main_path, input_project_frame_rate],
             show_progress=False)
-        save_project_button_vb.click(self.video_blender_save_project,
-            inputs=[input_project_name_vb, input_project_path_vb, input_path1_vb, input_path2_vb,
+        save_project_button.click(self.video_blender_save_project,
+            inputs=[input_project_name, input_project_path, input_path1, input_path2,
                     input_main_path, input_project_frame_rate],
-            outputs=[projects_dropdown_vb, reset_project_dropdown],
+            outputs=[projects_dropdown, reset_project_dropdown],
             show_progress=False)
-        load_button_vb.click(self.video_blender_load,
-            inputs=[input_project_path_vb, input_path1_vb, input_path2_vb, input_main_path,
+        load_button.click(self.video_blender_load,
+            inputs=[input_project_path, input_path1, input_path2, input_main_path,
                 input_project_frame_rate],
-            outputs=[tabs_video_blender, input_text_frame_vb, output_img_path1_vb,
-                output_prev_frame_vb, output_curr_frame_vb, output_next_frame_vb,
-                output_img_path2_vb, fix_frames_count],
+            outputs=[tabs_video_blender, input_text_frame, output_img_path1,
+                output_prev_frame, output_curr_frame, output_next_frame,
+                output_img_path2, fix_frames_count],
             show_progress=False)
-        prev_frame_button_vb.click(self.video_blender_prev_frame,
-            inputs=[input_text_frame_vb],
-            outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+        prev_frame_button.click(self.video_blender_prev_frame,
+            inputs=[input_text_frame],
+            outputs=[input_text_frame, output_img_path1, output_prev_frame,
+                output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
-        next_frame_button_vb.click(self.video_blender_next_frame,
-            inputs=[input_text_frame_vb],
-            outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+        next_frame_button.click(self.video_blender_next_frame,
+            inputs=[input_text_frame],
+            outputs=[input_text_frame, output_img_path1, output_prev_frame,
+                output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
-        input_text_frame_vb.submit(self.video_blender_goto_frame,
-            inputs=[input_text_frame_vb],
-            outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+        input_text_frame.submit(self.video_blender_goto_frame,
+            inputs=[input_text_frame],
+            outputs=[input_text_frame, output_img_path1, output_prev_frame,
+                output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
-        input_text_frame_vb.change(self.video_blender_goto_frame2,
-            inputs=[input_text_frame_vb],
-            outputs=[output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+        input_text_frame.change(self.video_blender_goto_frame2,
+            inputs=[input_text_frame],
+            outputs=[output_img_path1, output_prev_frame,
+                output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
-        use_path_1_button_vb.click(self.video_blender_use_path1,
-            inputs=[input_text_frame_vb],
-            outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+        use_path_1_button.click(self.video_blender_use_path1,
+            inputs=[input_text_frame],
+            outputs=[input_text_frame, output_img_path1, output_prev_frame,
+                output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
-        use_path_2_button_vb.click(self.video_blender_use_path2,
-            inputs=[input_text_frame_vb],
-            outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+        use_path_2_button.click(self.video_blender_use_path2,
+            inputs=[input_text_frame],
+            outputs=[input_text_frame, output_img_path1, output_prev_frame,
+                output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
-        prev_xframes_button_vb.click(self.video_blender_skip_prev,
-            inputs=[input_text_frame_vb],
-            outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+        prev_xframes_button.click(self.video_blender_skip_prev,
+            inputs=[input_text_frame],
+            outputs=[input_text_frame, output_img_path1, output_prev_frame,
+                output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
-        next_xframes_button_vb.click(self.video_blender_skip_next,
-            inputs=[input_text_frame_vb],
-            outputs=[input_text_frame_vb, output_img_path1_vb, output_prev_frame_vb,
-                output_curr_frame_vb, output_next_frame_vb, output_img_path2_vb, fix_frames_count],
+        next_xframes_button.click(self.video_blender_skip_next,
+            inputs=[input_text_frame],
+            outputs=[input_text_frame, output_img_path1, output_prev_frame,
+                output_curr_frame, output_next_frame, output_img_path2, fix_frames_count],
             show_progress=False)
-        preview_video_vb.click(self.video_blender_preview_video,
-            inputs=input_project_path_vb, outputs=[tabs_video_blender, preview_path_vb])
+        preview_video.click(self.video_blender_preview_video,
+            inputs=input_project_path, outputs=[tabs_video_blender, preview_path])
         fix_frames_count.change(self.video_blender_compute_fix_frames,
-                                inputs=[input_text_frame_vb, fix_frames_count],
+                                inputs=[input_text_frame, fix_frames_count],
                                 outputs=[fix_frames_last_before, fix_frames_first_after,
                                          fix_frames_count],
                                 show_progress=False)
-        fix_frames_button_vb.click(self.video_blender_fix_frames,
-            inputs=[input_project_path_vb, fix_frames_count, fix_frames_last_before,
+        fix_frames_button.click(self.video_blender_fix_frames,
+            inputs=[input_project_path, fix_frames_count, fix_frames_last_before,
                     fix_frames_first_after],
             outputs=[tabs_video_blender, project_path_ff, input_clean_before_ff,
                 input_clean_after_ff, fixed_path_ff])
@@ -343,11 +343,11 @@ class VideoBlender(TabBase):
             outputs=[preview_image_ff, fixed_path_ff])
         use_fixed_button_ff.click(self.video_blender_use_fixed,
             inputs=[project_path_ff, fixed_path_ff, input_clean_before_ff],
-            outputs=[tabs_video_blender, fixed_path_ff, input_text_frame_vb, output_img_path1_vb,
-                output_prev_frame_vb,output_curr_frame_vb, output_next_frame_vb,
-                output_img_path2_vb, fix_frames_count, preview_image_ff, fixed_path_ff])
-        render_video_vb.click(self.video_blender_render_preview,
-            inputs=[preview_path_vb, input_frame_rate_vb], outputs=[video_preview_vb])
+            outputs=[tabs_video_blender, fixed_path_ff, input_text_frame, output_img_path1,
+                output_prev_frame,output_curr_frame, output_next_frame,
+                output_img_path2, fix_frames_count, preview_image_ff, fixed_path_ff])
+        render_video.click(self.video_blender_render_preview,
+            inputs=[preview_path, input_frame_rate], outputs=[video_preview])
         step1_enabled.change(self.video_blender_new_project_ui_switch,
             inputs=[step1_enabled, step2_enabled, step3_enabled, step4_enabled],
             outputs=[step1_input, step2_input, step3_input], show_progress=False)
@@ -360,7 +360,7 @@ class VideoBlender(TabBase):
         new_project_button.click(self.video_blender_new_project,
             inputs=[new_project_name, new_project_path, step1_enabled, step2_enabled, step3_enabled,
                 step4_enabled, step1_input, step2_input, step3_input, new_project_frame_rate],
-            outputs=[projects_dropdown_vb, reset_project_dropdown], show_progress=False)
+            outputs=[projects_dropdown, reset_project_dropdown], show_progress=False)
         reset_project_button.click(self.video_blender_reset_project,
             inputs=reset_project_dropdown,
             outputs=[tabs_video_blender, new_project_name, new_project_path, step1_enabled,
