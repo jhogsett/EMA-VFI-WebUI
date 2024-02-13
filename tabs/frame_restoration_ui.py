@@ -8,7 +8,8 @@ from webui_utils.image_utils import create_gif
 from webui_utils.file_utils import create_zip, create_directory
 from webui_utils.ui_utils import create_report
 from webui_utils.auto_increment import AutoIncrementDirectory
-from webui_utils.simple_utils import restored_frame_fractions, restored_frame_predictions, format_markdown
+from webui_utils.simple_utils import restored_frame_fractions, restored_frame_predictions, \
+    format_markdown
 from webui_utils.ui_utils import update_info_fr
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
@@ -89,8 +90,8 @@ class FrameRestoration(TabBase):
         """Restore Frames button handler"""
 
         if not img_before_file or not img_after_file:
-            return None, None, gr.update(value=format_markdown(
-                "Please choose a Before Frame and After Frame to begin", "warning"))
+            return None, None, format_markdown(
+                "Please choose a Before Frame and After Frame to begin", "warning")
 
         interpolater = Interpolate(self.engine.model, self.log)
         target_interpolater = TargetInterpolate(interpolater, self.log)
@@ -129,6 +130,6 @@ class FrameRestoration(TabBase):
             downloads.append(info_file)
 
         message = f"Restored frames saved to {os.path.abspath(output_path)}"
-        return gr.Image.update(value=preview_gif), \
-            gr.File.update(value=downloads, visible=True), \
-            gr.update(value=format_markdown(message))
+        return preview_gif, \
+            gr.update(value=downloads, visible=True), \
+            format_markdown(message)
