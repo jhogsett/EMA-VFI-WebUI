@@ -23,7 +23,8 @@ class FrameInterpolation(TabBase):
                     log_fn : Callable):
         TabBase.__init__(self, config, engine, log_fn)
 
-    DEFAULT_MESSAGE = "Click Interpolate to: Create interpolated frames and show an animated preview"
+    DEFAULT_MESSAGE = \
+        "Click Interpolate to: Create interpolated frames and show an animated preview"
 
     def render_tab(self):
         """Render tab into UI"""
@@ -33,8 +34,10 @@ class FrameInterpolation(TabBase):
                 + " see an animation of result and download the new frames", elem_id="tabheading")
             with gr.Row():
                 with gr.Column():
-                    img1_input = gr.Image(type="filepath", label="Before Frame", tool=None, height=250)
-                    img2_input = gr.Image(type="filepath", label="After Frame", tool=None, height=250)
+                    img1_input = gr.Image(type="filepath", label="Before Frame", tool=None,
+                                          height=250)
+                    img2_input = gr.Image(type="filepath", label="After Frame", tool=None,
+                                          height=250)
                     with gr.Row():
                         splits_input = gr.Slider(value=1, minimum=1, maximum=max_splits,
                             step=1, label="Split Count")
@@ -97,6 +100,6 @@ class FrameInterpolation(TabBase):
                 output_paths)
             downloads.append(info_file)
 
-        return gr.update(value=preview_gif), \
+        return preview_gif, \
             gr.update(value=downloads, visible=True), \
-            gr.update(value=format_markdown(self.DEFAULT_MESSAGE))
+            format_markdown(self.DEFAULT_MESSAGE)
