@@ -161,8 +161,9 @@ class VideoBlender(TabBase):
                 with gr.Row():
                     with gr.Column():
                         with gr.Row():
-                            project_path_ff = gr.Text(label="Video Blender Project Path",
-                                placeholder="Path to video frame PNG files")
+                            project_path_ff = gr.Textbox(label="Video Blender Project Path",
+                                                        max_lines=1,
+                                                        placeholder="Path to video frame PNG files")
                         with gr.Row():
                             input_clean_before_ff = gr.Number(
                                 label="Last clean frame BEFORE damaged ones", value=0,
@@ -177,8 +178,8 @@ class VideoBlender(TabBase):
                         preview_image_ff = gr.Image(type="filepath",
                             label="Fixed Frames Preview", interactive=False,
                             elem_id="highlightoutput", height=300)
-                        fixed_path_ff = gr.Text(label="Path to Restored Frames",
-                            interactive=False)
+                        fixed_path_ff = gr.Textbox(label="Path to Restored Frames", max_lines=1,
+                                                   interactive=False)
                         use_fixed_button_ff = gr.Button(value="Apply Fixed Frames",
                             elem_id="actionbutton")
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
