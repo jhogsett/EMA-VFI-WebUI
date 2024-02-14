@@ -99,7 +99,7 @@ class VideoRemixer(TabBase):
                     with gr.Column():
                         gr.Markdown("**Input a video to get started remixing**")
                         with gr.Row():
-                            video_path = gr.Textbox(label="Video Path",
+                            video_path = gr.Textbox(label="Video Path", max_lines=1,
                                 placeholder="Path on this server to the video to be remixed")
                         with gr.Row():
                             message_box00 = gr.Markdown(
@@ -111,7 +111,7 @@ class VideoRemixer(TabBase):
                     with gr.Column():
                         gr.Markdown("**Open an existing Video Remixer project**")
                         with gr.Row():
-                            project_load_path = gr.Textbox(label="Project Path",
+                            project_load_path = gr.Textbox(label="Project Path", max_lines=1,
             placeholder="Path on this server to the Video Remixer project directory or file",
                                 value=lambda : Session().get("last-video-remixer-project"))
                         with gr.Row():
@@ -134,7 +134,7 @@ class VideoRemixer(TabBase):
                 with gr.Row():
                     with gr.Column():
                         with gr.Row():
-                            project_path = gr.Textbox(label="Set Project Path",
+                            project_path = gr.Textbox(label="Set Project Path", max_lines=1,
                                         placeholder="Path on this server to store project data")
                         with gr.Row():
                             split_type = gr.Radio(label="Split Type", value="Scene",
@@ -217,8 +217,10 @@ class VideoRemixer(TabBase):
             ## CHOOSE SCENES
             with gr.Tab(SimpleIcons.FOUR + " Choose Scenes", id=self.TAB_CHOOSE_SCENES):
                 with gr.Row():
-                    scene_name = gr.Text(label="Scene Name", interactive=False, scale=1)
-                    scene_info = gr.Text(label="Scene Details", interactive=False, scale=1)
+                    scene_name = gr.Text(label="Scene Name", max_lines=1, interactive=False,
+                                         scale=1)
+                    scene_info = gr.Text(label="Scene Details", max_lines=1, interactive=False,
+                                         scale=1)
                     with gr.Column(scale=2):
                         with gr.Row():
                             scene_state = gr.Radio(label="Choose", value=None,
@@ -396,10 +398,10 @@ class VideoRemixer(TabBase):
 
                     ### CREATE CUSTOM REMIX
                     with gr.Tab(label="Create Custom Remix"):
-                        custom_video_options = gr.Textbox(value=custom_ffmpeg_video,
+                        custom_video_options = gr.Textbox(value=custom_ffmpeg_video, max_lines=1,
                             label="Custom FFmpeg Video Output Options",
                     info="Passed to FFmpeg as output video settings when converting PNG frames")
-                        custom_audio_options = gr.Textbox(value=custom_ffmpeg_audio,
+                        custom_audio_options = gr.Textbox(value=custom_ffmpeg_audio, max_lines=1,
                             label="Custom FFmpeg Audio Output Options",
                     info="Passed to FFmpeg as output audio settings when combining with video")
                         output_filepath_custom = gr.Textbox(label="Output Filepath",
@@ -421,10 +423,10 @@ class VideoRemixer(TabBase):
 
                     ### CREATE MARKED REMIX
                     with gr.Tab(label="Create Marked Remix"):
-                        marked_video_options = gr.Textbox(value=marked_ffmpeg_video,
+                        marked_video_options = gr.Textbox(value=marked_ffmpeg_video, max_lines=1,
                             label="Marked FFmpeg Video Output Options",
                     info="Passed to FFmpeg as output video settings when converting PNG frames")
-                        marked_audio_options = gr.Textbox(value=marked_ffmpeg_audio,
+                        marked_audio_options = gr.Textbox(value=marked_ffmpeg_audio, max_lines=1,
                             label="Marked FFmpeg Audio Output Options",
                     info="Passed to FFmpeg as output audio settings when combining with video")
                         output_filepath_marked = gr.Textbox(label="Output Filepath",
@@ -490,7 +492,7 @@ class VideoRemixer(TabBase):
                                 with gr.Row():
                                     scene_id_702 = gr.Number(value=-1,
                                                                 label="Scene Index")
-                                    scene_info_702 = gr.Text(label="Scene Details",
+                                    scene_info_702 = gr.Textbox(label="Scene Details", max_lines=1,
                                                                 interactive=False)
                                 with gr.Row():
                                     split_percent_702 = gr.Slider(value=50.0,
@@ -914,11 +916,11 @@ class VideoRemixer(TabBase):
         choose_range_button.click(self.choose_range_shortcut, inputs=scene_index,
             outputs=[tabs_video_remixer, tabs_remix_extra, first_scene_id_701, last_scene_id_701])
 
-        set_scene_label.submit(self.save_scene_label, inputs=[scene_index, set_scene_label],
+        set_scene_label.submit(self.submit_scene_label, inputs=[scene_index, set_scene_label],
                             outputs=[scene_index, scene_name, scene_image, scene_state,
                                      scene_info, set_scene_label])
 
-        save_scene_label.click(self.save_scene_label, inputs=[scene_index, set_scene_label],
+        save_scene_label.click(self.click_scene_label, inputs=[scene_index, set_scene_label],
                             outputs=[scene_index, scene_name, scene_image, scene_state,
                                      scene_info, set_scene_label])
 
@@ -935,6 +937,7 @@ class VideoRemixer(TabBase):
         auto_label_scenes.click(self.auto_label_scenes,
                                 outputs=[scene_index, scene_name, scene_image, scene_state,
                                          scene_info, set_scene_label])
+
         reset_scene_labels.click(self.reset_scene_labels,
                                 outputs=[scene_index, scene_name, scene_image, scene_state,
                                         scene_info, set_scene_label])
@@ -992,19 +995,19 @@ class VideoRemixer(TabBase):
                             inputs=[output_filepath, quality_slider],
                            outputs=message_box60)
 
-        back_button60.click(self.back_button6, outputs=tabs_video_remixer)
+        back_button60.click(self.back_button60, outputs=tabs_video_remixer)
 
         next_button61.click(self.next_button61,
                         inputs=[custom_video_options, custom_audio_options, output_filepath_custom],
                         outputs=message_box61)
 
-        back_button61.click(self.back_button6, outputs=tabs_video_remixer)
+        back_button61.click(self.back_button61, outputs=tabs_video_remixer)
 
         next_button62.click(self.next_button62,
                         inputs=[marked_video_options, marked_audio_options, output_filepath_marked],
                         outputs=message_box62)
 
-        back_button62.click(self.back_button6, outputs=tabs_video_remixer)
+        back_button62.click(self.back_button62, outputs=tabs_video_remixer)
 
         next_button63.click(self.next_button63,
                         inputs=[label_text, label_font_size, label_font_color, label_font_file,
@@ -1012,7 +1015,7 @@ class VideoRemixer(TabBase):
                                 output_filepath_labeled, quality_slider_labeled],
                         outputs=message_box63)
 
-        back_button63.click(self.back_button6, outputs=tabs_video_remixer)
+        back_button63.click(self.back_button63, outputs=tabs_video_remixer)
 
         drop_button700.click(self.drop_button700, inputs=scene_id_700, outputs=message_box700)
 
@@ -1022,13 +1025,10 @@ class VideoRemixer(TabBase):
                                         scene_name, scene_image, scene_state, scene_info,
                                         set_scene_label])
 
-        scene_id_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
+        scene_id_702.change(self.update_preview_scene_id, inputs=[scene_id_702, split_percent_702],
                                 outputs=[preview_image702, scene_info_702], show_progress=False)
 
-        split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
-                                outputs=[preview_image702, scene_info_702], show_progress=False)
-
-        split_percent_702.change(self.preview_button702, inputs=[scene_id_702, split_percent_702],
+        split_percent_702.change(self.update_preview_split_percent, inputs=[scene_id_702, split_percent_702],
                                 outputs=[preview_image702, scene_info_702], show_progress=False)
 
         goto_0_702.click(self.goto_0_702, outputs=split_percent_702, show_progress=False)
@@ -1055,10 +1055,12 @@ class VideoRemixer(TabBase):
         next_second_702.click(self.next_second_702, inputs=[scene_id_702, split_percent_702],
                                 outputs=split_percent_702, show_progress=False)
 
+        # TODO
         go_to_s_button702.click(self.go_to_s_button702,
                                 inputs=[scene_id_702, split_percent_702, go_to_s_702],
                                 outputs=split_percent_702, show_progress=False)
 
+        # TODO
         go_to_s_702.submit(self.go_to_s_button702,
                                 inputs=[scene_id_702, split_percent_702, go_to_s_702],
                                 outputs=split_percent_702, show_progress=False)
@@ -1120,16 +1122,20 @@ class VideoRemixer(TabBase):
         delete_button710.click(self.delete_button710,
                                inputs=delete_purged_710,
                                outputs=message_box710)
+
         select_all_button710.click(self.select_all_button710, show_progress=False,
                                 outputs=[delete_purged_710])
+
         select_none_button710.click(self.select_none_button710, show_progress=False,
                                 outputs=[delete_purged_710])
 
         delete_button711.click(self.delete_button711,
                                inputs=[delete_source_711, delete_dropped_711, delete_thumbs_711],
                                outputs=message_box711)
+
         select_all_button711.click(self.select_all_button711, show_progress=False,
                                 outputs=[delete_source_711, delete_dropped_711, delete_thumbs_711])
+
         select_none_button711.click(self.select_none_button711, show_progress=False,
                                 outputs=[delete_source_711, delete_dropped_711, delete_thumbs_711])
 
@@ -1138,10 +1144,12 @@ class VideoRemixer(TabBase):
                                        delete_inflated_712, delete_upscaled_712, delete_audio_712,
                                        delete_video_712, delete_clips_712],
                                 outputs=message_box712)
+
         select_all_button712.click(self.select_all_button712, show_progress=False,
                                 outputs=[delete_kept_712, delete_resized_712, delete_resynth_712,
                                          delete_inflated_712, delete_upscaled_712, delete_audio_712,
                                          delete_video_712, delete_clips_712])
+
         select_none_button712.click(self.select_none_button712, show_progress=False,
                                 outputs=[delete_kept_712, delete_resized_712, delete_resynth_712,
                                          delete_inflated_712, delete_upscaled_712,
@@ -1155,25 +1163,22 @@ class VideoRemixer(TabBase):
 
     ### UTILITY FUNCTIONS
 
-    def empty_args(self, num):
-        return [None for _ in range(num)]
-
-    def noop_args(self, num):
-        return [gr.update(visible=True) for _ in range(num)]
+    def dummy_args(self, num, arg=None):
+        return [arg for _ in range(num)]
 
     ### REMIX HOME EVENT HANDLERS
 
     # User has clicked New Project > from Remix Home
     def next_button00(self, video_path):
-        empty_args = self.empty_args(9)
+        empty_args = self.dummy_args(9)
         if not video_path:
             return gr.update(selected=self.TAB_REMIX_HOME), \
-                   gr.update(value=format_markdown("Enter a path to a video on this server to get started", "warning")), \
+                   format_markdown("Enter a path to a video on this server to get started", "warning"), \
                    *empty_args
 
         if not os.path.exists(video_path):
             return gr.update(selected=self.TAB_REMIX_HOME), \
-                   gr.update(value=format_markdown(f"File '{video_path}' was not found", "error")), \
+                   format_markdown(f"File '{video_path}' was not found", "error"), \
                    *empty_args
 
         self.new_project()
@@ -1182,15 +1187,15 @@ class VideoRemixer(TabBase):
             self.state.video_info1 = self.state.ingested_video_report()
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_HOME), \
-                   gr.update(value=format_markdown(str(error), "error")), \
+                   format_markdown(str(error), "error"), \
                    *empty_args
 
         # don't save yet, user may change project path next
         self.state.save_progress("settings", save_project=False)
 
         return gr.update(selected=self.TAB_REMIX_SETTINGS), \
-            gr.update(value=format_markdown(self.TAB00_DEFAULT_MESSAGE)), \
-            gr.update(value=self.state.video_info1), \
+            format_markdown(self.TAB00_DEFAULT_MESSAGE), \
+            self.state.video_info1, \
             self.state.project_path, \
             self.state.resize_w, \
             self.state.resize_h, \
@@ -1202,22 +1207,22 @@ class VideoRemixer(TabBase):
 
     # User has clicked Open Project > from Remix Home
     def next_button01(self, project_path):
-        empty_args = self.empty_args(34)
+        empty_args = self.dummy_args(34)
         if not project_path:
             return gr.update(selected=self.TAB_REMIX_HOME), \
-                   gr.update(value=format_markdown("Enter a path to a Video Remixer project directory on this server to get started", "warning")), \
+                   format_markdown("Enter a path to a Video Remixer project directory on this server to get started", "warning"), \
                    *empty_args
 
         if not os.path.exists(project_path):
             return gr.update(selected=self.TAB_REMIX_HOME), \
-                   gr.update(value=format_markdown(f"Directory '{project_path}' was not found", "error")), \
+                   format_markdown(f"Directory '{project_path}' was not found", "error"), \
                    *empty_args
 
         try:
             project_file = VideoRemixerState.determine_project_filepath(project_path)
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_HOME), \
-                   gr.update(value=format_markdown(str(error), "error")), \
+                   format_markdown(str(error), "error"), \
                    *empty_args
 
         try:
@@ -1225,7 +1230,7 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             self.log(f"error opening project: {error}")
             return gr.update(selected=self.TAB_REMIX_HOME), \
-                   gr.update(value=format_markdown(str(error), "error")), \
+                   format_markdown(str(error), "error"), \
                    *empty_args
 
         if self.state.project_ported(project_file):
@@ -1234,7 +1239,7 @@ class VideoRemixer(TabBase):
             except ValueError as error:
                 self.log(f"error opening ported project at {project_file}: {error}")
                 return gr.update(selected=self.TAB_REMIX_HOME), \
-                    gr.update(value=format_markdown(str(error), "error")), \
+                    format_markdown(str(error), "error"), \
                    *empty_args
 
         messages = self.state.post_load_integrity_check()
@@ -1249,7 +1254,7 @@ class VideoRemixer(TabBase):
         self.invalidate_split_scene_cache()
 
         return gr.update(selected=return_to_tab), \
-            gr.update(value=message_text), \
+            message_text, \
             self.state.tryattr("video_info1"), \
             self.state.tryattr("project_path"), \
             self.state.tryattr("project_fps", self.config.remixer_settings["def_project_fps"]), \
@@ -1301,17 +1306,18 @@ class VideoRemixer(TabBase):
                      crop_offset_y,
                      deinterlace,
                      split_time):
+        empty_args = self.dummy_args(3)
         self.state.project_path = project_path
 
         if not is_safe_path(project_path):
             return gr.update(selected=self.TAB_REMIX_SETTINGS), \
-                gr.update(value=format_markdown(f"The project path is not valid", "warning")),\
-                *self.empty_args(3)
+                format_markdown(f"The project path is not valid", "warning"),\
+                *empty_args
 
         if split_time < 1:
             return gr.update(selected=self.TAB_REMIX_SETTINGS), \
-                gr.update(value=format_markdown(f"Scene Split Seconds should be >= 1", "warning")),\
-                *self.empty_args(3)
+                format_markdown(f"Scene Split Seconds should be >= 1", "warning"),\
+                *empty_args
 
         # TODO validate the other entries
 
@@ -1367,15 +1373,15 @@ class VideoRemixer(TabBase):
             Session().set("last-video-remixer-settings", last_settings)
 
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
-                gr.update(value=format_markdown(self.TAB1_DEFAULT_MESSAGE)), \
+                format_markdown(self.TAB1_DEFAULT_MESSAGE), \
                 self.state.project_info2, \
-                gr.update(value=format_markdown(self.TAB2_DEFAULT_MESSAGE)), \
+                format_markdown(self.TAB2_DEFAULT_MESSAGE), \
                 project_path
 
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_SETTINGS), \
-                gr.update(value=format_markdown(str(error), "error")), \
-                *self.noop_args(3)
+                format_markdown(str(error), "error"), \
+                *empty_args
 
     def back_button1(self):
         return gr.update(selected=self.TAB_REMIX_HOME)
@@ -1417,13 +1423,13 @@ class VideoRemixer(TabBase):
 
     # User has clicked Set Up Project from Set Up Project
     def next_button2(self, thumbnail_type, min_frames_per_scene, skip_detection):
-        empty_args = self.empty_args(6)
+        empty_args = self.dummy_args(6)
         global_options = self.config.ffmpeg_settings["global_options"]
         source_audio_crf = self.config.remixer_settings["source_audio_crf"]
 
         if not self.state.project_path:
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
-                   gr.update(value=format_markdown(f"Project settings have not yet been saved on the previous tab", "error")), \
+                   format_markdown(f"Project settings have not yet been saved on the previous tab", "error"), \
                    *empty_args
 
         self.state.thumbnail_type = thumbnail_type
@@ -1489,7 +1495,7 @@ class VideoRemixer(TabBase):
             error = self.state.split_scenes(self.log, prevent_overwrite=False)
             if error:
                 return gr.update(selected=self.TAB_SET_UP_PROJECT), \
-                    gr.update(value=format_markdown(f"There was an error splitting the source video: {error}", "error")), \
+                    format_markdown(f"There was an error splitting the source video: {error}", "error"), \
                    *empty_args
             self.log("saving project after splitting into scenes")
             self.state.save()
@@ -1508,7 +1514,7 @@ class VideoRemixer(TabBase):
                 self.state.save()
             except ValueError as error:
                 return gr.update(selected=self.TAB_SET_UP_PROJECT), \
-                    gr.update(value=format_markdown(f"There was an error retrieving source frame dimensions: {error}", "error")), \
+                    format_markdown(f"There was an error retrieving source frame dimensions: {error}", "error"), \
                    *empty_args
 
             # if there's only one scene, assume it should be kept to save some time
@@ -1526,7 +1532,7 @@ class VideoRemixer(TabBase):
             self.state.create_thumbnails(self.log, global_options, self.config.remixer_settings)
         except ValueError as error:
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
-                   gr.update(value=format_markdown(f"There was an error creating thumbnails from the source video: {error}", "error")), \
+                   format_markdown(f"There was an error creating thumbnails from the source video: {error}", "error"), \
                    *empty_args
 
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
@@ -1547,7 +1553,7 @@ class VideoRemixer(TabBase):
         self.state.save_progress("choose")
 
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-               gr.update(value=format_markdown(self.TAB2_DEFAULT_MESSAGE)), \
+               format_markdown(self.TAB2_DEFAULT_MESSAGE), \
                *self.scene_chooser_details(self.state.current_scene)
 
     def back_button2(self):
@@ -1657,6 +1663,12 @@ class VideoRemixer(TabBase):
             self.state.save()
         return self.scene_chooser_details(self.state.current_scene)
 
+    def click_scene_label(self, scene_index, scene_label):
+        return self.save_scene_label(scene_index, scene_label)
+
+    def submit_scene_label(self, scene_index, scene_label):
+        return self.save_scene_label(scene_index, scene_label)
+
     def next_labeled_scene(self, scene_index, scene_name):
         for index in range(scene_index+1, len(self.state.scene_names)):
             scene_name = self.state.scene_names[index]
@@ -1730,14 +1742,14 @@ class VideoRemixer(TabBase):
     def scene_chooser_details(self, scene_index):
         if not self.state.thumbnails:
             self.log(f"thumbnails don't exist yet in scene_chooser_details()")
-            return self.empty_args(6)
+            return self.dummy_args(6)
         try:
             scene_name, thumbnail_path, scene_state, scene_info, scene_label = \
                 self.state.scene_chooser_details(scene_index)
             return scene_index, scene_name, thumbnail_path, scene_state, scene_info, scene_label
         except ValueError as error:
             self.log(error)
-            return self.empty_args(6)
+            return self.dummy_args(6)
 
     # User has clicked Done Choosing Scenes from Scene Chooser
     def next_button3(self):
@@ -1761,7 +1773,7 @@ class VideoRemixer(TabBase):
     def next_button4(self):
         if not self.state.project_path:
             return gr.update(selected=self.TAB_COMPILE_SCENES), \
-                   gr.update(value=format_markdown(f"The project has not yet been set up from the Set Up Project tab.", "error")), \
+                   format_markdown(f"The project has not yet been set up from the Set Up Project tab.", "error"), \
                    None
 
         self.log("moving dropped scenes to dropped scenes directory")
@@ -1777,8 +1789,8 @@ class VideoRemixer(TabBase):
         self.state.save_progress("process")
 
         return gr.update(selected=self.TAB_PROC_OPTIONS),  \
-               gr.update(value=format_markdown(self.TAB4_DEFAULT_MESSAGE)), \
-               gr.update(value=format_markdown(self.TAB5_DEFAULT_MESSAGE))
+               format_markdown(self.TAB4_DEFAULT_MESSAGE), \
+               format_markdown(self.TAB5_DEFAULT_MESSAGE)
 
     def back_button4(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
@@ -1794,12 +1806,11 @@ class VideoRemixer(TabBase):
                      inflate_by_option,
                      inflate_slow_option,
                      resynth_option):
-        noop_args = self.noop_args(9)
+        empty_args = self.dummy_args(9)
         if not self.state.project_path or not self.state.scenes_path:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
-                   gr.update(value=format_markdown(
-                    "The project has not yet been set up from the Set Up Project tab.", "error")), \
-                   *noop_args
+                   format_markdown("The project has not yet been set up from the Set Up Project tab.", "error"), \
+                   *empty_args
 
         self.state.resize = resize
 
@@ -1910,29 +1921,26 @@ class VideoRemixer(TabBase):
             self.state.save_progress("save")
 
             return gr.update(selected=self.TAB_SAVE_REMIX), \
-                   gr.update(value=format_markdown(self.TAB5_DEFAULT_MESSAGE)), \
+                   format_markdown(self.TAB5_DEFAULT_MESSAGE), \
                    styled_report, \
                    self.state.output_filepath, \
                    output_filepath_custom, \
                    output_filepath_marked, \
                    output_filepath_labeled, \
-                   gr.update(value=format_markdown(self.TAB60_DEFAULT_MESSAGE)), \
-                   gr.update(value=format_markdown(self.TAB61_DEFAULT_MESSAGE)), \
-                   gr.update(value=format_markdown(self.TAB62_DEFAULT_MESSAGE)), \
-                   gr.update(value=format_markdown(self.TAB63_DEFAULT_MESSAGE))
+                   format_markdown(self.TAB60_DEFAULT_MESSAGE), \
+                   format_markdown(self.TAB61_DEFAULT_MESSAGE), \
+                   format_markdown(self.TAB62_DEFAULT_MESSAGE), \
+                   format_markdown(self.TAB63_DEFAULT_MESSAGE)
         else:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
-                   gr.update(value=format_markdown("At least one scene must be set to 'Keep' before processing can proceed", "warning")), \
-                   *noop_args
+                   format_markdown("At least one scene must be set to 'Keep' before processing can proceed", "warning"), \
+                   *empty_args
 
     def back_button5(self):
         return gr.update(selected=self.TAB_COMPILE_SCENES)
 
     def process_all_changed(self, process_all : bool):
-        return gr.update(value=process_all), \
-            gr.update(value=process_all), \
-            gr.update(value=process_all), \
-            gr.update(value=process_all)
+        return process_all, process_all, process_all, process_all
 
     ### SAVE REMIX EVENT HANDLERS
 
@@ -1984,7 +1992,7 @@ class VideoRemixer(TabBase):
         self.state.save()
 
         if not self.state.clips:
-            return gr.update(value="No processed video clips were found", visible=True)
+            raise ValueError("No processed video clips were found")
 
         self.log("about to create remix viedeo")
         ffcmd = self.state.create_remix_video(self.log, global_options, self.state.output_filepath)
@@ -2031,8 +2039,7 @@ class VideoRemixer(TabBase):
     # User has clicked Save Remix from Save Remix
     def next_button60(self, output_filepath, quality):
         if not self.state.project_path:
-            return gr.update(value=format_markdown(
-                    "The project has not yet been set up from the Set Up Project tab.", "error"))
+            return format_markdown("The project has not yet been set up from the Set Up Project tab.", "error")
 
         self.state.output_filepath = output_filepath
         self.state.output_quality = quality
@@ -2044,16 +2051,15 @@ class VideoRemixer(TabBase):
         try:
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             self.save_remix(global_options, kept_scenes)
-            return gr.update(value=format_markdown(f"Remixed video {output_filepath} is complete.", "highlight"))
+            return format_markdown(f"Remixed video {output_filepath} is complete.", "highlight")
 
         except ValueError as error:
-            return gr.update(value=format_markdown(str(error), "error"))
+            return format_markdown(str(error), "error")
 
     # User has clicked Save Custom Remix from Save Remix
     def next_button61(self, custom_video_options, custom_audio_options, output_filepath):
         if not self.state.project_path:
-            return gr.update(value=format_markdown(
-                    "The project has not yet been set up from the Set Up Project tab.", "error"))
+            return format_markdown("The project has not yet been set up from the Set Up Project tab.", "error")
 
         self.state.recompile_scenes()
 
@@ -2061,15 +2067,14 @@ class VideoRemixer(TabBase):
             global_options, kept_scenes = self.prepare_save_remix(output_filepath)
             self.save_custom_remix(output_filepath, global_options, kept_scenes,
                                    custom_video_options, custom_audio_options)
-            return gr.update(value=format_markdown(f"Remixed custom video {output_filepath} is complete.", "highlight"))
+            return format_markdown(f"Remixed custom video {output_filepath} is complete.", "highlight")
         except ValueError as error:
-            return gr.update(value=format_markdown(str(error), "error"))
+            return format_markdown(str(error), "error")
 
     # User has clicked Save Marked Remix from Save Remix
     def next_button62(self, marked_video_options, marked_audio_options, output_filepath):
         if not self.state.project_path:
-            return gr.update(value=format_markdown(
-                    "The project has not yet been set up from the Set Up Project tab.", "error"))
+            return format_markdown("The project has not yet been set up from the Set Up Project tab.", "error")
 
         self.state.recompile_scenes()
 
@@ -2101,9 +2106,9 @@ class VideoRemixer(TabBase):
 
             self.save_custom_remix(output_filepath, global_options, kept_scenes,
                                    marked_video_options, marked_audio_options, draw_text_options)
-            return gr.update(value=format_markdown(f"Remixed marked video {output_filepath} is complete.", "highlight"))
+            return format_markdown(f"Remixed marked video {output_filepath} is complete.", "highlight")
         except ValueError as error:
-            return gr.update(value=format_markdown(str(error), "error"))
+            return format_markdown(str(error), "error")
 
     # User has clicked Save Labeled Remix from Save Remix
     def next_button63(self,
@@ -2118,30 +2123,22 @@ class VideoRemixer(TabBase):
                       output_filepath,
                       quality):
         if not self.state.project_path:
-            return gr.update(value=format_markdown(
-                "The project has not yet been set up from the Set Up Project tab.", "error"))
+            return format_markdown("The project has not yet been set up from the Set Up Project tab.", "error")
         if label_font_size <= 0.0:
-            return gr.update(value=format_markdown(
-                "The Font Factor must be > 0", "warning"))
+            return format_markdown("The Font Factor must be > 0", "warning")
         if not label_font_file:
-           return gr.update(value=format_markdown(
-                "The Font File must not be blank", "warning"))
+           return format_markdown("The Font File must not be blank", "warning")
         if not os.path.exists(label_font_file):
-           return gr.update(value=format_markdown(
-                f"The Font File {os.path.abspath(label_font_file)} was not found", "error"))
+           return format_markdown(f"The Font File {os.path.abspath(label_font_file)} was not found", "error")
         if not label_font_file:
-           return gr.update(value=format_markdown(
-                "The Font File must not be blank", "warning"))
+           return format_markdown("The Font File must not be blank", "warning")
         if not label_font_color:
-           return gr.update(value=format_markdown(
-                "The Font Color must not be blank", "warning"))
+           return format_markdown("The Font Color must not be blank", "warning")
         if label_draw_box:
             if (label_border_size <= 0.0):
-                return gr.update(value=format_markdown(
-                    "The Border Factor must be > 0", "warning"))
+                return format_markdown("The Border Factor must be > 0", "warning")
         if not label_box_color:
-           return gr.update(value=format_markdown(
-                "The Background Color must not be blank", "warning"))
+           return format_markdown("The Background Color must not be blank", "warning")
 
         self.state.recompile_scenes()
 
@@ -2182,12 +2179,21 @@ class VideoRemixer(TabBase):
                 return format_markdown(
                     f"Remixed labeled video {output_filepath} is complete.", "highlight")
             except FFRuntimeError as error:
-                return gr.update(value=format_markdown(f"Error: {error}.", "error"))
+                return format_markdown(f"Error: {error}.", "error")
 
         except ValueError as error:
-            return gr.update(value=format_markdown(str(error), "error"))
+            return format_markdown(str(error), "error")
 
-    def back_button6(self):
+    def back_button60(self):
+        return gr.update(selected=self.TAB_PROC_OPTIONS)
+
+    def back_button61(self):
+        return gr.update(selected=self.TAB_PROC_OPTIONS)
+
+    def back_button62(self):
+        return gr.update(selected=self.TAB_PROC_OPTIONS)
+
+    def back_button63(self):
         return gr.update(selected=self.TAB_PROC_OPTIONS)
 
     def drop_button700(self, scene_index):
@@ -2195,11 +2201,11 @@ class VideoRemixer(TabBase):
         last_scene = num_scenes - 1
 
         if not isinstance(scene_index, (int, float)):
-            return gr.update(value=format_markdown(f"Please enter a Scene Index to get started", "warning"))
+            return format_markdown(f"Please enter a Scene Index to get started", "warning")
 
         scene_index = int(scene_index)
         if scene_index < 0 or scene_index > last_scene:
-            return gr.update(value=format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning"))
+            return format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning")
 
         removed = self.state.force_drop_processed_scene(scene_index)
 
@@ -2212,17 +2218,17 @@ class VideoRemixer(TabBase):
             f"saving project after using force_drop_processed_scene for scene index {scene_index}")
         self.state.save()
         removed = "\r\n".join(removed)
-        return gr.update(value=format_markdown(f"Removed:\r\n{removed}"))
+        return format_markdown(f"Removed:\r\n{removed}")
 
     def choose_button701(self, first_scene_index, last_scene_index, scene_state):
-        empty_args = self.empty_args(6)
+        empty_args = self.dummy_args(6)
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
 
         if not isinstance(first_scene_index, (int, float)) \
                 or not isinstance(last_scene_index, (int, float)):
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
-    gr.update(value=format_markdown("Please enter Scene Indexes to get started", "warning")), \
+                format_markdown("Please enter Scene Indexes to get started", "warning"), \
                 *empty_args
 
         first_scene_index = int(first_scene_index)
@@ -2232,17 +2238,21 @@ class VideoRemixer(TabBase):
                 or last_scene_index < 0 \
                 or last_scene_index > last_scene:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                gr.update(value=format_markdown(f"Please enter valid Scene Indexes between 0 and {last_scene} to get started", "warning")), \
+                format_markdown(
+                    f"Please enter valid Scene Indexes between 0 and {last_scene} to get started",
+                    "warning"), \
                 *empty_args
 
         if first_scene_index >= last_scene_index:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                gr.update(value=format_markdown(f"'Ending Scene Index' must be higher than 'Starting Scene Index'", "warning")), \
+                format_markdown(
+                    f"'Ending Scene Index' must be higher than 'Starting Scene Index'",
+                    "warning"), \
                 *empty_args
 
         if scene_state not in ["Keep", "Drop"]:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
-    gr.update(value=format_markdown("Please make a Scenes Choice to get started", "warning")), \
+                format_markdown("Please make a Scenes Choice to get started", "warning"), \
                 *empty_args
 
         for scene_index in range(first_scene_index, last_scene_index + 1):
@@ -2258,7 +2268,7 @@ class VideoRemixer(TabBase):
         self.state.save()
 
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-            gr.update(value=format_markdown(message)), \
+            format_markdown(message), \
             *self.scene_chooser_details(self.state.current_scene)
 
     def valid_split_scene_cache(self, scene_index):
@@ -2293,7 +2303,7 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 format_markdown(f"Unable to split scene: {error}", "warning"), \
-                *self.empty_args(6)
+                *self.dummy_args(6)
 
     def split_keep_before_702(self, scene_index, split_percent):
         global_options = self.config.ffmpeg_settings["global_options"]
@@ -2313,7 +2323,7 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 format_markdown(f"Unable to split scene: {error}", "warning"), \
-                *self.empty_args(6)
+                *self.dummy_args(6)
 
     def split_keep_after_702(self, scene_index, split_percent):
         global_options = self.config.ffmpeg_settings["global_options"]
@@ -2333,7 +2343,7 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 format_markdown(f"Unable to split scene: {error}", "warning"), \
-                *self.empty_args(6)
+                *self.dummy_args(6)
 
     def back_button702(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
@@ -2362,16 +2372,22 @@ class VideoRemixer(TabBase):
             return None
         return frame_files[split_frame]
 
-    def preview_button702(self, scene_index, split_percent):
+    def update_preview(self, scene_index, split_percent):
         if not isinstance(scene_index, (int, float)):
-            return self.empty_args(2)
+            return self.dummy_args(2)
         scene_index = int(scene_index)
         if scene_index < 0 or scene_index >= len(self.state.scene_names):
-            return self.empty_args(2)
+            return self.dummy_args(2)
 
         display_frame = self.compute_preview_frame(scene_index, split_percent)
         _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index)
         return display_frame, scene_info
+
+    def update_preview_scene_id(self, scene_index, split_percent):
+        return self.update_preview(scene_index, split_percent)
+
+    def update_preview_split_percent(self, scene_index, split_percent):
+        return self.update_preview(scene_index, split_percent)
 
     def compute_advance_702(self,
                             scene_index,
@@ -2382,7 +2398,7 @@ class VideoRemixer(TabBase):
                             by_exact_second=False,
                             exact_second=0):
         if not isinstance(scene_index, (int, float)):
-            return self.empty_args(2)
+            return self.dummy_args(2)
 
         scene_index = int(scene_index)
         scene_name = self.state.scene_names[scene_index]
@@ -2442,17 +2458,19 @@ class VideoRemixer(TabBase):
                                         exact_second=go_to_second)
 
     def export_project_703(self, new_project_path : str, new_project_name : str):
-        empty_args = [gr.update(visible=False), gr.update(visible=False)]
+        empty_args = self.dummy_args(2)
         if not new_project_path:
-            return gr.update(value=format_markdown("Please enter a Project Path for the new project", "warning")), *empty_args
+            return format_markdown("Please enter a Project Path for the new project", "warning"), \
+                *empty_args
         if not is_safe_path(new_project_path):
-            return gr.update(value=format_markdown("The entered Project Path is not valid", "warning")), *empty_args
+            return format_markdown("The entered Project Path is not valid", "warning"), *empty_args
         if not new_project_name:
-            return gr.update(value=format_markdown("Please enter a Project Name for the new project", "warning")), *empty_args
+            return format_markdown("Please enter a Project Name for the new project", "warning"), \
+                *empty_args
 
         kept_scenes = self.state.kept_scenes()
         if not kept_scenes:
-            return gr.update(value=format_markdown("No kept scenes were found", "warning")), *empty_args
+            return format_markdown("No kept scenes were found", "warning"), *empty_args
 
         new_project_name = new_project_name.strip()
         full_new_project_path = os.path.join(new_project_path, new_project_name)
@@ -2521,17 +2539,17 @@ class VideoRemixer(TabBase):
 
             Session().set("last-video-remixer-export-dir", new_project_path)
 
-            return gr.update(value=format_markdown(f"Kept scenes saved as new project: {full_new_project_path} ")), \
+            return format_markdown(f"Kept scenes saved as new project: {full_new_project_path} "), \
                 gr.update(visible=True, value=full_new_project_path), \
                 gr.update(visible=True)
 
         except ValueError as error:
-            return gr.update(value=format_markdown(str(error), "error")), *empty_args
+            return format_markdown(str(error), "error"), *empty_args
 
     def open_result703(self, new_project_path):
         return gr.update(selected=self.TAB_REMIX_HOME), \
-            gr.update(value=new_project_path), \
-            gr.update(value=format_markdown(self.TAB01_DEFAULT_MESSAGE))
+            new_project_path, \
+            format_markdown(self.TAB01_DEFAULT_MESSAGE)
 
     CLEANSE_SCENES_PATH = "cleansed_scenes"
     CLEANSE_SCENES_FACTOR = 4.0
@@ -2539,7 +2557,7 @@ class VideoRemixer(TabBase):
     def cleanse_button704(self):
         kept_scenes = self.state.kept_scenes()
         if len(kept_scenes) < 1:
-            return gr.update(value=format_markdown("No kept scenes were found", "warning"))
+            return format_markdown("No kept scenes were found", "warning")
 
         self.state.uncompile_scenes()
 
@@ -2548,7 +2566,7 @@ class VideoRemixer(TabBase):
         try:
             self.state.enhance_video_info(self.log, ignore_errors=False)
         except ValueError as error:
-            return gr.update(value=format_markdown(f"Error: {error}", "error"))
+            return format_markdown(f"Error: {error}", "error")
 
         working_path = os.path.join(self.state.project_path, self.CLEANSE_SCENES_PATH)
         if os.path.exists(working_path):
@@ -2608,7 +2626,7 @@ class VideoRemixer(TabBase):
             self.log(f"Error removing path '{working_path}' ignored: {error}")
 
         self.invalidate_split_scene_cache()
-        return gr.update(value=format_markdown("Kept scenes replaced with cleaned versions"))
+        return format_markdown("Kept scenes replaced with cleaned versions")
 
     def merge_scenes(self, first_scene_index, last_scene_index):
         """Merge the specified scenes. Returns the new scene name. Raises ValueError and RuntimeError."""
@@ -2731,7 +2749,7 @@ class VideoRemixer(TabBase):
         return new_scene_name
 
     def merge_button705(self, first_scene_index, last_scene_index):
-        empty_args = self.empty_args(6)
+        empty_args = self.dummy_args(6)
         if not isinstance(first_scene_index, (int, float)) \
                 or not isinstance(last_scene_index, (int, float)):
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
@@ -2754,7 +2772,7 @@ class VideoRemixer(TabBase):
                 *empty_args
 
     def coalesce_button706(self, coalesce_scenes):
-        empty_args = self.empty_args(6)
+        empty_args = self.dummy_args(6)
         kept_scenes = self.state.kept_scenes()
         if len(kept_scenes) < 2:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
@@ -2847,19 +2865,20 @@ class VideoRemixer(TabBase):
     APP_TAB_VIDEO_REMIXER=5
 
     def export_button707(self, scene_index):
-        empty_args = self.empty_args(10)
+        empty_args = self.dummy_args(10)
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
 
         if not isinstance(scene_index, (int, float)):
-            return gr.update(value=format_markdown(f"Please enter a Scene Index to get started", "warning")), \
+            return format_markdown(f"Please enter a Scene Index to get started", "warning"), \
                 gr.update(selected=self.APP_TAB_VIDEO_REMIXER), \
                 gr.update(selected=VideoBlender.TAB_NEW_PROJECT), \
                 *empty_args
 
         scene_index = int(scene_index)
         if scene_index < 0 or scene_index > last_scene:
-            return gr.update(value=format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning")), \
+            return format_markdown(f"Please enter a Scene Index from 0 to {last_scene}",
+                                   "warning"), \
                 gr.update(selected=self.APP_TAB_VIDEO_REMIXER), \
                 gr.update(selected=VideoBlender.TAB_NEW_PROJECT), \
                 *empty_args
@@ -2895,15 +2914,15 @@ class VideoRemixer(TabBase):
         if delete_purged:
             self.log("about to remove content from 'purged_content' directory")
             removed = self.state.delete_purged_content()
-            return gr.update(value=format_markdown(f"Removed: {removed}"))
+            return format_markdown(f"Removed: {removed}")
         else:
-            return gr.update(value=format_markdown(f"Removed: None"))
+            return format_markdown(f"Removed: None")
 
     def select_all_button710(self):
-        return gr.update(value=True)
+        return True
 
     def select_none_button710(self):
-        return gr.update(value=False)
+        return False
 
     def delete_button711(self, delete_source, delete_dropped, delete_thumbs):
         removed = []
@@ -2919,17 +2938,13 @@ class VideoRemixer(TabBase):
             message = f"Removed:\r\n{removed_str}"
         else:
             message = f"Removed: None"
-        return gr.update(value=format_markdown(message))
+        return format_markdown(message)
 
     def select_all_button711(self):
-        return gr.update(value=True), \
-                gr.update(value=True), \
-                gr.update(value=True)
+        return True, True, True
 
     def select_none_button711(self):
-        return gr.update(value=False), \
-                gr.update(value=False), \
-                gr.update(value=False)
+        return False, False, False
 
     def delete_button712(self,
                          delete_kept,
@@ -2963,27 +2978,13 @@ class VideoRemixer(TabBase):
             message = f"Removed:\r\n{removed_str}"
         else:
             message = f"Removed: None"
-        return gr.update(value=format_markdown(message))
+        return format_markdown(message)
 
     def select_all_button712(self):
-        return gr.update(value=True), \
-                gr.update(value=True), \
-                gr.update(value=True), \
-                gr.update(value=True), \
-                gr.update(value=True), \
-                gr.update(value=True), \
-                gr.update(value=True), \
-                gr.update(value=True)
+        return True, True, True, True, True, True, True, True
 
     def select_none_button712(self):
-        return gr.update(value=False), \
-                gr.update(value=False), \
-                gr.update(value=False), \
-                gr.update(value=False), \
-                gr.update(value=False), \
-                gr.update(value=False), \
-                gr.update(value=False), \
-                gr.update(value=False)
+        return False, False, False, False, False, False, False, False
 
     def delete_button713(self, delete_all):
         removed = []
@@ -3006,7 +3007,7 @@ class VideoRemixer(TabBase):
             message = f"Removed:\r\n{removed_str}"
         else:
             message = f"Removed: None"
-        return gr.update(value=format_markdown(message))
+        return format_markdown(message)
 
     def restore_button714(self):
         global_options = self.config.ffmpeg_settings["global_options"]
@@ -3015,5 +3016,5 @@ class VideoRemixer(TabBase):
                                    log_fn=self.log)
         message = f"Project recovered"
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-            gr.update(value=format_markdown(message)), \
+            format_markdown(message), \
             *self.scene_chooser_details(self.state.current_scene)

@@ -92,17 +92,17 @@ class DuplicateTuning(TabBase):
                     suppress_output=True)
                 report = str(tuning_data)
                 return gr.update(value=[output_filepath], visible=True), \
-                    gr.update(value=output_filepath, visible=True), \
-                    gr.update(value=None, visible=False)
+                       gr.update(value=output_filepath, visible=True), \
+                       gr.update(value=None, visible=False)
 
             except RuntimeError as error:
                 message = str(error)
                 return gr.update(value=None, visible=False),\
-                    gr.update(value=None, visible=False), \
-                    gr.update(value=message, visible=True)
+                       gr.update(value=None, visible=False), \
+                       gr.update(value=message, visible=True)
         else:
             message =\
             "To proceed, ensure: an input path was entered, threshold max > min, threshold step > 0"
             return gr.update(value=None, visible=False),\
-                gr.update(value=None, visible=False), \
-                gr.update(value=message, visible=True)
+                   gr.update(value=None, visible=False), \
+                   gr.update(value=message, visible=True)

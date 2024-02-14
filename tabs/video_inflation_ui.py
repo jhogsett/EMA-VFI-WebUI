@@ -24,8 +24,10 @@ class VideoInflation(TabBase):
                     log_fn : Callable):
         TabBase.__init__(self, config, engine, log_fn)
 
-    DEFAULT_MESSAGE_SINGLE = "Click Inflate Video to: Insert the specified number of interpolated frames"
-    DEFAULT_MESSAGE_BATCH = "Click Inflate Batch to: Insert the specified number of interpolated frames for each batch directory"
+    DEFAULT_MESSAGE_SINGLE = \
+        "Click Inflate Video to: Insert the specified number of interpolated frames"
+    DEFAULT_MESSAGE_BATCH = \
+"Click Inflate Batch to: Insert the specified number of interpolated frames for each batch directory"
 
     def render_tab(self):
         """Render tab into UI"""
@@ -77,19 +79,16 @@ class VideoInflation(TabBase):
     def batch_inflation(self, input_path : str, output_path : str | None, num_splits : float):
         """Inflate Video button handler"""
         if not input_path:
-            return gr.update(value=format_markdown(
-                "Please enter an input path to begin", "warning"))
+            return format_markdown("Please enter an input path to begin", "warning")
         if not os.path.exists(input_path):
-            return gr.update(value=format_markdown(
-                f"The input path {input_path} was not found", "error"))
+            return format_markdown(f"The input path {input_path} was not found", "error")
         if not is_safe_path(input_path):
-            return gr.update(value=format_markdown(
-                f"The input path {input_path} is not valid", "error"))
+            return format_markdown(f"The input path {input_path} is not valid", "error")
 
         group_names = get_directories(input_path)
         if not group_names:
-            return gr.update(value=format_markdown(
-                f"No directories were found at the input path {input_path}", "error"))
+            return format_markdown(f"No directories were found at the input path {input_path}",
+                                   "error")
 
         self.log(f"beginning batch VideoInflation processing with input_path={input_path}" +\
                     f" output_path={output_path}")
@@ -97,8 +96,7 @@ class VideoInflation(TabBase):
 
         if output_path:
             if not is_safe_path(output_path):
-                return gr.update(value=format_markdown(
-                    f"The output path {output_path} is not valid", "error"))
+                return format_markdown(f"The output path {output_path} is not valid", "error")
             self.log(f"creating group output path {output_path}")
             create_directory(output_path)
         else:
@@ -111,34 +109,36 @@ class VideoInflation(TabBase):
                 group_input_path = os.path.join(input_path, group_name)
                 group_output_path = os.path.join(output_path, group_name)
                 try:
-                    self.video_inflation(group_input_path, group_output_path, num_splits, interactive=False)
+                    self.video_inflation(group_input_path, group_output_path, num_splits,
+                                         interactive=False)
                 except ValueError as error:
                     errors.append(f"Error handling directory {group_name}: " + str(error))
                 Mtqdm().update_bar(bar)
         if errors:
             message = "\r\n".join(errors)
-            return gr.update(value=format_markdown(message, "error"))
+            return format_markdown(message, "error")
         else:
             message = f"Batch processed inflated frames saved to {os.path.abspath(output_path)}"
-            return gr.update(value=format_markdown(message))
+            return format_markdown(message)
 
-    def video_inflation(self, input_path : str, output_path : str | None, num_splits : float, interactive : bool=True):
+    def video_inflation(self, input_path : str, output_path : str | None, num_splits : float,
+                        interactive : bool=True):
         """Inflate Video button handler"""
         if not input_path:
             if interactive:
-                return gr.update(value=format_markdown("Please enter an input path to begin", "warning"))
+                return format_markdown("Please enter an input path to begin", "warning")
             else:
                 raise ValueError(f"The input path is empty")
         if not os.path.exists(input_path):
             message = f"The input path {input_path} was not found"
             if interactive:
-                return gr.update(value=format_markdown(message, "error"))
+                return format_markdown(message, "error")
             else:
                 raise ValueError(message)
         if not is_safe_path(input_path):
             message = f"The input path {input_path} is not valid"
             if interactive:
-                return gr.update(value=format_markdown(message, "error"))
+                return format_markdown(message, "error")
             else:
                 raise ValueError(message)
 
@@ -146,7 +146,7 @@ class VideoInflation(TabBase):
             if not is_safe_path(output_path):
                 message = f"The output path {output_path} is not valid"
                 if interactive:
-                    return gr.update(value=format_markdown(message, "error"))
+                    return format_markdown(message, "error")
                 else:
                     raise ValueError(f"The output path {input_path} is not valid")
             self.log(f"creating output path {output_path}")
@@ -168,6 +168,6 @@ class VideoInflation(TabBase):
 
         message = f"Inflated frames saved to {os.path.abspath(output_path)}"
         if interactive:
-            return gr.update(value=format_markdown(message))
+            return format_markdown(message)
         else:
             self.log(message)

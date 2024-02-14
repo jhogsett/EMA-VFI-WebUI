@@ -6,7 +6,6 @@ from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import format_markdown
 from webui_utils.file_utils import create_directory, get_files, get_directories, is_safe_path
-# from webui_utils.ui_utils import update_splits_info
 from webui_utils.mtqdm import Mtqdm
 from webui_tips import WebuiTips
 from upscale_series import UpscaleSeries
@@ -21,7 +20,8 @@ class UpscaleFrames(TabBase):
         TabBase.__init__(self, config, engine, log_fn)
 
     DEFAULT_MESSAGE_SINGLE = "Click Upscale Frames to: Create cleansed and enlarged frames"
-    DEFAULT_MESSAGE_BATCH = "Click Upscale Batch to: Create cleansed and enlarged frames for each batch directory"
+    DEFAULT_MESSAGE_BATCH = \
+        "Click Upscale Batch to: Create cleansed and enlarged frames for each batch directory"
 
     def render_tab(self):
         """Render tab into UI"""
@@ -78,22 +78,18 @@ class UpscaleFrames(TabBase):
                        use_tiling : str):
         """Upscale Frames button handler"""
         if not input_path or not output_path:
-            return gr.update(value=format_markdown(
-                "Please enter an input path and output path to begin", "warning"))
+            return format_markdown("Please enter an input path and output path to begin", "warning")
         if not os.path.exists(input_path):
-            return gr.update(value=format_markdown(
-                f"The input path {input_path} was not found", "error"))
+            return format_markdown(f"The input path {input_path} was not found", "error")
         if not is_safe_path(input_path):
-            return gr.update(value=format_markdown(
-                f"The input path {input_path} is not valid", "error"))
+            return format_markdown(f"The input path {input_path} is not valid", "error")
         if not is_safe_path(output_path):
-            return gr.update(value=format_markdown(
-                f"The output path {output_path} is not valid", "error"))
+            return format_markdown(f"The output path {output_path} is not valid", "error")
 
         group_names = get_directories(input_path)
         if not group_names:
-            return gr.update(value=format_markdown(
-                f"No directories were found at the input path {input_path}", "error"))
+            return format_markdown(f"No directories were found at the input path {input_path}",
+                                   "error")
 
         self.log(f"beginning batch UpscaleFrames processing with input_path={input_path}" +\
                     f" output_path={output_path}")
@@ -119,10 +115,10 @@ class UpscaleFrames(TabBase):
                 Mtqdm().update_bar(bar)
         if errors:
             message = "\r\n".join(errors)
-            return gr.update(value=format_markdown(message, "error"))
+            return format_markdown(message, "error")
         else:
             message = f"Batch processed upscaled frames saved to {os.path.abspath(output_path)}"
-            return gr.update(value=format_markdown(message))
+            return format_markdown(message)
 
     def upscale_frames(self,
                        input_path : str,
@@ -133,19 +129,19 @@ class UpscaleFrames(TabBase):
         """Upscale Frames button handler"""
         if not input_path:
             if interactive:
-                return gr.update(value=format_markdown("Please enter an input path to begin", "warning"))
+                return format_markdown("Please enter an input path to begin", "warning")
             else:
                 raise ValueError(f"The input path is empty")
         if not os.path.exists(input_path):
             message = f"The input path {input_path} was not found"
             if interactive:
-                return gr.update(value=format_markdown(message, "error"))
+                return format_markdown(message, "error")
             else:
                 raise ValueError(message)
         if not is_safe_path(input_path):
             message = f"The input path {input_path} is not valid"
             if interactive:
-                return gr.update(value=format_markdown(message, "error"))
+                return format_markdown(message, "error")
             else:
                 raise ValueError(message)
 
@@ -165,7 +161,7 @@ class UpscaleFrames(TabBase):
             if not is_safe_path(output_path):
                 message = f"The output path {output_path} is not valid"
                 if interactive:
-                    return gr.update(value=format_markdown(message, "error"))
+                    return format_markdown(message, "error")
                 else:
                     raise ValueError(f"The output path {input_path} is not valid")
             self.log(f"creating output path {output_path}")
@@ -202,6 +198,6 @@ class UpscaleFrames(TabBase):
 
         message = f"Upscaled frames saved to {os.path.abspath(output_path)}"
         if interactive:
-            return gr.update(value=format_markdown(message))
+            return format_markdown(message)
         else:
             self.log(message)
