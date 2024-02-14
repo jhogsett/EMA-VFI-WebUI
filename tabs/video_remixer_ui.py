@@ -1789,8 +1789,8 @@ class VideoRemixer(TabBase):
         self.state.save_progress("process")
 
         return gr.update(selected=self.TAB_PROC_OPTIONS),  \
-               self.TAB4_DEFAULT_MESSAGE, \
-               self.TAB5_DEFAULT_MESSAGE
+               format_markdown(self.TAB4_DEFAULT_MESSAGE), \
+               format_markdown(self.TAB5_DEFAULT_MESSAGE)
 
     def back_button4(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
@@ -1927,10 +1927,10 @@ class VideoRemixer(TabBase):
                    output_filepath_custom, \
                    output_filepath_marked, \
                    output_filepath_labeled, \
-                   self.TAB60_DEFAULT_MESSAGE, \
-                   self.TAB61_DEFAULT_MESSAGE, \
-                   self.TAB62_DEFAULT_MESSAGE, \
-                   self.TAB63_DEFAULT_MESSAGE
+                   format_markdown(self.TAB60_DEFAULT_MESSAGE), \
+                   format_markdown(self.TAB61_DEFAULT_MESSAGE), \
+                   format_markdown(self.TAB62_DEFAULT_MESSAGE), \
+                   format_markdown(self.TAB63_DEFAULT_MESSAGE)
         else:
             return gr.update(selected=self.TAB_PROC_OPTIONS), \
                    format_markdown("At least one scene must be set to 'Keep' before processing can proceed", "warning"), \
