@@ -66,7 +66,7 @@ class VideoDetails(TabBase):
                     report.append(separator)
                     report.append("Console output:")
                     report.append(error_data["console_output"])
-                    return gr.update(value="\r\n".join(report)), None, None, None, None, None
+                    return "\r\n".join(report), None, None, None, None, None
 
                 format = {}
                 format_data = data["format"]
@@ -143,14 +143,13 @@ class VideoDetails(TabBase):
                     report.append(separator)
                 report.append("More media file details availale in the Log Viewer")
 
-                return gr.update(value="\r\n".join(report)),\
+                return "\r\n".join(report),\
                                  video_summary.get("frame_rate"),\
                                  video_summary.get("duration"),\
                                  video_summary.get("dimensions"),\
                                  video_summary.get("frame_count"),\
                                  video_summary.get("file_size")
             else:
-                return gr.update(value=f"media file {input_path} not found"), None, None, None,\
-                                                                            None, None
+                return f"media file {input_path} not found", None, None, None, None, None
         else:
-            return gr.update(value="media file path must be supplied"), None, None, None, None, None
+            return "media file path must be supplied", None, None, None, None, None

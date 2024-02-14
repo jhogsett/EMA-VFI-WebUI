@@ -54,14 +54,16 @@ class VideoAssembler(TabBase):
     def assemble_batch(self, input_path : str):
         """Clean Batch button handler"""
         if not input_path:
-            return gr.update(value=format_markdown("Enter a path to directories of video clips on this server to get started", "warning"))
+            return format_markdown(
+                "Enter a path to directories of video clips on this server to get started",
+                "warning")
 
         if not os.path.exists(input_path):
-            return gr.update(value=format_markdown(f"Input path {input_path} was not found", "error"))
+            return format_markdown(f"Input path {input_path} was not found", "error")
 
         path_names = sorted(get_directories(input_path))
         if not path_names:
-            return gr.update(value=format_markdown(f"Input path {input_path} does not contain video clip directories", "error"))
+            return format_markdown(f"Input path {input_path} does not contain video clip directories", "error")
 
         self.log(f"beginning batch combine video clips processing with input_path={input_path}")
         self.log(f"found {len(path_names)} groups to process")
@@ -88,33 +90,35 @@ class VideoAssembler(TabBase):
                 try:
                     self.assemble_clips(clips_input_path, output_filepath, interactive=False)
                 except ValueError as error:
-                    return gr.update(value=format_markdown(f"Error: {str(error)}", "error"))
+                    return format_markdown(f"Error: {str(error)}", "error")
 
                 Mtqdm().update_bar(bar)
         if warnings:
             warnings = "\r\n".join(warnings)
-            return gr.update(value=format_markdown(warnings, "warning"))
+            return format_markdown(warnings, "warning")
         else:
-            return gr.update(value=format_markdown(self.DEFAULT_MESSAGE_BATCH))
+            return format_markdown(self.DEFAULT_MESSAGE_BATCH)
 
     def assemble_clips(self, input_path : str, output_filepath : str="", interactive=True):
         """Assemble Video button handler"""
         if not input_path:
             if interactive:
-                return gr.update(value=format_markdown("Enter a path to video clips on this server to get started", "warning"))
+                return format_markdown("Enter a path to video clips on this server to get started",
+                                       "warning")
             else:
                 raise ValueError("'input_path' must be provided")
 
         if not os.path.exists(input_path):
             if interactive:
-                return gr.update(value=format_markdown(f"Input path {input_path} was not found", "error"))
+                return format_markdown(f"Input path {input_path} was not found", "error")
             else:
                 raise ValueError(f"input_path {input_path} not found")
 
         paths = sorted(get_files(input_path))
         if not paths:
             if interactive:
-                return gr.update(value=format_markdown(f"Input path {input_path} does not contain video clips", "error"))
+                return format_markdown(f"Input path {input_path} does not contain video clips",
+                                       "error")
             else:
                 raise ValueError(f"input_path {input_path} is empty")
 
@@ -131,7 +135,7 @@ class VideoAssembler(TabBase):
                                     global_options=global_options)
             except ValueError as error:
                 if interactive:
-                    return gr.update(value=format_markdown(f"Error: {str(error)}", "error"))
+                    return format_markdown(f"Error: {str(error)}", "error")
                 else:
                     raise error
 
@@ -139,4 +143,4 @@ class VideoAssembler(TabBase):
             Mtqdm().update_bar(bar)
 
         if interactive:
-            return gr.update(value=format_markdown(self.DEFAULT_MESSAGE_SINGLE))
+            return format_markdown(self.DEFAULT_MESSAGE_SINGLE)

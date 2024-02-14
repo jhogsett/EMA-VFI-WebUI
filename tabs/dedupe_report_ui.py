@@ -73,11 +73,12 @@ class DuplicateFramesReport(TabBase):
                 info_file = os.path.join(output_path, output_basename + str(run_index) + ".txt")
                 with open(info_file, "w", encoding="UTF-8") as file:
                     file.write(report)
-                return gr.update(value=[info_file], visible=True), gr.update(value=report,
-                                                                             visible=True)
+                return gr.update(value=[info_file], visible=True), \
+                       gr.update(value=report, visible=True)
 
             except RuntimeError as error:
                 message = \
 f"""Error creating report:
 {error}"""
-                return gr.update(value=None, visible=False), gr.update(value=message, visible=True)
+                return gr.update(value=None, visible=False), \
+                       gr.update(value=message, visible=True)

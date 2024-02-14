@@ -70,20 +70,20 @@ class FrameSearch(TabBase):
         """Search button handler"""
 
         if not img_before_file or not img_after_file:
-            return None, None, gr.update(value=format_markdown(
-                "Please choose a Before Frame and After Frame to begin", "warning"))
+            return None, None, format_markdown(
+                "Please choose a Before Frame and After Frame to begin", "warning")
         try:
             min_target = float(min_target)
             max_target = float(max_target)
         except ValueError:
-            return None, None, gr.update(value=format_markdown(
+            return None, None, format_markdown(
                 "Please enter a Lower Bound and Upper Bound between 0.0 and 1.0 to begin",
-                "warning"))
+                "warning")
 
         if min_target < 0.0 or min_target > 1.0 or max_target < 0.0 or max_target > 1.0:
-            return None, None, gr.update(value=format_markdown(
+            return None, None, format_markdown(
                 "Please enter a Lower Bound and Upper Bound between 0.0 and 1.0 to begin",
-                "warning"))
+                "warning")
 
         base_output_path = self.config.directories["output_search"]
         use_time_step = self.config.engine_settings["use_time_step"]
