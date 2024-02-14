@@ -44,7 +44,7 @@ class VideoRemixer(TabBase):
     TAB_SET_UP_PROJECT = 2
     TAB_CHOOSE_SCENES = 3
     TAB_COMPILE_SCENES = 4
-    TAB_PROC_OPTIONS = 5
+    TAB_PROC_REMIX = 5
     TAB_SAVE_REMIX = 6
     TAB_REMIX_EXTRA = 7
 
@@ -300,7 +300,7 @@ class VideoRemixer(TabBase):
                     WebuiTips.video_remixer_compile.render()
 
             ## PROCESS REMIX
-            with gr.Tab(SimpleIcons.SIX + " Process Remix", id=self.TAB_PROC_OPTIONS):
+            with gr.Tab(SimpleIcons.SIX + " Process Remix", id=self.TAB_PROC_REMIX):
                 gr.Markdown("**Ready to Process Content for Remix Video**")
 
                 with gr.Row():
@@ -1164,7 +1164,7 @@ class VideoRemixer(TabBase):
                                     scene_index, scene_name, scene_image, scene_state, scene_info,
                                     set_scene_label])
 
-        purge_button715.click(self.purge_button715, outputs=message_box715)
+        purge_button715.click(self.purge_button715, outputs=[tabs_video_remixer, message_box715])
 
     ### UTILITY FUNCTIONS
 
@@ -1793,7 +1793,7 @@ class VideoRemixer(TabBase):
         self.log("saving project after compiling scenes")
         self.state.save_progress("process")
 
-        return gr.update(selected=self.TAB_PROC_OPTIONS),  \
+        return gr.update(selected=self.TAB_PROC_REMIX),  \
                format_markdown(self.TAB4_DEFAULT_MESSAGE), \
                format_markdown(self.TAB5_DEFAULT_MESSAGE)
 
@@ -1813,7 +1813,7 @@ class VideoRemixer(TabBase):
                      resynth_option):
         empty_args = self.dummy_args(9)
         if not self.state.project_path or not self.state.scenes_path:
-            return gr.update(selected=self.TAB_PROC_OPTIONS), \
+            return gr.update(selected=self.TAB_PROC_REMIX), \
                    format_markdown("The project has not yet been set up from the Set Up Project tab.", "error"), \
                    *empty_args
 
@@ -1937,7 +1937,7 @@ class VideoRemixer(TabBase):
                    format_markdown(self.TAB62_DEFAULT_MESSAGE), \
                    format_markdown(self.TAB63_DEFAULT_MESSAGE)
         else:
-            return gr.update(selected=self.TAB_PROC_OPTIONS), \
+            return gr.update(selected=self.TAB_PROC_REMIX), \
                    format_markdown("At least one scene must be set to 'Keep' before processing can proceed", "warning"), \
                    *empty_args
 
@@ -2190,16 +2190,16 @@ class VideoRemixer(TabBase):
             return format_markdown(str(error), "error")
 
     def back_button60(self):
-        return gr.update(selected=self.TAB_PROC_OPTIONS)
+        return gr.update(selected=self.TAB_PROC_REMIX)
 
     def back_button61(self):
-        return gr.update(selected=self.TAB_PROC_OPTIONS)
+        return gr.update(selected=self.TAB_PROC_REMIX)
 
     def back_button62(self):
-        return gr.update(selected=self.TAB_PROC_OPTIONS)
+        return gr.update(selected=self.TAB_PROC_REMIX)
 
     def back_button63(self):
-        return gr.update(selected=self.TAB_PROC_OPTIONS)
+        return gr.update(selected=self.TAB_PROC_REMIX)
 
     def drop_button700(self, scene_index):
         num_scenes = len(self.state.scene_names)
@@ -2403,7 +2403,7 @@ class VideoRemixer(TabBase):
                             by_exact_second=False,
                             exact_second=0):
         if not isinstance(scene_index, (int, float)):
-            return self.dummy_args(2)
+            return self.dummy_args(1)
 
         scene_index = int(scene_index)
         scene_name = self.state.scene_names[scene_index]
@@ -2469,7 +2469,7 @@ class VideoRemixer(TabBase):
         return self.go_to_s_button702(scene_index, split_percent, go_to_second)
 
     def export_project_703(self, new_project_path : str, new_project_name : str):
-        empty_args = self.dummy_args(2)
+        empty_args = self.dummy_args(2, lambda : gr.update(visible=True))
         if not new_project_path:
             return format_markdown("Please enter a Project Path for the new project", "warning"), \
                 *empty_args
@@ -2922,34 +2922,34 @@ class VideoRemixer(TabBase):
             True
 
     def delete_button710(self, delete_purged):
-        if delete_purged:
-            self.log("about to remove content from 'purged_content' directory")
-            removed = self.state.delete_purged_content()
-            return format_markdown(f"Removed: {removed}")
+        if self.state.project_path:
+            if delete_purged:
+                self.log("about to remove content from 'purged_content' directory")
+                removed = self.state.delete_purged_content()
+                return format_markdown(f"Removed: {removed}")
+            else:
+                return format_markdown(f"Removed: None")
         else:
-            return format_markdown(f"Removed: None")
-
-    # def select_all_button710(self):
-    #     return True
-
-    # def select_none_button710(self):
-    #     return False
+            return format_markdown("There is no loaded project.", "error")
 
     def delete_button711(self, delete_source, delete_dropped, delete_thumbs):
-        removed = []
-        if delete_source:
-            removed.append(self.state.delete_path(self.state.frames_path))
-        if delete_dropped:
-            removed.append(self.state.delete_path(self.state.dropped_scenes_path))
-        if delete_thumbs:
-            removed.append(self.state.delete_path(self.state.thumbnail_path))
-        removed = [_ for _ in removed if _]
-        if removed:
-            removed_str = "\r\n".join(removed)
-            message = f"Removed:\r\n{removed_str}"
+        if self.state.project_path:
+            removed = []
+            if delete_source:
+                removed.append(self.state.delete_path(self.state.frames_path))
+            if delete_dropped:
+                removed.append(self.state.delete_path(self.state.dropped_scenes_path))
+            if delete_thumbs:
+                removed.append(self.state.delete_path(self.state.thumbnail_path))
+            removed = [_ for _ in removed if _]
+            if removed:
+                removed_str = "\r\n".join(removed)
+                message = f"Removed:\r\n{removed_str}"
+            else:
+                message = f"Removed: None"
+            return format_markdown(message)
         else:
-            message = f"Removed: None"
-        return format_markdown(message)
+            return format_markdown("There is no loaded project.", "error")
 
     def select_all_button711(self):
         return True, True, True
@@ -2966,30 +2966,33 @@ class VideoRemixer(TabBase):
                          delete_audio,
                          delete_video,
                          delete_clips):
-        removed = []
-        if delete_kept:
-            removed.append(self.state.delete_path(self.state.scenes_path))
-        if delete_resized:
-            removed.append(self.state.delete_path(self.state.resize_path))
-        if delete_resynth:
-            removed.append(self.state.delete_path(self.state.resynthesis_path))
-        if delete_inflated:
-            removed.append(self.state.delete_path(self.state.inflation_path))
-        if delete_upscaled:
-            removed.append(self.state.delete_path(self.state.upscale_path))
-        if delete_audio:
-            removed.append(self.state.delete_path(self.state.audio_clips_path))
-        if delete_video:
-            removed.append(self.state.delete_path(self.state.video_clips_path))
-        if delete_clips:
-            removed.append(self.state.delete_path(self.state.clips_path))
-        removed = [_ for _ in removed if _]
-        if removed:
-            removed_str = "\r\n".join(removed)
-            message = f"Removed:\r\n{removed_str}"
+        if self.state.project_path:
+            removed = []
+            if delete_kept:
+                removed.append(self.state.delete_path(self.state.scenes_path))
+            if delete_resized:
+                removed.append(self.state.delete_path(self.state.resize_path))
+            if delete_resynth:
+                removed.append(self.state.delete_path(self.state.resynthesis_path))
+            if delete_inflated:
+                removed.append(self.state.delete_path(self.state.inflation_path))
+            if delete_upscaled:
+                removed.append(self.state.delete_path(self.state.upscale_path))
+            if delete_audio:
+                removed.append(self.state.delete_path(self.state.audio_clips_path))
+            if delete_video:
+                removed.append(self.state.delete_path(self.state.video_clips_path))
+            if delete_clips:
+                removed.append(self.state.delete_path(self.state.clips_path))
+            removed = [_ for _ in removed if _]
+            if removed:
+                removed_str = "\r\n".join(removed)
+                message = f"Removed:\r\n{removed_str}"
+            else:
+                message = f"Removed: None"
+            return format_markdown(message)
         else:
-            message = f"Removed: None"
-        return format_markdown(message)
+            return format_markdown("There is no loaded project.", "error")
 
     def select_all_button712(self):
         return True, True, True, True, True, True, True, True
@@ -2998,43 +3001,66 @@ class VideoRemixer(TabBase):
         return False, False, False, False, False, False, False, False
 
     def delete_button713(self, delete_all):
-        removed = []
-        if delete_all:
-            removed.append(self.state.delete_purged_content())
-            removed.append(self.state.delete_path(self.state.frames_path))
-            removed.append(self.state.delete_path(self.state.dropped_scenes_path))
-            removed.append(self.state.delete_path(self.state.thumbnail_path))
-            removed.append(self.state.delete_path(self.state.scenes_path))
-            removed.append(self.state.delete_path(self.state.resize_path))
-            removed.append(self.state.delete_path(self.state.resynthesis_path))
-            removed.append(self.state.delete_path(self.state.inflation_path))
-            removed.append(self.state.delete_path(self.state.upscale_path))
-            removed.append(self.state.delete_path(self.state.audio_clips_path))
-            removed.append(self.state.delete_path(self.state.video_clips_path))
-            removed.append(self.state.delete_path(self.state.clips_path))
-        removed = [_ for _ in removed if _]
-        if removed:
-            removed_str = "\r\n".join(removed)
-            message = f"Removed:\r\n{removed_str}"
+        if self.state.project_path:
+            removed = []
+            if delete_all:
+                removed.append(self.state.delete_purged_content())
+                removed.append(self.state.delete_path(self.state.frames_path))
+                removed.append(self.state.delete_path(self.state.dropped_scenes_path))
+                removed.append(self.state.delete_path(self.state.thumbnail_path))
+                removed.append(self.state.delete_path(self.state.scenes_path))
+                removed.append(self.state.delete_path(self.state.resize_path))
+                removed.append(self.state.delete_path(self.state.resynthesis_path))
+                removed.append(self.state.delete_path(self.state.inflation_path))
+                removed.append(self.state.delete_path(self.state.upscale_path))
+                removed.append(self.state.delete_path(self.state.audio_clips_path))
+                removed.append(self.state.delete_path(self.state.video_clips_path))
+                removed.append(self.state.delete_path(self.state.clips_path))
+            removed = [_ for _ in removed if _]
+            if removed:
+                removed_str = "\r\n".join(removed)
+                message = f"Removed:\r\n{removed_str}"
+            else:
+                message = f"Removed: None"
+            return format_markdown(message)
         else:
-            message = f"Removed: None"
-        return format_markdown(message)
+            return format_markdown("There is no loaded project.", "error")
 
     def restore_button714(self):
-        global_options = self.config.ffmpeg_settings["global_options"]
-        self.state.recover_project(global_options=global_options,
-                                   remixer_settings=self.config.remixer_settings,
-                                   log_fn=self.log)
-        message = f"Project recovered"
-        return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-            format_markdown(message), \
-            *self.scene_chooser_details(self.state.current_scene)
+        if self.state.project_path:
+            global_options = self.config.ffmpeg_settings["global_options"]
+            self.state.recover_project(global_options=global_options,
+                                    remixer_settings=self.config.remixer_settings,
+                                    log_fn=self.log)
+            message = f"Project recovered"
+            return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+                format_markdown(message), \
+                *self.scene_chooser_details(self.state.current_scene)
+        else:
+            message = format_markdown("There is no loaded project.", "error")
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                message
 
     def purge_button715(self):
-        purge_root = self.state.purge_processed_content()
-        if purge_root:
-            message = format_markdown(
-                f"Processed content purged, and project file backed up, to {purge_root}")
+        if self.state.project_path:
+            purge_root = self.state.purge_processed_content()
+
+            # user will expect to return to the processing tab on reopening
+            self.state.save_progress("process")
+            self.state.processed_content_invalid = True
+            self.log("saving project after compiling scenes")
+
+            self.state.progress = self.state.PROGRESS_STEPS
+            if purge_root:
+                message = format_markdown(
+                    f"Processed content purged, and project file backed up, to {purge_root}")
+                return gr.update(selected=self.TAB_PROC_REMIX), \
+                    message
+            else:
+                message = format_markdown("No processed content was found to purge", "warning")
+                return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    message
         else:
-            message = format_markdown("No processed content was found to purge", "warning")
-        return message
+            message = format_markdown("There is no loaded project.", "error")
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                message
