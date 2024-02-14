@@ -44,7 +44,7 @@ class VideoRemixer(TabBase):
     TAB_SET_UP_PROJECT = 2
     TAB_CHOOSE_SCENES = 3
     TAB_COMPILE_SCENES = 4
-    TAB_PROC_OPTIONS = 5
+    TAB_PROC_REMIX = 5
     TAB_SAVE_REMIX = 6
     TAB_REMIX_EXTRA = 7
 
@@ -300,7 +300,7 @@ class VideoRemixer(TabBase):
                     WebuiTips.video_remixer_compile.render()
 
             ## PROCESS REMIX
-            with gr.Tab(SimpleIcons.SIX + " Process Remix", id=self.TAB_PROC_OPTIONS):
+            with gr.Tab(SimpleIcons.SIX + " Process Remix", id=self.TAB_PROC_REMIX):
                 gr.Markdown("**Ready to Process Content for Remix Video**")
 
                 with gr.Row():
@@ -651,16 +651,28 @@ class VideoRemixer(TabBase):
                                 id=self.TAB_EXTRA_MANAGE_STORAGE):
                         gr.Markdown("Free Disk Space by Removing Unneeded Content")
                         with gr.Tabs():
-                            with gr.Tab(SimpleIcons.WASTE_BASKET +
-                                        " Remove Soft-Deleted Content"):
+
+                            with gr.Tab(SimpleIcons.RECYCLE + " Purge Processed Content"):
                                 gr.Markdown(
-                "**_Delete content set aside when remix processing selections are changed_**")
+                    "**_Move the current processed content to the purged content directory_**")
+                                with gr.Row():
+                                    message_box715 = gr.Markdown(
+                                        format_markdown(
+                                "Click Purge Processed Content to: Soft-delete processed content"))
+                                gr.Markdown(
+                                    format_markdown(
+                "Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                with gr.Row():
+                                    purge_button715 = gr.Button(value="Purge Processed Content",
+                                                                variant="primary", scale=0)
+
+                            with gr.Tab(SimpleIcons.WASTE_BASKET +
+                                        " Empty Purged Content"):
+                                gr.Markdown(
+                "**_Permanently delete content moved to the purged content directory_**")
                                 with gr.Row():
                                     delete_purged_710 = gr.Checkbox(
                                         label="Permanently Delete Purged Content")
-                                    with gr.Column(variant="compact"):
-                                        gr.Markdown(
-                            "Delete the contents of the 'purged_content' project directory.")
                                 with gr.Row():
                                     message_box710 = gr.Markdown(
                                         format_markdown(
@@ -671,150 +683,149 @@ class VideoRemixer(TabBase):
                                 with gr.Row():
                                     delete_button710 = gr.Button(
                                         value="Delete Purged Content " +
-                                        SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                    select_all_button710 = gr.Button(
-                                        value="Select All", scale=0)
-                                    select_none_button710 = gr.Button(
-                                        value="Select None", scale=0)
+                                        SimpleIcons.SLOW_SYMBOL, variant="primary", scale=0)
 
-                            with gr.Tab(SimpleIcons.CROSSMARK +
-                                        " Remove Scene Chooser Content"):
-                                gr.Markdown(
-                        "**_Delete source PNG frame files, thumbnails and dropped scenes_**")
-                                with gr.Row():
-                                    delete_source_711 = gr.Checkbox(value=True,
-                                        label="Remove Source Video Frames")
-                                    with gr.Column(variant="compact"):
-                                        gr.Markdown(
-                    "Delete source video PNG frame files used to split content into scenes.")
-                                with gr.Row():
-                                    delete_dropped_711 = gr.Checkbox(
-                                        label="Remove Dropped Scenes")
-                                    with gr.Column(variant="compact"):
-                                        gr.Markdown(
-            "Delete Dropped Scene files used when compiling scenes after making scene choices.")
-                                with gr.Row():
-                                    delete_thumbs_711 = gr.Checkbox(label="Remove Thumbnails")
-                                    with gr.Column(variant="compact"):
-                                        gr.Markdown(
-                                "Delete Thumbnails used to display scenes in Scene Chooser.")
-                                with gr.Row():
-                                    message_box711 = gr.Markdown(
-                                        format_markdown(
-                    "Click Delete Selected Content to: Permanently Remove the selected content"))
-                                gr.Markdown(
-                                    format_markdown(
-                "Progress can be tracked in the console", color="none", italic=True, bold=False))
-                                with gr.Row():
-                                    delete_button711 = gr.Button(
-                                        value="Delete Selected Content " +\
-                                            SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                    select_all_button711 = gr.Button(
-                                        value="Select All", scale=0)
-                                    select_none_button711 = gr.Button(
-                                        value="Select None", scale=0)
-
-                            with gr.Tab(SimpleIcons.CROSSMARK +
-                                        " Remove Remix Video Source Content"):
-                                gr.Markdown(
-                                "**_Clear space after final Remix Videos have been saved_**")
-                                with gr.Row():
-                                    delete_kept_712 = gr.Checkbox(label="Remove Kept Scenes")
-                                    with gr.Column(variant="compact"):
-                                        gr.Markdown(
-            "Delete Kept Scene files used when compiling scenes after making scene choices.")
-                                with gr.Row():
-                                    delete_resized_712 = gr.Checkbox(value=True,
-                                        label="Remove Resized Frames")
-                                    with gr.Column(variant="compact"):
-                                        gr.Markdown(
-"Delete Resized PNG frame files used as inputs for processing and creating remix video clips.")
-                                with gr.Row():
-                                    delete_resynth_712 = gr.Checkbox(value=True,
-                                        label="Remove Resynthesized Frames")
-                                    with gr.Column(variant="compact"):
-                                        gr.Markdown(
-                                    "Delete Resynthesized PNG frame files used as inputs " +\
-                                    "for processing and creating remix video clips.")
-                                with gr.Row():
-                                    delete_inflated_712 = gr.Checkbox(value=True,
-                                        label="Remove Inflated Frames")
-                                    with gr.Column(variant="compact"):
-                                        gr.Markdown(
-"Delete Inflated PNG frame files used as inputs for processing and creating remix video clips.")
-                                with gr.Row():
-                                    delete_upscaled_712 = gr.Checkbox(value=True,
-                                        label="Remove Upscaled Frames")
-                                    with gr.Column(variant="compact"):
-                                        gr.Markdown(
-"Delete Upscaled PNG frame files used as inputs for processing and creating remix video clips.")
-                                with gr.Row():
-                                    delete_audio_712 = gr.Checkbox(label="Delete Audio Clips")
-                                    with gr.Column(variant="compact"):
-                                        gr.Markdown(
-                    "Delete Audio WAV/MP3 files used as inputs for creating remix video clips.")
-                                with gr.Row():
-                                    delete_video_712 = gr.Checkbox(label="Delete Video Clips")
-                                    with gr.Column(variant="compact"):
-                                        gr.Markdown(
-                        "Delete Video MP4 files used as inputs for creating remix video clips.")
-                                with gr.Row():
-                                    delete_clips_712 = gr.Checkbox(
-                                        label="Delete Remix Video Clips")
-                                    with gr.Column(variant="compact"):
-                                        gr.Markdown(
-    "Delete Video+Audio MP4 files used as inputs to concatentate into the final Remix Video.")
-                                with gr.Row():
-                                    message_box712 = gr.Markdown(
-                                        format_markdown(
-                    "Click Delete Selected Content to: Permanently Remove the selected content"))
-                                gr.Markdown(
-                                    format_markdown(
-                "Progress can be tracked in the console", color="none", italic=True, bold=False))
-                                with gr.Row():
-                                    delete_button712 = gr.Button(
-                                        value="Delete Selected Content " +\
-                                            SimpleIcons.SLOW_SYMBOL, variant="stop")
-                                    select_all_button712 = gr.Button(
-                                        value="Select All", scale=0)
-                                    select_none_button712 = gr.Button(
-                                        value="Select None", scale=0)
-
-                            with gr.Tab(SimpleIcons.COLLISION + " Remove All Processed Content"):
+                            with gr.Tab(SimpleIcons.COLLISION + " Delete All Project Content"):
                                 gr.Markdown(
                                 "**_Delete all processed project content (except videos)_**")
                                 with gr.Row():
                                     delete_all_713 = gr.Checkbox(
-                                        label="Permanently Delete Processed Content")
+                                        label="Permanently Delete All Generated Project Data")
                                     with gr.Column(variant="compact"):
                                         gr.Markdown(
         "Deletes all created project content. **Does not delete original and remixed videos.**")
                                 with gr.Row():
                                     message_box713 = gr.Markdown(
                                         format_markdown(
-                "Click Delete Processed Content to: Permanently Remove all processed content"))
+                "Click Delete Processed Content to: Permanently Remove all processed project content"))
                                 gr.Markdown(
                                     format_markdown(
                 "Progress can be tracked in the console", color="none", italic=True, bold=False))
                                 with gr.Row():
                                     delete_button713 = gr.Button(
-                                        value="Delete Processed Content " +\
-                                            SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                        value="Delete All Project Content " +\
+                                            SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
 
-                            with gr.Tab(SimpleIcons.MENDING_HEART + " Recover Project"):
+                            with gr.Tab(SimpleIcons.MENDING_HEART + " Recover Deleted Project"):
                                 gr.Markdown(
-                    "**_Restore a project from the original source video and project file_**")
+                    "**_Restore project from the original source video and project file_**")
                                 with gr.Row():
                                     message_box714 = gr.Markdown(
                                         format_markdown(
-                                "Click Recover Project to: Restore the currently loaded project"))
+                                "Click Recover Deleted Project to: Restore the currently loaded project"))
                                 gr.Markdown(
                                     format_markdown(
                 "Progress can be tracked in the console", color="none", italic=True, bold=False))
                                 with gr.Row():
-                                    restore_button714 = gr.Button(
-                                        value="Recover Project " +
-                                        SimpleIcons.SLOW_SYMBOL, variant="stop")
+                                    restore_button714 = gr.Button(variant="primary",
+                                        value="Recover Deleted Project " +
+                                        SimpleIcons.SLOW_SYMBOL, scale=0)
+
+                            with gr.Tab(SimpleIcons.CROSSMARK +
+                                        " Remove Selected Project Content"):
+                                with gr.Tabs():
+                                    with gr.Tab(SimpleIcons.CROSSMARK +
+                                                " Remove Scene Chooser Content"):
+                                        gr.Markdown(
+                                "**_Delete source PNG frame files, thumbnails and dropped scenes_**")
+                                        with gr.Row():
+                                            delete_source_711 = gr.Checkbox(value=True,
+                                                label="Remove Source Video Frames")
+                                            with gr.Column(variant="compact"):
+                                                gr.Markdown(
+                            "Delete source video PNG frame files used to split content into scenes.")
+                                        with gr.Row():
+                                            delete_dropped_711 = gr.Checkbox(
+                                                label="Remove Dropped Scenes")
+                                            with gr.Column(variant="compact"):
+                                                gr.Markdown(
+                    "Delete Dropped Scene files used when compiling scenes after making scene choices.")
+                                        with gr.Row():
+                                            delete_thumbs_711 = gr.Checkbox(label="Remove Thumbnails")
+                                            with gr.Column(variant="compact"):
+                                                gr.Markdown(
+                                        "Delete Thumbnails used to display scenes in Scene Chooser.")
+                                        with gr.Row():
+                                            message_box711 = gr.Markdown(
+                                                format_markdown(
+                            "Click Delete Selected Content to: Permanently Remove the selected content"))
+                                        gr.Markdown(
+                                            format_markdown(
+                        "Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                        with gr.Row():
+                                            delete_button711 = gr.Button(
+                                                value="Delete Selected Content " +\
+                                                SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
+                                            select_all_button711 = gr.Button(
+                                                value="Select All", scale=0)
+                                            select_none_button711 = gr.Button(
+                                                value="Select None", scale=0)
+
+                                with gr.Tab(SimpleIcons.CROSSMARK +
+                                            " Remove Remix Video Source Content"):
+                                    gr.Markdown(
+                                    "**_Clear space after final Remix Videos have been saved_**")
+                                    with gr.Row():
+                                        delete_kept_712 = gr.Checkbox(label="Remove Kept Scenes")
+                                        with gr.Column(variant="compact"):
+                                            gr.Markdown(
+                "Delete Kept Scene files used when compiling scenes after making scene choices.")
+                                    with gr.Row():
+                                        delete_resized_712 = gr.Checkbox(value=True,
+                                            label="Remove Resized Frames")
+                                        with gr.Column(variant="compact"):
+                                            gr.Markdown(
+    "Delete Resized PNG frame files used as inputs for processing and creating remix video clips.")
+                                    with gr.Row():
+                                        delete_resynth_712 = gr.Checkbox(value=True,
+                                            label="Remove Resynthesized Frames")
+                                        with gr.Column(variant="compact"):
+                                            gr.Markdown(
+                                        "Delete Resynthesized PNG frame files used as inputs " +\
+                                        "for processing and creating remix video clips.")
+                                    with gr.Row():
+                                        delete_inflated_712 = gr.Checkbox(value=True,
+                                            label="Remove Inflated Frames")
+                                        with gr.Column(variant="compact"):
+                                            gr.Markdown(
+    "Delete Inflated PNG frame files used as inputs for processing and creating remix video clips.")
+                                    with gr.Row():
+                                        delete_upscaled_712 = gr.Checkbox(value=True,
+                                            label="Remove Upscaled Frames")
+                                        with gr.Column(variant="compact"):
+                                            gr.Markdown(
+    "Delete Upscaled PNG frame files used as inputs for processing and creating remix video clips.")
+                                    with gr.Row():
+                                        delete_audio_712 = gr.Checkbox(label="Delete Audio Clips")
+                                        with gr.Column(variant="compact"):
+                                            gr.Markdown(
+                        "Delete Audio WAV/MP3 files used as inputs for creating remix video clips.")
+                                    with gr.Row():
+                                        delete_video_712 = gr.Checkbox(label="Delete Video Clips")
+                                        with gr.Column(variant="compact"):
+                                            gr.Markdown(
+                            "Delete Video MP4 files used as inputs for creating remix video clips.")
+                                    with gr.Row():
+                                        delete_clips_712 = gr.Checkbox(
+                                            label="Delete Remix Video Clips")
+                                        with gr.Column(variant="compact"):
+                                            gr.Markdown(
+        "Delete Video+Audio MP4 files used as inputs to concatentate into the final Remix Video.")
+                                    with gr.Row():
+                                        message_box712 = gr.Markdown(
+                                            format_markdown(
+                        "Click Delete Selected Content to: Permanently Remove the selected content"))
+                                    gr.Markdown(
+                                        format_markdown(
+                    "Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                    with gr.Row():
+                                        delete_button712 = gr.Button(
+                                            value="Delete Selected Content " +\
+                                                SimpleIcons.SLOW_SYMBOL, variant="stop", scale=0)
+                                        select_all_button712 = gr.Button(
+                                            value="Select All", scale=0)
+                                        select_none_button712 = gr.Button(
+                                            value="Select None", scale=0)
 
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_remixer_extra.render()
@@ -1055,13 +1066,11 @@ class VideoRemixer(TabBase):
         next_second_702.click(self.next_second_702, inputs=[scene_id_702, split_percent_702],
                                 outputs=split_percent_702, show_progress=False)
 
-        # TODO
-        go_to_s_button702.click(self.go_to_s_button702,
+        go_to_s_button702.click(self.go_to_s_click702,
                                 inputs=[scene_id_702, split_percent_702, go_to_s_702],
                                 outputs=split_percent_702, show_progress=False)
 
-        # TODO
-        go_to_s_702.submit(self.go_to_s_button702,
+        go_to_s_702.submit(self.go_to_s_submit702,
                                 inputs=[scene_id_702, split_percent_702, go_to_s_702],
                                 outputs=split_percent_702, show_progress=False)
 
@@ -1123,12 +1132,6 @@ class VideoRemixer(TabBase):
                                inputs=delete_purged_710,
                                outputs=message_box710)
 
-        select_all_button710.click(self.select_all_button710, show_progress=False,
-                                outputs=[delete_purged_710])
-
-        select_none_button710.click(self.select_none_button710, show_progress=False,
-                                outputs=[delete_purged_710])
-
         delete_button711.click(self.delete_button711,
                                inputs=[delete_source_711, delete_dropped_711, delete_thumbs_711],
                                outputs=message_box711)
@@ -1160,6 +1163,8 @@ class VideoRemixer(TabBase):
         restore_button714.click(self.restore_button714, outputs=[tabs_video_remixer, message_box714,
                                     scene_index, scene_name, scene_image, scene_state, scene_info,
                                     set_scene_label])
+
+        purge_button715.click(self.purge_button715, outputs=[tabs_video_remixer, message_box715])
 
     ### UTILITY FUNCTIONS
 
@@ -1788,7 +1793,7 @@ class VideoRemixer(TabBase):
         self.log("saving project after compiling scenes")
         self.state.save_progress("process")
 
-        return gr.update(selected=self.TAB_PROC_OPTIONS),  \
+        return gr.update(selected=self.TAB_PROC_REMIX),  \
                format_markdown(self.TAB4_DEFAULT_MESSAGE), \
                format_markdown(self.TAB5_DEFAULT_MESSAGE)
 
@@ -1808,7 +1813,7 @@ class VideoRemixer(TabBase):
                      resynth_option):
         empty_args = self.dummy_args(9)
         if not self.state.project_path or not self.state.scenes_path:
-            return gr.update(selected=self.TAB_PROC_OPTIONS), \
+            return gr.update(selected=self.TAB_PROC_REMIX), \
                    format_markdown("The project has not yet been set up from the Set Up Project tab.", "error"), \
                    *empty_args
 
@@ -1932,7 +1937,7 @@ class VideoRemixer(TabBase):
                    format_markdown(self.TAB62_DEFAULT_MESSAGE), \
                    format_markdown(self.TAB63_DEFAULT_MESSAGE)
         else:
-            return gr.update(selected=self.TAB_PROC_OPTIONS), \
+            return gr.update(selected=self.TAB_PROC_REMIX), \
                    format_markdown("At least one scene must be set to 'Keep' before processing can proceed", "warning"), \
                    *empty_args
 
@@ -2185,16 +2190,16 @@ class VideoRemixer(TabBase):
             return format_markdown(str(error), "error")
 
     def back_button60(self):
-        return gr.update(selected=self.TAB_PROC_OPTIONS)
+        return gr.update(selected=self.TAB_PROC_REMIX)
 
     def back_button61(self):
-        return gr.update(selected=self.TAB_PROC_OPTIONS)
+        return gr.update(selected=self.TAB_PROC_REMIX)
 
     def back_button62(self):
-        return gr.update(selected=self.TAB_PROC_OPTIONS)
+        return gr.update(selected=self.TAB_PROC_REMIX)
 
     def back_button63(self):
-        return gr.update(selected=self.TAB_PROC_OPTIONS)
+        return gr.update(selected=self.TAB_PROC_REMIX)
 
     def drop_button700(self, scene_index):
         num_scenes = len(self.state.scene_names)
@@ -2398,7 +2403,7 @@ class VideoRemixer(TabBase):
                             by_exact_second=False,
                             exact_second=0):
         if not isinstance(scene_index, (int, float)):
-            return self.dummy_args(2)
+            return self.dummy_args(1)
 
         scene_index = int(scene_index)
         scene_name = self.state.scene_names[scene_index]
@@ -2457,8 +2462,14 @@ class VideoRemixer(TabBase):
         return self.compute_advance_702(scene_index, split_percent, False, by_exact_second=True,
                                         exact_second=go_to_second)
 
+    def go_to_s_click702(self, scene_index, split_percent, go_to_second):
+        return self.go_to_s_button702(scene_index, split_percent, go_to_second)
+
+    def go_to_s_submit702(self, scene_index, split_percent, go_to_second):
+        return self.go_to_s_button702(scene_index, split_percent, go_to_second)
+
     def export_project_703(self, new_project_path : str, new_project_name : str):
-        empty_args = self.dummy_args(2)
+        empty_args = self.dummy_args(2, lambda : gr.update(visible=True))
         if not new_project_path:
             return format_markdown("Please enter a Project Path for the new project", "warning"), \
                 *empty_args
@@ -2911,34 +2922,34 @@ class VideoRemixer(TabBase):
             True
 
     def delete_button710(self, delete_purged):
-        if delete_purged:
-            self.log("about to remove content from 'purged_content' directory")
-            removed = self.state.delete_purged_content()
-            return format_markdown(f"Removed: {removed}")
+        if self.state.project_path:
+            if delete_purged:
+                self.log("about to remove content from 'purged_content' directory")
+                removed = self.state.delete_purged_content()
+                return format_markdown(f"Removed: {removed}")
+            else:
+                return format_markdown(f"Removed: None")
         else:
-            return format_markdown(f"Removed: None")
-
-    def select_all_button710(self):
-        return True
-
-    def select_none_button710(self):
-        return False
+            return format_markdown("There is no loaded project.", "error")
 
     def delete_button711(self, delete_source, delete_dropped, delete_thumbs):
-        removed = []
-        if delete_source:
-            removed.append(self.state.delete_path(self.state.frames_path))
-        if delete_dropped:
-            removed.append(self.state.delete_path(self.state.dropped_scenes_path))
-        if delete_thumbs:
-            removed.append(self.state.delete_path(self.state.thumbnail_path))
-        removed = [_ for _ in removed if _]
-        if removed:
-            removed_str = "\r\n".join(removed)
-            message = f"Removed:\r\n{removed_str}"
+        if self.state.project_path:
+            removed = []
+            if delete_source:
+                removed.append(self.state.delete_path(self.state.frames_path))
+            if delete_dropped:
+                removed.append(self.state.delete_path(self.state.dropped_scenes_path))
+            if delete_thumbs:
+                removed.append(self.state.delete_path(self.state.thumbnail_path))
+            removed = [_ for _ in removed if _]
+            if removed:
+                removed_str = "\r\n".join(removed)
+                message = f"Removed:\r\n{removed_str}"
+            else:
+                message = f"Removed: None"
+            return format_markdown(message)
         else:
-            message = f"Removed: None"
-        return format_markdown(message)
+            return format_markdown("There is no loaded project.", "error")
 
     def select_all_button711(self):
         return True, True, True
@@ -2955,30 +2966,33 @@ class VideoRemixer(TabBase):
                          delete_audio,
                          delete_video,
                          delete_clips):
-        removed = []
-        if delete_kept:
-            removed.append(self.state.delete_path(self.state.scenes_path))
-        if delete_resized:
-            removed.append(self.state.delete_path(self.state.resize_path))
-        if delete_resynth:
-            removed.append(self.state.delete_path(self.state.resynthesis_path))
-        if delete_inflated:
-            removed.append(self.state.delete_path(self.state.inflation_path))
-        if delete_upscaled:
-            removed.append(self.state.delete_path(self.state.upscale_path))
-        if delete_audio:
-            removed.append(self.state.delete_path(self.state.audio_clips_path))
-        if delete_video:
-            removed.append(self.state.delete_path(self.state.video_clips_path))
-        if delete_clips:
-            removed.append(self.state.delete_path(self.state.clips_path))
-        removed = [_ for _ in removed if _]
-        if removed:
-            removed_str = "\r\n".join(removed)
-            message = f"Removed:\r\n{removed_str}"
+        if self.state.project_path:
+            removed = []
+            if delete_kept:
+                removed.append(self.state.delete_path(self.state.scenes_path))
+            if delete_resized:
+                removed.append(self.state.delete_path(self.state.resize_path))
+            if delete_resynth:
+                removed.append(self.state.delete_path(self.state.resynthesis_path))
+            if delete_inflated:
+                removed.append(self.state.delete_path(self.state.inflation_path))
+            if delete_upscaled:
+                removed.append(self.state.delete_path(self.state.upscale_path))
+            if delete_audio:
+                removed.append(self.state.delete_path(self.state.audio_clips_path))
+            if delete_video:
+                removed.append(self.state.delete_path(self.state.video_clips_path))
+            if delete_clips:
+                removed.append(self.state.delete_path(self.state.clips_path))
+            removed = [_ for _ in removed if _]
+            if removed:
+                removed_str = "\r\n".join(removed)
+                message = f"Removed:\r\n{removed_str}"
+            else:
+                message = f"Removed: None"
+            return format_markdown(message)
         else:
-            message = f"Removed: None"
-        return format_markdown(message)
+            return format_markdown("There is no loaded project.", "error")
 
     def select_all_button712(self):
         return True, True, True, True, True, True, True, True
@@ -2987,34 +3001,66 @@ class VideoRemixer(TabBase):
         return False, False, False, False, False, False, False, False
 
     def delete_button713(self, delete_all):
-        removed = []
-        if delete_all:
-            removed.append(self.state.delete_purged_content())
-            removed.append(self.state.delete_path(self.state.frames_path))
-            removed.append(self.state.delete_path(self.state.dropped_scenes_path))
-            removed.append(self.state.delete_path(self.state.thumbnail_path))
-            removed.append(self.state.delete_path(self.state.scenes_path))
-            removed.append(self.state.delete_path(self.state.resize_path))
-            removed.append(self.state.delete_path(self.state.resynthesis_path))
-            removed.append(self.state.delete_path(self.state.inflation_path))
-            removed.append(self.state.delete_path(self.state.upscale_path))
-            removed.append(self.state.delete_path(self.state.audio_clips_path))
-            removed.append(self.state.delete_path(self.state.video_clips_path))
-            removed.append(self.state.delete_path(self.state.clips_path))
-        removed = [_ for _ in removed if _]
-        if removed:
-            removed_str = "\r\n".join(removed)
-            message = f"Removed:\r\n{removed_str}"
+        if self.state.project_path:
+            removed = []
+            if delete_all:
+                removed.append(self.state.delete_purged_content())
+                removed.append(self.state.delete_path(self.state.frames_path))
+                removed.append(self.state.delete_path(self.state.dropped_scenes_path))
+                removed.append(self.state.delete_path(self.state.thumbnail_path))
+                removed.append(self.state.delete_path(self.state.scenes_path))
+                removed.append(self.state.delete_path(self.state.resize_path))
+                removed.append(self.state.delete_path(self.state.resynthesis_path))
+                removed.append(self.state.delete_path(self.state.inflation_path))
+                removed.append(self.state.delete_path(self.state.upscale_path))
+                removed.append(self.state.delete_path(self.state.audio_clips_path))
+                removed.append(self.state.delete_path(self.state.video_clips_path))
+                removed.append(self.state.delete_path(self.state.clips_path))
+            removed = [_ for _ in removed if _]
+            if removed:
+                removed_str = "\r\n".join(removed)
+                message = f"Removed:\r\n{removed_str}"
+            else:
+                message = f"Removed: None"
+            return format_markdown(message)
         else:
-            message = f"Removed: None"
-        return format_markdown(message)
+            return format_markdown("There is no loaded project.", "error")
 
     def restore_button714(self):
-        global_options = self.config.ffmpeg_settings["global_options"]
-        self.state.recover_project(global_options=global_options,
-                                   remixer_settings=self.config.remixer_settings,
-                                   log_fn=self.log)
-        message = f"Project recovered"
-        return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-            format_markdown(message), \
-            *self.scene_chooser_details(self.state.current_scene)
+        if self.state.project_path:
+            global_options = self.config.ffmpeg_settings["global_options"]
+            self.state.recover_project(global_options=global_options,
+                                    remixer_settings=self.config.remixer_settings,
+                                    log_fn=self.log)
+            message = f"Project recovered"
+            return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+                format_markdown(message), \
+                *self.scene_chooser_details(self.state.current_scene)
+        else:
+            message = format_markdown("There is no loaded project.", "error")
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                message
+
+    def purge_button715(self):
+        if self.state.project_path:
+            purge_root = self.state.purge_processed_content()
+
+            # user will expect to return to the processing tab on reopening
+            self.state.save_progress("process")
+            self.state.processed_content_invalid = True
+            self.log("saving project after compiling scenes")
+
+            self.state.progress = self.state.PROGRESS_STEPS
+            if purge_root:
+                message = format_markdown(
+                    f"Processed content purged, and project file backed up, to {purge_root}")
+                return gr.update(selected=self.TAB_PROC_REMIX), \
+                    message
+            else:
+                message = format_markdown("No processed content was found to purge", "warning")
+                return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    message
+        else:
+            message = format_markdown("There is no loaded project.", "error")
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                message

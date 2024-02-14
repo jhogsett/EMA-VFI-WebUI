@@ -8,11 +8,29 @@
 - _**Tip:**_
     - Use the _Split Scene_ button in the _Danger Zone_ from the Scene Chooser
 
+#### Merge Scene Range - Merge a range of scenes
+
+- **Used For:** Removing splits between scenes
+- _Enter the starting and ending scene IDs_
+- _All scenes from starting to ending scene ID are combined into a single scene_
+
+#### Coalesce Scenes - Automatically merge adjacent kept scenes
+
+- **Used For:** Automatically removing all splits between sets of kept scenes
+- _Leave the checkbox unchecked to see which scenes will be merged_
+- _All sets of adjacent kept scenes are merged into single scenes_
+
 #### Choose Scene Range - Keep or Drop a range of scenes
 
 - **Used For:** Quickly Keeping or Dropping a series of scenes
 - _Enter the starting and ending scene IDs, and whether to Keep or Drop_
 - _All scenes from starting to ending scene ID are set to the chosen state_
+
+#### Drop Processed Scene - Drop a scene after processing has been already been done
+
+- **Used For:** Removing a scene from the remix without having to reprocess content
+- _Enter the scene ID to drop_
+- _Sets the scene to_ Dropped _in the project and deletes all related processed content_
 
 #### Cleanse Scenes - Remove noise and artifacts from kept scenes
 
@@ -22,11 +40,11 @@
 - _**Note:**_
     - The original scenes are purged to the _purged_content_ folder
 
-#### Drop Processed Scene - Drop a scene after processing has been already been done
+#### Video Blend Scene - Use Video Blender to perform frame restoration
 
-- **Used For:** Removing a scene from the remix without having to reprocess content
-- _Enter the scene ID to drop_
-- _Sets the scene to_ Dropped _in the project and deletes all related processed content_
+- **Used For:** Advanced frame restoration for heavly damaged content
+- _Enter the scene ID to create a Video Blender project for_
+- _You will be taken to the New Project page will pre-filled values_
 
 #### Export Kept Scenes - Duplicate kept scenes to a new project
 
@@ -36,13 +54,31 @@
 - _**Note:**_
     - The original source frames and dropped scenes are not duplicated
 
-#### Manage Storage - Free Disk Space by Removing Unneeded Content
+#### Purge Processed Content - Soft-Delete processed content
 
-#### Remove Soft-Deleted Content - Delete content set aside when remix processing selections are changed
+- **Used For:** Setting aside previously processed content ahead of another processing round
+- _Tips_
+  - The accompanying `project.yaml` file is saved along with the purged content
+  - Replace the main project content with this content to return to this project state
+- _Processed remix video content is moved to a new directory in_ `purged_content`
+
+#### Empty Purged Content - Permently deleted purged content
 
 - **When Useful:** Always - frees disk space used for purged stale content
 - _Check the box for the content to delete and click Delete Purged Content_
 - _Content in the "purged_content" project directory is permanently deleted_
+
+#### Delete All Project Content - Delete all generated project content (except videos)
+
+- **When Useful:** After the project is complete and no longer needed - frees all disk space used by project-created content, except for source and remix videos
+- _Check the box for the content to delete and click Delete Selected Content_
+- _All project content except videos are permanently deleted_
+
+#### Recover Deleted Project - Recreate a purged or corrupt project using the source video and project file
+
+- **When Useful:** After a project's content has been purged, or if it has become corrupt - restores the project to an editable state
+- _Click Recover Project_
+- _The project's source frames, scenes and thumbnails are restored_
 
 #### Remove Scene Chooser Content - Delete source PNG frame files, thumbnails and dropped scenes
 
@@ -56,14 +92,3 @@
 - _Check the box for the content to delete and click Delete Selected Content_
 - _Kept scenes, processed content, and/or remix clips are permanently deleted_
 
-#### Remove All Processed Content - Delete all processed project content (except videos)
-
-- **When Useful:** After the project is complete and no longer needed - frees all disk space used by project-created content, except for source and remix videos
-- _Check the box for the content to delete and click Delete Selected Content_
-- _All project content except videos are permanently deleted_
-
-#### Recover Project - Recreate a purged or corrupt project using the source video and project file
-
-- **When Useful:** After a project's content has been purged, or if it has become corrupt - restores the project to an editable state
-- _Click Recover Project_
-- _The project's source frames, scenes and thumbnails are restored_

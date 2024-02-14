@@ -47,16 +47,17 @@ class ResequenceFiles(TabBase):
                 input_zerofill = gr.Text(value=None, max_lines=1,
                     label="File Number Padding", placeholder="(leave blank for auto detection)",
                     info="Sequential file number padding width (for sorting)")
-            with gr.Row():
-                input_stride = gr.Number(value=1, precision=0, minimum=1,
-                    label="Sampling Stride",
-                    info="Takes one file for each sample group of this size")
-                input_offset = gr.Number(value=0, precision=0, minimum=0,
-                    label="Sampling Offset",
-                    info="Take this file positioned within the sample group")
-                input_reverse = gr.Checkbox(value=False,
-                    label="Reverse Sampling",
-                    info="Resequences files in the opposite direction")
+            with gr.Accordion(label="Advanced Options", open=False):
+                with gr.Row():
+                    input_stride = gr.Number(value=1, precision=0, minimum=1,
+                        label="Sampling Stride",
+                        info="Takes one file for each sample group of this size")
+                    input_offset = gr.Number(value=0, precision=0, minimum=0,
+                        label="Sampling Offset",
+                        info="Take this file positioned within the sample group")
+                    input_reverse = gr.Checkbox(value=False,
+                        label="Reverse Sampling",
+                        info="Resequences files in the opposite direction")
             with gr.Tabs():
                 with gr.Tab(label="Individual Path"):
                     with gr.Row():

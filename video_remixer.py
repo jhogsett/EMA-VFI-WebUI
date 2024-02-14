@@ -1171,7 +1171,7 @@ class VideoRemixerState():
         else:
             return None
 
-    def purge_processed_content(self, purge_from):
+    def purge_processed_content(self, purge_from=RESIZE_STEP):
         purge_paths = [self.resize_path,
                        self.resynthesis_path,
                        self.inflation_path,
@@ -1190,6 +1190,7 @@ class VideoRemixerState():
 
         purge_root = self.purge_paths(purge_paths)
         self.clean_remix_content(purge_from="audio_clips", purge_root=purge_root)
+        return purge_root
 
     def clean_remix_content(self, purge_from, purge_root=None):
         clean_paths = [self.audio_clips_path,
