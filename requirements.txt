@@ -1,5 +1,5 @@
 ffmpy==0.3.0
-gradio==4.1.0
+gradio==4.7.1
 matplotlib==3.6.3
 numpy==1.23.5
 opencv_python==4.8.1.78
