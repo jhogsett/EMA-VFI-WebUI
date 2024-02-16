@@ -523,7 +523,7 @@ class VideoRemixer(TabBase):
                                     gr.Column(scale=7)
                             with gr.Column():
                                 preview_image702 = gr.Image(type="filepath",
-                        label="Split Frame Preview", tool=None, height=max_thumb_size)
+                        label="Split Frame Preview", height=max_thumb_size)
                         with gr.Row():
                             message_box702 = gr.Markdown(format_markdown(
         "Click Split Scene to: Split the scenes into Two Scenes at a set percentage"))

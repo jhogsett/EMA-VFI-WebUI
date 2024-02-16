@@ -94,7 +94,7 @@ class GIFtoMP4(TabBase):
                                      quality_slider, min_duration],
                             outputs=message_box_single)
 
-        convert_button_batch.click(self.convert_batch,
+        convert_button_batch.click(self.convert_batch_gm,
                                    inputs=[input_path_text_batch, output_path_text_batch,
                                            upscale_input, inflation_input, order_input,
                                            input_frame_rate, quality_slider, min_duration],
@@ -146,7 +146,7 @@ class GIFtoMP4(TabBase):
 
         return format_markdown(f"The video {created_file} has been created")
 
-    def convert_batch(self,
+    def convert_batch_gm(self,
                 input_path : str,
                 output_path : str,
                 upscaling : float,

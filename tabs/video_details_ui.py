@@ -39,10 +39,10 @@ class VideoDetails(TabBase):
             output_text = gr.Textbox(label="Details", interactive=False)
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.video_details.render()
-        report_button.click(self.create_report, inputs=[input_file, count_frames],
+        report_button.click(self.create_report_vd, inputs=[input_file, count_frames],
                     outputs=[output_text, frame_rate, duration, dimensions, frame_count, file_size])
 
-    def create_report(self, input_path : str, count_frames : bool):
+    def create_report_vd(self, input_path : str, count_frames : bool):
         """Create Report button handler"""
         if input_path:
             if os.path.exists(input_path):

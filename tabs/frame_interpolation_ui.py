@@ -34,10 +34,8 @@ class FrameInterpolation(TabBase):
                 + " see an animation of result and download the new frames", elem_id="tabheading")
             with gr.Row():
                 with gr.Column():
-                    img1_input = gr.Image(type="filepath", label="Before Frame", tool=None,
-                                          height=250)
-                    img2_input = gr.Image(type="filepath", label="After Frame", tool=None,
-                                          height=250)
+                    img1_input = gr.Image(type="filepath", label="Before Frame", height=250)
+                    img2_input = gr.Image(type="filepath", label="After Frame", height=250)
                     with gr.Row():
                         splits_input = gr.Slider(value=1, minimum=1, maximum=max_splits,
                             step=1, label="Split Count")
@@ -46,7 +44,7 @@ class FrameInterpolation(TabBase):
                 with gr.Column():
                     img_output = gr.Image(type="filepath", label="Animated Preview",
                         interactive=False, elem_id="mainoutput", height=250)
-                    file_output = gr.File(type="file", file_count="multiple",
+                    file_output = gr.File(type="filepath", file_count="multiple",
                         label="Download", visible=False)
             message_box = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE))
             interpolate_button = gr.Button("Interpolate", variant="primary")
@@ -57,8 +55,11 @@ class FrameInterpolation(TabBase):
             inputs=[img1_input, img2_input, splits_input],
             outputs=[img_output, file_output, message_box])
 
-        splits_input.change(update_splits_info, inputs=splits_input,
+        splits_input.change(self.update_splits_info_fi, inputs=splits_input,
             outputs=info_output, show_progress=False)
+
+    def update_splits_info_fi(self, splits_input):
+        return update_splits_info(splits_input)
 
     def frame_interpolation(self, img_before_file : str, img_after_file : str, num_splits : float):
         """Interpolate button handler"""
@@ -96,10 +97,15 @@ class FrameInterpolation(TabBase):
 
         if self.config.interpolation_settings["create_txt"]:
             info_file = os.path.join(output_path, output_basename + str(run_index) + ".txt")
-            create_report(info_file, img_before_file, img_after_file, num_splits, output_path,
+            self.create_report_fi(info_file, img_before_file, img_after_file, num_splits, output_path,
                 output_paths)
             downloads.append(info_file)
 
         return preview_gif, \
             gr.update(value=downloads, visible=True), \
             format_markdown(self.DEFAULT_MESSAGE)
+
+    def create_report_fi(self, info_file, img_before_file, img_after_file, num_splits, output_path,
+                output_paths):
+        return create_report(info_file, img_before_file, img_after_file, num_splits, output_path,
+                output_paths)

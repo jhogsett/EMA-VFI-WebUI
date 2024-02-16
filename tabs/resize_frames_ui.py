@@ -5,8 +5,6 @@ import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.file_utils import create_directory, get_directories
-# from webui_utils.auto_increment import AutoIncrementDirectory
-# from webui_utils.ui_utils import update_splits_info
 from webui_utils.mtqdm import Mtqdm
 from webui_tips import WebuiTips
 from resize_frames import ResizeFrames as _ResizeFrames
@@ -27,35 +25,33 @@ class ResizeFrames(TabBase):
                         " Reduce, Enlarge and Crop Frames",
                 elem_id="tabheading")
 
-            with gr.Box():
-                with gr.Row():
-                    with gr.Column():
-                        scale_type = gr.Radio(value="lanczos",
-                            choices=["area", "cubic", "lanczos", "linear", "nearest", "none"],
-                            label="Scaling Type",
-                            info = "Choose 'area' for best reducing, 'lanczos' for best enlarging")
-                    with gr.Column():
-                        with gr.Row():
-                            scale_width = gr.Number(value=None, label="Scale Width")
-                            scale_height = gr.Number(value=None, label="Scale Height")
+            with gr.Row():
+                with gr.Column():
+                    scale_type = gr.Radio(value="lanczos",
+                        choices=["area", "cubic", "lanczos", "linear", "nearest", "none"],
+                        label="Scaling Type",
+                        info = "Choose 'area' for best reducing, 'lanczos' for best enlarging")
+                with gr.Column():
+                    with gr.Row():
+                        scale_width = gr.Number(value=None, label="Scale Width")
+                        scale_height = gr.Number(value=None, label="Scale Height")
 
-            with gr.Box():
-                with gr.Row():
-                    with gr.Column():
-                        crop_type = gr.Radio(value="none",
-                            choices=["crop", "none"],
-                            label="Cropping Type",
-            info = "If cropping, Scale Width and Scale Height must be set to the pre-cropped size")
-                    with gr.Column():
-                        with gr.Row():
-                            crop_width = gr.Number(value=-1, label="Crop Width",
-                                                info="Use -1 for scale width")
-                            crop_height = gr.Number(value=-1, label="Crop Height",
-                                                    info="Use -1 for scale height")
-                            crop_offset_x = gr.Number(value=-1, label="Crop X Offset",
-                                                    info="Use -1 for auto-centering")
-                            crop_offset_y = gr.Number(value=-1, label="Crop Y Offset",
-                                                    info="Use -1 for auto-centering")
+            with gr.Row():
+                with gr.Column():
+                    crop_type = gr.Radio(value="none",
+                        choices=["crop", "none"],
+                        label="Cropping Type",
+        info = "If cropping, Scale Width and Scale Height must be set to the pre-cropped size")
+                with gr.Column():
+                    with gr.Row():
+                        crop_width = gr.Number(value=-1, label="Crop Width",
+                                            info="Use -1 for scale width")
+                        crop_height = gr.Number(value=-1, label="Crop Height",
+                                                info="Use -1 for scale height")
+                        crop_offset_x = gr.Number(value=-1, label="Crop X Offset",
+                                                info="Use -1 for auto-centering")
+                        crop_offset_y = gr.Number(value=-1, label="Crop Y Offset",
+                                                info="Use -1 for auto-centering")
             with gr.Tabs():
                 with gr.Tab(label="Individual Path"):
                     with gr.Row():

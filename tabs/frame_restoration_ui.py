@@ -42,9 +42,9 @@ class FrameRestoration(TabBase):
                 with gr.Column():
                     with gr.Row():
                         img1_input_fr = gr.Image(type="filepath",
-                            label="Frame Before Replacement Frames", tool=None, height=200)
+                            label="Frame Before Replacement Frames", height=200)
                         img2_input_fr = gr.Image(type="filepath",
-                            label="Frame After Replacement Frames", tool=None, height=200)
+                            label="Frame After Replacement Frames", height=200)
                     with gr.Row():
                         frames_input_fr = gr.Slider(value=default_frames, minimum=1,
                             maximum=max_frames, step=1, label="Frames to Restore")
@@ -57,7 +57,7 @@ class FrameRestoration(TabBase):
                 with gr.Column():
                     img_output_fr = gr.Image(type="filepath", label="Animated Preview",
                         interactive=False, elem_id="mainoutput", height=400)
-                    file_output_fr = gr.File(type="file", file_count="multiple",
+                    file_output_fr = gr.File(type="filepath", file_count="multiple",
                         label="Download", visible=False)
             predictions_default = restored_frame_predictions(default_frames, default_precision)
             predictions_output_fr = gr.Textbox(value=predictions_default,
@@ -69,11 +69,11 @@ class FrameRestoration(TabBase):
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.frame_restoration.render()
 
-        frames_input_fr.change(update_info_fr,
+        frames_input_fr.change(self.update_info_frames,
             inputs=[frames_input_fr, precision_input_fr],
             outputs=[times_output_fr, predictions_output_fr], show_progress=False)
 
-        precision_input_fr.change(update_info_fr,
+        precision_input_fr.change(self.update_info_precision_fr,
             inputs=[frames_input_fr, precision_input_fr],
             outputs=[times_output_fr, predictions_output_fr], show_progress=False)
 
@@ -81,6 +81,12 @@ class FrameRestoration(TabBase):
             inputs=[img1_input_fr, img2_input_fr, frames_input_fr,
                 precision_input_fr],
             outputs=[img_output_fr, file_output_fr, message_box])
+
+    def update_info_frames(self, frames_input, precision_input):
+        return update_info_fr(frames_input, precision_input)
+
+    def update_info_precision_fr(self, frames_input, precision_input):
+        return update_info_fr(frames_input, precision_input)
 
     def frame_restoration(self,
                         img_before_file : str,
@@ -125,7 +131,7 @@ class FrameRestoration(TabBase):
 
         if self.config.restoration_settings["create_txt"]:
             info_file = os.path.join(output_path, output_basename + str(run_index) + ".txt")
-            create_report(info_file, img_before_file, img_after_file, num_splits, output_path,
+            self.create_report_fr(info_file, img_before_file, img_after_file, num_splits, output_path,
                 output_paths)
             downloads.append(info_file)
 
@@ -133,3 +139,8 @@ class FrameRestoration(TabBase):
         return preview_gif, \
             gr.update(value=downloads, visible=True), \
             format_markdown(message)
+
+    def create_report_fr(self, info_file, img_before_file, img_after_file, num_splits, output_path,
+                output_paths):
+        return create_report(info_file, img_before_file, img_after_file, num_splits, output_path,
+                output_paths)
