@@ -548,8 +548,7 @@ class VideoBlender(TabBase):
             duration = self.config.blender_settings["gif_duration"] / len(output_paths)
             create_gif(output_paths, preview_gif, duration=duration)
 
-            return gr.Image.update(value=preview_gif), gr.Text.update(value=output_path,
-                visible=True)
+            return preview_gif, gr.update(value=output_path, visible=True)
 
     def video_blender_use_fixed(self,
                                 project_path : str,
