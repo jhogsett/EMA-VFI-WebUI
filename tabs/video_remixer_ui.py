@@ -5,7 +5,7 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import format_markdown, style_report, dummy_args0
+from webui_utils.simple_utils import format_markdown, style_report, dummy_args
 from webui_utils.file_utils import get_files, create_directory, get_directories, split_filepath, \
     is_safe_path, duplicate_directory, move_files
 from webui_utils.video_utils import details_from_group_name
@@ -872,7 +872,7 @@ class VideoRemixer(TabBase):
         thumbnail_type.change(self.thumb_change, inputs=thumbnail_type, show_progress=False)
 
         scene_state.change(self.scene_state_button, show_progress=False,
-                            inputs=[scene_index, scene_name, scene_state],
+                            inputs=[scene_name, scene_state],
                             outputs=[scene_index, scene_name, scene_image, scene_state,
                                      scene_info, set_scene_label])
 
@@ -1568,7 +1568,7 @@ class VideoRemixer(TabBase):
     ### SCENE CHOOSER EVENT HANDLERS
 
     # User has clicked on the Keep or Drop radio button
-    def scene_state_button(self, scene_index, scene_name, scene_state):
+    def scene_state_button(self, scene_name, scene_state):
         if scene_name:
             self.state.scene_states[scene_name] = scene_state
             self.state.save()
@@ -1610,21 +1610,19 @@ class VideoRemixer(TabBase):
             self.state.current_scene = scene_index
         return self.scene_chooser_details(self.state.current_scene)
 
-    def next_keep(self, scene_index, scene_name):
-        for index in range(scene_index+1, len(self.state.scene_names)):
+    def scan_for_keep(self, range):
+        for index in range:
             scene_name = self.state.scene_names[index]
             if self.state.scene_states[scene_name] == "Keep":
                 self.state.current_scene = index
                 break
         return self.scene_chooser_details(self.state.current_scene)
 
+    def next_keep(self, scene_index, scene_name):
+        return self.scan_for_keep(range(scene_index+1, len(self.state.scene_names)))
+
     def prev_keep(self, scene_index, scene_name):
-        for index in range(scene_index-1, -1, -1):
-            scene_name = self.state.scene_names[index]
-            if self.state.scene_states[scene_name] == "Keep":
-                self.state.current_scene = index
-                break
-        return self.scene_chooser_details(self.state.current_scene)
+        return self.scan_for_keep(range(scene_index-1, -1, -1))
 
     def first_scene(self, scene_index, scene_name):
         self.state.current_scene = 0
@@ -1638,7 +1636,7 @@ class VideoRemixer(TabBase):
         default_percent = 50.0
         scene_index = int(scene_index)
         display_frame = self.compute_preview_frame(scene_index, default_percent)
-        _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index)
+        _, _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index)
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
             gr.update(selected=self.TAB_EXTRA_SPLIT_SCENE), \
             scene_index, \
@@ -1656,11 +1654,10 @@ class VideoRemixer(TabBase):
         if scene_label:
             self.state.set_scene_label(scene_index, scene_label)
             self.log("saving project after setting scene label")
-            self.state.save()
         else:
             self.state.clear_scene_label(scene_index)
             self.log("saving project after clearing scene label")
-            self.state.save()
+        self.state.save()
         return self.scene_chooser_details(self.state.current_scene)
 
     def click_scene_label(self, scene_index, scene_label):
@@ -1669,21 +1666,19 @@ class VideoRemixer(TabBase):
     def submit_scene_label(self, scene_index, scene_label):
         return self.save_scene_label(scene_index, scene_label)
 
-    def next_labeled_scene(self, scene_index, scene_name):
-        for index in range(scene_index+1, len(self.state.scene_names)):
+    def scan_for_label(self, range):
+        for index in range:
             scene_name = self.state.scene_names[index]
             if scene_name in self.state.scene_labels:
                 self.state.current_scene = index
                 break
         return self.scene_chooser_details(self.state.current_scene)
 
+    def next_labeled_scene(self, scene_index, scene_name):
+        return self.scan_for_label(range(scene_index+1, len(self.state.scene_names)))
+
     def prev_labeled_scene(self, scene_index, scene_name):
-        for index in range(scene_index-1, -1, -1):
-            scene_name = self.state.scene_names[index]
-            if scene_name in self.state.scene_labels:
-                self.state.current_scene = index
-                break
-        return self.scene_chooser_details(self.state.current_scene)
+        return self.scan_for_label(range(scene_index-1, -1, -1))
 
     def auto_label_scenes(self):
         num_scenes = len(self.state.scene_names)
@@ -1744,9 +1739,7 @@ class VideoRemixer(TabBase):
             self.log(f"thumbnails don't exist yet in scene_chooser_details()")
             return dummy_args(6)
         try:
-            scene_name, thumbnail_path, scene_state, scene_info, scene_label = \
-                self.state.scene_chooser_details(scene_index)
-            return scene_index, scene_name, thumbnail_path, scene_state, scene_info, scene_label
+            return self.state.scene_chooser_details(scene_index)
         except ValueError as error:
             self.log(error)
             return dummy_args(6)
@@ -2380,7 +2373,7 @@ class VideoRemixer(TabBase):
             return dummy_args(2)
 
         display_frame = self.compute_preview_frame(scene_index, split_percent)
-        _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index)
+        _, _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index)
         return display_frame, scene_info
 
     def update_preview_scene_id(self, scene_index, split_percent):

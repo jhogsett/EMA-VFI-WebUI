@@ -826,7 +826,7 @@ class VideoRemixerState():
             scene_time = f"{scene_start}{self.GAP}+{scene_duration}"
             keep_symbol = SimpleIcons.HEART if keep_state == True else ""
             scene_info = f"{scene_position}{self.GAP}{scene_time}{self.GAP}{keep_symbol}"
-            return scene_name, thumbnail_path, scene_state, scene_info, scene_label
+            return scene_index, scene_name, thumbnail_path, scene_state, scene_info, scene_label
         except ValueError as error:
             raise ValueError(
                 f"ValueError encountered while getting scene chooser data: {error}")
