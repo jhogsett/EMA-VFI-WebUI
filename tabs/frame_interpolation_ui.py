@@ -34,15 +34,15 @@ class FrameInterpolation(TabBase):
                 + " see an animation of result and download the new frames", elem_id="tabheading")
             with gr.Row():
                 with gr.Column():
-                    img1_input = gr.Image(type="filepath", label="Before Frame", height=250)
-                    img2_input = gr.Image(type="filepath", label="After Frame", height=250)
+                    img1_input = gr.Image(sources=["upload"], type="filepath", label="Before Frame", height=250)
+                    img2_input = gr.Image(sources=["upload"], type="filepath", label="After Frame", height=250)
                     with gr.Row():
                         splits_input = gr.Slider(value=1, minimum=1, maximum=max_splits,
                             step=1, label="Split Count")
                         info_output = gr.Textbox(value="1", label="Interpolated Frames",
                             max_lines=1, interactive=False)
                 with gr.Column():
-                    img_output = gr.Image(type="filepath", label="Animated Preview",
+                    img_output = gr.Image(sources=["upload"], type="filepath", label="Animated Preview",
                         interactive=False, elem_id="mainoutput", height=250)
                     file_output = gr.File(type="filepath", file_count="multiple",
                         label="Download", visible=False)

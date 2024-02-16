@@ -96,13 +96,13 @@ class VideoBlender(TabBase):
             with gr.Tab(SimpleIcons.CONTROLS + "Frame Chooser", id=self.TAB_FRAME_CHOOSER):
                 with gr.Row():
                     with gr.Column():
-                        output_prev_frame = gr.Image(label="Previous Frame",
+                        output_prev_frame = gr.Image(sources=["upload"], label="Previous Frame",
                             interactive=False, type="filepath", elem_id="sideimage", height=300)
                     with gr.Column():
-                        output_curr_frame = gr.Image(show_label=False,
+                        output_curr_frame = gr.Image(sources=["upload"], show_label=False,
                             interactive=False, type="filepath", elem_id="actionimage", height=300)
                     with gr.Column():
-                        output_next_frame = gr.Image(label="Next Frame",
+                        output_next_frame = gr.Image(sources=["upload"], label="Next Frame",
                             interactive=False, type="filepath", elem_id="sideimage", height=300)
                 with gr.Row():
                     with gr.Column():
@@ -129,10 +129,10 @@ class VideoBlender(TabBase):
                     with gr.Column():
                         with gr.Tabs():
                             with gr.Tab(label="Repair / Path 2 Frame"):
-                                output_img_path2 = gr.Image(show_label=False,
+                                output_img_path2 = gr.Image(sources=["upload"], show_label=False,
                                     interactive=False, type="filepath", height=300)
                             with gr.Tab(label="Original / Path 1 Frame"):
-                                output_img_path1 = gr.Image(show_label=False,
+                                output_img_path1 = gr.Image(sources=["upload"], show_label=False,
                                     interactive=False, type="filepath", height=300)
 
                     with gr.Column():
@@ -175,7 +175,7 @@ class VideoBlender(TabBase):
                             preview_button_ff = gr.Button(value="Preview Fixed Frames",
                                 variant="primary", elem_id="highlightbutton")
                     with gr.Column():
-                        preview_image_ff = gr.Image(type="filepath",
+                        preview_image_ff = gr.Image(sources=["upload"], type="filepath",
                             label="Fixed Frames Preview", interactive=False,
                             elem_id="highlightoutput", height=300)
                         fixed_path_ff = gr.Textbox(label="Path to Restored Frames", max_lines=1,

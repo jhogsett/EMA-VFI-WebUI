@@ -229,7 +229,7 @@ class VideoRemixer(TabBase):
                                 scene_index = gr.Number(label="Scene Index", precision=0)
                 with gr.Row():
                     with gr.Column():
-                        scene_image = gr.Image(type="filepath", interactive=False,
+                        scene_image = gr.Image(sources=["upload"], type="filepath", interactive=False,
                                                 height=max_thumb_size)
                     with gr.Column():
                         keep_next = gr.Button(value="Keep Scene | Next >", variant="primary",
@@ -522,7 +522,7 @@ class VideoRemixer(TabBase):
                                                                     min_width=120)
                                     gr.Column(scale=7)
                             with gr.Column():
-                                preview_image702 = gr.Image(type="filepath",
+                                preview_image702 = gr.Image(sources=["upload"], type="filepath",
                         label="Split Frame Preview", height=max_thumb_size)
                         with gr.Row():
                             message_box702 = gr.Markdown(format_markdown(
