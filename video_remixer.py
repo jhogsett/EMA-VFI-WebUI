@@ -114,8 +114,10 @@ class VideoRemixerState():
     # remove transient state
     def __getstate__(self):
         state = self.__dict__.copy()
-        del state["split_scene_cache"]
-        del state["split_scene_cached_index"]
+        if "split_scene_cache" in state:
+            del state["split_scene_cache"]
+        if "split_scene_cached_index" in state:
+            del state["split_scene_cached_index"]
         return state
 
     def reset(self):
