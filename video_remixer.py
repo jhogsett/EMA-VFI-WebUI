@@ -107,6 +107,17 @@ class VideoRemixerState():
         self.video_clips = []
         self.clips = []
 
+        # used internally only
+        self.split_scene_cache = []
+        self.split_scene_cached_index = -1
+
+    # remove transient state
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        del state["split_scene_cache"]
+        del state["split_scene_cached_index"]
+        return state
+
     def reset(self):
         self.__init__()
 
@@ -1791,6 +1802,8 @@ class VideoRemixerState():
                     removed.append(file)
         return removed
 
+    # TODO the last three paths in the list won't have scene name directories but instead files
+    #      also it should delete the audio wav file if found since that isn't deleted each save
     # drop an already-processed scene to cut it from the remix video
     def force_drop_processed_scene(self, scene_index):
         scene_name = self.scene_names[scene_index]
@@ -1811,11 +1824,17 @@ class VideoRemixerState():
                 purge_dirs.append(content_path)
         purge_root = self.purge_paths(purge_dirs)
         removed += purge_dirs
+
         if purge_root:
             self.copy_project_file(purge_root)
 
-        if self.audio_clips_path:
-            self.audio_clips = sorted(get_files(self.audio_clips_path))
+        # audio clips aren't cleaned each time a remix is saved
+        # clean now to ensure the dropped scene audio clip is removed
+        self.clean_remix_content(purge_from="audio_clips")
+
+        # TODO this didn't ever work
+        # if self.audio_clips_path:
+        #     self.audio_clips = sorted(get_files(self.audio_clips_path))
 
         return removed
 
@@ -2202,6 +2221,28 @@ class VideoRemixerState():
                                    global_options=global_options)
             Mtqdm().update_bar(bar)
         return ffcmd
+
+    def choose_scene_range(self, first_scene_index, last_scene_index, scene_state):
+        for scene_index in range(first_scene_index, last_scene_index + 1):
+            scene_name = self.scene_names[scene_index]
+            self.scene_states[scene_name] = scene_state
+
+    def valid_split_scene_cache(self, scene_index):
+        if self.split_scene_cache and self.split_scene_cached_index == scene_index:
+            return self.split_scene_cache
+        else:
+            return None
+
+    def fill_split_scene_cache(self, scene_index, data):
+        self.split_scene_cache = data
+        self.split_scene_cached_index = scene_index
+
+    def invalidate_split_scene_cache(self):
+        self.split_scene_cache = []
+        self.split_scene_cached_index = -1
+
+
+
 
     # returns validated version of path and files, and an optional messages str
     def ensure_valid_populated_path(self, description : str, path : str, files : list | None=None):

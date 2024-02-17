@@ -37,7 +37,7 @@ class VideoRemixer(TabBase):
     def new_project(self):
         self.state = VideoRemixerState()
         self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"])
-        self.invalidate_split_scene_cache()
+        self.state.invalidate_split_scene_cache()
 
     TAB_REMIX_HOME = 0
     TAB_REMIX_SETTINGS = 1
@@ -1251,7 +1251,7 @@ class VideoRemixer(TabBase):
         scene_details = self.scene_chooser_details(self.state.tryattr("current_scene"))
 
         Session().set("last-video-remixer-project", project_path)
-        self.invalidate_split_scene_cache()
+        self.state.invalidate_split_scene_cache()
 
         return gr.update(selected=return_to_tab), \
             message_text, \
@@ -1541,7 +1541,7 @@ class VideoRemixer(TabBase):
 
         # thumbnails may be being recreated
         # clear cache to avoid display problems with cached thumbnails
-        self.invalidate_split_scene_cache()
+        self.state.invalidate_split_scene_cache()
 
         # TODO this is fine as part of project setup but does it belong here?
         self.state.clips_path = os.path.join(self.state.project_path, "CLIPS")
@@ -2128,13 +2128,6 @@ class VideoRemixer(TabBase):
 
         removed = self.state.force_drop_processed_scene(scene_index)
 
-        # audio clips aren't cleaned each time a remix is saved
-        # clean now to ensure the dropped scene audio clip is removed
-        self.state.clean_remix_content(purge_from="audio_clips")
-
-        self.log(f"removed files: {removed}")
-        self.log(
-            f"saving project after using force_drop_processed_scene for scene index {scene_index}")
         self.state.save()
         removed = "\r\n".join(removed)
         return format_markdown(f"Removed:\r\n{removed}")
@@ -2174,10 +2167,7 @@ class VideoRemixer(TabBase):
                 format_markdown("Please make a Scenes Choice to get started", "warning"), \
                 *empty_args
 
-        for scene_index in range(first_scene_index, last_scene_index + 1):
-            scene_name = self.state.scene_names[scene_index]
-            self.state.scene_states[scene_name] = scene_state
-
+        self.state.choose_scene_range(first_scene_index, last_scene_index, scene_state)
         self.state.current_scene = first_scene_index
 
         first_scene_name = self.state.scene_names[first_scene_index]
@@ -2190,20 +2180,6 @@ class VideoRemixer(TabBase):
             format_markdown(message), \
             *self.scene_chooser_details(self.state.current_scene)
 
-    def valid_split_scene_cache(self, scene_index):
-        if self.split_scene_cache and self.split_scene_cached_index == scene_index:
-            return self.split_scene_cache
-        else:
-            return None
-
-    def fill_split_scene_cache(self, scene_index, data):
-        self.split_scene_cache = data
-        self.split_scene_cached_index = scene_index
-
-    def invalidate_split_scene_cache(self):
-        self.split_scene_cache = []
-        self.split_scene_cached_index = -1
-
     def split_button702(self, scene_index, split_percent):
         global_options = self.config.ffmpeg_settings["global_options"]
         try:
@@ -2213,7 +2189,7 @@ class VideoRemixer(TabBase):
             self.state.save()
 
             self.log("invalidating scene split cache after splitting")
-            self.invalidate_split_scene_cache()
+            self.state.invalidate_split_scene_cache()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                 format_markdown(message), \
@@ -2233,7 +2209,7 @@ class VideoRemixer(TabBase):
             self.state.save()
 
             self.log("invalidating scene split cache after splitting")
-            self.invalidate_split_scene_cache()
+            self.state.invalidate_split_scene_cache()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                 format_markdown(message), \
@@ -2253,7 +2229,7 @@ class VideoRemixer(TabBase):
             self.state.save()
 
             self.log("invalidating scene split cache after splitting")
-            self.invalidate_split_scene_cache()
+            self.state.invalidate_split_scene_cache()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                 format_markdown(message), \
@@ -2277,13 +2253,13 @@ class VideoRemixer(TabBase):
         scene_name = self.state.scene_names[scene_index]
         _, num_frames, _, _, split_frame = self.state.compute_scene_split(scene_name, split_percent)
         original_scene_path = os.path.join(self.state.scenes_path, scene_name)
-        frame_files = self.valid_split_scene_cache(scene_index)
+        frame_files = self.state.valid_split_scene_cache(scene_index)
         if not frame_files:
             # optimize to uncompile only the first time it's needed
             self.state.uncompile_scenes()
 
             frame_files = sorted(get_files(original_scene_path))
-            self.fill_split_scene_cache(scene_index, frame_files)
+            self.state.fill_split_scene_cache(scene_index, frame_files)
 
         num_frame_files = len(frame_files)
         if num_frame_files != num_frames:
@@ -2550,7 +2526,7 @@ class VideoRemixer(TabBase):
         except OSError as error:
             self.log(f"Error removing path '{working_path}' ignored: {error}")
 
-        self.invalidate_split_scene_cache()
+        self.state.invalidate_split_scene_cache()
         return format_markdown("Kept scenes replaced with cleaned versions")
 
     def merge_scenes(self, first_scene_index, last_scene_index):
@@ -2686,7 +2662,7 @@ class VideoRemixer(TabBase):
         try:
             new_scene_name = self.merge_scenes(first_scene_index, last_scene_index)
             message = f"Scenes merged into new scene {new_scene_name}"
-            self.invalidate_split_scene_cache()
+            self.state.invalidate_split_scene_cache()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                 format_markdown(message), \
@@ -2778,7 +2754,7 @@ class VideoRemixer(TabBase):
 
             self.state.current_scene = return_to_scene_index
             self.log("Saving project after consolidating scenes")
-            self.invalidate_split_scene_cache()
+            self.state.invalidate_split_scene_cache()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                 format_markdown(report), \
