@@ -1870,7 +1870,6 @@ class VideoRemixer(TabBase):
 
             if self.state.resynthesize:
                 if not self.state.processed_content_complete(self.state.RESYNTH_STEP):
-                    # two_pass_resynth = self.config.remixer_settings["resynth_type"] == 2
                     self.state.resynthesize_scenes(self.log,
                                                 kept_scenes,
                                                 self.engine,
@@ -1880,6 +1879,7 @@ class VideoRemixer(TabBase):
                     self.state.save()
                 jot.down(f"Resynthesized scenes in {self.state.resynthesis_path}")
 
+            # TODO don't check directly but determine if inflation processing is needed
             if self.state.inflate:
                 if not self.state.processed_content_complete(self.state.INFLATE_STEP):
                     self.state.inflate_scenes(self.log,
@@ -1925,9 +1925,9 @@ class VideoRemixer(TabBase):
                    format_markdown(self.TAB62_DEFAULT_MESSAGE), \
                    format_markdown(self.TAB63_DEFAULT_MESSAGE)
         else:
-            return gr.update(selected=self.TAB_PROC_REMIX), \
-                   format_markdown("At least one scene must be set to 'Keep' before processing can proceed", "warning"), \
-                   *empty_args
+            return gr.update(selected=self.TAB_PROC_REMIX), format_markdown(
+                "At least one scene must be set to 'Keep' before processing can proceed",
+                "warning"), *empty_args
 
     def back_button5(self):
         return gr.update(selected=self.TAB_COMPILE_SCENES)
@@ -1937,102 +1937,11 @@ class VideoRemixer(TabBase):
 
     ### SAVE REMIX EVENT HANDLERS
 
-    # TODO move to state
-    def prepare_save_remix(self, output_filepath : str):
-        if not output_filepath:
-            raise ValueError("Enter a path for the remixed video to proceed")
-
-        kept_scenes = self.state.kept_scenes()
-        if not kept_scenes:
-            raise ValueError("No kept scenes were found")
-
-        self.log("about to check and drop empty scenes")
-        self.state.drop_empty_processed_scenes(kept_scenes)
-        self.log("saving after dropping empty scenes")
-        self.state.save()
-
-        # get this again in case scenes have been auto-dropped
-        kept_scenes = self.state.kept_scenes()
-        if not kept_scenes:
-            raise ValueError("No kept scenes after removing empties")
-
-        global_options = self.config.ffmpeg_settings["global_options"]
-
-        # create audio clips only if they do not already exist
-        # this depends on the audio clips being purged at the time the scene selection are compiled
-        if self.state.video_details["has_audio"] and not \
-                self.state.processed_content_complete(self.state.AUDIO_STEP):
-            self.log("about to create audio clips")
-            audio_format = self.config.remixer_settings["audio_format"]
-            self.state.create_audio_clips(self.log, global_options, audio_format=audio_format)
-            self.log("saving project after creating audio clips")
-            self.state.save()
-
-        # always recreate video and scene clips
-        self.state.clean_remix_content(purge_from="video_clips")
-        return global_options, kept_scenes
-
-    # TODO move to state
-    def save_remix(self, global_options, kept_scenes):
-        self.log(f"about to create video clips")
-        self.state.create_video_clips(self.log, kept_scenes, global_options)
-        self.log("saving project after creating video clips")
-        self.state.save()
-
-        self.log("about to create scene clips")
-        self.state.create_scene_clips(self.log, kept_scenes, global_options)
-        self.log("saving project after creating scene clips")
-        self.state.save()
-
-        if not self.state.clips:
-            raise ValueError("No processed video clips were found")
-
-        self.log("about to create remix viedeo")
-        ffcmd = self.state.create_remix_video(self.log, global_options, self.state.output_filepath)
-        self.log(f"FFmpeg command: {ffcmd}")
-        self.log("saving project after creating remix video")
-        self.state.save()
-
-    def save_custom_remix(self,
-                          output_filepath,
-                          global_options,
-                          kept_scenes,
-                          custom_video_options,
-                          custom_audio_options,
-                          draw_text_options=None,
-                          use_scene_sorting=True):
-        _, _, output_ext = split_filepath(output_filepath)
-        output_ext = output_ext[1:]
-
-        self.log(f"about to create custom video clips")
-        self.state.create_custom_video_clips(self.log, kept_scenes, global_options,
-                                             custom_video_options=custom_video_options,
-                                             custom_ext=output_ext,
-                                             draw_text_options=draw_text_options)
-        self.log("saving project after creating custom video clips")
-        self.state.save()
-
-        self.log("about to create custom scene clips")
-        self.state.create_custom_scene_clips(kept_scenes, global_options,
-                                             custom_audio_options=custom_audio_options,
-                                             custom_ext=output_ext)
-        self.log("saving project after creating custom scene clips")
-        self.state.save()
-
-        if not self.state.clips:
-            raise ValueError("No processed video clips were found")
-
-        self.log("about to create remix viedeo")
-        ffcmd = self.state.create_remix_video(self.log, global_options, output_filepath,
-                                              use_scene_sorting=use_scene_sorting)
-        self.log(f"FFmpeg command: {ffcmd}")
-        self.log("saving project after creating remix video")
-        self.state.save()
-
     # User has clicked Save Remix from Save Remix
     def next_button60(self, output_filepath, quality):
         if not self.state.project_path:
-            return format_markdown("The project has not yet been set up from the Set Up Project tab.", "error")
+            return format_markdown(
+                "The project has not yet been set up from the Set Up Project tab.", "error")
 
         self.state.output_filepath = output_filepath
         self.state.output_quality = quality
@@ -2042,8 +1951,11 @@ class VideoRemixer(TabBase):
         self.state.recompile_scenes()
 
         try:
-            global_options, kept_scenes = self.prepare_save_remix(output_filepath)
-            self.save_remix(global_options, kept_scenes)
+            global_options = self.config.ffmpeg_settings["global_options"]
+            remixer_settings = self.config.remixer_settings
+            kept_scenes = self.state.prepare_save_remix(self.log, global_options, remixer_settings,
+                                                        output_filepath)
+            self.state.save_remix(self.log, global_options, kept_scenes)
             return format_markdown(f"Remixed video {output_filepath} is complete.", "highlight")
 
         except ValueError as error:
@@ -2052,27 +1964,36 @@ class VideoRemixer(TabBase):
     # User has clicked Save Custom Remix from Save Remix
     def next_button61(self, custom_video_options, custom_audio_options, output_filepath):
         if not self.state.project_path:
-            return format_markdown("The project has not yet been set up from the Set Up Project tab.", "error")
+            return format_markdown(
+                "The project has not yet been set up from the Set Up Project tab.", "error")
 
         self.state.recompile_scenes()
 
         try:
-            global_options, kept_scenes = self.prepare_save_remix(output_filepath)
-            self.save_custom_remix(output_filepath, global_options, kept_scenes,
-                                   custom_video_options, custom_audio_options)
-            return format_markdown(f"Remixed custom video {output_filepath} is complete.", "highlight")
+            global_options = self.config.ffmpeg_settings["global_options"]
+            remixer_settings = self.config.remixer_settings
+            kept_scenes = self.state.prepare_save_remix(self.log, global_options,
+                                                        remixer_settings, output_filepath)
+            self.state.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
+                                         custom_video_options, custom_audio_options)
+            return format_markdown(f"Remixed custom video {output_filepath} is complete.",
+                                   "highlight")
         except ValueError as error:
             return format_markdown(str(error), "error")
 
     # User has clicked Save Marked Remix from Save Remix
     def next_button62(self, marked_video_options, marked_audio_options, output_filepath):
         if not self.state.project_path:
-            return format_markdown("The project has not yet been set up from the Set Up Project tab.", "error")
+            return format_markdown(
+                "The project has not yet been set up from the Set Up Project tab.", "error")
 
         self.state.recompile_scenes()
 
         try:
-            global_options, kept_scenes = self.prepare_save_remix(output_filepath)
+            global_options = self.config.ffmpeg_settings["global_options"]
+            remixer_settings = self.config.remixer_settings
+            kept_scenes = self.state.prepare_save_remix(self.log, global_options,
+                                                        remixer_settings, output_filepath)
             draw_text_options = {}
             draw_text_options["font_size"] = self.config.remixer_settings["marked_font_size"]
             draw_text_options["font_color"] = self.config.remixer_settings["marked_font_color"]
@@ -2097,9 +2018,11 @@ class VideoRemixer(TabBase):
                 labels.append(f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]")
             draw_text_options["labels"] = labels
 
-            self.save_custom_remix(output_filepath, global_options, kept_scenes,
-                                   marked_video_options, marked_audio_options, draw_text_options)
-            return format_markdown(f"Remixed marked video {output_filepath} is complete.", "highlight")
+            self.state.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
+                                         marked_video_options, marked_audio_options,
+                                         draw_text_options)
+            return format_markdown(f"Remixed marked video {output_filepath} is complete.",
+                                   "highlight")
         except ValueError as error:
             return format_markdown(str(error), "error")
 
@@ -2136,7 +2059,10 @@ class VideoRemixer(TabBase):
         self.state.recompile_scenes()
 
         try:
-            global_options, kept_scenes = self.prepare_save_remix(output_filepath)
+            global_options = self.config.ffmpeg_settings["global_options"]
+            remixer_settings = self.config.remixer_settings
+            kept_scenes = self.state.prepare_save_remix(self.log, global_options,
+                                                        remixer_settings, output_filepath)
             draw_text_options = {}
             draw_text_options["font_size"] = label_font_size
             draw_text_options["font_color"] = label_font_color
@@ -2166,9 +2092,9 @@ class VideoRemixer(TabBase):
             self.log(f"using labeled audeo options: {labeled_audio_options}")
 
             try:
-                self.save_custom_remix(output_filepath, global_options, kept_scenes,
-                                       labeled_video_options, labeled_audio_options,
-                                       draw_text_options, use_scene_sorting=True)
+                self.state.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
+                                             labeled_video_options, labeled_audio_options,
+                                             draw_text_options, use_scene_sorting=True)
                 return format_markdown(
                     f"Remixed labeled video {output_filepath} is complete.", "highlight")
             except FFRuntimeError as error:

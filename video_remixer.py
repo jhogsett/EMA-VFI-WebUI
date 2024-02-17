@@ -1361,6 +1361,79 @@ class VideoRemixerState():
             crop_type = "crop"
         return scale_type, crop_type
 
+    def prepare_save_remix(self, log_fn, global_options, remixer_settings, output_filepath : str):
+        if not output_filepath:
+            raise ValueError("Enter a path for the remixed video to proceed")
+
+        kept_scenes = self.kept_scenes()
+        if not kept_scenes:
+            raise ValueError("No kept scenes were found")
+
+        self.drop_empty_processed_scenes(kept_scenes)
+        self.save()
+
+        # get this again in case scenes have been auto-dropped
+        kept_scenes = self.kept_scenes()
+        if not kept_scenes:
+            raise ValueError("No kept scenes after removing empties")
+
+        # create audio clips only if they do not already exist
+        # this depends on the audio clips being purged at the time the scene selection are compiled
+        if self.video_details["has_audio"] and not self.processed_content_complete(
+                self.AUDIO_STEP):
+            audio_format = remixer_settings["audio_format"]
+            self.create_audio_clips(log_fn, global_options, audio_format=audio_format)
+            self.save()
+
+        # always recreate video and scene clips
+        self.clean_remix_content(purge_from="video_clips")
+        return kept_scenes
+
+    def save_remix(self, log_fn, global_options, kept_scenes):
+        self.create_video_clips(log_fn, kept_scenes, global_options)
+        self.save()
+
+        self.create_scene_clips(log_fn, kept_scenes, global_options)
+        self.save()
+
+        if not self.clips:
+            raise ValueError("No processed video clips were found")
+
+        ffcmd = self.create_remix_video(log_fn, global_options, self.output_filepath)
+        log_fn(f"FFmpeg command: {ffcmd}")
+        self.save()
+
+    def save_custom_remix(self,
+                          log_fn,
+                          output_filepath,
+                          global_options,
+                          kept_scenes,
+                          custom_video_options,
+                          custom_audio_options,
+                          draw_text_options=None,
+                          use_scene_sorting=True):
+        _, _, output_ext = split_filepath(output_filepath)
+        output_ext = output_ext[1:]
+
+        self.create_custom_video_clips(log_fn, kept_scenes, global_options,
+                                             custom_video_options=custom_video_options,
+                                             custom_ext=output_ext,
+                                             draw_text_options=draw_text_options)
+        self.save()
+
+        self.create_custom_scene_clips(kept_scenes, global_options,
+                                             custom_audio_options=custom_audio_options,
+                                             custom_ext=output_ext)
+        self.save()
+
+        if not self.clips:
+            raise ValueError("No processed video clips were found")
+
+        ffcmd = self.create_remix_video(log_fn, global_options, output_filepath,
+                                        use_scene_sorting=use_scene_sorting)
+        log_fn(f"FFmpeg command: {ffcmd}")
+        self.save()
+
     def resize_scene(self,
                      log_fn,
                      scene_input_path,
