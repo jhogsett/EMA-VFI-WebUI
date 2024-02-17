@@ -1000,7 +1000,8 @@ class VideoRemixerState():
             shutil.move(frame_path, new_frame_path)
         os.replace(original_scene_path, new_lower_scene_path)
 
-    def split_scene(self, log_fn, scene_index, split_percent, remixer_settings, global_options, keep_before=False, keep_after=False):
+    def split_scene(self, log_fn, scene_index, split_percent, remixer_settings, global_options,
+                    keep_before=False, keep_after=False):
         if not isinstance(scene_index, (int, float)):
             raise ValueError("Scene index must be an int or float")
 
@@ -1115,6 +1116,8 @@ class VideoRemixerState():
         if processed_content_split:
             log_fn("invalidating processed audio content after splitting")
             self.clean_remix_audio()
+
+        self.invalidate_split_scene_cache()
 
         return f"Scene split into new scenes {new_lower_scene_name} and {new_upper_scene_name}"
 

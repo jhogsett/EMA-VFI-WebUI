@@ -2180,16 +2180,13 @@ class VideoRemixer(TabBase):
             format_markdown(message), \
             *self.scene_chooser_details(self.state.current_scene)
 
-    def split_button702(self, scene_index, split_percent):
+    def split_scene(self, scene_index, split_percent, keep_before, keep_after):
         global_options = self.config.ffmpeg_settings["global_options"]
         try:
-            message = self.state.split_scene(self.log, scene_index, split_percent, self.config.remixer_settings, global_options)
-
-            self.log("saving project after completing scene split")
+            message = self.state.split_scene(self.log, scene_index, split_percent,
+                                             self.config.remixer_settings, global_options,
+                                             keep_before, keep_after)
             self.state.save()
-
-            self.log("invalidating scene split cache after splitting")
-            self.state.invalidate_split_scene_cache()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                 format_markdown(message), \
@@ -2199,46 +2196,15 @@ class VideoRemixer(TabBase):
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 format_markdown(f"Unable to split scene: {error}", "warning"), \
                 *dummy_args(6)
+
+    def split_button702(self, scene_index, split_percent):
+        return self.split_scene(scene_index, split_percent, False, False)
 
     def split_keep_before_702(self, scene_index, split_percent):
-        global_options = self.config.ffmpeg_settings["global_options"]
-        try:
-            message = self.state.split_scene(self.log, scene_index, split_percent, self.config.remixer_settings, global_options, keep_before=True)
-
-            self.log("saving project after completing scene split")
-            self.state.save()
-
-            self.log("invalidating scene split cache after splitting")
-            self.state.invalidate_split_scene_cache()
-
-            return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-                format_markdown(message), \
-                *self.scene_chooser_details(self.state.current_scene)
-
-        except ValueError as error:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown(f"Unable to split scene: {error}", "warning"), \
-                *dummy_args(6)
+        return self.split_scene(scene_index, split_percent, True, False)
 
     def split_keep_after_702(self, scene_index, split_percent):
-        global_options = self.config.ffmpeg_settings["global_options"]
-        try:
-            message = self.state.split_scene(self.log, scene_index, split_percent, self.config.remixer_settings, global_options, keep_after=True)
-
-            self.log("saving project after completing scene split")
-            self.state.save()
-
-            self.log("invalidating scene split cache after splitting")
-            self.state.invalidate_split_scene_cache()
-
-            return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-                format_markdown(message), \
-                *self.scene_chooser_details(self.state.current_scene)
-
-        except ValueError as error:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown(f"Unable to split scene: {error}", "warning"), \
-                *dummy_args(6)
+        return self.split_scene(scene_index, split_percent, False, True)
 
     def back_button702(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
