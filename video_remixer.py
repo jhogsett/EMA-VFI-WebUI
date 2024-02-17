@@ -930,6 +930,33 @@ class VideoRemixerState():
 
     ## Scene Splitter Functions ##
 
+    # TODO maybe put these in their own class along with the cache
+
+    def compute_preview_frame(self, log_fn, scene_index, split_percent):
+        scene_index = int(scene_index)
+        num_scenes = len(self.scene_names)
+        last_scene = num_scenes - 1
+        if scene_index < 0 or scene_index > last_scene:
+            return None
+
+        scene_name = self.scene_names[scene_index]
+        _, num_frames, _, _, split_frame = self.compute_scene_split(scene_name, split_percent)
+        original_scene_path = os.path.join(self.scenes_path, scene_name)
+        frame_files = self.valid_split_scene_cache(scene_index)
+        if not frame_files:
+            # optimize to uncompile only the first time it's needed
+            self.uncompile_scenes()
+
+            frame_files = sorted(get_files(original_scene_path))
+            self.fill_split_scene_cache(scene_index, frame_files)
+
+        num_frame_files = len(frame_files)
+        if num_frame_files != num_frames:
+            log_fn(f"compute_preview_frame(): expected {num_frame_files} frame files but found {num_frames} for scene index {scene_index} - returning None")
+            return None
+        return frame_files[split_frame]
+
+
     def compute_scene_split(self, scene_name : str, split_percent : float, override_num_frames=0):
         split_percent = 0.0 if isinstance(split_percent, type(None)) else split_percent
         split_point = split_percent / 100.0

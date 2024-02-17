@@ -1635,7 +1635,7 @@ class VideoRemixer(TabBase):
     def split_scene_shortcut(self, scene_index):
         default_percent = 50.0
         scene_index = int(scene_index)
-        display_frame = self.compute_preview_frame(scene_index, default_percent)
+        display_frame = self.state.compute_preview_frame(self.log, scene_index, default_percent)
         _, _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index)
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
             gr.update(selected=self.TAB_EXTRA_SPLIT_SCENE), \
@@ -2209,30 +2209,6 @@ class VideoRemixer(TabBase):
     def back_button702(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
 
-    def compute_preview_frame(self, scene_index, split_percent):
-        scene_index = int(scene_index)
-        num_scenes = len(self.state.scene_names)
-        last_scene = num_scenes - 1
-        if scene_index < 0 or scene_index > last_scene:
-            return None
-
-        scene_name = self.state.scene_names[scene_index]
-        _, num_frames, _, _, split_frame = self.state.compute_scene_split(scene_name, split_percent)
-        original_scene_path = os.path.join(self.state.scenes_path, scene_name)
-        frame_files = self.state.valid_split_scene_cache(scene_index)
-        if not frame_files:
-            # optimize to uncompile only the first time it's needed
-            self.state.uncompile_scenes()
-
-            frame_files = sorted(get_files(original_scene_path))
-            self.state.fill_split_scene_cache(scene_index, frame_files)
-
-        num_frame_files = len(frame_files)
-        if num_frame_files != num_frames:
-            self.log(f"compute_preview_frame(): expected {num_frame_files} frame files but found {num_frames} for scene index {scene_index} - returning None")
-            return None
-        return frame_files[split_frame]
-
     def update_preview(self, scene_index, split_percent):
         if not isinstance(scene_index, (int, float)):
             return dummy_args(2)
@@ -2240,7 +2216,7 @@ class VideoRemixer(TabBase):
         if scene_index < 0 or scene_index >= len(self.state.scene_names):
             return dummy_args(2)
 
-        display_frame = self.compute_preview_frame(scene_index, split_percent)
+        display_frame = self.state.compute_preview_frame(self.log, scene_index, split_percent)
         _, _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index)
         return display_frame, scene_info
 
@@ -2324,6 +2300,7 @@ class VideoRemixer(TabBase):
     def go_to_s_submit702(self, scene_index, split_percent, go_to_second):
         return self.go_to_s_button702(scene_index, split_percent, go_to_second)
 
+    # TODO some of this should be moved out of here as logic, but might not belong directly in the state class
     def export_project_703(self, new_project_path : str, new_project_name : str):
         empty_args = dummy_args(2, lambda : gr.update(visible=True))
         if not new_project_path:
