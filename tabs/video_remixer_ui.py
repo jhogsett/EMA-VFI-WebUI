@@ -1002,7 +1002,7 @@ class VideoRemixer(TabBase):
         drop_processed_button.click(self.drop_processed_shortcut, inputs=scene_index,
             outputs=[tabs_video_remixer, tabs_remix_extra, scene_id_700])
 
-        mark_scene.click(self.mark_scene_fuck, inputs=[scene_index, scene_name])
+        mark_scene.click(self.mark_scene, inputs=[scene_index, scene_name])
 
         merge_scenes_button.click(self.merge_scenes_shortcut, inputs=scene_index,
             outputs=[tabs_video_remixer, tabs_remix_extra, tabs_merge_scenes,
@@ -1769,7 +1769,7 @@ class VideoRemixer(TabBase):
             gr.update(selected=self.TAB_EXTRA_MERGE_RANGE), \
             scene_index, alt_scene
 
-    def mark_scene_fuck(self, scene_index, scene_name):
+    def mark_scene(self, scene_index, scene_name):
         self.marked_scene = scene_index
 
     def unmark_scene(self):
