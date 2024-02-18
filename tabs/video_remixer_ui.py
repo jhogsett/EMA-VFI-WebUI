@@ -31,13 +31,16 @@ class VideoRemixer(TabBase):
         TabBase.__init__(self, config, engine, log_fn)
         self.main_tabs = main_tabs
         self.video_blender = video_blender
+        self.marked_scene = None
         self.new_project()
+        self.unmark_scene()
 
     # TODO this only runs at app start-up
     def new_project(self):
         self.state = VideoRemixerState()
         self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"])
         self.state.invalidate_split_scene_cache()
+        self.unmark_scene()
 
     TAB_REMIX_HOME = 0
     TAB_REMIX_SETTINGS = 1
@@ -54,8 +57,11 @@ class VideoRemixer(TabBase):
     TAB_EXTRA_EXPORT_SCENES = 3
     TAB_EXTRA_CLEANSE_SCENES = 4
     TAB_EXTRA_MANAGE_STORAGE = 5
-    TAB_EXTRA_MERGE_RANGE = 6
+    TAB_EXTRA_MERGE_SCENES = 6
     TAB_EXTRA_VIDEO_BLEND_SCENE = 7
+
+    TAB_EXTRA_MERGE_RANGE = 0
+    TAB_EXTRA_MERGE_COALESCE = 1
 
     TAB00_DEFAULT_MESSAGE = "Click New Project to: Inspect Video and Count Frames (can take a minute or more)"
     TAB01_DEFAULT_MESSAGE = "Click Open Project to: Resume Editing an Existing Project"
@@ -258,27 +264,42 @@ class VideoRemixer(TabBase):
                         with gr.Row(variant="panel", equal_height=False):
                             with gr.Accordion(label="Properties", open=False):
                                 with gr.Row():
-                                    set_scene_label = gr.Textbox(placeholder="Scene Label", max_lines=1, show_label=False, min_width=100, scale=3, container=False)
-                                    save_scene_label = gr.Button(value="Set", size="sm", scale=0, min_width=40)
-                                    prev_labeled_scene = gr.Button("<", size="sm", min_width=20, scale=0)
-                                    next_labeled_scene = gr.Button(">", size="sm", min_width=20, scale=0)
+                                    set_scene_label = gr.Textbox(placeholder="Scene Label",
+                                                                 max_lines=1, show_label=False,
+                                                                 min_width=100, scale=3,
+                                                                 container=False)
+                                    save_scene_label = gr.Button(value="Set", size="sm", scale=0,
+                                                                 min_width=40)
+                                    prev_labeled_scene = gr.Button("<", size="sm", min_width=20,
+                                                                   scale=0)
+                                    next_labeled_scene = gr.Button(">", size="sm", min_width=20,
+                                                                   scale=0)
                                 with gr.Row():
-                                    auto_label_scenes = gr.Button(value="Auto Label Scenes", size="sm", min_width=80)
-                                    reset_scene_labels = gr.Button(value="Reset Scene Labels", size="sm", min_width=80)
+                                    auto_label_scenes = gr.Button(value="Auto Label Scenes",
+                                                                  size="sm", min_width=80)
+                                    reset_scene_labels = gr.Button(value="Reset Scene Labels",
+                                                                   size="sm", min_width=80)
                                 with gr.Row():
-                                    add_2x_slomo = gr.Button(value="Add 2X Audio Slo Mo", size="sm", min_width=80, elem_id="highlightbutton")
-                                    add_4x_slomo = gr.Button(value="Add 4X Audio Slo Mo", size="sm", min_width=80, elem_id="highlightbutton")
+                                    add_2x_slomo = gr.Button(value="Add 2X Audio Slo Mo", size="sm",
+                                                             min_width=80, elem_id="highlightbutton")
+                                    add_4x_slomo = gr.Button(value="Add 4X Audio Slo Mo", size="sm",
+                                                             min_width=80, elem_id="highlightbutton")
                             with gr.Accordion(label="Danger Zone", open=False):
                                 with gr.Row():
                                     keep_all_button = gr.Button(value="Keep All Scenes",
-                                                                variant="stop", size="sm", min_width=80)
+                                                            variant="stop", size="sm", min_width=80)
                                     drop_all_button = gr.Button(value="Drop All Scenes",
-                                                                variant="stop", size="sm", min_width=80)
+                                                            variant="stop", size="sm", min_width=80)
                                 with gr.Row():
                                     invert_choices_button = gr.Button(value="Invert Scene Choices",
-                                                                variant="stop", size="sm", min_width=80)
+                                                            variant="stop", size="sm", min_width=80)
                                     drop_processed_button = gr.Button(value="Drop Processed Scene",
-                                                                variant="stop", size="sm", min_width=80)
+                                                            variant="stop", size="sm", min_width=80)
+                                with gr.Row():
+                                    mark_scene = gr.Button(value="Mark Scene",
+                                                    variant="secondary", size="sm", min_width=80)
+                                    merge_scenes_button = gr.Button(value="Merge Scenes",
+                                                            variant="stop", size="sm", min_width=80)
                 with gr.Row():
                     back_button3 = gr.Button(value="< Back", variant="secondary", scale=0)
                     next_button3 = gr.Button(value="Done Choosing Scenes", variant="primary",
@@ -538,10 +559,11 @@ class VideoRemixer(TabBase):
 
                     # MERGE SCENES
                     with gr.Tab(SimpleIcons.PACKAGE + " Merge Scenes",
-                                id=self.TAB_EXTRA_MERGE_RANGE):
+                                id=self.TAB_EXTRA_MERGE_SCENES):
                         gr.Markdown("Removed unneeded splits between adjacent scenes")
-                        with gr.Tabs():
-                            with gr.Tab(SimpleIcons.PACKAGE + " Merge Scene Range"):
+                        with gr.Tabs() as tabs_merge_scenes:
+                            with gr.Tab(SimpleIcons.PACKAGE + " Merge Scene Range",
+                                        id=self.TAB_EXTRA_MERGE_RANGE):
                                 gr.Markdown("**_Merge a range of scenes into one scene_**")
                                 with gr.Row():
                                     first_scene_id_705 = gr.Number(value=-1,
@@ -551,11 +573,12 @@ class VideoRemixer(TabBase):
                                 with gr.Row():
                                     message_box705 = gr.Markdown(
                                         format_markdown(
-                                "Click Merge Scene Range to: Combine the chosen scenes into a single scene"))
+                        "Click Merge Scene Range to: Combine the chosen scenes into a single scene"))
                                 with gr.Row():
                                     merge_button705 = gr.Button("Merge Scene Range",
                                                             variant="stop", scale=0)
-                            with gr.Tab(SimpleIcons.BROOM + " Coalesce Scenes"):
+                            with gr.Tab(SimpleIcons.BROOM + " Coalesce Scenes",
+                                        id=self.TAB_EXTRA_MERGE_COALESCE):
                                 gr.Markdown("**_Consolidate all adjacent Kept scenes_**")
                                 with gr.Row():
                                     coalesce_scenes_706 = gr.Checkbox(value=False,
@@ -978,6 +1001,12 @@ class VideoRemixer(TabBase):
 
         drop_processed_button.click(self.drop_processed_shortcut, inputs=scene_index,
             outputs=[tabs_video_remixer, tabs_remix_extra, scene_id_700])
+
+        mark_scene.click(self.mark_scene_fuck, inputs=[scene_index, scene_name])
+
+        merge_scenes_button.click(self.merge_scenes_shortcut, inputs=scene_index,
+            outputs=[tabs_video_remixer, tabs_remix_extra, tabs_merge_scenes,
+                     first_scene_id_705, last_scene_id_705])
 
         next_button3.click(self.next_button3,
                            outputs=[tabs_video_remixer, project_info4])
@@ -1645,10 +1674,10 @@ class VideoRemixer(TabBase):
             scene_info
 
     def choose_range_shortcut(self, scene_index):
+        scene_index, alt_scene = self.get_marked_pair(scene_index)
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
             gr.update(selected=self.TAB_EXTRA_CHOOSE_RANGE), \
-            scene_index, \
-            scene_index
+            scene_index, alt_scene
 
     def save_scene_label(self, scene_index, scene_label):
         if scene_label:
@@ -1729,9 +1758,34 @@ class VideoRemixer(TabBase):
         return self.scene_chooser_details(self.state.current_scene)
 
     def drop_processed_shortcut(self, scene_index):
-        return gr.update(selected=7), \
+        return gr.update(selected=self.TAB_REMIX_EXTRA), \
             gr.update(selected=self.TAB_EXTRA_DROP_PROCESSED), \
             scene_index
+
+    def merge_scenes_shortcut(self, scene_index):
+        scene_index, alt_scene = self.get_marked_pair(scene_index)
+        return gr.update(selected=self.TAB_REMIX_EXTRA), \
+            gr.update(selected=self.TAB_EXTRA_MERGE_SCENES), \
+            gr.update(selected=self.TAB_EXTRA_MERGE_RANGE), \
+            scene_index, alt_scene
+
+    def mark_scene_fuck(self, scene_index, scene_name):
+        self.marked_scene = scene_index
+
+    def unmark_scene(self):
+        self.marked_scene = None
+
+    def get_marked_pair(self, scene_index):
+        if self.marked_scene != None:
+            alt_scene = self.marked_scene
+        else:
+            alt_scene = scene_index + 1
+            if alt_scene >= len(self.state.scene_names):
+                alt_scene = scene_index
+        if alt_scene < scene_index:
+            alt_scene, scene_index = scene_index, alt_scene
+        self.unmark_scene()
+        return scene_index, alt_scene
 
     # given scene name such as [042-420] compute details to display in Scene Chooser
     def scene_chooser_details(self, scene_index):
