@@ -1161,6 +1161,85 @@ class VideoRemixerState():
 
     PURGED_CONTENT = "purged_content"
 
+    def prepare_remix_processing(self, redo_resynth, redo_inflate, redo_upscale):
+        self.setup_processing_paths()
+
+        self.recompile_scenes()
+
+        if self.processed_content_invalid:
+            self.purge_processed_content(purge_from=self.RESIZE_STEP)
+            self.processed_content_invalid = False
+        else:
+            self.purge_stale_processed_content(redo_resynth, redo_inflate, redo_upscale)
+            self.purge_incomplete_processed_content()
+        self.save()
+
+    def should_resize(self):
+        return self.resize \
+            and not self.processed_content_complete(self.RESIZE_STEP)
+
+    def should_resynthesize(self):
+        return self.resynthesize \
+            and not self.processed_content_complete(self.RESYNTH_STEP)
+
+    # TODO don't check directly but determine if inflation processing is needed
+    def should_inflate(self):
+        return self.inflate \
+            and not self.processed_content_complete(self.INFLATE_STEP)
+
+    def should_upscale(self):
+        return self.upscale \
+            and not self.processed_content_complete(self.UPSCALE_STEP)
+
+
+
+
+
+        # if self.state.resize:
+        #     if not self.state.processed_content_complete(self.state.RESIZE_STEP):
+        #         self.log("about to resize scenes")
+        #         self.state.resize_scenes(self.log,
+        #                                     kept_scenes,
+        #                                     self.config.remixer_settings)
+        #         self.log("saving project after resizing frames")
+        #         self.state.save()
+        #     report.add(f"Resized/cropped scenes in {self.state.resize_path}")
+
+        # if self.state.resynthesize:
+        #     if not self.state.processed_content_complete(self.state.RESYNTH_STEP):
+        #         self.state.resynthesize_scenes(self.log,
+        #                                     kept_scenes,
+        #                                     self.engine,
+        #                                     self.config.engine_settings,
+        #                                     self.state.resynth_option)
+        #         self.log("saving project after resynthesizing frames")
+        #         self.state.save()
+        #     report.add(f"Resynthesized scenes in {self.state.resynthesis_path}")
+
+        # # TODO don't check directly but determine if inflation processing is needed
+        # if self.state.inflate:
+        #     if not self.state.processed_content_complete(self.state.INFLATE_STEP):
+        #         self.state.inflate_scenes(self.log,
+        #                                     kept_scenes,
+        #                                     self.engine,
+        #                                     self.config.engine_settings)
+        #         self.log("saving project after inflating frames")
+        #         self.state.save()
+        #     report.add(f"Inflated scenes in {self.state.inflation_path}")
+
+        # if self.state.upscale:
+        #     if not self.state.processed_content_complete(self.state.UPSCALE_STEP):
+        #         self.state.upscale_scenes(self.log,
+        #                                 kept_scenes,
+        #                                 self.config.realesrgan_settings,
+        #                                 self.config.remixer_settings)
+        #         self.log("saving project after upscaling frames")
+        #         self.state.save()
+        #     report.add(f"Upscaled scenes in {self.state.upscale_path}")
+
+
+
+
     def purge_paths(self, path_list : list, keep_original=False, purged_path=None, skip_empty_paths=False, additional_path=""):
         """Purge a list of paths to the purged content directory
         keep_original: True=don't remove original content when purging
@@ -1316,7 +1395,7 @@ class VideoRemixerState():
 
     # content is stale if it is present on disk but not currently selected
     # stale content and its derivative content should be purged
-    def purge_stale_processed_content(self, purge_upscale, purge_inflation, purge_resynth):
+    def purge_stale_processed_content(self, purge_resynth, purge_inflation, purge_upscale):
         if self.processed_content_stale(self.resize, self.resize_path):
             self.purge_processed_content(purge_from=self.RESIZE_STEP)
 
@@ -1785,6 +1864,32 @@ class VideoRemixerState():
         _, filename, _ = split_filepath(self.source_video)
         suffix = self.remix_filename_suffix(extra_suffix)
         return os.path.join(self.project_path, f"{filename}-{suffix}.mp4")
+
+    def generate_remix_report(self, resize, resynthesize, inflate, upscale):
+        report = Jot()
+
+        if not resize \
+            and not resynthesize \
+            and not inflate \
+            and not upscale:
+            report.add(f"Original source scenes in {self.scenes_path}")
+
+        if resize:
+            report.add(f"Resized/cropped scenes in {self.resize_path}")
+
+        if resynthesize:
+            report.add(f"Resynthesized scenes in {self.resynthesis_path}")
+
+        if inflate:
+            report.add(f"Inflated scenes in {self.inflation_path}")
+
+        if upscale:
+            report.add(f"Upscaled scenes in {self.upscale_path}")
+
+        return report.lines
+
+
+
 
     # drop a kept scene after scene compiling has already been done
     # used for dropping empty processed scenes, and force dropping processed scenes

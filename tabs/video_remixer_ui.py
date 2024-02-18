@@ -1854,10 +1854,20 @@ class VideoRemixer(TabBase):
                      inflate_slow_option,
                      resynth_option):
         empty_args = dummy_args(9)
+
         if not self.state.project_path or not self.state.scenes_path:
             return gr.update(selected=self.TAB_PROC_REMIX), \
-                   format_markdown("The project has not yet been set up from the Set Up Project tab.", "error"), \
-                   *empty_args
+                format_markdown(
+                    "The project has not yet been set up from the Set Up Project tab.", "error"), \
+                *empty_args
+
+        kept_scenes = self.state.kept_scenes()
+        if not kept_scenes:
+            return gr.update(selected=self.TAB_PROC_REMIX), \
+                format_markdown(
+                    "At least one scene must be set to 'Keep' before processing can proceed",
+                    "warning"), \
+            *empty_args
 
         self.state.resize = resize
 
@@ -1874,6 +1884,7 @@ class VideoRemixer(TabBase):
                 self.state.inflate_by_option != inflate_by_option:
             inflate_option_changed = True
         self.state.inflate_by_option = inflate_by_option
+        # this affects only later audio processing so change detection isn't needed
         self.state.inflate_slow_option = inflate_slow_option
 
         self.state.upscale = upscale
@@ -1881,107 +1892,71 @@ class VideoRemixer(TabBase):
         if self.state.upscale_option != None and self.state.upscale_option != upscale_option:
             upscale_option_changed = True
         self.state.upscale_option = upscale_option
-        self.state.setup_processing_paths()
 
-        # saving now causes the project file saved with the purged directories to not match them
-        # self.log("saving project after storing processing choices")
-        # self.state.save()
+        self.state.prepare_remix_processing(resynth_option_changed,
+                                            inflate_option_changed,
+                                            upscale_option_changed)
 
-        # user may have changed scene choices and skipped compiling scenes
-        self.state.recompile_scenes()
+        should_resize = self.state.should_resize()
+        should_resynthesize = self.state.should_resynthesize()
+        should_inflate = self.state.should_inflate()
+        should_upscale = self.state.should_upscale()
 
-        jot = Jot()
-        kept_scenes = self.state.kept_scenes()
-        if kept_scenes:
-            if self.state.processed_content_invalid:
-                self.log("setup options changed, purging all processed content")
-                self.state.purge_processed_content(purge_from=self.state.RESIZE_STEP)
-                self.state.processed_content_invalid = False
-            else:
-                self.log("purging stale content")
-                self.state.purge_stale_processed_content(upscale_option_changed,
-                                                    inflate_option_changed, resynth_option_changed)
-                self.log("purging incomplete content")
-                self.state.purge_incomplete_processed_content()
-            self.log("saving project after purging stale and incomplete content")
-            self.state.save()
+        if should_resize:
+            self.state.resize_scenes(self.log,
+                                     kept_scenes,
+                                     self.config.remixer_settings)
+        if should_resynthesize:
+            self.state.resynthesize_scenes(self.log,
+                                           kept_scenes,
+                                           self.engine,
+                                           self.config.engine_settings,
+                                           self.state.resynth_option)
+        if should_inflate:
+            self.state.inflate_scenes(self.log,
+                                      kept_scenes,
+                                      self.engine,
+                                      self.config.engine_settings)
+        if should_upscale:
+            self.state.upscale_scenes(self.log,
+                                      kept_scenes,
+                                      self.config.realesrgan_settings,
+                                      self.config.remixer_settings)
 
-            if not self.state.resize \
-                and not self.state.resynthesize \
-                and not self.state.inflate \
-                and not self.state.upscale:
-                jot.down(f"Original source scenes in {self.state.scenes_path}")
+        remix_report = self.state.generate_remix_report(should_resize,
+                                                        should_resynthesize,
+                                                        should_inflate,
+                                                        should_upscale)
 
-            if self.state.resize:
-                if not self.state.processed_content_complete(self.state.RESIZE_STEP):
-                    self.log("about to resize scenes")
-                    self.state.resize_scenes(self.log,
-                                             kept_scenes,
-                                             self.config.remixer_settings)
-                    self.log("saving project after resizing frames")
-                    self.state.save()
-                jot.down(f"Resized/cropped scenes in {self.state.resize_path}")
+        styled_report = style_report("Content Ready for Remix Video:", remix_report, color="more")
+        self.state.summary_info6 = styled_report
 
-            if self.state.resynthesize:
-                if not self.state.processed_content_complete(self.state.RESYNTH_STEP):
-                    self.state.resynthesize_scenes(self.log,
-                                                kept_scenes,
-                                                self.engine,
-                                                self.config.engine_settings,
-                                                self.state.resynth_option)
-                    self.log("saving project after resynthesizing frames")
-                    self.state.save()
-                jot.down(f"Resynthesized scenes in {self.state.resynthesis_path}")
+        self.state.output_filepath = self.state.default_remix_filepath()
+        output_filepath_custom = self.state.default_remix_filepath("CUSTOM")
+        output_filepath_marked = self.state.default_remix_filepath("MARKED")
+        output_filepath_labeled = self.state.default_remix_filepath("LABELED")
+        self.state.save()
 
-            # TODO don't check directly but determine if inflation processing is needed
-            if self.state.inflate:
-                if not self.state.processed_content_complete(self.state.INFLATE_STEP):
-                    self.state.inflate_scenes(self.log,
-                                                kept_scenes,
-                                                self.engine,
-                                                self.config.engine_settings)
-                    self.log("saving project after inflating frames")
-                    self.state.save()
-                jot.down(f"Inflated scenes in {self.state.inflation_path}")
+        # user will expect to return to the save remix tab on reopening
+        self.log("saving project after completing processing steps")
+        self.state.save_progress("save")
 
-            if self.state.upscale:
-                if not self.state.processed_content_complete(self.state.UPSCALE_STEP):
-                    self.state.upscale_scenes(self.log,
-                                            kept_scenes,
-                                            self.config.realesrgan_settings,
-                                            self.config.remixer_settings)
-                    self.log("saving project after upscaling frames")
-                    self.state.save()
-                jot.down(f"Upscaled scenes in {self.state.upscale_path}")
+        return gr.update(selected=self.TAB_SAVE_REMIX), \
+                format_markdown(self.TAB5_DEFAULT_MESSAGE), \
+                styled_report, \
+                self.state.output_filepath, \
+                output_filepath_custom, \
+                output_filepath_marked, \
+                output_filepath_labeled, \
+                format_markdown(self.TAB60_DEFAULT_MESSAGE), \
+                format_markdown(self.TAB61_DEFAULT_MESSAGE), \
+                format_markdown(self.TAB62_DEFAULT_MESSAGE), \
+                format_markdown(self.TAB63_DEFAULT_MESSAGE)
 
-            styled_report = style_report("Content Ready for Remix Video:", jot.lines, color="more")
-            self.state.summary_info6 = styled_report
 
-            self.state.output_filepath = self.state.default_remix_filepath()
-            output_filepath_custom = self.state.default_remix_filepath("CUSTOM")
-            output_filepath_marked = self.state.default_remix_filepath("MARKED")
-            output_filepath_labeled = self.state.default_remix_filepath("LABELED")
-            self.state.save()
 
-            # user will expect to return to the save remix tab on reopening
-            self.log("saving project after completing processing steps")
-            self.state.save_progress("save")
 
-            return gr.update(selected=self.TAB_SAVE_REMIX), \
-                   format_markdown(self.TAB5_DEFAULT_MESSAGE), \
-                   styled_report, \
-                   self.state.output_filepath, \
-                   output_filepath_custom, \
-                   output_filepath_marked, \
-                   output_filepath_labeled, \
-                   format_markdown(self.TAB60_DEFAULT_MESSAGE), \
-                   format_markdown(self.TAB61_DEFAULT_MESSAGE), \
-                   format_markdown(self.TAB62_DEFAULT_MESSAGE), \
-                   format_markdown(self.TAB63_DEFAULT_MESSAGE)
-        else:
-            return gr.update(selected=self.TAB_PROC_REMIX), format_markdown(
-                "At least one scene must be set to 'Keep' before processing can proceed",
-                "warning"), *empty_args
+
 
     def back_button5(self):
         return gr.update(selected=self.TAB_COMPILE_SCENES)
