@@ -2025,12 +2025,11 @@ class VideoRemixerState():
             fps_factor = motion_factor
         return self.project_fps * fps_factor
 
-    def compute_scene_fps(self, scene_name):
+    def compute_forced_inflation(self, scene_name):
         force_inflation = False
         force_audio = False
         force_inflate_by = None
         force_silent = False
-
         label = self.scene_labels.get(scene_name)
         if label:
             _, hint, _ = self.split_label(label)
@@ -2055,6 +2054,11 @@ class VideoRemixerState():
                         force_audio = True
                     elif "S" in inflation_hint:
                         force_silent = True
+        return force_inflation, force_audio, force_inflate_by, force_silent
+
+    def compute_scene_fps(self, scene_name):
+        force_inflation, force_audio, force_inflate_by, force_silent =\
+            self.compute_forced_inflation(scene_name)
 
         return self.compute_inflated_fps(force_inflation,
                                          force_audio,
@@ -2175,51 +2179,14 @@ class VideoRemixerState():
                     scene_audio_path = self.audio_clips[index]
                     scene_output_filepath = os.path.join(self.clips_path, f"{scene_name}.mp4")
 
-                    force_inflation = False
-                    force_audio = False
-                    force_inflate_by = None
-                    force_silent = False
-
-                    # see if the scene has a processing hint such as 'I:4A'
-                    label = self.scene_labels.get(scene_name)
-                    if label:
-                        _, hint, _ = self.split_label(label)
-                        if hint:
-                            log_fn(f"create_scene_clips(): found processing hint: {hint}")
-                            hints = self.split_hint(hint)
-                            inflation_hint = hints.get("I")
-                            if inflation_hint:
-                                log_fn(f"found inflation processing hint: {hint}")
-                                if "1" in inflation_hint:
-                                    # noop inflation
-                                    log_fn("force 1X inflation")
-                                    force_inflate_by = "1X"
-                                elif "2" in inflation_hint:
-                                    log_fn("force 2X inflation")
-                                    force_inflation = True
-                                    force_inflate_by = "2X"
-                                elif "4" in inflation_hint:
-                                    log_fn("force 4X inflation")
-                                    force_inflation = True
-                                    force_inflate_by = "4X"
-                                elif "8" in inflation_hint:
-                                    log_fn("force 8X inflation")
-                                    force_inflation = True
-                                    force_inflate_by = "8X"
-
-                                if "A" in inflation_hint:
-                                    log_fn("force audio slow motion")
-                                    force_audio = True
-                                elif "S" in inflation_hint:
-                                    log_fn("force silent slow motion")
-                                    force_silent = True
+                    force_inflation, force_audio, force_inflate_by, force_silent =\
+                        self.compute_forced_inflation(scene_name)
 
                     output_options = self.compute_inflated_audio_options("-c:a aac -shortest ",
                                                                          force_inflation,
                                                                          force_audio,
                                                                          force_inflate_by,
                                                                          force_silent)
-
                     combine_video_audio(scene_video_path,
                                         scene_audio_path,
                                         scene_output_filepath,
@@ -2345,35 +2312,8 @@ class VideoRemixerState():
                     scene_output_filepath = os.path.join(self.clips_path,
                                                          f"{scene_name}.{custom_ext}")
 
-                    force_inflation = False
-                    force_audio = False
-                    force_inflate_by = None
-                    force_silent = False
-
-                    # see if the scene has a processing hint such as 'I:4A'
-                    label = self.scene_labels.get(scene_name)
-                    if label:
-                        _, hint, _ = self.split_label(label)
-                        if hint:
-                            hints = self.split_hint(hint)
-                            inflation_hint = hints.get("I")
-                            if inflation_hint:
-                                if "1" in inflation_hint:
-                                    force_inflate_by = "1X"
-                                elif "2" in inflation_hint:
-                                    force_inflation = True
-                                    force_inflate_by = "2X"
-                                elif "4" in inflation_hint:
-                                    force_inflation = True
-                                    force_inflate_by = "4X"
-                                elif "8" in inflation_hint:
-                                    force_inflation = True
-                                    force_inflate_by = "8X"
-
-                                if "A" in inflation_hint:
-                                    force_audio = True
-                                elif "S" in inflation_hint:
-                                    force_silent = True
+                    force_inflation, force_audio, force_inflate_by, force_silent =\
+                        self.compute_forced_inflation(scene_name)
 
                     output_options = self.compute_inflated_audio_options(custom_audio_options,
                                                                          force_inflation,
