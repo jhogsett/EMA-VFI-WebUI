@@ -2117,7 +2117,7 @@ class VideoRemixerState():
 
     def compute_effective_slow_motion(self, force_inflation, force_audio, force_inflate_by,
                                       force_silent):
-        motion_factor = 1
+        motion_factor = 1.0
         audio_slow_motion = False
         silent_slow_motion = False
 
@@ -2129,12 +2129,12 @@ class VideoRemixerState():
             forced_inflation_rate = self.inflation_rate(force_inflate_by)
 
             motion_factor = project_inflation_rate
-            if forced_inflation_rate == project_inflation_rate * 8:
-                motion_factor = forced_inflation_rate
-            elif forced_inflation_rate == project_inflation_rate * 4:
-                motion_factor = forced_inflation_rate
-            elif forced_inflation_rate == project_inflation_rate * 2:
-                motion_factor = forced_inflation_rate
+
+            if forced_inflation_rate != project_inflation_rate:
+                if forced_inflation_rate > project_inflation_rate:
+                    motion_factor = forced_inflation_rate
+                else:
+                    motion_factor = project_inflation_rate / float(forced_inflation_rate)
 
             audio_slow_motion = force_audio or self.inflate_slow_option == "Audio"
             silent_slow_motion = force_silent or self.inflate_slow_option == "Silent"
@@ -2157,8 +2157,18 @@ class VideoRemixerState():
             elif motion_factor == 4:
                 output_options = '-filter:a "atempo=0.5,atempo=0.5" -c:v copy -shortest ' \
                     + custom_audio_options
-            else:
+            elif motion_factor == 2:
                 output_options = '-filter:a "atempo=0.5" -c:v copy -shortest ' + custom_audio_options
+            elif motion_factor == 1:
+                output_options = '-filter:a "atempo=1.0" -c:v copy -shortest ' + custom_audio_options
+            elif motion_factor == 0.5:
+                output_options = '-filter:a "atempo=2.0" -c:v copy -shortest ' + custom_audio_options
+            elif motion_factor == 0.25:
+                output_options = '-filter:a "atempo=2.0,atempo=2.0" -c:v copy -shortest ' \
+                    + custom_audio_options
+            elif motion_factor == 0.125:
+                output_options = '-filter:a "atempo=2.0,atempo=2.0,atempo=2.0" -c:v copy -shortest ' \
+                    + custom_audio_options
         elif silent_slow_motion:
             # check for an existing audio sample rate, so the silent footage will blend properly
             # with non-silent footage, otherwise there may be an audio/video data length mismatch
