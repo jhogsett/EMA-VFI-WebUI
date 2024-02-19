@@ -1161,7 +1161,7 @@ class VideoRemixerState():
 
     PURGED_CONTENT = "purged_content"
 
-    def prepare_remix_processing(self, redo_resynth, redo_inflate, redo_upscale):
+    def prepare_process_remix(self, redo_resynth, redo_inflate, redo_upscale):
         self.setup_processing_paths()
 
         self.recompile_scenes()
@@ -1174,71 +1174,69 @@ class VideoRemixerState():
             self.purge_incomplete_processed_content()
         self.save()
 
-    def should_resize(self):
+    def process_remix(self, log_fn, kept_scenes, remixer_settings, engine, engine_settings,
+                      realesrgan_settings):
+        if self.resize_needed():
+            self.resize_scenes(log_fn,
+                               kept_scenes,
+                               remixer_settings)
+
+        if self.resynthesize_needed():
+            self.resynthesize_scenes(log_fn,
+                                     kept_scenes,
+                                     engine,
+                                     engine_settings,
+                                     self.resynth_option)
+
+        if self.inflate_needed():
+            self.inflate_scenes(log_fn,
+                                kept_scenes,
+                                engine,
+                                engine_settings)
+
+        if self.upscale_needed():
+            self.upscale_scenes(log_fn,
+                                kept_scenes,
+                                realesrgan_settings,
+                                remixer_settings)
+
+        return self.generate_remix_report(self.processed_content_complete(self.RESIZE_STEP),
+                                          self.processed_content_complete(self.RESYNTH_STEP),
+                                          self.processed_content_complete(self.INFLATE_STEP),
+                                          self.processed_content_complete(self.UPSCALE_STEP))
+
+    def resize_needed(self):
         return self.resize \
             and not self.processed_content_complete(self.RESIZE_STEP)
 
-    def should_resynthesize(self):
+    def resynthesize_needed(self):
         return self.resynthesize \
             and not self.processed_content_complete(self.RESYNTH_STEP)
 
-    # TODO don't check directly but determine if inflation processing is needed
-    def should_inflate(self):
-        return self.inflate \
-            and not self.processed_content_complete(self.INFLATE_STEP)
+    def inflate_chosen(self):
+        if self.inflate:
+            return True
 
-    def should_upscale(self):
+        # see if a processing hint requires inflation
+        kept_scenes = self.kept_scenes()
+        for scene_name in kept_scenes:
+            label = self.scene_labels.get(scene_name)
+            if label:
+                _, hint, _ = self.split_label(label)
+                if hint:
+                    hints = self.split_hint(hint)
+                    inflation_hint = hints.get("I")
+                    if inflation_hint:
+                        return True
+        return False
+
+    def inflate_needed(self):
+        if self.inflate_chosen() and not self.processed_content_complete(self.INFLATE_STEP):
+            return True
+
+    def upscale_needed(self):
         return self.upscale \
             and not self.processed_content_complete(self.UPSCALE_STEP)
-
-
-
-
-
-        # if self.state.resize:
-        #     if not self.state.processed_content_complete(self.state.RESIZE_STEP):
-        #         self.log("about to resize scenes")
-        #         self.state.resize_scenes(self.log,
-        #                                     kept_scenes,
-        #                                     self.config.remixer_settings)
-        #         self.log("saving project after resizing frames")
-        #         self.state.save()
-        #     report.add(f"Resized/cropped scenes in {self.state.resize_path}")
-
-        # if self.state.resynthesize:
-        #     if not self.state.processed_content_complete(self.state.RESYNTH_STEP):
-        #         self.state.resynthesize_scenes(self.log,
-        #                                     kept_scenes,
-        #                                     self.engine,
-        #                                     self.config.engine_settings,
-        #                                     self.state.resynth_option)
-        #         self.log("saving project after resynthesizing frames")
-        #         self.state.save()
-        #     report.add(f"Resynthesized scenes in {self.state.resynthesis_path}")
-
-        # # TODO don't check directly but determine if inflation processing is needed
-        # if self.state.inflate:
-        #     if not self.state.processed_content_complete(self.state.INFLATE_STEP):
-        #         self.state.inflate_scenes(self.log,
-        #                                     kept_scenes,
-        #                                     self.engine,
-        #                                     self.config.engine_settings)
-        #         self.log("saving project after inflating frames")
-        #         self.state.save()
-        #     report.add(f"Inflated scenes in {self.state.inflation_path}")
-
-        # if self.state.upscale:
-        #     if not self.state.processed_content_complete(self.state.UPSCALE_STEP):
-        #         self.state.upscale_scenes(self.log,
-        #                                 kept_scenes,
-        #                                 self.config.realesrgan_settings,
-        #                                 self.config.remixer_settings)
-        #         self.log("saving project after upscaling frames")
-        #         self.state.save()
-        #     report.add(f"Upscaled scenes in {self.state.upscale_path}")
-
-
-
 
     def purge_paths(self, path_list : list, keep_original=False, purged_path=None, skip_empty_paths=False, additional_path=""):
         """Purge a list of paths to the purged content directory
@@ -1417,7 +1415,7 @@ class VideoRemixerState():
         if self.resynthesize and not self.processed_content_complete(self.RESYNTH_STEP):
             self.purge_processed_content(purge_from=self.RESYNTH_STEP)
 
-        if self.inflate and not self.processed_content_complete(self.INFLATE_STEP):
+        if self.inflate_chosen() and not self.processed_content_complete(self.INFLATE_STEP):
             self.purge_processed_content(purge_from=self.INFLATE_STEP)
 
         if self.upscale and not self.processed_content_complete(self.UPSCALE_STEP):
@@ -1447,7 +1445,7 @@ class VideoRemixerState():
 
         elif processing_step == self.UPSCALE_STEP:
             # upscaling is the fourth processing step
-            if self.inflate:
+            if self.inflate_chosen():
                 # if inflation is enabled, draw from the inflation path
                 processing_path = self.inflation_path
             elif self.resynthesize:
@@ -1687,6 +1685,7 @@ class VideoRemixerState():
                 create_directory(scene_output_path)
 
                 num_splits = 0
+                disable_inflation = False
 
                 # see if the scene has a processing hint such as 'I:4A'
                 label = self.scene_labels.get(scene_name)
@@ -1699,10 +1698,11 @@ class VideoRemixerState():
                         if inflation_hint:
                             log_fn(f"found inflation processing hint: {inflation_hint}")
                             if "1" in inflation_hint:
-                                # TODO disable inflation
-                                num_splits = 1
+                                log_fn("forcing disable of inflation")
+                                num_splits = 0
+                                disable_inflation = True
                             elif "2" in inflation_hint:
-                                # TODO re-enable inflation
+                                log_fn("forcing 2X inflation")
                                 num_splits = 1
                             elif "4" in inflation_hint:
                                 log_fn("forcing 4X inflation")
@@ -1711,30 +1711,42 @@ class VideoRemixerState():
                                 log_fn("forcing 8X inflation")
                                 num_splits = 3
 
-                if num_splits == 0:
-                    if self.inflate_by_option == "4X":
+                if num_splits == 0 and self.inflate and not disable_inflation:
+                    if self.inflate_by_option == "2X":
+                        num_splits = 1
+                    elif self.inflate_by_option == "4X":
                         num_splits = 2
                     elif self.inflate_by_option == "8X":
                         num_splits = 3
-                    else:
-                        num_splits = 1
 
-                output_basename = "interpolated_frames"
-                file_list = sorted(get_files(scene_input_path, extension="png"))
-                series_interpolater.interpolate_series(file_list,
-                                                       scene_output_path,
-                                                       num_splits,
-                                                       output_basename)
-                ResequenceFiles(scene_output_path,
-                                "png",
-                                "inflated_frame",
-                                1,
-                                1,
-                                1,
-                                0,
-                                -1,
-                                True,
-                                log_fn).resequence()
+                if num_splits:
+                    # the scene needs inflating
+                    output_basename = "interpolated_frames"
+                    file_list = sorted(get_files(scene_input_path, extension="png"))
+                    series_interpolater.interpolate_series(file_list,
+                                                        scene_output_path,
+                                                        num_splits,
+                                                        output_basename)
+                    ResequenceFiles(scene_output_path,
+                                    "png",
+                                    "inflated_frame",
+                                    1, 1,
+                                    1, 0,
+                                    -1,
+                                    True,
+                                    log_fn).resequence()
+                else:
+                    # no need to inflate so just copy the files using the resequencer
+                    ResequenceFiles(scene_input_path,
+                                    "png",
+                                    "inflated_frame",
+                                    1, 1,
+                                    1, 0,
+                                    -1,
+                                    False,
+                                    log_fn,
+                                    output_path=scene_output_path).resequence()
+
                 Mtqdm().update_bar(bar)
 
     def get_upscaler(self, log_fn, realesrgan_settings, remixer_settings):
@@ -1849,7 +1861,8 @@ class VideoRemixerState():
                 label += "S"
             elif self.resynth_option == "Replace":
                 label += "R"
-        if self.inflate:
+        if self.inflate_chosen():
+            # TODO if inflation is enabled via processing hint, this may be inaccurate
             label += "-in" + self.inflate_by_option[0]
             if self.inflate_slow_option == "Audio":
                 label += "SA"
@@ -2040,7 +2053,7 @@ class VideoRemixerState():
         # TODO might need to better manage the flow of content between processing steps
         if self.upscale:
             scenes_base_path = self.upscale_path
-        elif self.inflate:
+        elif self.inflate_chosen():
             scenes_base_path = self.inflation_path
         elif self.resynthesize:
             scenes_base_path = self.resynthesis_path
@@ -2075,15 +2088,49 @@ class VideoRemixerState():
                 Mtqdm().update_bar(bar)
         self.video_clips = sorted(get_files(self.video_clips_path))
 
-    def compute_inflated_audio_options(self, custom_audio_options, force_audio=False, force_inflate_by=None, force_silent=False):
-        if self.inflate:
-            if self.inflate_slow_option == "Audio" or force_audio:
-                if self.inflate_by_option == "8X" or force_inflate_by == "8X":
-                    output_options = '-filter:a "atempo=0.5,atempo=0.5" -c:v copy ' + custom_audio_options
-                else:
+    def inflation_rate(self, inflate_by : str):
+        if not inflate_by:
+            return 1
+        return int(inflate_by[0])
+
+    def compute_inflated_audio_options(self, custom_audio_options, force_inflation=False,
+                                       force_audio=False, force_inflate_by=None, force_silent=False):
+        if self.inflate or force_inflation:
+            project_inflation_rate = self.inflation_rate(self.inflate_by_option)
+            forced_inflation_rate = self.inflation_rate(force_inflate_by)
+
+            slow_motion_factor = 0
+            if forced_inflation_rate == project_inflation_rate * 8:
+                slow_motion_factor = 8
+            elif forced_inflation_rate == project_inflation_rate * 4:
+                slow_motion_factor = 4
+            elif forced_inflation_rate == project_inflation_rate * 2:
+                slow_motion_factor = 2
+
+            audio_slow_motion = force_audio or self.inflate_slow_option == "Audio"
+            silent_slow_motion = force_silent or self.inflate_slow_option == "Silent"
+
+            # audio slow motion is only supported for 2X and 4X cases
+            if audio_slow_motion:
+                if slow_motion_factor == 0:
+                    # disable audio slow motion
+                    audio_slow_motion = False
+                if slow_motion_factor == 8:
+                    # downgrade to 4X audio inflation, 8X not supported due to quality
+                    slow_motion_factor = 4
+
+            if audio_slow_motion:
+                if slow_motion_factor == 4:
+                    output_options = '-filter:a "atempo=0.5,atempo=0.5" -c:v copy ' \
+                        + custom_audio_options
+                else: # assumed to be 2:
                     output_options = '-filter:a "atempo=0.5" -c:v copy ' + custom_audio_options
-            elif self.inflate_slow_option == "Silent" or force_silent:
-                output_options = '-f lavfi -i anullsrc -ac 2 -ar 48000 -map 0:v:0 -map 2:a:0 -c:v copy -shortest ' + custom_audio_options
+
+            elif silent_slow_motion:
+                output_options = \
+                    '-f lavfi -i anullsrc -ac 2 -ar 48000 -map 0:v:0 -map 2:a:0 -c:v copy -shortest ' \
+                    + custom_audio_options
+
             else:
                 output_options = custom_audio_options
         else:
@@ -2098,6 +2145,7 @@ class VideoRemixerState():
                     scene_audio_path = self.audio_clips[index]
                     scene_output_filepath = os.path.join(self.clips_path, f"{scene_name}.mp4")
 
+                    force_inflation = False
                     force_audio = False
                     force_inflate_by = None
                     force_silent = False
@@ -2113,19 +2161,22 @@ class VideoRemixerState():
                             if inflation_hint:
                                 log_fn(f"found inflation processing hint: {hint}")
                                 if "1" in inflation_hint:
-                                    # TODO disable inflation
-                                    # force_inflate_by = "1X"
-                                    pass
+                                    # noop inflation
+                                    log_fn("force 1X inflation")
+                                    force_inflate_by = "1X"
                                 elif "2" in inflation_hint:
-                                    # TODO re-enable inflation
                                     log_fn("force 2X inflation")
+                                    force_inflation = True
                                     force_inflate_by = "2X"
                                 elif "4" in inflation_hint:
                                     log_fn("force 4X inflation")
+                                    force_inflation = True
                                     force_inflate_by = "4X"
                                 elif "8" in inflation_hint:
                                     log_fn("force 8X inflation")
+                                    force_inflation = True
                                     force_inflate_by = "8X"
+
                                 if "A" in inflation_hint:
                                     log_fn("force audio slow motion")
                                     force_audio = True
@@ -2134,6 +2185,7 @@ class VideoRemixerState():
                                     force_silent = True
 
                     output_options = self.compute_inflated_audio_options("-c:a aac -shortest",
+                                                                         force_inflation,
                                                                          force_audio,
                                                                          force_inflate_by,
                                                                          force_silent)
@@ -2261,6 +2313,7 @@ class VideoRemixerState():
                     scene_output_filepath = os.path.join(self.clips_path,
                                                          f"{scene_name}.{custom_ext}")
 
+                    force_inflation = False
                     force_audio = False
                     force_inflate_by = None
                     force_silent = False
@@ -2274,16 +2327,15 @@ class VideoRemixerState():
                             inflation_hint = hints.get("I")
                             if inflation_hint:
                                 if "1" in inflation_hint:
-                                    # TODO disable inflation
-                                    # force_inflate_by = "1X"
-                                    # for now don't affect the inflation amount
-                                    pass
+                                    force_inflate_by = "1X"
                                 elif "2" in inflation_hint:
-                                    # TODO re-enable inflation
+                                    force_inflation = True
                                     force_inflate_by = "2X"
                                 elif "4" in inflation_hint:
+                                    force_inflation = True
                                     force_inflate_by = "4X"
                                 elif "8" in inflation_hint:
+                                    force_inflation = True
                                     force_inflate_by = "8X"
 
                                 if "A" in inflation_hint:
@@ -2292,9 +2344,10 @@ class VideoRemixerState():
                                     force_silent = True
 
                     output_options = self.compute_inflated_audio_options(custom_audio_options,
-                                                                force_audio=force_audio,
-                                                                force_inflate_by=force_inflate_by,
-                                                                force_silent=force_silent)
+                                                                         force_inflation,
+                                                                         force_audio=force_audio,
+                                                                         force_inflate_by=force_inflate_by,
+                                                                         force_silent=force_silent)
 
                     combine_video_audio(scene_video_path, scene_audio_path,
                                         scene_output_filepath, global_options=global_options,

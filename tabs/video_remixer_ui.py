@@ -1893,42 +1893,18 @@ class VideoRemixer(TabBase):
             upscale_option_changed = True
         self.state.upscale_option = upscale_option
 
-        self.state.prepare_remix_processing(resynth_option_changed,
+        self.state.prepare_process_remix(resynth_option_changed,
                                             inflate_option_changed,
                                             upscale_option_changed)
 
-        should_resize = self.state.should_resize()
-        should_resynthesize = self.state.should_resynthesize()
-        should_inflate = self.state.should_inflate()
-        should_upscale = self.state.should_upscale()
+        remix_report = self.state.process_remix(self.log,
+                                                kept_scenes,
+                                                self.config.remixer_settings,
+                                                self.engine,
+                                                self.config.engine_settings,
+                                                self.config.realesrgan_settings)
 
-        if should_resize:
-            self.state.resize_scenes(self.log,
-                                     kept_scenes,
-                                     self.config.remixer_settings)
-        if should_resynthesize:
-            self.state.resynthesize_scenes(self.log,
-                                           kept_scenes,
-                                           self.engine,
-                                           self.config.engine_settings,
-                                           self.state.resynth_option)
-        if should_inflate:
-            self.state.inflate_scenes(self.log,
-                                      kept_scenes,
-                                      self.engine,
-                                      self.config.engine_settings)
-        if should_upscale:
-            self.state.upscale_scenes(self.log,
-                                      kept_scenes,
-                                      self.config.realesrgan_settings,
-                                      self.config.remixer_settings)
-
-        remix_report = self.state.generate_remix_report(should_resize,
-                                                        should_resynthesize,
-                                                        should_inflate,
-                                                        should_upscale)
-
-        styled_report = style_report("Content Ready for Remix Video:", remix_report, color="more")
+        styled_report = style_report("Content Ready for Remix Video:", remix_report, color="info")
         self.state.summary_info6 = styled_report
 
         self.state.output_filepath = self.state.default_remix_filepath()
