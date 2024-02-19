@@ -35,7 +35,6 @@ class VideoRemixer(TabBase):
         self.new_project()
         self.unmark_scene()
 
-    # TODO this only runs at app start-up
     def new_project(self):
         self.state = VideoRemixerState()
         self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"])
@@ -1947,8 +1946,6 @@ class VideoRemixer(TabBase):
         self.log("saving after storing remix output choices")
         self.state.save()
 
-        self.state.recompile_scenes()
-
         try:
             global_options = self.config.ffmpeg_settings["global_options"]
             remixer_settings = self.config.remixer_settings
@@ -1964,8 +1961,6 @@ class VideoRemixer(TabBase):
         if not self.state.project_path:
             return format_markdown(
                 "The project has not yet been set up from the Set Up Project tab.", "error")
-
-        self.state.recompile_scenes()
 
         try:
             global_options = self.config.ffmpeg_settings["global_options"]
@@ -1984,8 +1979,6 @@ class VideoRemixer(TabBase):
         if not self.state.project_path:
             return format_markdown(
                 "The project has not yet been set up from the Set Up Project tab.", "error")
-
-        self.state.recompile_scenes()
 
         try:
             global_options = self.config.ffmpeg_settings["global_options"]
@@ -2053,8 +2046,6 @@ class VideoRemixer(TabBase):
                 return format_markdown("The Border Factor must be > 0", "warning")
         if not label_box_color:
            return format_markdown("The Background Color must not be blank", "warning")
-
-        self.state.recompile_scenes()
 
         try:
             global_options = self.config.ffmpeg_settings["global_options"]
@@ -2224,44 +2215,6 @@ class VideoRemixer(TabBase):
     def update_preview_split_percent(self, scene_index, split_percent):
         return self.update_preview(scene_index, split_percent)
 
-    # TODO move
-    def compute_advance_702(self,
-                            scene_index,
-                            split_percent,
-                            by_next : bool,
-                            by_minute=False,
-                            by_second=False,
-                            by_exact_second=False,
-                            exact_second=0):
-        if not isinstance(scene_index, (int, float)):
-            return dummy_args(1)
-
-        scene_index = int(scene_index)
-        scene_name = self.state.scene_names[scene_index]
-        first_frame, last_frame, _ = details_from_group_name(scene_name)
-        num_frames = (last_frame - first_frame) + 1
-        split_percent_frame = num_frames * split_percent / 100.0
-
-        if by_exact_second:
-            frames_1s = self.state.project_fps
-            new_split_frame = frames_1s * exact_second
-        elif by_minute:
-            frames_60s = self.state.project_fps * 60
-            new_split_frame = \
-                split_percent_frame + frames_60s if by_next else split_percent_frame - frames_60s
-        elif by_second:
-            frames_1s = self.state.project_fps
-            new_split_frame = \
-                split_percent_frame + frames_1s if by_next else split_percent_frame - frames_1s
-        else: # by frame
-            new_split_frame = split_percent_frame + 1 if by_next else split_percent_frame - 1
-
-        new_split_frame = 0 if new_split_frame < 0 else new_split_frame
-        new_split_frame = num_frames if new_split_frame > num_frames else new_split_frame
-
-        new_split_percent = new_split_frame / num_frames
-        return new_split_percent * 100.0
-
     def goto_0_702(self):
         return 0
 
@@ -2272,25 +2225,25 @@ class VideoRemixer(TabBase):
         return 100
 
     def prev_minute_702(self, scene_index, split_percent):
-        return self.compute_advance_702(scene_index, split_percent, False, by_minute=True)
+        return self.state.compute_advance_702(scene_index, split_percent, False, by_minute=True)
 
     def prev_second_702(self, scene_index, split_percent):
-        return self.compute_advance_702(scene_index, split_percent, False, by_second=True)
+        return self.state.compute_advance_702(scene_index, split_percent, False, by_second=True)
 
     def prev_frame_702(self, scene_index, split_percent):
-        return self.compute_advance_702(scene_index, split_percent, False)
+        return self.state.compute_advance_702(scene_index, split_percent, False)
 
     def next_frame_702(self, scene_index, split_percent):
-        return self.compute_advance_702(scene_index, split_percent, True, )
+        return self.state.compute_advance_702(scene_index, split_percent, True, )
 
     def next_second_702(self, scene_index, split_percent):
-        return self.compute_advance_702(scene_index, split_percent, True, by_second=True)
+        return self.state.compute_advance_702(scene_index, split_percent, True, by_second=True)
 
     def next_minute_702(self, scene_index, split_percent):
-        return self.compute_advance_702(scene_index, split_percent, True, by_minute=True)
+        return self.state.compute_advance_702(scene_index, split_percent, True, by_minute=True)
 
     def go_to_s_button702(self, scene_index, split_percent, go_to_second):
-        return self.compute_advance_702(scene_index, split_percent, False, by_exact_second=True,
+        return self.state.compute_advance_702(scene_index, split_percent, False, by_exact_second=True,
                                         exact_second=go_to_second)
 
     def go_to_s_click702(self, scene_index, split_percent, go_to_second):
@@ -2299,7 +2252,6 @@ class VideoRemixer(TabBase):
     def go_to_s_submit702(self, scene_index, split_percent, go_to_second):
         return self.go_to_s_button702(scene_index, split_percent, go_to_second)
 
-    # TODO move
     def export_project_703(self, new_project_path : str, new_project_name : str):
         empty_args = dummy_args(2, lambda : gr.update(visible=True))
         if not new_project_path:
@@ -2318,70 +2270,8 @@ class VideoRemixer(TabBase):
         new_project_name = new_project_name.strip()
         full_new_project_path = os.path.join(new_project_path, new_project_name)
         try:
-            create_directory(full_new_project_path)
-            new_profile_filepath = self.state.copy_project_file(full_new_project_path)
-
-            # load the copied project file
-            new_state = VideoRemixerState.load(new_profile_filepath, self.log)
-
-            # update project paths to the new one
-            new_state = VideoRemixerState.load_ported(new_state.project_path, new_profile_filepath, self.log, save_original=False)
-
-            # ensure the project directories exist
-            new_state.post_load_integrity_check()
-
-            # copy the source video
-            with Mtqdm().open_bar(total=1, desc="Copying") as bar:
-                Mtqdm().message(bar, "Copying source video - no ETA")
-                shutil.copy(self.state.source_video, new_state.source_video)
-                Mtqdm().update_bar(bar)
-
-            # copy the source audio (if not using the source video as audio source)
-            if self.state.source_audio != self.state.source_video:
-                with Mtqdm().open_bar(total=1, desc="Copying") as bar:
-                    Mtqdm().message(bar, "Copying source audio - no ETA")
-                    shutil.copy(self.state.source_audio, new_state.source_audio)
-                    Mtqdm().update_bar(bar)
-
-            # ensure scenes path contains all / only kept scenes
-            self.state.recompile_scenes()
-
-            # prepare to rebuild scene_states dict, and scene_names, thumbnails lists
-            # in the new project
-            new_state.scene_states = {}
-            new_state.scene_names = []
-            new_state.thumbnails = []
-
-            with Mtqdm().open_bar(total=len(kept_scenes), desc="Exporting") as bar:
-                for index, scene_name in enumerate(self.state.scene_names):
-                    state = self.state.scene_states[scene_name]
-                    if state == "Keep":
-                        scene_name = self.state.scene_names[index]
-                        new_state.scene_states[scene_name] = "Keep"
-
-                        new_state.scene_names.append(scene_name)
-                        scene_dir = os.path.join(self.state.scenes_path, scene_name)
-                        new_scene_dir = os.path.join(new_state.scenes_path, scene_name)
-                        duplicate_directory(scene_dir, new_scene_dir)
-
-                        scene_thumbnail = self.state.thumbnails[index]
-                        _, filename, ext = split_filepath(scene_thumbnail)
-                        new_thumbnail = os.path.join(new_state.thumbnail_path, filename + ext)
-                        new_state.thumbnails.append(new_thumbnail)
-                        shutil.copy(scene_thumbnail, new_thumbnail)
-                        Mtqdm().update_bar(bar)
-
-            # reset some things
-            new_state.current_scene = 0
-            new_state.audio_clips = []
-            new_state.clips = []
-            new_state.processed_content_invalid = False
-            new_state.progress = "choose"
-
-            new_state.save()
-
+            self.state.export_project(self.log, new_project_path, new_project_name, kept_scenes)
             Session().set("last-video-remixer-export-dir", new_project_path)
-
             return format_markdown(f"Kept scenes saved as new project: {full_new_project_path} "), \
                 gr.update(visible=True, value=full_new_project_path), \
                 gr.update(visible=True)

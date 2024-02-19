@@ -8,7 +8,7 @@ from yaml import Loader, YAMLError
 from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
 from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
     clean_directories, clean_filename, remove_directories, copy_files, directory_populated, \
-    simple_sanitize_filename
+    simple_sanitize_filename, duplicate_directory
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
@@ -932,8 +932,6 @@ class VideoRemixerState():
 
     ## Scene Splitter Functions ##
 
-    # TODO maybe put these in their own class along with the cache
-
     def compute_preview_frame(self, log_fn, scene_index, split_percent):
         scene_index = int(scene_index)
         num_scenes = len(self.scene_names)
@@ -958,6 +956,42 @@ class VideoRemixerState():
             return None
         return frame_files[split_frame]
 
+    def compute_advance_702(self,
+                            scene_index,
+                            split_percent,
+                            by_next : bool,
+                            by_minute=False,
+                            by_second=False,
+                            by_exact_second=False,
+                            exact_second=0):
+        if not isinstance(scene_index, (int, float)):
+            return dummy_args(1)
+
+        scene_index = int(scene_index)
+        scene_name = self.state.scene_names[scene_index]
+        first_frame, last_frame, _ = details_from_group_name(scene_name)
+        num_frames = (last_frame - first_frame) + 1
+        split_percent_frame = num_frames * split_percent / 100.0
+
+        if by_exact_second:
+            frames_1s = self.state.project_fps
+            new_split_frame = frames_1s * exact_second
+        elif by_minute:
+            frames_60s = self.state.project_fps * 60
+            new_split_frame = \
+                split_percent_frame + frames_60s if by_next else split_percent_frame - frames_60s
+        elif by_second:
+            frames_1s = self.state.project_fps
+            new_split_frame = \
+                split_percent_frame + frames_1s if by_next else split_percent_frame - frames_1s
+        else: # by frame
+            new_split_frame = split_percent_frame + 1 if by_next else split_percent_frame - 1
+
+        new_split_frame = 0 if new_split_frame < 0 else new_split_frame
+        new_split_frame = num_frames if new_split_frame > num_frames else new_split_frame
+
+        new_split_percent = new_split_frame / num_frames
+        return new_split_percent * 100.0
 
     def compute_scene_split(self, scene_name : str, split_percent : float, override_num_frames=0):
         split_percent = 0.0 if isinstance(split_percent, type(None)) else split_percent
@@ -1484,6 +1518,8 @@ class VideoRemixerState():
     def prepare_save_remix(self, log_fn, global_options, remixer_settings, output_filepath : str):
         if not output_filepath:
             raise ValueError("Enter a path for the remixed video to proceed")
+
+        self.recompile_scenes()
 
         kept_scenes = self.kept_scenes()
         if not kept_scenes:
@@ -2585,6 +2621,73 @@ class VideoRemixerState():
         # user will expect to return to scene chooser on reopening
         log_fn("saving project after recovery process")
         self.save_progress("choose")
+
+    def export_project(self, log_fn, new_project_path, new_project_name, kept_scenes):
+        new_project_name = new_project_name.strip()
+        full_new_project_path = os.path.join(new_project_path, new_project_name)
+
+        create_directory(full_new_project_path)
+        new_profile_filepath = self.copy_project_file(full_new_project_path)
+
+        # load the copied project file
+        new_state = VideoRemixerState.load(new_profile_filepath, log_fn)
+
+        # update project paths to the new one
+        new_state = VideoRemixerState.load_ported(new_state.project_path, new_profile_filepath,
+                                                  log_fn, save_original=False)
+
+        # ensure the project directories exist
+        new_state.post_load_integrity_check()
+
+        # copy the source video
+        with Mtqdm().open_bar(total=1, desc="Copying") as bar:
+            Mtqdm().message(bar, "Copying source video - no ETA")
+            shutil.copy(self.source_video, new_state.source_video)
+            Mtqdm().update_bar(bar)
+
+        # copy the source audio (if not using the source video as audio source)
+        if self.source_audio != self.source_video:
+            with Mtqdm().open_bar(total=1, desc="Copying") as bar:
+                Mtqdm().message(bar, "Copying source audio - no ETA")
+                shutil.copy(self.source_audio, new_state.source_audio)
+                Mtqdm().update_bar(bar)
+
+        # ensure scenes path contains all / only kept scenes
+        self.recompile_scenes()
+
+        # prepare to rebuild scene_states dict, and scene_names, thumbnails lists
+        # in the new project
+        new_state.scene_states = {}
+        new_state.scene_names = []
+        new_state.thumbnails = []
+
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Exporting") as bar:
+            for index, scene_name in enumerate(self.scene_names):
+                state = self.scene_states[scene_name]
+                if state == "Keep":
+                    scene_name = self.scene_names[index]
+                    new_state.scene_states[scene_name] = "Keep"
+
+                    new_state.scene_names.append(scene_name)
+                    scene_dir = os.path.join(self.scenes_path, scene_name)
+                    new_scene_dir = os.path.join(new_state.scenes_path, scene_name)
+                    duplicate_directory(scene_dir, new_scene_dir)
+
+                    scene_thumbnail = self.thumbnails[index]
+                    _, filename, ext = split_filepath(scene_thumbnail)
+                    new_thumbnail = os.path.join(new_state.thumbnail_path, filename + ext)
+                    new_state.thumbnails.append(new_thumbnail)
+                    shutil.copy(scene_thumbnail, new_thumbnail)
+                    Mtqdm().update_bar(bar)
+
+        # reset some things
+        new_state.current_scene = 0
+        new_state.audio_clips = []
+        new_state.clips = []
+        new_state.processed_content_invalid = False
+        new_state.progress = "choose"
+
+        new_state.save()
 
     @staticmethod
     def load(filepath : str, log_fn):
