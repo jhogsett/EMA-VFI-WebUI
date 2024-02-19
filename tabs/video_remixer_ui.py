@@ -1929,11 +1929,6 @@ class VideoRemixer(TabBase):
                 format_markdown(self.TAB62_DEFAULT_MESSAGE), \
                 format_markdown(self.TAB63_DEFAULT_MESSAGE)
 
-
-
-
-
-
     def back_button5(self):
         return gr.update(selected=self.TAB_COMPILE_SCENES)
 
@@ -1942,7 +1937,6 @@ class VideoRemixer(TabBase):
 
     ### SAVE REMIX EVENT HANDLERS
 
-    # User has clicked Save Remix from Save Remix
     def next_button60(self, output_filepath, quality):
         if not self.state.project_path:
             return format_markdown(
@@ -1966,7 +1960,6 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return format_markdown(str(error), "error")
 
-    # User has clicked Save Custom Remix from Save Remix
     def next_button61(self, custom_video_options, custom_audio_options, output_filepath):
         if not self.state.project_path:
             return format_markdown(
@@ -1986,7 +1979,7 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return format_markdown(str(error), "error")
 
-    # User has clicked Save Marked Remix from Save Remix
+    # TODO move
     def next_button62(self, marked_video_options, marked_audio_options, output_filepath):
         if not self.state.project_path:
             return format_markdown(
@@ -2031,7 +2024,7 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return format_markdown(str(error), "error")
 
-    # User has clicked Save Labeled Remix from Save Remix
+    # TODO move
     def next_button63(self,
                       label_text,
                       label_font_size,
@@ -2231,6 +2224,7 @@ class VideoRemixer(TabBase):
     def update_preview_split_percent(self, scene_index, split_percent):
         return self.update_preview(scene_index, split_percent)
 
+    # TODO move
     def compute_advance_702(self,
                             scene_index,
                             split_percent,
@@ -2305,7 +2299,7 @@ class VideoRemixer(TabBase):
     def go_to_s_submit702(self, scene_index, split_percent, go_to_second):
         return self.go_to_s_button702(scene_index, split_percent, go_to_second)
 
-    # TODO some of this should be moved out of here as logic, but might not belong directly in the state class
+    # TODO move
     def export_project_703(self, new_project_path : str, new_project_name : str):
         empty_args = dummy_args(2, lambda : gr.update(visible=True))
         if not new_project_path:
@@ -2403,6 +2397,7 @@ class VideoRemixer(TabBase):
     CLEANSE_SCENES_PATH = "cleansed_scenes"
     CLEANSE_SCENES_FACTOR = 4.0
 
+    # TODO move
     def cleanse_button704(self):
         kept_scenes = self.state.kept_scenes()
         if len(kept_scenes) < 1:
@@ -2477,6 +2472,7 @@ class VideoRemixer(TabBase):
         self.state.invalidate_split_scene_cache()
         return format_markdown("Kept scenes replaced with cleaned versions")
 
+    # TODO move
     def merge_scenes(self, first_scene_index, last_scene_index):
         """Merge the specified scenes. Returns the new scene name. Raises ValueError and RuntimeError."""
         global_options = self.config.ffmpeg_settings["global_options"]
@@ -2620,6 +2616,7 @@ class VideoRemixer(TabBase):
                 format_markdown(f"Error: {error}", "warning"), \
                 *empty_args
 
+    # TODO move
     def coalesce_button706(self, coalesce_scenes):
         empty_args = dummy_args(6)
         kept_scenes = self.state.kept_scenes()
