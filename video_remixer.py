@@ -965,23 +965,23 @@ class VideoRemixerState():
                             by_exact_second=False,
                             exact_second=0):
         if not isinstance(scene_index, (int, float)):
-            return dummy_args(1)
+            return None
 
         scene_index = int(scene_index)
-        scene_name = self.state.scene_names[scene_index]
+        scene_name = self.scene_names[scene_index]
         first_frame, last_frame, _ = details_from_group_name(scene_name)
         num_frames = (last_frame - first_frame) + 1
         split_percent_frame = num_frames * split_percent / 100.0
 
         if by_exact_second:
-            frames_1s = self.state.project_fps
+            frames_1s = self.project_fps
             new_split_frame = frames_1s * exact_second
         elif by_minute:
-            frames_60s = self.state.project_fps * 60
+            frames_60s = self.project_fps * 60
             new_split_frame = \
                 split_percent_frame + frames_60s if by_next else split_percent_frame - frames_60s
         elif by_second:
-            frames_1s = self.state.project_fps
+            frames_1s = self.project_fps
             new_split_frame = \
                 split_percent_frame + frames_1s if by_next else split_percent_frame - frames_1s
         else: # by frame
