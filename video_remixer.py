@@ -2016,12 +2016,11 @@ class VideoRemixerState():
     VIDEO_CLIPS_PATH = "VIDEO"
 
     def compute_inflated_fps(self, force_inflation, force_audio, force_inflate_by, force_silent):
-        motion_factor, audio_slow_motion, silent_slow_motion = \
+        motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate = \
             self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
                                                force_silent)
-
         if audio_slow_motion or silent_slow_motion:
-            fps_factor = 1.0
+            fps_factor = project_inflation_rate
         else:
             fps_factor = motion_factor
         return self.project_fps * fps_factor
@@ -2125,13 +2124,13 @@ class VideoRemixerState():
                 project_inflation_rate = 1
             forced_inflation_rate = self.inflation_rate(force_inflate_by)
 
-            motion_factor = 1
+            motion_factor = project_inflation_rate
             if forced_inflation_rate == project_inflation_rate * 8:
-                motion_factor = 8
+                motion_factor = forced_inflation_rate
             elif forced_inflation_rate == project_inflation_rate * 4:
-                motion_factor = 4
+                motion_factor = forced_inflation_rate
             elif forced_inflation_rate == project_inflation_rate * 2:
-                motion_factor = 2
+                motion_factor = forced_inflation_rate
 
             audio_slow_motion = force_audio or self.inflate_slow_option == "Audio"
             silent_slow_motion = force_silent or self.inflate_slow_option == "Silent"
@@ -2139,12 +2138,12 @@ class VideoRemixerState():
             if audio_slow_motion and motion_factor == 1:
                 audio_slow_motion = False
 
-        return motion_factor, audio_slow_motion, silent_slow_motion
+        return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate
 
     def compute_inflated_audio_options(self, custom_audio_options, force_inflation, force_audio,
                                        force_inflate_by, force_silent):
 
-        motion_factor, audio_slow_motion, silent_slow_motion = \
+        motion_factor, audio_slow_motion, silent_slow_motion, _ = \
             self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
                                                force_silent)
         if audio_slow_motion:
