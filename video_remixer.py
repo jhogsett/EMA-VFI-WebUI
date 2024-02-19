@@ -2120,12 +2120,11 @@ class VideoRemixerState():
         motion_factor = 1.0
         audio_slow_motion = False
         silent_slow_motion = False
+        project_inflation_rate = 1
 
         if self.inflate or force_inflation:
             if self.inflate:
                 project_inflation_rate = self.inflation_rate(self.inflate_by_option)
-            else:
-                project_inflation_rate = 1
             forced_inflation_rate = self.inflation_rate(force_inflate_by)
 
             motion_factor = project_inflation_rate
