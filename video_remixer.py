@@ -1923,7 +1923,7 @@ class VideoRemixerState():
         # TODO might need to better manage the flow of content between processing steps
         if self.upscale:
             scenes_base_path = self.upscale_path
-        elif self.inflate:
+        elif self.inflate_chosen():
             scenes_base_path = self.inflation_path
         elif self.resynthesize:
             scenes_base_path = self.resynthesis_path
@@ -2015,34 +2015,52 @@ class VideoRemixerState():
 
     VIDEO_CLIPS_PATH = "VIDEO"
 
-    def compute_inflated_fps(self):
-        """Compute the video clip FPS considering project FPS and inflation settings.
-        For 2X and 4X inflation, when slow motion is enabled, the 50% audio slowdown will reduce the FPS by 2X.
-        For 8X inflation with slow motion, the 75% audio slowdown will reduce the FPS by 4X"""
-        if self.inflate:
-            if self.inflate_slow_option == "No":
-                # Set FPS for maximum smoothness
-                if self.inflate_by_option == "2X":
-                    inflate_factor = 2.0
-                elif self.inflate_by_option == "4X":
-                    inflate_factor = 4.0
-                elif self.inflate_by_option == "8X":
-                    inflate_factor = 8.0
-            elif self.inflate_slow_option == "Audio":
-                # Set FPS for maximum audio quality
-                if self.inflate_by_option == "2X":
-                    inflate_factor = 1.0
-                elif self.inflate_by_option == "4X":
-                    inflate_factor = 2.0
-                elif self.inflate_by_option == "8X":
-                    inflate_factor = 2.0
-            elif self.inflate_slow_option == "Silent":
-                # Set FPS for maximum slow motion
-                inflate_factor = 1.0
+    def compute_inflated_fps(self, force_inflation, force_audio, force_inflate_by, force_silent):
+        motion_factor, audio_slow_motion, silent_slow_motion = \
+            self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
+                                               force_silent)
+
+        if audio_slow_motion or silent_slow_motion:
+            fps_factor = 1.0
         else:
-            # Keep project FPS unchanged
-            inflate_factor = 1.0
-        return inflate_factor * self.project_fps
+            fps_factor = motion_factor
+        return self.project_fps * fps_factor
+
+    def compute_scene_fps(self, scene_name):
+        force_inflation = False
+        force_audio = False
+        force_inflate_by = None
+        force_silent = False
+
+        label = self.scene_labels.get(scene_name)
+        if label:
+            _, hint, _ = self.split_label(label)
+            if hint:
+                hints = self.split_hint(hint)
+                inflation_hint = hints.get("I")
+                if inflation_hint:
+                    if "1" in inflation_hint:
+                        # noop inflation
+                        force_inflate_by = "1X"
+                    elif "2" in inflation_hint:
+                        force_inflation = True
+                        force_inflate_by = "2X"
+                    elif "4" in inflation_hint:
+                        force_inflation = True
+                        force_inflate_by = "4X"
+                    elif "8" in inflation_hint:
+                        force_inflation = True
+                        force_inflate_by = "8X"
+
+                    if "A" in inflation_hint:
+                        force_audio = True
+                    elif "S" in inflation_hint:
+                        force_silent = True
+
+        return self.compute_inflated_fps(force_inflation,
+                                         force_audio,
+                                         force_inflate_by,
+                                         force_silent)
 
     def create_video_clips(self, log_fn, kept_scenes, global_options):
         self.video_clips_path = os.path.join(self.clips_path, self.VIDEO_CLIPS_PATH)
@@ -2050,7 +2068,6 @@ class VideoRemixerState():
         # save the project now to preserve the newly established path
         self.save()
 
-        # TODO might need to better manage the flow of content between processing steps
         if self.upscale:
             scenes_base_path = self.upscale_path
         elif self.inflate_chosen():
@@ -2062,12 +2079,12 @@ class VideoRemixerState():
         else:
             scenes_base_path = self.scenes_path
 
-        video_clip_fps = self.compute_inflated_fps()
-
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_filepath = os.path.join(self.video_clips_path, f"{scene_name}.mp4")
+
+                video_clip_fps = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
                                 "png",
@@ -2079,6 +2096,7 @@ class VideoRemixerState():
                                 -1,
                                 True,
                                 log_fn).resequence()
+
                 PNGtoMP4(scene_input_path,
                                 None,
                                 video_clip_fps,
@@ -2086,6 +2104,7 @@ class VideoRemixerState():
                                 crf=self.output_quality,
                                 global_options=global_options)
                 Mtqdm().update_bar(bar)
+
         self.video_clips = sorted(get_files(self.video_clips_path))
 
     def inflation_rate(self, inflate_by : str):
@@ -2093,48 +2112,60 @@ class VideoRemixerState():
             return 1
         return int(inflate_by[0])
 
-    def compute_inflated_audio_options(self, custom_audio_options, force_inflation=False,
-                                       force_audio=False, force_inflate_by=None, force_silent=False):
+    def compute_effective_slow_motion(self, force_inflation, force_audio, force_inflate_by,
+                                      force_silent):
+        motion_factor = 1
+        audio_slow_motion = False
+        silent_slow_motion = False
+
         if self.inflate or force_inflation:
-            project_inflation_rate = self.inflation_rate(self.inflate_by_option)
+            if self.inflate:
+                project_inflation_rate = self.inflation_rate(self.inflate_by_option)
+            else:
+                project_inflation_rate = 1
             forced_inflation_rate = self.inflation_rate(force_inflate_by)
 
-            slow_motion_factor = 0
+            motion_factor = 1
             if forced_inflation_rate == project_inflation_rate * 8:
-                slow_motion_factor = 8
+                motion_factor = 8
             elif forced_inflation_rate == project_inflation_rate * 4:
-                slow_motion_factor = 4
+                motion_factor = 4
             elif forced_inflation_rate == project_inflation_rate * 2:
-                slow_motion_factor = 2
+                motion_factor = 2
 
             audio_slow_motion = force_audio or self.inflate_slow_option == "Audio"
             silent_slow_motion = force_silent or self.inflate_slow_option == "Silent"
 
-            # audio slow motion is only supported for 2X and 4X cases
-            if audio_slow_motion:
-                if slow_motion_factor == 0:
-                    # disable audio slow motion
-                    audio_slow_motion = False
-                if slow_motion_factor == 8:
-                    # downgrade to 4X audio inflation, 8X not supported due to quality
-                    slow_motion_factor = 4
+            if audio_slow_motion and motion_factor == 1:
+                audio_slow_motion = False
 
-            if audio_slow_motion:
-                if slow_motion_factor == 4:
-                    output_options = '-filter:a "atempo=0.5,atempo=0.5" -c:v copy ' \
-                        + custom_audio_options
-                else: # assumed to be 2:
-                    output_options = '-filter:a "atempo=0.5" -c:v copy ' + custom_audio_options
+        return motion_factor, audio_slow_motion, silent_slow_motion
 
-            elif silent_slow_motion:
-                output_options = \
-                    '-f lavfi -i anullsrc -ac 2 -ar 48000 -map 0:v:0 -map 2:a:0 -c:v copy -shortest ' \
+    def compute_inflated_audio_options(self, custom_audio_options, force_inflation, force_audio,
+                                       force_inflate_by, force_silent):
+
+        motion_factor, audio_slow_motion, silent_slow_motion = \
+            self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
+                                               force_silent)
+        if audio_slow_motion:
+            if motion_factor == 8:
+                output_options = '-filter:a "atempo=0.5,atempo=0.5,atempo=0.5" -c:v copy -shortest ' \
                     + custom_audio_options
-
+            elif motion_factor == 4:
+                output_options = '-filter:a "atempo=0.5,atempo=0.5" -c:v copy -shortest ' \
+                    + custom_audio_options
             else:
-                output_options = custom_audio_options
+                output_options = '-filter:a "atempo=0.5" -c:v copy -shortest ' + custom_audio_options
+        elif silent_slow_motion:
+            # check for an existing audio sample rate, so the silent footage will blend properly
+            # with non-silent footage, otherwise there may be an audio/video data length mismatch
+            sample_rate = self.video_details.get("sample_rate", "48000")
+            output_options = \
+                '-f lavfi -i anullsrc -ac 2 -ar ' + sample_rate + ' -map 0:v:0 -map 2:a:0 -c:v copy -shortest ' \
+                + custom_audio_options
         else:
             output_options = custom_audio_options
+
         return output_options
 
     def create_scene_clips(self, log_fn, kept_scenes, global_options):
@@ -2184,7 +2215,7 @@ class VideoRemixerState():
                                     log_fn("force silent slow motion")
                                     force_silent = True
 
-                    output_options = self.compute_inflated_audio_options("-c:a aac -shortest",
+                    output_options = self.compute_inflated_audio_options("-c:a aac -shortest ",
                                                                          force_inflation,
                                                                          force_audio,
                                                                          force_inflate_by,
@@ -2209,11 +2240,13 @@ class VideoRemixerState():
                                   draw_text_options=None):
         self.video_clips_path = os.path.join(self.clips_path, self.VIDEO_CLIPS_PATH)
         create_directory(self.video_clips_path)
+        # save the project now to preserve the newly established path
+        self.save()
 
         # TODO might need to better manage the flow of content between processing steps
         if self.upscale:
             scenes_base_path = self.upscale_path
-        elif self.inflate:
+        elif self.inflate_chosen():
             scenes_base_path = self.inflation_path
         elif self.resynthesize:
             scenes_base_path = self.resynthesis_path
@@ -2251,8 +2284,6 @@ class VideoRemixerState():
                 box_y = "(text_h*1)"
             box = "1" if draw_box else "0"
 
-        video_clip_fps = self.compute_inflated_fps()
-
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
             for index, scene_name in enumerate(kept_scenes):
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
@@ -2280,6 +2311,8 @@ class VideoRemixerState():
                     except IndexError as error:
                         use_custom_video_options = use_custom_video_options\
                             .replace("<LABEL>", f"[{error}]")
+
+                video_clip_fps = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
                                 "png",
