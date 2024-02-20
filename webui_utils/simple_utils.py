@@ -333,3 +333,6 @@ def format_table(header_row : list,
         table.append(_format_table_row(styled_row))
 
     return "\r\n".join(table)
+
+def dummy_args(num, arg=None):
+    return [arg for _ in range(num)]
