@@ -448,7 +448,7 @@ class VideoRemixer(TabBase):
                     with gr.Tab(label="Create Custom Remix"):
                         custom_video_options = gr.Textbox(value=custom_ffmpeg_video, max_lines=1,
                             label="Custom FFmpeg Video Output Options",
-                    info="Passed to FFmpeg as output video settings when converting PNG frames")
+                    info="Passed to FFmpeg as output video settings when converting frames to video")
                         custom_audio_options = gr.Textbox(value=custom_ffmpeg_audio, max_lines=1,
                             label="Custom FFmpeg Audio Output Options",
                     info="Passed to FFmpeg as output audio settings when combining with video")
@@ -473,7 +473,7 @@ class VideoRemixer(TabBase):
                     with gr.Tab(label="Create Marked Remix"):
                         marked_video_options = gr.Textbox(value=marked_ffmpeg_video, max_lines=1,
                             label="Marked FFmpeg Video Output Options",
-                    info="Passed to FFmpeg as output video settings when converting PNG frames")
+                    info="Passed to FFmpeg as output video settings when converting frames to video")
                         marked_audio_options = gr.Textbox(value=marked_ffmpeg_audio, max_lines=1,
                             label="Marked FFmpeg Audio Output Options",
                     info="Passed to FFmpeg as output audio settings when combining with video")
@@ -777,13 +777,13 @@ class VideoRemixer(TabBase):
                                     with gr.Tab(SimpleIcons.CROSSMARK +
                                                 " Remove Scene Chooser Content"):
                                         gr.Markdown(
-                                "**_Delete source PNG frame files, thumbnails and dropped scenes_**")
+                                "**_Delete source frame files, thumbnails and dropped scenes_**")
                                         with gr.Row():
                                             delete_source_711 = gr.Checkbox(value=True,
                                                 label="Remove Source Video Frames")
                                             with gr.Column(variant="compact"):
                                                 gr.Markdown(
-                            "Delete source video PNG frame files used to split content into scenes.")
+                            "Delete source video frame files used to split content into scenes.")
                                         with gr.Row():
                                             delete_dropped_711 = gr.Checkbox(
                                                 label="Remove Dropped Scenes")
@@ -825,26 +825,26 @@ class VideoRemixer(TabBase):
                                             label="Remove Resized Frames")
                                         with gr.Column(variant="compact"):
                                             gr.Markdown(
-    "Delete Resized PNG frame files used as inputs for processing and creating remix video clips.")
+    "Delete Resized frame files used as inputs for processing and creating remix video clips.")
                                     with gr.Row():
                                         delete_resynth_712 = gr.Checkbox(value=True,
                                             label="Remove Resynthesized Frames")
                                         with gr.Column(variant="compact"):
                                             gr.Markdown(
-                                        "Delete Resynthesized PNG frame files used as inputs " +\
+                                        "Delete Resynthesized frame files used as inputs " +\
                                         "for processing and creating remix video clips.")
                                     with gr.Row():
                                         delete_inflated_712 = gr.Checkbox(value=True,
                                             label="Remove Inflated Frames")
                                         with gr.Column(variant="compact"):
                                             gr.Markdown(
-    "Delete Inflated PNG frame files used as inputs for processing and creating remix video clips.")
+    "Delete Inflated frame files used as inputs for processing and creating remix video clips.")
                                     with gr.Row():
                                         delete_upscaled_712 = gr.Checkbox(value=True,
                                             label="Remove Upscaled Frames")
                                         with gr.Column(variant="compact"):
                                             gr.Markdown(
-    "Delete Upscaled PNG frame files used as inputs for processing and creating remix video clips.")
+    "Delete Upscaled frame files used as inputs for processing and creating remix video clips.")
                                     with gr.Row():
                                         delete_audio_712 = gr.Checkbox(label="Delete Audio Clips")
                                         with gr.Column(variant="compact"):
@@ -1542,16 +1542,16 @@ class VideoRemixer(TabBase):
             self.log("resetting project on rendering for project settings")
             self.state.reset_at_project_settings()
 
-            # split video into raw PNG frames, avoid doing again if redoing setup
+            # split video into frames, avoid doing again if redoing setup
             # unless the source frames were flagged invalid in the previous step
-            self.log("splitting source video into PNG frames")
+            self.log("splitting source video into frames")
             prevent_overwrite = not self.state.source_frames_invalid
             ffcmd = self.state.render_source_frames(global_options=global_options,
                                                     prevent_overwrite=prevent_overwrite)
             if not ffcmd:
                 self.log("rendering source frames skipped")
             else:
-                self.log("saving project after converting video to PNG frames")
+                self.log("saving project after converting video to frames")
                 self.state.save()
                 self.log(f"FFmpeg command: {ffcmd}")
 
@@ -2341,7 +2341,7 @@ class VideoRemixer(TabBase):
 
         self.state.uncompile_scenes()
 
-        # the native size of the on-disk PNG frames is needed
+        # the native dimensions of the on-disk frame files are needed
         # older project.yaml files won't have this data
         try:
             self.state.enhance_video_info(self.log, ignore_errors=False)
@@ -2449,7 +2449,7 @@ class VideoRemixer(TabBase):
         # resequence the files within the selected scenes contiguously
         self.log("about to call resequence_groups() with the selected scene names")
         ResequenceFiles(self.state.scenes_path,
-                        "png",
+                        self.state.frame_format,
                         "merged_frame",
                         0, 1,
                         1, 0,

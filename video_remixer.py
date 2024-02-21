@@ -145,7 +145,7 @@ class VideoRemixerState():
         self.inflate_slow_option = defaults["inflate_slow_option"]
         self.resynth_option = defaults["resynth_option"]
         self.frame_format = defaults["frame_format"]
-        self.audio_format = defaults["audio_format"]
+        self.audio_format = defaults["sound_format"]
 
     DEF_FILENAME = "project.yaml"
 
@@ -392,11 +392,11 @@ class VideoRemixerState():
 
     FRAMES_PATH = "SOURCE"
 
-    # split video into raw PNG frames
+    # split video into frames
     def render_source_frames(self, global_options, prevent_overwrite=False):
         self.frames_path = os.path.join(self.project_path, self.FRAMES_PATH)
         if prevent_overwrite:
-            if os.path.exists(self.frames_path) and get_files(self.frames_path, "png"):
+            if os.path.exists(self.frames_path) and get_files(self.frames_path, self.frame_format):
                 return None
 
         video_path = self.source_video
@@ -405,12 +405,12 @@ class VideoRemixerState():
         source_frame_count = int(self.video_details["frame_count"])
         _, index_width = rate_adjusted_count(source_frame_count, source_frame_rate, self.project_fps)
 
-        self.output_pattern = f"source_%0{index_width}d.png"
+        self.output_pattern = f"source_%0{index_width}d.{self.frame_format}"
         frame_rate = self.project_fps
         create_directory(self.frames_path)
 
         with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
-            Mtqdm().message(bar, "Copying source video frames to PNG files - no ETA")
+            Mtqdm().message(bar, "Copying source video to frame files - no ETA")
             ffmpeg_cmd = MP4toPNG(video_path,
                                   self.output_pattern,
                                   frame_rate,
@@ -422,12 +422,12 @@ class VideoRemixerState():
 
     # this is intended to be called after source frames have been rendered
     def enhance_video_info(self, log_fn, ignore_errors=True):
-        """Get the actual dimensions of the PNG frame files"""
+        """Get the actual dimensions of the frame files"""
         if self.scene_names and not self.video_details.get("source_width", None):
             self.uncompile_scenes()
             first_scene_name = self.scene_names[0]
             first_scene_path = os.path.join(self.scenes_path, first_scene_name)
-            scene_files = sorted(get_files(first_scene_path, "png"))
+            scene_files = sorted(get_files(first_scene_path, self.frame_format))
             if scene_files:
                 try:
                     width, height = image_size(scene_files[0])
@@ -438,7 +438,7 @@ class VideoRemixerState():
                     if not ignore_errors:
                         raise error
                 return
-            message = f"no frame PNG files found in {first_scene_path}"
+            message = f"no frame files found in {first_scene_path}"
             if ignore_errors:
                 log_fn(message)
             else:
@@ -459,7 +459,7 @@ class VideoRemixerState():
                     Mtqdm().message(bar, "Splitting video by detected scene - no ETA")
                     SplitScenes(self.frames_path,
                                 self.scenes_path,
-                                "png",
+                                self.frame_format,
                                 "scene",
                                 self.scene_threshold,
                                 0.0,
@@ -472,7 +472,7 @@ class VideoRemixerState():
                     Mtqdm().message(bar, "Splitting video by detected break - no ETA")
                     SplitScenes(self.frames_path,
                                 self.scenes_path,
-                                "png",
+                                self.frame_format,
                                 "break",
                                 0.0,
                                 float(self.break_duration),
@@ -484,7 +484,7 @@ class VideoRemixerState():
                 SplitFrames(
                     self.frames_path,
                     self.scenes_path,
-                    "png",
+                    self.frame_format,
                     "precise",
                     0,
                     self.split_frames,
@@ -496,7 +496,7 @@ class VideoRemixerState():
                 SplitFrames(
                     self.frames_path,
                     self.scenes_path,
-                    "png",
+                    self.frame_format,
                     "precise",
                     1,
                     0,
@@ -604,7 +604,7 @@ class VideoRemixerState():
         _, index_width = rate_adjusted_count(source_frame_count, source_frame_rate, self.project_fps)
 
         log_fn(f"auto-resequencing source frames at {frames_source}")
-        ResequenceFiles(frames_source, "png", "scene_frame", 0, 1, 1, 0, index_width, True,
+        ResequenceFiles(frames_source, self.frame_format, "scene_frame", 0, 1, 1, 0, index_width, True,
             log_fn).resequence()
 
         thumbnail_filename = f"thumbnail[{scene_name}]"
@@ -632,7 +632,7 @@ class VideoRemixerState():
                         0.0,
                         0.0,
                         log_fn,
-                        global_options=global_options).slice_png_group(scene_name,
+                        global_options=global_options).slice_frame_group(scene_name,
                             slice_name=thumbnail_filename)
 
         elif self.thumbnail_type == "GIF":
@@ -663,7 +663,7 @@ class VideoRemixerState():
                         gif_fps,
                         gif_end_delay,
                         log_fn,
-                        global_options=global_options).slice_png_group(scene_name,
+                        global_options=global_options).slice_frame_group(scene_name,
                                                                     ignore_errors=True,
                                                                     slice_name=thumbnail_filename)
         else:
@@ -1590,13 +1590,14 @@ class VideoRemixerState():
 
     # TODO dry up this code with same in resynthesize_video_ui - maybe a specific resynth script
     def one_pass_resynthesis(self, log_fn, input_path, output_path, output_basename, engine):
-        file_list = sorted(get_files(input_path, extension="png"))
+        file_list = sorted(get_files(input_path, extension=self.frame_format))
         log_fn(f"beginning series of frame recreations at {output_path}")
         engine.interpolate_series(file_list, output_path, 1, "interframe", offset=2)
 
         log_fn(f"auto-resequencing recreated frames at {output_path}")
         ResequenceFiles(output_path,
-                        "png", "resynthesized_frame",
+                        self.frame_format,
+                        "resynthesized_frame",
                         1, 1, # start, step
                         1, 0, # stride, offset
                         -1,   # auto-zero fill
@@ -1604,7 +1605,7 @@ class VideoRemixerState():
                         log_fn).resequence()
 
     def two_pass_resynth_pass(self, log_fn, input_path, output_path, output_basename, engine):
-        file_list = sorted(get_files(input_path, extension="png"))
+        file_list = sorted(get_files(input_path, extension=self.frame_format))
 
         inflated_frames = os.path.join(output_path, "inflated_frames")
         log_fn(f"beginning series of interframe recreations at {inflated_frames}")
@@ -1613,7 +1614,7 @@ class VideoRemixerState():
 
         log_fn(f"selecting odd interframes only at {inflated_frames}")
         ResequenceFiles(inflated_frames,
-                        "png",
+                        self.frame_format,
                         output_basename,
                         1, 1,  # start, step
                         2, 1,  # stride, offset
@@ -1714,13 +1715,13 @@ class VideoRemixerState():
                 if num_splits:
                     # the scene needs inflating
                     output_basename = "interpolated_frames"
-                    file_list = sorted(get_files(scene_input_path, extension="png"))
+                    file_list = sorted(get_files(scene_input_path, extension=self.frame_format))
                     series_interpolater.interpolate_series(file_list,
                                                         scene_output_path,
                                                         num_splits,
                                                         output_basename)
                     ResequenceFiles(scene_output_path,
-                                    "png",
+                                    self.frame_format,
                                     "inflated_frame",
                                     1, 1,
                                     1, 0,
@@ -1730,7 +1731,7 @@ class VideoRemixerState():
                 else:
                     # no need to inflate so just copy the files using the resequencer
                     ResequenceFiles(scene_input_path,
-                                    "png",
+                                    self.frame_format,
                                     "inflated_frame",
                                     1, 1,
                                     1, 0,
@@ -1781,7 +1782,7 @@ class VideoRemixerState():
         output_basename = "upscaled_frames"
         log_fn(f"about to upscale images to {working_path}")
         upscaler.upscale_series(file_list, working_path, self.FIXED_UPSCALE_FACTOR, output_basename,
-                                "png")
+                                self.frame_format)
 
         # get size of upscaled frames
         upscaled_files = sorted(get_files(working_path))
@@ -2085,7 +2086,7 @@ class VideoRemixerState():
                 video_clip_fps = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
-                                "png",
+                                self.frame_format,
                                 "processed_frame",
                                 1,
                                 1,
@@ -2284,7 +2285,7 @@ class VideoRemixerState():
                 video_clip_fps = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
-                                "png",
+                                self.frame_format,
                                 "processed_frame",
                                 1,
                                 1,

@@ -696,7 +696,7 @@ f"{default_filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(
     ffcmd.run()
     return cmd
 
-def slice_png_frames(input_path : str,
+def slice_video_frames(input_path : str,
                 fps : float,
                 output_path : str,
                 num_width : int,
