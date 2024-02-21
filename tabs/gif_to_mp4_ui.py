@@ -281,7 +281,7 @@ class GIFtoMP4(TabBase):
     def convert_gif_to_png_frames(self, gif_path : str, png_path : str):
         """Use GIFtoPNG to convert to a PNG sequence"""
         self.log(f"converting {gif_path} to PNG sequence in {png_path}")
-        start_number = 0 # TODO
+        start_number = 0
         global_options = self.config.ffmpeg_settings["global_options"]
         try:
             GIFtoPNG(gif_path, png_path, start_number=start_number, global_options=global_options)

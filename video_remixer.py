@@ -416,7 +416,6 @@ class VideoRemixerState():
     # when advancing forward from the Set Up Project step
     # the user may be redoing the project from this step
     # need to purge anything created based on old settings
-    # TODO make purging on backing up smarter
     def reset_at_project_settings(self):
         purge_path = self.purge_paths([
             self.scenes_path,
@@ -1898,8 +1897,12 @@ class VideoRemixerState():
             elif self.resynth_option == "Replace":
                 label += "R"
         if self.inflate_chosen():
-            # TODO if inflation is enabled via processing hint, this may be inaccurate
-            label += "-in" + self.inflate_by_option[0]
+            if self.inflate:
+                # enabled overall in the project
+                label += "-in" + self.inflate_by_option[0]
+            else:
+                # enabled via a processing hint
+                label += "-inH"
             if self.inflate_slow_option == "Audio":
                 label += "SA"
             elif self.inflate_slow_option == "Silent":
@@ -1956,7 +1959,6 @@ class VideoRemixerState():
     # find scenes that are empty now after processing and should be automatically dropped
     # this can happen when resynthesis and/or inflation are used on scenes with only a few frames
     def drop_empty_processed_scenes(self, kept_scenes):
-        # TODO might need to better manage the flow of content between processing steps
         if self.upscale:
             scenes_base_path = self.upscale_path
         elif self.inflate_chosen():
@@ -2254,7 +2256,6 @@ class VideoRemixerState():
         # save the project now to preserve the newly established path
         self.save()
 
-        # TODO might need to better manage the flow of content between processing steps
         if self.upscale:
             scenes_base_path = self.upscale_path
         elif self.inflate_chosen():
@@ -2478,7 +2479,7 @@ class VideoRemixerState():
                     f" but has {path_file_count}. The files are being ignored (safe to delete).")
             return path, [], messages.report()
 
-        # TODO further possible checks: files have bytes,
+        # IDEA further possible checks: files have bytes,
         # files are found to be the right binary type, etc
 
         return path, files, messages.report()

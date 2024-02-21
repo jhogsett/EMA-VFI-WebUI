@@ -5,8 +5,6 @@ import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.file_utils import create_directory, get_directories
-# from webui_utils.auto_increment import AutoIncrementDirectory
-# from webui_utils.ui_utils import update_splits_info
 from webui_utils.mtqdm import Mtqdm
 from webui_tips import WebuiTips
 from resize_frames import ResizeFrames as _ResizeFrames

@@ -1571,7 +1571,6 @@ class VideoRemixer(TabBase):
         # clear cache to avoid display problems with cached thumbnails
         self.state.invalidate_split_scene_cache()
 
-        # TODO this is fine as part of project setup but does it belong here?
         self.state.clips_path = os.path.join(self.state.project_path, "CLIPS")
         self.log(f"creating clips directory {self.state.clips_path}")
         create_directory(self.state.clips_path)
@@ -1974,7 +1973,6 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return format_markdown(str(error), "error")
 
-    # TODO move
     def next_button62(self, marked_video_options, marked_audio_options, output_filepath):
         if not self.state.project_path:
             return format_markdown(
@@ -2017,7 +2015,6 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return format_markdown(str(error), "error")
 
-    # TODO move
     def next_button63(self,
                       label_text,
                       label_font_size,
