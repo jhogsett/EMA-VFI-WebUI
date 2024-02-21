@@ -247,13 +247,16 @@ def get_essential_video_details(input_path : str, count_frames=False) -> dict:
         for stream_data in streams_data:
             codec_type = stream_data.get("codec_type")
 
+            # TODO this will remember only the last seen audio stream
             if codec_type == "audio":
                 video_essentials["has_audio"] = True
-                continue
+                video_essentials["sample_rate"] = stream_data.get("sample_rate")
+                video_essentials["channels"] = stream_data.get("channels")
 
             if codec_type != "video":
                 continue
 
+            # TODO this assumes a single video stream
             frame_count = stream_data.get("nb_frames") or stream_data.get("nb_read_frames")
             if not frame_count:
                 if count_frames:

@@ -8,7 +8,7 @@ from yaml import Loader, YAMLError
 from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
 from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
     clean_directories, clean_filename, remove_directories, copy_files, directory_populated, \
-    simple_sanitize_filename
+    simple_sanitize_filename, duplicate_directory
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
@@ -106,6 +106,19 @@ class VideoRemixerState():
         self.video_clips_path = None
         self.video_clips = []
         self.clips = []
+
+        # used internally only
+        self.split_scene_cache = []
+        self.split_scene_cached_index = -1
+
+    # remove transient state
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        if "split_scene_cache" in state:
+            del state["split_scene_cache"]
+        if "split_scene_cached_index" in state:
+            del state["split_scene_cached_index"]
+        return state
 
     def reset(self):
         self.__init__()
@@ -826,7 +839,7 @@ class VideoRemixerState():
             scene_time = f"{scene_start}{self.GAP}+{scene_duration}"
             keep_symbol = SimpleIcons.HEART if keep_state == True else ""
             scene_info = f"{scene_position}{self.GAP}{scene_time}{self.GAP}{keep_symbol}"
-            return scene_name, thumbnail_path, scene_state, scene_info, scene_label
+            return scene_index, scene_name, thumbnail_path, scene_state, scene_info, scene_label
         except ValueError as error:
             raise ValueError(
                 f"ValueError encountered while getting scene chooser data: {error}")
@@ -919,6 +932,67 @@ class VideoRemixerState():
 
     ## Scene Splitter Functions ##
 
+    def compute_preview_frame(self, log_fn, scene_index, split_percent):
+        scene_index = int(scene_index)
+        num_scenes = len(self.scene_names)
+        last_scene = num_scenes - 1
+        if scene_index < 0 or scene_index > last_scene:
+            return None
+
+        scene_name = self.scene_names[scene_index]
+        _, num_frames, _, _, split_frame = self.compute_scene_split(scene_name, split_percent)
+        original_scene_path = os.path.join(self.scenes_path, scene_name)
+        frame_files = self.valid_split_scene_cache(scene_index)
+        if not frame_files:
+            # optimize to uncompile only the first time it's needed
+            self.uncompile_scenes()
+
+            frame_files = sorted(get_files(original_scene_path))
+            self.fill_split_scene_cache(scene_index, frame_files)
+
+        num_frame_files = len(frame_files)
+        if num_frame_files != num_frames:
+            log_fn(f"compute_preview_frame(): expected {num_frame_files} frame files but found {num_frames} for scene index {scene_index} - returning None")
+            return None
+        return frame_files[split_frame]
+
+    def compute_advance_702(self,
+                            scene_index,
+                            split_percent,
+                            by_next : bool,
+                            by_minute=False,
+                            by_second=False,
+                            by_exact_second=False,
+                            exact_second=0):
+        if not isinstance(scene_index, (int, float)):
+            return None
+
+        scene_index = int(scene_index)
+        scene_name = self.scene_names[scene_index]
+        first_frame, last_frame, _ = details_from_group_name(scene_name)
+        num_frames = (last_frame - first_frame) + 1
+        split_percent_frame = num_frames * split_percent / 100.0
+
+        if by_exact_second:
+            frames_1s = self.project_fps
+            new_split_frame = frames_1s * exact_second
+        elif by_minute:
+            frames_60s = self.project_fps * 60
+            new_split_frame = \
+                split_percent_frame + frames_60s if by_next else split_percent_frame - frames_60s
+        elif by_second:
+            frames_1s = self.project_fps
+            new_split_frame = \
+                split_percent_frame + frames_1s if by_next else split_percent_frame - frames_1s
+        else: # by frame
+            new_split_frame = split_percent_frame + 1 if by_next else split_percent_frame - 1
+
+        new_split_frame = 0 if new_split_frame < 0 else new_split_frame
+        new_split_frame = num_frames if new_split_frame > num_frames else new_split_frame
+
+        new_split_percent = new_split_frame / num_frames
+        return new_split_percent * 100.0
+
     def compute_scene_split(self, scene_name : str, split_percent : float, override_num_frames=0):
         split_percent = 0.0 if isinstance(split_percent, type(None)) else split_percent
         split_point = split_percent / 100.0
@@ -989,7 +1063,8 @@ class VideoRemixerState():
             shutil.move(frame_path, new_frame_path)
         os.replace(original_scene_path, new_lower_scene_path)
 
-    def split_scene(self, log_fn, scene_index, split_percent, remixer_settings, global_options, keep_before=False, keep_after=False):
+    def split_scene(self, log_fn, scene_index, split_percent, remixer_settings, global_options,
+                    keep_before=False, keep_after=False):
         if not isinstance(scene_index, (int, float)):
             raise ValueError("Scene index must be an int or float")
 
@@ -1105,6 +1180,8 @@ class VideoRemixerState():
             log_fn("invalidating processed audio content after splitting")
             self.clean_remix_audio()
 
+        self.invalidate_split_scene_cache()
+
         return f"Scene split into new scenes {new_lower_scene_name} and {new_upper_scene_name}"
 
     ## Main Processing ##
@@ -1117,6 +1194,83 @@ class VideoRemixerState():
     VIDEO_STEP = "video"
 
     PURGED_CONTENT = "purged_content"
+
+    def prepare_process_remix(self, redo_resynth, redo_inflate, redo_upscale):
+        self.setup_processing_paths()
+
+        self.recompile_scenes()
+
+        if self.processed_content_invalid:
+            self.purge_processed_content(purge_from=self.RESIZE_STEP)
+            self.processed_content_invalid = False
+        else:
+            self.purge_stale_processed_content(redo_resynth, redo_inflate, redo_upscale)
+            self.purge_incomplete_processed_content()
+        self.save()
+
+    def process_remix(self, log_fn, kept_scenes, remixer_settings, engine, engine_settings,
+                      realesrgan_settings):
+        if self.resize_needed():
+            self.resize_scenes(log_fn,
+                               kept_scenes,
+                               remixer_settings)
+
+        if self.resynthesize_needed():
+            self.resynthesize_scenes(log_fn,
+                                     kept_scenes,
+                                     engine,
+                                     engine_settings,
+                                     self.resynth_option)
+
+        if self.inflate_needed():
+            self.inflate_scenes(log_fn,
+                                kept_scenes,
+                                engine,
+                                engine_settings)
+
+        if self.upscale_needed():
+            self.upscale_scenes(log_fn,
+                                kept_scenes,
+                                realesrgan_settings,
+                                remixer_settings)
+
+        return self.generate_remix_report(self.processed_content_complete(self.RESIZE_STEP),
+                                          self.processed_content_complete(self.RESYNTH_STEP),
+                                          self.processed_content_complete(self.INFLATE_STEP),
+                                          self.processed_content_complete(self.UPSCALE_STEP))
+
+    def resize_needed(self):
+        return self.resize \
+            and not self.processed_content_complete(self.RESIZE_STEP)
+
+    def resynthesize_needed(self):
+        return self.resynthesize \
+            and not self.processed_content_complete(self.RESYNTH_STEP)
+
+    def inflate_chosen(self):
+        if self.inflate:
+            return True
+
+        # see if a processing hint requires inflation
+        kept_scenes = self.kept_scenes()
+        for scene_name in kept_scenes:
+            label = self.scene_labels.get(scene_name)
+            if label:
+                _, hint, _ = self.split_label(label)
+                if hint:
+                    hints = self.split_hint(hint)
+                    inflation_hint = hints.get("I")
+                    if inflation_hint:
+                        return True
+        return False
+
+    def inflate_needed(self):
+        if self.inflate_chosen() and not self.processed_content_complete(self.INFLATE_STEP):
+            return True
+
+    def upscale_needed(self):
+        return self.upscale \
+            and not self.processed_content_complete(self.UPSCALE_STEP)
 
     def purge_paths(self, path_list : list, keep_original=False, purged_path=None, skip_empty_paths=False, additional_path=""):
         """Purge a list of paths to the purged content directory
@@ -1273,7 +1427,7 @@ class VideoRemixerState():
 
     # content is stale if it is present on disk but not currently selected
     # stale content and its derivative content should be purged
-    def purge_stale_processed_content(self, purge_upscale, purge_inflation, purge_resynth):
+    def purge_stale_processed_content(self, purge_resynth, purge_inflation, purge_upscale):
         if self.processed_content_stale(self.resize, self.resize_path):
             self.purge_processed_content(purge_from=self.RESIZE_STEP)
 
@@ -1295,7 +1449,7 @@ class VideoRemixerState():
         if self.resynthesize and not self.processed_content_complete(self.RESYNTH_STEP):
             self.purge_processed_content(purge_from=self.RESYNTH_STEP)
 
-        if self.inflate and not self.processed_content_complete(self.INFLATE_STEP):
+        if self.inflate_chosen() and not self.processed_content_complete(self.INFLATE_STEP):
             self.purge_processed_content(purge_from=self.INFLATE_STEP)
 
         if self.upscale and not self.processed_content_complete(self.UPSCALE_STEP):
@@ -1325,7 +1479,7 @@ class VideoRemixerState():
 
         elif processing_step == self.UPSCALE_STEP:
             # upscaling is the fourth processing step
-            if self.inflate:
+            if self.inflate_chosen():
                 # if inflation is enabled, draw from the inflation path
                 processing_path = self.inflation_path
             elif self.resynthesize:
@@ -1360,6 +1514,81 @@ class VideoRemixerState():
         else:
             crop_type = "crop"
         return scale_type, crop_type
+
+    def prepare_save_remix(self, log_fn, global_options, remixer_settings, output_filepath : str):
+        if not output_filepath:
+            raise ValueError("Enter a path for the remixed video to proceed")
+
+        self.recompile_scenes()
+
+        kept_scenes = self.kept_scenes()
+        if not kept_scenes:
+            raise ValueError("No kept scenes were found")
+
+        self.drop_empty_processed_scenes(kept_scenes)
+        self.save()
+
+        # get this again in case scenes have been auto-dropped
+        kept_scenes = self.kept_scenes()
+        if not kept_scenes:
+            raise ValueError("No kept scenes after removing empties")
+
+        # create audio clips only if they do not already exist
+        # this depends on the audio clips being purged at the time the scene selection are compiled
+        if self.video_details["has_audio"] and not self.processed_content_complete(
+                self.AUDIO_STEP):
+            audio_format = remixer_settings["audio_format"]
+            self.create_audio_clips(log_fn, global_options, audio_format=audio_format)
+            self.save()
+
+        # always recreate video and scene clips
+        self.clean_remix_content(purge_from="video_clips")
+        return kept_scenes
+
+    def save_remix(self, log_fn, global_options, kept_scenes):
+        self.create_video_clips(log_fn, kept_scenes, global_options)
+        self.save()
+
+        self.create_scene_clips(log_fn, kept_scenes, global_options)
+        self.save()
+
+        if not self.clips:
+            raise ValueError("No processed video clips were found")
+
+        ffcmd = self.create_remix_video(log_fn, global_options, self.output_filepath)
+        log_fn(f"FFmpeg command: {ffcmd}")
+        self.save()
+
+    def save_custom_remix(self,
+                          log_fn,
+                          output_filepath,
+                          global_options,
+                          kept_scenes,
+                          custom_video_options,
+                          custom_audio_options,
+                          draw_text_options=None,
+                          use_scene_sorting=True):
+        _, _, output_ext = split_filepath(output_filepath)
+        output_ext = output_ext[1:]
+
+        self.create_custom_video_clips(log_fn, kept_scenes, global_options,
+                                             custom_video_options=custom_video_options,
+                                             custom_ext=output_ext,
+                                             draw_text_options=draw_text_options)
+        self.save()
+
+        self.create_custom_scene_clips(kept_scenes, global_options,
+                                             custom_audio_options=custom_audio_options,
+                                             custom_ext=output_ext)
+        self.save()
+
+        if not self.clips:
+            raise ValueError("No processed video clips were found")
+
+        ffcmd = self.create_remix_video(log_fn, global_options, output_filepath,
+                                        use_scene_sorting=use_scene_sorting)
+        log_fn(f"FFmpeg command: {ffcmd}")
+        self.save()
 
     def resize_scene(self,
                      log_fn,
@@ -1492,6 +1721,7 @@ class VideoRemixerState():
                 create_directory(scene_output_path)
 
                 num_splits = 0
+                disable_inflation = False
 
                 # see if the scene has a processing hint such as 'I:4A'
                 label = self.scene_labels.get(scene_name)
@@ -1504,10 +1734,11 @@ class VideoRemixerState():
                         if inflation_hint:
                             log_fn(f"found inflation processing hint: {inflation_hint}")
                             if "1" in inflation_hint:
-                                # TODO disable inflation
-                                num_splits = 1
+                                log_fn("forcing disable of inflation")
+                                num_splits = 0
+                                disable_inflation = True
                             elif "2" in inflation_hint:
-                                # TODO re-enable inflation
+                                log_fn("forcing 2X inflation")
                                 num_splits = 1
                             elif "4" in inflation_hint:
                                 log_fn("forcing 4X inflation")
@@ -1516,30 +1747,42 @@ class VideoRemixerState():
                                 log_fn("forcing 8X inflation")
                                 num_splits = 3
 
-                if num_splits == 0:
-                    if self.inflate_by_option == "4X":
+                if num_splits == 0 and self.inflate and not disable_inflation:
+                    if self.inflate_by_option == "2X":
+                        num_splits = 1
+                    elif self.inflate_by_option == "4X":
                         num_splits = 2
                     elif self.inflate_by_option == "8X":
                         num_splits = 3
-                    else:
-                        num_splits = 1
 
-                output_basename = "interpolated_frames"
-                file_list = sorted(get_files(scene_input_path, extension="png"))
-                series_interpolater.interpolate_series(file_list,
-                                                       scene_output_path,
-                                                       num_splits,
-                                                       output_basename)
-                ResequenceFiles(scene_output_path,
-                                "png",
-                                "inflated_frame",
-                                1,
-                                1,
-                                1,
-                                0,
-                                -1,
-                                True,
-                                log_fn).resequence()
+                if num_splits:
+                    # the scene needs inflating
+                    output_basename = "interpolated_frames"
+                    file_list = sorted(get_files(scene_input_path, extension="png"))
+                    series_interpolater.interpolate_series(file_list,
+                                                        scene_output_path,
+                                                        num_splits,
+                                                        output_basename)
+                    ResequenceFiles(scene_output_path,
+                                    "png",
+                                    "inflated_frame",
+                                    1, 1,
+                                    1, 0,
+                                    -1,
+                                    True,
+                                    log_fn).resequence()
+                else:
+                    # no need to inflate so just copy the files using the resequencer
+                    ResequenceFiles(scene_input_path,
+                                    "png",
+                                    "inflated_frame",
+                                    1, 1,
+                                    1, 0,
+                                    -1,
+                                    False,
+                                    log_fn,
+                                    output_path=scene_output_path).resequence()
+
                 Mtqdm().update_bar(bar)
 
     def get_upscaler(self, log_fn, realesrgan_settings, remixer_settings):
@@ -1654,7 +1897,8 @@ class VideoRemixerState():
                 label += "S"
             elif self.resynth_option == "Replace":
                 label += "R"
-        if self.inflate:
+        if self.inflate_chosen():
+            # TODO if inflation is enabled via processing hint, this may be inaccurate
             label += "-in" + self.inflate_by_option[0]
             if self.inflate_slow_option == "Audio":
                 label += "SA"
@@ -1669,6 +1913,32 @@ class VideoRemixerState():
         _, filename, _ = split_filepath(self.source_video)
         suffix = self.remix_filename_suffix(extra_suffix)
         return os.path.join(self.project_path, f"{filename}-{suffix}.mp4")
+
+    def generate_remix_report(self, resize, resynthesize, inflate, upscale):
+        report = Jot()
+
+        if not resize \
+            and not resynthesize \
+            and not inflate \
+            and not upscale:
+            report.add(f"Original source scenes in {self.scenes_path}")
+
+        if resize:
+            report.add(f"Resized/cropped scenes in {self.resize_path}")
+
+        if resynthesize:
+            report.add(f"Resynthesized scenes in {self.resynthesis_path}")
+
+        if inflate:
+            report.add(f"Inflated scenes in {self.inflation_path}")
+
+        if upscale:
+            report.add(f"Upscaled scenes in {self.upscale_path}")
+
+        return report.lines
+
+
+
 
     # drop a kept scene after scene compiling has already been done
     # used for dropping empty processed scenes, and force dropping processed scenes
@@ -1689,7 +1959,7 @@ class VideoRemixerState():
         # TODO might need to better manage the flow of content between processing steps
         if self.upscale:
             scenes_base_path = self.upscale_path
-        elif self.inflate:
+        elif self.inflate_chosen():
             scenes_base_path = self.inflation_path
         elif self.resynthesize:
             scenes_base_path = self.resynthesis_path
@@ -1718,6 +1988,8 @@ class VideoRemixerState():
                     removed.append(file)
         return removed
 
+    # TODO the last three paths in the list won't have scene name directories but instead files
+    #      also it should delete the audio wav file if found since that isn't deleted each save
     # drop an already-processed scene to cut it from the remix video
     def force_drop_processed_scene(self, scene_index):
         scene_name = self.scene_names[scene_index]
@@ -1738,11 +2010,17 @@ class VideoRemixerState():
                 purge_dirs.append(content_path)
         purge_root = self.purge_paths(purge_dirs)
         removed += purge_dirs
+
         if purge_root:
             self.copy_project_file(purge_root)
 
-        if self.audio_clips_path:
-            self.audio_clips = sorted(get_files(self.audio_clips_path))
+        # audio clips aren't cleaned each time a remix is saved
+        # clean now to ensure the dropped scene audio clip is removed
+        self.clean_remix_content(purge_from="audio_clips")
+
+        # TODO this didn't ever work
+        # if self.audio_clips_path:
+        #     self.audio_clips = sorted(get_files(self.audio_clips_path))
 
         return removed
 
@@ -1773,34 +2051,55 @@ class VideoRemixerState():
 
     VIDEO_CLIPS_PATH = "VIDEO"
 
-    def compute_inflated_fps(self):
-        """Compute the video clip FPS considering project FPS and inflation settings.
-        For 2X and 4X inflation, when slow motion is enabled, the 50% audio slowdown will reduce the FPS by 2X.
-        For 8X inflation with slow motion, the 75% audio slowdown will reduce the FPS by 4X"""
-        if self.inflate:
-            if self.inflate_slow_option == "No":
-                # Set FPS for maximum smoothness
-                if self.inflate_by_option == "2X":
-                    inflate_factor = 2.0
-                elif self.inflate_by_option == "4X":
-                    inflate_factor = 4.0
-                elif self.inflate_by_option == "8X":
-                    inflate_factor = 8.0
-            elif self.inflate_slow_option == "Audio":
-                # Set FPS for maximum audio quality
-                if self.inflate_by_option == "2X":
-                    inflate_factor = 1.0
-                elif self.inflate_by_option == "4X":
-                    inflate_factor = 2.0
-                elif self.inflate_by_option == "8X":
-                    inflate_factor = 2.0
-            elif self.inflate_slow_option == "Silent":
-                # Set FPS for maximum slow motion
-                inflate_factor = 1.0
+    def compute_inflated_fps(self, force_inflation, force_audio, force_inflate_by, force_silent):
+        motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate = \
+            self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
+                                               force_silent)
+        if audio_slow_motion or silent_slow_motion:
+            fps_factor = project_inflation_rate
         else:
-            # Keep project FPS unchanged
-            inflate_factor = 1.0
-        return inflate_factor * self.project_fps
+            fps_factor = motion_factor
+        return self.project_fps * fps_factor
+
+    def compute_forced_inflation(self, scene_name):
+        force_inflation = False
+        force_audio = False
+        force_inflate_by = None
+        force_silent = False
+        label = self.scene_labels.get(scene_name)
+        if label:
+            _, hint, _ = self.split_label(label)
+            if hint:
+                hints = self.split_hint(hint)
+                inflation_hint = hints.get("I")
+                if inflation_hint:
+                    if "1" in inflation_hint:
+                        # noop inflation
+                        force_inflate_by = "1X"
+                    elif "2" in inflation_hint:
+                        force_inflation = True
+                        force_inflate_by = "2X"
+                    elif "4" in inflation_hint:
+                        force_inflation = True
+                        force_inflate_by = "4X"
+                    elif "8" in inflation_hint:
+                        force_inflation = True
+                        force_inflate_by = "8X"
+
+                    if "A" in inflation_hint:
+                        force_audio = True
+                    elif "S" in inflation_hint:
+                        force_silent = True
+        return force_inflation, force_audio, force_inflate_by, force_silent
+
+    def compute_scene_fps(self, scene_name):
+        force_inflation, force_audio, force_inflate_by, force_silent =\
+            self.compute_forced_inflation(scene_name)
+
+        return self.compute_inflated_fps(force_inflation,
+                                         force_audio,
+                                         force_inflate_by,
+                                         force_silent)
 
     def create_video_clips(self, log_fn, kept_scenes, global_options):
         self.video_clips_path = os.path.join(self.clips_path, self.VIDEO_CLIPS_PATH)
@@ -1808,10 +2107,9 @@ class VideoRemixerState():
         # save the project now to preserve the newly established path
         self.save()
 
-        # TODO might need to better manage the flow of content between processing steps
         if self.upscale:
             scenes_base_path = self.upscale_path
-        elif self.inflate:
+        elif self.inflate_chosen():
             scenes_base_path = self.inflation_path
         elif self.resynthesize:
             scenes_base_path = self.resynthesis_path
@@ -1820,12 +2118,12 @@ class VideoRemixerState():
         else:
             scenes_base_path = self.scenes_path
 
-        video_clip_fps = self.compute_inflated_fps()
-
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_filepath = os.path.join(self.video_clips_path, f"{scene_name}.mp4")
+
+                video_clip_fps = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
                                 "png",
@@ -1837,6 +2135,7 @@ class VideoRemixerState():
                                 -1,
                                 True,
                                 log_fn).resequence()
+
                 PNGtoMP4(scene_input_path,
                                 None,
                                 video_clip_fps,
@@ -1844,21 +2143,77 @@ class VideoRemixerState():
                                 crf=self.output_quality,
                                 global_options=global_options)
                 Mtqdm().update_bar(bar)
+
         self.video_clips = sorted(get_files(self.video_clips_path))
 
-    def compute_inflated_audio_options(self, custom_audio_options, force_audio=False, force_inflate_by=None, force_silent=False):
-        if self.inflate:
-            if self.inflate_slow_option == "Audio" or force_audio:
-                if self.inflate_by_option == "8X" or force_inflate_by == "8X":
-                    output_options = '-filter:a "atempo=0.5,atempo=0.5" -c:v copy ' + custom_audio_options
+    def inflation_rate(self, inflate_by : str):
+        if not inflate_by:
+            return 1
+        return int(inflate_by[0])
+
+    def compute_effective_slow_motion(self, force_inflation, force_audio, force_inflate_by,
+                                      force_silent):
+        motion_factor = 1.0
+        audio_slow_motion = False
+        silent_slow_motion = False
+        project_inflation_rate = 1
+
+        if self.inflate or force_inflation:
+            if self.inflate:
+                project_inflation_rate = self.inflation_rate(self.inflate_by_option)
+            forced_inflation_rate = self.inflation_rate(force_inflate_by)
+
+            motion_factor = project_inflation_rate
+
+            if forced_inflation_rate != project_inflation_rate:
+                if forced_inflation_rate > project_inflation_rate:
+                    motion_factor = forced_inflation_rate
                 else:
-                    output_options = '-filter:a "atempo=0.5" -c:v copy ' + custom_audio_options
-            elif self.inflate_slow_option == "Silent" or force_silent:
-                output_options = '-f lavfi -i anullsrc -ac 2 -ar 48000 -map 0:v:0 -map 2:a:0 -c:v copy -shortest ' + custom_audio_options
-            else:
-                output_options = custom_audio_options
+                    motion_factor = project_inflation_rate / float(forced_inflation_rate)
+
+            audio_slow_motion = force_audio or self.inflate_slow_option == "Audio"
+            silent_slow_motion = force_silent or self.inflate_slow_option == "Silent"
+
+            if audio_slow_motion and motion_factor == 1:
+                audio_slow_motion = False
+
+        return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate
+
+    def compute_inflated_audio_options(self, custom_audio_options, force_inflation, force_audio,
+                                       force_inflate_by, force_silent):
+
+        motion_factor, audio_slow_motion, silent_slow_motion, _ = \
+            self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
+                                               force_silent)
+        if audio_slow_motion:
+            if motion_factor == 8:
+                output_options = '-filter:a "atempo=0.5,atempo=0.5,atempo=0.5" -c:v copy -shortest ' \
+                    + custom_audio_options
+            elif motion_factor == 4:
+                output_options = '-filter:a "atempo=0.5,atempo=0.5" -c:v copy -shortest ' \
+                    + custom_audio_options
+            elif motion_factor == 2:
+                output_options = '-filter:a "atempo=0.5" -c:v copy -shortest ' + custom_audio_options
+            elif motion_factor == 1:
+                output_options = '-filter:a "atempo=1.0" -c:v copy -shortest ' + custom_audio_options
+            elif motion_factor == 0.5:
+                output_options = '-filter:a "atempo=2.0" -c:v copy -shortest ' + custom_audio_options
+            elif motion_factor == 0.25:
+                output_options = '-filter:a "atempo=2.0,atempo=2.0" -c:v copy -shortest ' \
+                    + custom_audio_options
+            elif motion_factor == 0.125:
+                output_options = '-filter:a "atempo=2.0,atempo=2.0,atempo=2.0" -c:v copy -shortest ' \
+                    + custom_audio_options
+        elif silent_slow_motion:
+            # check for an existing audio sample rate, so the silent footage will blend properly
+            # with non-silent footage, otherwise there may be an audio/video data length mismatch
+            sample_rate = self.video_details.get("sample_rate", "48000")
+            output_options = \
+                '-f lavfi -i anullsrc -ac 2 -ar ' + sample_rate + ' -map 0:v:0 -map 2:a:0 -c:v copy -shortest ' \
+                + custom_audio_options
         else:
             output_options = custom_audio_options
+
         return output_options
 
     def create_scene_clips(self, log_fn, kept_scenes, global_options):
@@ -1869,46 +2224,14 @@ class VideoRemixerState():
                     scene_audio_path = self.audio_clips[index]
                     scene_output_filepath = os.path.join(self.clips_path, f"{scene_name}.mp4")
 
-                    force_audio = False
-                    force_inflate_by = None
-                    force_silent = False
+                    force_inflation, force_audio, force_inflate_by, force_silent =\
+                        self.compute_forced_inflation(scene_name)
 
-                    # see if the scene has a processing hint such as 'I:4A'
-                    label = self.scene_labels.get(scene_name)
-                    if label:
-                        _, hint, _ = self.split_label(label)
-                        if hint:
-                            log_fn(f"create_scene_clips(): found processing hint: {hint}")
-                            hints = self.split_hint(hint)
-                            inflation_hint = hints.get("I")
-                            if inflation_hint:
-                                log_fn(f"found inflation processing hint: {hint}")
-                                if "1" in inflation_hint:
-                                    # TODO disable inflation
-                                    # force_inflate_by = "1X"
-                                    pass
-                                elif "2" in inflation_hint:
-                                    # TODO re-enable inflation
-                                    log_fn("force 2X inflation")
-                                    force_inflate_by = "2X"
-                                elif "4" in inflation_hint:
-                                    log_fn("force 4X inflation")
-                                    force_inflate_by = "4X"
-                                elif "8" in inflation_hint:
-                                    log_fn("force 8X inflation")
-                                    force_inflate_by = "8X"
-                                if "A" in inflation_hint:
-                                    log_fn("force audio slow motion")
-                                    force_audio = True
-                                elif "S" in inflation_hint:
-                                    log_fn("force silent slow motion")
-                                    force_silent = True
-
-                    output_options = self.compute_inflated_audio_options("-c:a aac -shortest",
+                    output_options = self.compute_inflated_audio_options("-c:a aac -shortest ",
+                                                                         force_inflation,
                                                                          force_audio,
                                                                          force_inflate_by,
                                                                          force_silent)
-
                     combine_video_audio(scene_video_path,
                                         scene_audio_path,
                                         scene_output_filepath,
@@ -1928,11 +2251,13 @@ class VideoRemixerState():
                                   draw_text_options=None):
         self.video_clips_path = os.path.join(self.clips_path, self.VIDEO_CLIPS_PATH)
         create_directory(self.video_clips_path)
+        # save the project now to preserve the newly established path
+        self.save()
 
         # TODO might need to better manage the flow of content between processing steps
         if self.upscale:
             scenes_base_path = self.upscale_path
-        elif self.inflate:
+        elif self.inflate_chosen():
             scenes_base_path = self.inflation_path
         elif self.resynthesize:
             scenes_base_path = self.resynthesis_path
@@ -1970,8 +2295,6 @@ class VideoRemixerState():
                 box_y = "(text_h*1)"
             box = "1" if draw_box else "0"
 
-        video_clip_fps = self.compute_inflated_fps()
-
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
             for index, scene_name in enumerate(kept_scenes):
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
@@ -1999,6 +2322,8 @@ class VideoRemixerState():
                     except IndexError as error:
                         use_custom_video_options = use_custom_video_options\
                             .replace("<LABEL>", f"[{error}]")
+
+                video_clip_fps = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
                                 "png",
@@ -2032,40 +2357,14 @@ class VideoRemixerState():
                     scene_output_filepath = os.path.join(self.clips_path,
                                                          f"{scene_name}.{custom_ext}")
 
-                    force_audio = False
-                    force_inflate_by = None
-                    force_silent = False
-
-                    # see if the scene has a processing hint such as 'I:4A'
-                    label = self.scene_labels.get(scene_name)
-                    if label:
-                        _, hint, _ = self.split_label(label)
-                        if hint:
-                            hints = self.split_hint(hint)
-                            inflation_hint = hints.get("I")
-                            if inflation_hint:
-                                if "1" in inflation_hint:
-                                    # TODO disable inflation
-                                    # force_inflate_by = "1X"
-                                    # for now don't affect the inflation amount
-                                    pass
-                                elif "2" in inflation_hint:
-                                    # TODO re-enable inflation
-                                    force_inflate_by = "2X"
-                                elif "4" in inflation_hint:
-                                    force_inflate_by = "4X"
-                                elif "8" in inflation_hint:
-                                    force_inflate_by = "8X"
-
-                                if "A" in inflation_hint:
-                                    force_audio = True
-                                elif "S" in inflation_hint:
-                                    force_silent = True
+                    force_inflation, force_audio, force_inflate_by, force_silent =\
+                        self.compute_forced_inflation(scene_name)
 
                     output_options = self.compute_inflated_audio_options(custom_audio_options,
-                                                                force_audio=force_audio,
-                                                                force_inflate_by=force_inflate_by,
-                                                                force_silent=force_silent)
+                                                                         force_inflation,
+                                                                         force_audio=force_audio,
+                                                                         force_inflate_by=force_inflate_by,
+                                                                         force_silent=force_silent)
 
                     combine_video_audio(scene_video_path, scene_audio_path,
                                         scene_output_filepath, global_options=global_options,
@@ -2129,6 +2428,28 @@ class VideoRemixerState():
                                    global_options=global_options)
             Mtqdm().update_bar(bar)
         return ffcmd
+
+    def choose_scene_range(self, first_scene_index, last_scene_index, scene_state):
+        for scene_index in range(first_scene_index, last_scene_index + 1):
+            scene_name = self.scene_names[scene_index]
+            self.scene_states[scene_name] = scene_state
+
+    def valid_split_scene_cache(self, scene_index):
+        if self.split_scene_cache and self.split_scene_cached_index == scene_index:
+            return self.split_scene_cache
+        else:
+            return None
+
+    def fill_split_scene_cache(self, scene_index, data):
+        self.split_scene_cache = data
+        self.split_scene_cached_index = scene_index
+
+    def invalidate_split_scene_cache(self):
+        self.split_scene_cache = []
+        self.split_scene_cached_index = -1
+
+
+
 
     # returns validated version of path and files, and an optional messages str
     def ensure_valid_populated_path(self, description : str, path : str, files : list | None=None):
@@ -2300,6 +2621,73 @@ class VideoRemixerState():
         # user will expect to return to scene chooser on reopening
         log_fn("saving project after recovery process")
         self.save_progress("choose")
+
+    def export_project(self, log_fn, new_project_path, new_project_name, kept_scenes):
+        new_project_name = new_project_name.strip()
+        full_new_project_path = os.path.join(new_project_path, new_project_name)
+
+        create_directory(full_new_project_path)
+        new_profile_filepath = self.copy_project_file(full_new_project_path)
+
+        # load the copied project file
+        new_state = VideoRemixerState.load(new_profile_filepath, log_fn)
+
+        # update project paths to the new one
+        new_state = VideoRemixerState.load_ported(new_state.project_path, new_profile_filepath,
+                                                  log_fn, save_original=False)
+
+        # ensure the project directories exist
+        new_state.post_load_integrity_check()
+
+        # copy the source video
+        with Mtqdm().open_bar(total=1, desc="Copying") as bar:
+            Mtqdm().message(bar, "Copying source video - no ETA")
+            shutil.copy(self.source_video, new_state.source_video)
+            Mtqdm().update_bar(bar)
+
+        # copy the source audio (if not using the source video as audio source)
+        if self.source_audio != self.source_video:
+            with Mtqdm().open_bar(total=1, desc="Copying") as bar:
+                Mtqdm().message(bar, "Copying source audio - no ETA")
+                shutil.copy(self.source_audio, new_state.source_audio)
+                Mtqdm().update_bar(bar)
+
+        # ensure scenes path contains all / only kept scenes
+        self.recompile_scenes()
+
+        # prepare to rebuild scene_states dict, and scene_names, thumbnails lists
+        # in the new project
+        new_state.scene_states = {}
+        new_state.scene_names = []
+        new_state.thumbnails = []
+
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Exporting") as bar:
+            for index, scene_name in enumerate(self.scene_names):
+                state = self.scene_states[scene_name]
+                if state == "Keep":
+                    scene_name = self.scene_names[index]
+                    new_state.scene_states[scene_name] = "Keep"
+
+                    new_state.scene_names.append(scene_name)
+                    scene_dir = os.path.join(self.scenes_path, scene_name)
+                    new_scene_dir = os.path.join(new_state.scenes_path, scene_name)
+                    duplicate_directory(scene_dir, new_scene_dir)
+
+                    scene_thumbnail = self.thumbnails[index]
+                    _, filename, ext = split_filepath(scene_thumbnail)
+                    new_thumbnail = os.path.join(new_state.thumbnail_path, filename + ext)
+                    new_state.thumbnails.append(new_thumbnail)
+                    shutil.copy(scene_thumbnail, new_thumbnail)
+                    Mtqdm().update_bar(bar)
+
+        # reset some things
+        new_state.current_scene = 0
+        new_state.audio_clips = []
+        new_state.clips = []
+        new_state.processed_content_invalid = False
+        new_state.progress = "choose"
+
+        new_state.save()
 
     @staticmethod
     def load(filepath : str, log_fn):
