@@ -25,7 +25,6 @@ from deep_interpolate import DeepInterpolate
 from interpolate_series import InterpolateSeries
 from resequence_files import ResequenceFiles
 from upscale_series import UpscaleSeries
-from PIL import Image
 
 class VideoRemixerState():
     def __init__(self):
@@ -123,51 +122,26 @@ class VideoRemixerState():
     def reset(self):
         self.__init__()
 
-    UI_SAFETY_DEFAULTS = {
-        "project_fps" : 29.97,
-        "deinterlace" : False,
-        "split_type" : "Scene",
-        "scene_threshold" : 0.6,
-        "break_duration" : 2.0,
-        "break_ratio" : 0.98,
-        "thumbnail_type" : "JPG",
-        "resize" : True,
-        "resynthesize" : True,
-        "inflate" : True,
-        "upscale" : True,
-        "upscale_option" : "2X",
-        "min_frames_per_scene" : 10,
-        "split_time" : 60,
-        "crop_offsets" : -1,
-        "inflate_by_option" : "2X",
-        "inflate_slow_option" : "No",
-        "resynth_option" : "Scrub",
-        "resize_w" : 1920,
-        "resize_h" : 1080,
-        "crop_w" : 1920,
-        "crop_h" : 1080
-    }
-
     # set project settings UI defaults in case the project is reopened
     # otherwise some UI elements get set to None on reopened new projects
-    def set_project_ui_defaults(self, default_fps):
+    def set_project_ui_defaults(self, default_fps, defaults):
         self.project_fps = default_fps
-        self.deinterlace = self.UI_SAFETY_DEFAULTS["deinterlace"]
-        self.split_type = self.UI_SAFETY_DEFAULTS["split_type"]
-        self.scene_threshold = self.UI_SAFETY_DEFAULTS["scene_threshold"]
-        self.break_duration = self.UI_SAFETY_DEFAULTS["break_duration"]
-        self.break_ratio = self.UI_SAFETY_DEFAULTS["break_ratio"]
-        self.thumbnail_type = self.UI_SAFETY_DEFAULTS["thumbnail_type"]
-        self.resize = self.UI_SAFETY_DEFAULTS["resize"]
-        self.resynthesize = self.UI_SAFETY_DEFAULTS["resynthesize"]
-        self.inflate = self.UI_SAFETY_DEFAULTS["inflate"]
-        self.upscale = self.UI_SAFETY_DEFAULTS["upscale"]
-        self.upscale_option = self.UI_SAFETY_DEFAULTS["upscale_option"]
-        self.min_frames_per_scene = self.UI_SAFETY_DEFAULTS["min_frames_per_scene"]
-        self.split_time = self.UI_SAFETY_DEFAULTS["split_time"]
-        self.inflate_by_option = self.UI_SAFETY_DEFAULTS["inflate_by_option"]
-        self.inflate_slow_option = self.UI_SAFETY_DEFAULTS["inflate_slow_option"]
-        self.resynth_option = self.UI_SAFETY_DEFAULTS["resynth_option"]
+        self.deinterlace = defaults["deinterlace"]
+        self.split_type = defaults["split_type"]
+        self.scene_threshold = defaults["scene_threshold"]
+        self.break_duration = defaults["break_duration"]
+        self.break_ratio = defaults["break_ratio"]
+        self.thumbnail_type = defaults["thumbnail_type"]
+        self.resize = defaults["resize"]
+        self.resynthesize = defaults["resynthesize"]
+        self.inflate = defaults["inflate"]
+        self.upscale = defaults["upscale"]
+        self.upscale_option = defaults["upscale_option"]
+        self.min_frames_per_scene = defaults["min_frames_per_scene"]
+        self.split_time = defaults["split_time"]
+        self.inflate_by_option = defaults["inflate_by_option"]
+        self.inflate_slow_option = defaults["inflate_slow_option"]
+        self.resynth_option = defaults["resynth_option"]
 
     # how far progressed into project and the tab ID to return to on re-opening
     PROGRESS_STEPS = {
