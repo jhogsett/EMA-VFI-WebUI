@@ -1323,7 +1323,7 @@ class VideoRemixer(TabBase):
             message_text = format_markdown(messages, "warning")
         else:
             message_text = format_markdown(self.TAB01_DEFAULT_MESSAGE)
-        return_to_tab = self.state.get_progress_tab()
+        return_to_tab = self.get_progress_tab()
         scene_details = self.scene_chooser_details(self.state.tryattr("current_scene"))
 
         Session().set("last-video-remixer-project", project_path)
