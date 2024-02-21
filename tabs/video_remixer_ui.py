@@ -64,7 +64,9 @@ class VideoRemixer(TabBase):
         "resize_w" : 1920,
         "resize_h" : 1080,
         "crop_w" : 1920,
-        "crop_h" : 1080
+        "crop_h" : 1080,
+        "frame_format" : "png",
+        "sound_format" : "wav"
     }
 
     TAB_REMIX_HOME = 0

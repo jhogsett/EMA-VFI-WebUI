@@ -54,6 +54,8 @@ class VideoRemixerState():
         self.split_time = None
         self.crop_offset_x = None
         self.crop_offset_y = None
+        self.frame_format = None
+        self.sound_format = None
 
         # set on confirming set up options
         self.split_frames = None
@@ -142,6 +144,8 @@ class VideoRemixerState():
         self.inflate_by_option = defaults["inflate_by_option"]
         self.inflate_slow_option = defaults["inflate_slow_option"]
         self.resynth_option = defaults["resynth_option"]
+        self.frame_format = defaults["frame_format"]
+        self.audio_format = defaults["audio_format"]
 
     DEF_FILENAME = "project.yaml"
 
@@ -2710,6 +2714,17 @@ class VideoRemixerState():
                         state.resynth_option = "Scrub"
                 except AttributeError:
                         state.resynth_option = "Scrub"
+                # new frame and found format options
+                try:
+                    if not state.frame_format:
+                        state.frame_format = "png"
+                except AttributeError:
+                        state.frame_format = "png"
+                try:
+                    if not state.sound_format:
+                        state.sound_format = "wav"
+                except AttributeError:
+                        state.sound_format = "wav"
 
                 return state
 
