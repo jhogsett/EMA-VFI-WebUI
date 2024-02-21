@@ -143,28 +143,6 @@ class VideoRemixerState():
         self.inflate_slow_option = defaults["inflate_slow_option"]
         self.resynth_option = defaults["resynth_option"]
 
-    # how far progressed into project and the tab ID to return to on re-opening
-    PROGRESS_STEPS = {
-        "home" : 1,
-        "settings" : 1,
-        "setup" : 2,
-        "choose" : 3,
-        "compile" : 4,
-        "process" : 5,
-        "save" : 6
-    }
-
-    def save_progress(self, progress : str, save_project : bool=True):
-        self.progress = progress
-        if save_project:
-            self.save()
-
-    def get_progress_tab(self) -> int:
-        try:
-            return self.PROGRESS_STEPS[self.progress]
-        except:
-            return self.PROGRESS_STEPS["home"]
-
     DEF_FILENAME = "project.yaml"
 
     def save(self, filepath : str=None):
@@ -241,9 +219,6 @@ class VideoRemixerState():
             raise ValueError(f"Project file {project_file} was not found")
         return project_file
 
-    def calc_split_frames(self, fps, seconds):
-        return round(float(fps) * float(seconds))
-
     def _project_settings_report_scene(self):
         header_row = [
             "Frame Rate",
@@ -294,7 +269,7 @@ class VideoRemixerState():
             "Split Type",
             "Split Time",
             "Split Frames"]
-        self.split_frames = self.calc_split_frames(self.project_fps, self.split_time)
+        self.split_frames = self._calc_split_frames(self.project_fps, self.split_time)
         data_rows = [[
             f"{float(self.project_fps):.2f}",
             SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
@@ -335,8 +310,11 @@ class VideoRemixerState():
             header_row, data_rows = self._project_settings_report_none()
         return format_table(header_row, data_rows, color="more", title=title)
 
+    def _calc_split_frames(self, fps, seconds):
+        return round(float(fps) * float(seconds))
+
     # keep project's own copy of original video
-    # it will be needed later to cut thumbnails and audio clips
+    # it will be needed later if restarting the project
     def save_original_video(self, prevent_overwrite=True):
         _, filename, ext = split_filepath(self.source_video)
         video_filename = filename + ext
@@ -355,6 +333,8 @@ class VideoRemixerState():
             self.source_video = project_video_path
             Mtqdm().update_bar(bar)
 
+    # make a .mp4 container copy of original video if it's not already .mp4
+    # this will be needed later to cut audio wav files
     # this is expected to be called after save_original_video()
     def create_source_audio(self, crf, global_options, prevent_overwrite=True, skip_mp4=True):
         _, filename, ext = split_filepath(self.source_video)
@@ -375,7 +355,6 @@ class VideoRemixerState():
         with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
             Mtqdm().message(bar, "Creating source audio locally - no ETA")
             SourceToMP4(self.source_video, self.source_audio, crf, global_options=global_options)
-            self.source_audio = self.source_audio
             Mtqdm().update_bar(bar)
 
     def copy_project_file(self, copy_path):
@@ -2593,10 +2572,6 @@ class VideoRemixerState():
         log_fn(f"creating clips directory {self.clips_path}")
         create_directory(self.clips_path)
 
-        # user will expect to return to scene chooser on reopening
-        log_fn("saving project after recovery process")
-        self.save_progress("choose")
-
     def export_project(self, log_fn, new_project_path, new_project_name, kept_scenes):
         new_project_name = new_project_name.strip()
         full_new_project_path = os.path.join(new_project_path, new_project_name)
@@ -2689,7 +2664,7 @@ class VideoRemixerState():
                 if state.split_type == "Minute":
                     state.split_type = "Time"
                     state.split_time = 60
-                    state.split_frames = state.calc_split_frames(state.project_fps, state.split_time)
+                    state.split_frames = state._calc_split_frames(state.project_fps, state.split_time)
                 # new attribute
                 state.processed_content_invalid = False
                 # new separate audio source

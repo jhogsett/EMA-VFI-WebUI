@@ -1220,6 +1220,28 @@ class VideoRemixer(TabBase):
 
         purge_button715.click(self.purge_button715, outputs=[tabs_video_remixer, message_box715])
 
+    # how far progressed into project and the tab ID to return to on re-opening
+    PROGRESS_STEPS = {
+        "home" : TAB_REMIX_SETTINGS,
+        "settings" : TAB_REMIX_SETTINGS,
+        "setup" : TAB_SET_UP_PROJECT,
+        "choose" : TAB_CHOOSE_SCENES,
+        "compile" : TAB_COMPILE_SCENES,
+        "process" : TAB_PROC_REMIX,
+        "save" : TAB_REMIX_EXTRA
+    }
+
+    def save_progress(self, progress : str, save_project : bool=True):
+        self.state.progress = progress
+        if save_project:
+            self.state.save()
+
+    def get_progress_tab(self) -> int:
+        try:
+            return self.PROGRESS_STEPS[self.progress]
+        except:
+            return self.PROGRESS_STEPS["home"]
+
     ### REMIX HOME EVENT HANDLERS
 
     # User has clicked New Project > from Remix Home
@@ -1245,7 +1267,7 @@ class VideoRemixer(TabBase):
                    *empty_args
 
         # don't save yet, user may change project path next
-        self.state.save_progress("settings", save_project=False)
+        self.save_progress("settings", save_project=False)
 
         return gr.update(selected=self.TAB_REMIX_SETTINGS), \
             format_markdown(self.TAB00_DEFAULT_MESSAGE), \
@@ -1405,7 +1427,7 @@ class VideoRemixer(TabBase):
             # this is the first time project progress advances
             # user will expect to return to the setup tab on reopening
             self.log(f"saving new project at {self.state.project_filepath()}")
-            self.state.save_progress("setup")
+            self.save_progress("setup")
 
             Session().set("last-video-remixer-project", project_path)
 
@@ -1508,7 +1530,6 @@ class VideoRemixer(TabBase):
                 self.state.create_source_audio(
                     source_audio_crf, global_options, prevent_overwrite=True)
             except ValueError as error:
-                # ignore, don't create the file a second time if the user is restarting here
                 self.log(f"ignoring: {error}")
 
             self.log("saving project after creating audio source")
@@ -1603,7 +1624,7 @@ class VideoRemixer(TabBase):
 
         # user will expect to return to scene chooser on reopening
         self.log("saving project after setting up scene selection states")
-        self.state.save_progress("choose")
+        self.save_progress("choose")
 
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                format_markdown(self.TAB2_DEFAULT_MESSAGE), \
@@ -1831,7 +1852,7 @@ class VideoRemixer(TabBase):
 
         # user will expect to return to the compilation tab on reopening
         self.log("saving project after displaying scene choices")
-        self.state.save_progress("compile")
+        self.save_progress("compile")
 
         return gr.update(selected=self.TAB_COMPILE_SCENES), self.state.project_info4
 
@@ -1857,7 +1878,7 @@ class VideoRemixer(TabBase):
 
         # user will expect to return to the processing tab on reopening
         self.log("saving project after compiling scenes")
-        self.state.save_progress("process")
+        self.save_progress("process")
 
         return gr.update(selected=self.TAB_PROC_REMIX),  \
                format_markdown(self.TAB4_DEFAULT_MESSAGE), \
@@ -1939,7 +1960,7 @@ class VideoRemixer(TabBase):
 
         # user will expect to return to the save remix tab on reopening
         self.log("saving project after completing processing steps")
-        self.state.save_progress("save")
+        self.save_progress("save")
 
         return gr.update(selected=self.TAB_SAVE_REMIX), \
                 format_markdown(self.TAB5_DEFAULT_MESSAGE), \
@@ -2780,6 +2801,10 @@ class VideoRemixer(TabBase):
             self.state.recover_project(global_options=global_options,
                                     remixer_settings=self.config.remixer_settings,
                                     log_fn=self.log)
+
+            # user will expect to return to scene chooser on reopening
+            self.save_progress("choose")
+
             message = f"Project recovered"
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                 format_markdown(message), \
@@ -2794,11 +2819,10 @@ class VideoRemixer(TabBase):
             purge_root = self.state.purge_processed_content()
 
             # user will expect to return to the processing tab on reopening
-            self.state.save_progress("process")
+            self.save_progress("process")
             self.state.processed_content_invalid = True
             self.log("saving project after compiling scenes")
 
-            self.state.progress = self.state.PROGRESS_STEPS
             if purge_root:
                 message = format_markdown(
                     f"Processed content purged, and project file backed up, to {purge_root}")
