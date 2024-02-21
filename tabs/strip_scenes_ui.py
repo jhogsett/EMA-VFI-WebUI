@@ -39,6 +39,7 @@ class StripScenes(TabBase):
 
         strip_scenes.click(self.strip_scenes, inputs=[input_path, action])
 
+    # TODO move non-UI logic
     def strip_scenes(self,
                         input_path : str,
                         action : str):

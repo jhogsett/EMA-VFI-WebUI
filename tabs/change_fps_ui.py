@@ -131,6 +131,7 @@ class ChangeFPS(TabBase):
                                         fill_with_dupes)
                     Mtqdm().update_bar(bar)
 
+    # TODO move non-UI logic
     def convert_fc(self,
                     input_path : str,
                     output_path : str,

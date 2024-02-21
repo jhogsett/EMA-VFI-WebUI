@@ -17,6 +17,8 @@ from interpolate_series import InterpolateSeries
 from resequence_files import ResequenceFiles
 from tabs.tab_base import TabBase
 
+# TODO support two-pass-first-pass-only
+
 class ResynthesizeVideo(TabBase):
     """Encapsulates UI elements and events for the Resynthesize Video feature"""
     def __init__(self,

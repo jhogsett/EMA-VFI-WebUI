@@ -25,7 +25,6 @@ from deep_interpolate import DeepInterpolate
 from interpolate_series import InterpolateSeries
 from resequence_files import ResequenceFiles
 from upscale_series import UpscaleSeries
-from PIL import Image
 
 class VideoRemixerState():
     def __init__(self):
@@ -123,73 +122,26 @@ class VideoRemixerState():
     def reset(self):
         self.__init__()
 
-    UI_SAFETY_DEFAULTS = {
-        "project_fps" : 29.97,
-        "deinterlace" : False,
-        "split_type" : "Scene",
-        "scene_threshold" : 0.6,
-        "break_duration" : 2.0,
-        "break_ratio" : 0.98,
-        "thumbnail_type" : "JPG",
-        "resize" : True,
-        "resynthesize" : True,
-        "inflate" : True,
-        "upscale" : True,
-        "upscale_option" : "2X",
-        "min_frames_per_scene" : 10,
-        "split_time" : 60,
-        "crop_offsets" : -1,
-        "inflate_by_option" : "2X",
-        "inflate_slow_option" : "No",
-        "resynth_option" : "Scrub",
-        "resize_w" : 1920,
-        "resize_h" : 1080,
-        "crop_w" : 1920,
-        "crop_h" : 1080
-    }
-
     # set project settings UI defaults in case the project is reopened
     # otherwise some UI elements get set to None on reopened new projects
-    def set_project_ui_defaults(self, default_fps):
+    def set_project_ui_defaults(self, default_fps, defaults):
         self.project_fps = default_fps
-        self.deinterlace = self.UI_SAFETY_DEFAULTS["deinterlace"]
-        self.split_type = self.UI_SAFETY_DEFAULTS["split_type"]
-        self.scene_threshold = self.UI_SAFETY_DEFAULTS["scene_threshold"]
-        self.break_duration = self.UI_SAFETY_DEFAULTS["break_duration"]
-        self.break_ratio = self.UI_SAFETY_DEFAULTS["break_ratio"]
-        self.thumbnail_type = self.UI_SAFETY_DEFAULTS["thumbnail_type"]
-        self.resize = self.UI_SAFETY_DEFAULTS["resize"]
-        self.resynthesize = self.UI_SAFETY_DEFAULTS["resynthesize"]
-        self.inflate = self.UI_SAFETY_DEFAULTS["inflate"]
-        self.upscale = self.UI_SAFETY_DEFAULTS["upscale"]
-        self.upscale_option = self.UI_SAFETY_DEFAULTS["upscale_option"]
-        self.min_frames_per_scene = self.UI_SAFETY_DEFAULTS["min_frames_per_scene"]
-        self.split_time = self.UI_SAFETY_DEFAULTS["split_time"]
-        self.inflate_by_option = self.UI_SAFETY_DEFAULTS["inflate_by_option"]
-        self.inflate_slow_option = self.UI_SAFETY_DEFAULTS["inflate_slow_option"]
-        self.resynth_option = self.UI_SAFETY_DEFAULTS["resynth_option"]
-
-    # how far progressed into project and the tab ID to return to on re-opening
-    PROGRESS_STEPS = {
-        "home" : 1,
-        "settings" : 1,
-        "setup" : 2,
-        "choose" : 3,
-        "compile" : 4,
-        "process" : 5,
-        "save" : 6
-    }
-
-    def save_progress(self, progress : str, save_project : bool=True):
-        self.progress = progress
-        if save_project:
-            self.save()
-
-    def get_progress_tab(self) -> int:
-        try:
-            return self.PROGRESS_STEPS[self.progress]
-        except:
-            return self.PROGRESS_STEPS["home"]
+        self.deinterlace = defaults["deinterlace"]
+        self.split_type = defaults["split_type"]
+        self.scene_threshold = defaults["scene_threshold"]
+        self.break_duration = defaults["break_duration"]
+        self.break_ratio = defaults["break_ratio"]
+        self.thumbnail_type = defaults["thumbnail_type"]
+        self.resize = defaults["resize"]
+        self.resynthesize = defaults["resynthesize"]
+        self.inflate = defaults["inflate"]
+        self.upscale = defaults["upscale"]
+        self.upscale_option = defaults["upscale_option"]
+        self.min_frames_per_scene = defaults["min_frames_per_scene"]
+        self.split_time = defaults["split_time"]
+        self.inflate_by_option = defaults["inflate_by_option"]
+        self.inflate_slow_option = defaults["inflate_slow_option"]
+        self.resynth_option = defaults["resynth_option"]
 
     DEF_FILENAME = "project.yaml"
 
@@ -267,9 +219,6 @@ class VideoRemixerState():
             raise ValueError(f"Project file {project_file} was not found")
         return project_file
 
-    def calc_split_frames(self, fps, seconds):
-        return round(float(fps) * float(seconds))
-
     def _project_settings_report_scene(self):
         header_row = [
             "Frame Rate",
@@ -320,7 +269,7 @@ class VideoRemixerState():
             "Split Type",
             "Split Time",
             "Split Frames"]
-        self.split_frames = self.calc_split_frames(self.project_fps, self.split_time)
+        self.split_frames = self._calc_split_frames(self.project_fps, self.split_time)
         data_rows = [[
             f"{float(self.project_fps):.2f}",
             SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
@@ -361,8 +310,11 @@ class VideoRemixerState():
             header_row, data_rows = self._project_settings_report_none()
         return format_table(header_row, data_rows, color="more", title=title)
 
+    def _calc_split_frames(self, fps, seconds):
+        return round(float(fps) * float(seconds))
+
     # keep project's own copy of original video
-    # it will be needed later to cut thumbnails and audio clips
+    # it will be needed later if restarting the project
     def save_original_video(self, prevent_overwrite=True):
         _, filename, ext = split_filepath(self.source_video)
         video_filename = filename + ext
@@ -381,6 +333,8 @@ class VideoRemixerState():
             self.source_video = project_video_path
             Mtqdm().update_bar(bar)
 
+    # make a .mp4 container copy of original video if it's not already .mp4
+    # this will be needed later to cut audio wav files
     # this is expected to be called after save_original_video()
     def create_source_audio(self, crf, global_options, prevent_overwrite=True, skip_mp4=True):
         _, filename, ext = split_filepath(self.source_video)
@@ -401,7 +355,6 @@ class VideoRemixerState():
         with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
             Mtqdm().message(bar, "Creating source audio locally - no ETA")
             SourceToMP4(self.source_video, self.source_audio, crf, global_options=global_options)
-            self.source_audio = self.source_audio
             Mtqdm().update_bar(bar)
 
     def copy_project_file(self, copy_path):
@@ -416,7 +369,6 @@ class VideoRemixerState():
     # when advancing forward from the Set Up Project step
     # the user may be redoing the project from this step
     # need to purge anything created based on old settings
-    # TODO make purging on backing up smarter
     def reset_at_project_settings(self):
         purge_path = self.purge_paths([
             self.scenes_path,
@@ -1898,8 +1850,12 @@ class VideoRemixerState():
             elif self.resynth_option == "Replace":
                 label += "R"
         if self.inflate_chosen():
-            # TODO if inflation is enabled via processing hint, this may be inaccurate
-            label += "-in" + self.inflate_by_option[0]
+            if self.inflate:
+                # enabled overall in the project
+                label += "-in" + self.inflate_by_option[0]
+            else:
+                # enabled via a processing hint
+                label += "-inH"
             if self.inflate_slow_option == "Audio":
                 label += "SA"
             elif self.inflate_slow_option == "Silent":
@@ -1956,7 +1912,6 @@ class VideoRemixerState():
     # find scenes that are empty now after processing and should be automatically dropped
     # this can happen when resynthesis and/or inflation are used on scenes with only a few frames
     def drop_empty_processed_scenes(self, kept_scenes):
-        # TODO might need to better manage the flow of content between processing steps
         if self.upscale:
             scenes_base_path = self.upscale_path
         elif self.inflate_chosen():
@@ -2254,7 +2209,6 @@ class VideoRemixerState():
         # save the project now to preserve the newly established path
         self.save()
 
-        # TODO might need to better manage the flow of content between processing steps
         if self.upscale:
             scenes_base_path = self.upscale_path
         elif self.inflate_chosen():
@@ -2478,7 +2432,7 @@ class VideoRemixerState():
                     f" but has {path_file_count}. The files are being ignored (safe to delete).")
             return path, [], messages.report()
 
-        # TODO further possible checks: files have bytes,
+        # IDEA further possible checks: files have bytes,
         # files are found to be the right binary type, etc
 
         return path, files, messages.report()
@@ -2618,10 +2572,6 @@ class VideoRemixerState():
         log_fn(f"creating clips directory {self.clips_path}")
         create_directory(self.clips_path)
 
-        # user will expect to return to scene chooser on reopening
-        log_fn("saving project after recovery process")
-        self.save_progress("choose")
-
     def export_project(self, log_fn, new_project_path, new_project_name, kept_scenes):
         new_project_name = new_project_name.strip()
         full_new_project_path = os.path.join(new_project_path, new_project_name)
@@ -2714,7 +2664,7 @@ class VideoRemixerState():
                 if state.split_type == "Minute":
                     state.split_type = "Time"
                     state.split_time = 60
-                    state.split_frames = state.calc_split_frames(state.project_fps, state.split_time)
+                    state.split_frames = state._calc_split_frames(state.project_fps, state.split_time)
                 # new attribute
                 state.processed_content_invalid = False
                 # new separate audio source

@@ -37,9 +37,35 @@ class VideoRemixer(TabBase):
 
     def new_project(self):
         self.state = VideoRemixerState()
-        self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"])
+        self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"],
+                                           self.UI_SAFETY_DEFAULTS)
         self.state.invalidate_split_scene_cache()
         self.unmark_scene()
+
+    UI_SAFETY_DEFAULTS = {
+        "project_fps" : 29.97,
+        "deinterlace" : False,
+        "split_type" : "Scene",
+        "scene_threshold" : 0.6,
+        "break_duration" : 2.0,
+        "break_ratio" : 0.98,
+        "thumbnail_type" : "JPG",
+        "resize" : True,
+        "resynthesize" : True,
+        "inflate" : True,
+        "upscale" : True,
+        "upscale_option" : "2X",
+        "min_frames_per_scene" : 10,
+        "split_time" : 60,
+        "crop_offsets" : -1,
+        "inflate_by_option" : "2X",
+        "inflate_slow_option" : "No",
+        "resynth_option" : "Scrub",
+        "resize_w" : 1920,
+        "resize_h" : 1080,
+        "crop_w" : 1920,
+        "crop_h" : 1080
+    }
 
     TAB_REMIX_HOME = 0
     TAB_REMIX_SETTINGS = 1
@@ -1194,6 +1220,28 @@ class VideoRemixer(TabBase):
 
         purge_button715.click(self.purge_button715, outputs=[tabs_video_remixer, message_box715])
 
+    # how far progressed into project and the tab ID to return to on re-opening
+    PROGRESS_STEPS = {
+        "home" : TAB_REMIX_SETTINGS,
+        "settings" : TAB_REMIX_SETTINGS,
+        "setup" : TAB_SET_UP_PROJECT,
+        "choose" : TAB_CHOOSE_SCENES,
+        "compile" : TAB_COMPILE_SCENES,
+        "process" : TAB_PROC_REMIX,
+        "save" : TAB_REMIX_EXTRA
+    }
+
+    def save_progress(self, progress : str, save_project : bool=True):
+        self.state.progress = progress
+        if save_project:
+            self.state.save()
+
+    def get_progress_tab(self) -> int:
+        try:
+            return self.PROGRESS_STEPS[self.state.progress]
+        except:
+            return self.PROGRESS_STEPS["home"]
+
     ### REMIX HOME EVENT HANDLERS
 
     # User has clicked New Project > from Remix Home
@@ -1219,7 +1267,7 @@ class VideoRemixer(TabBase):
                    *empty_args
 
         # don't save yet, user may change project path next
-        self.state.save_progress("settings", save_project=False)
+        self.save_progress("settings", save_project=False)
 
         return gr.update(selected=self.TAB_REMIX_SETTINGS), \
             format_markdown(self.TAB00_DEFAULT_MESSAGE), \
@@ -1286,33 +1334,33 @@ class VideoRemixer(TabBase):
             self.state.tryattr("video_info1"), \
             self.state.tryattr("project_path"), \
             self.state.tryattr("project_fps", self.config.remixer_settings["def_project_fps"]), \
-            self.state.tryattr("deinterlace", self.state.UI_SAFETY_DEFAULTS["deinterlace"]), \
-            self.state.tryattr("split_type", self.state.UI_SAFETY_DEFAULTS["split_type"]), \
-            self.state.tryattr("split_time", self.state.UI_SAFETY_DEFAULTS["split_time"]), \
+            self.state.tryattr("deinterlace", self.UI_SAFETY_DEFAULTS["deinterlace"]), \
+            self.state.tryattr("split_type", self.UI_SAFETY_DEFAULTS["split_type"]), \
+            self.state.tryattr("split_time", self.UI_SAFETY_DEFAULTS["split_time"]), \
             self.state.tryattr("scene_threshold", \
-                               self.state.UI_SAFETY_DEFAULTS["scene_threshold"]), \
-            self.state.tryattr("break_duration", self.state.UI_SAFETY_DEFAULTS["break_duration"]), \
-            self.state.tryattr("break_ratio", self.state.UI_SAFETY_DEFAULTS["break_ratio"]), \
+                               self.UI_SAFETY_DEFAULTS["scene_threshold"]), \
+            self.state.tryattr("break_duration", self.UI_SAFETY_DEFAULTS["break_duration"]), \
+            self.state.tryattr("break_ratio", self.UI_SAFETY_DEFAULTS["break_ratio"]), \
             self.state.tryattr("resize_w"), \
             self.state.tryattr("resize_h"), \
             self.state.tryattr("crop_w"), \
             self.state.tryattr("crop_h"), \
-            self.state.tryattr("crop_offset_x", self.state.UI_SAFETY_DEFAULTS["crop_offsets"]), \
-            self.state.tryattr("crop_offset_y", self.state.UI_SAFETY_DEFAULTS["crop_offsets"]), \
+            self.state.tryattr("crop_offset_x", self.UI_SAFETY_DEFAULTS["crop_offsets"]), \
+            self.state.tryattr("crop_offset_y", self.UI_SAFETY_DEFAULTS["crop_offsets"]), \
             self.state.tryattr("project_info2"), \
-            self.state.tryattr("thumbnail_type", self.state.UI_SAFETY_DEFAULTS["thumbnail_type"]), \
+            self.state.tryattr("thumbnail_type", self.UI_SAFETY_DEFAULTS["thumbnail_type"]), \
             self.state.tryattr("min_frames_per_scene", \
-                               self.state.UI_SAFETY_DEFAULTS["min_frames_per_scene"]), \
+                               self.UI_SAFETY_DEFAULTS["min_frames_per_scene"]), \
             *scene_details, \
             self.state.tryattr("project_info4"), \
-            self.state.tryattr("resize", self.state.UI_SAFETY_DEFAULTS["resize"]), \
-            self.state.tryattr("resynthesize", self.state.UI_SAFETY_DEFAULTS["resynthesize"]), \
-            self.state.tryattr("resynth_option", self.state.UI_SAFETY_DEFAULTS["resynth_option"]), \
-            self.state.tryattr("inflate", self.state.UI_SAFETY_DEFAULTS["inflate"]), \
-            self.state.tryattr("inflate_by_option", self.state.UI_SAFETY_DEFAULTS["inflate_by_option"]), \
-            self.state.tryattr("inflate_slow_option", self.state.UI_SAFETY_DEFAULTS["inflate_slow_option"]), \
-            self.state.tryattr("upscale", self.state.UI_SAFETY_DEFAULTS["upscale"]), \
-            self.state.tryattr("upscale_option", self.state.UI_SAFETY_DEFAULTS["upscale_option"]), \
+            self.state.tryattr("resize", self.UI_SAFETY_DEFAULTS["resize"]), \
+            self.state.tryattr("resynthesize", self.UI_SAFETY_DEFAULTS["resynthesize"]), \
+            self.state.tryattr("resynth_option", self.UI_SAFETY_DEFAULTS["resynth_option"]), \
+            self.state.tryattr("inflate", self.UI_SAFETY_DEFAULTS["inflate"]), \
+            self.state.tryattr("inflate_by_option", self.UI_SAFETY_DEFAULTS["inflate_by_option"]), \
+            self.state.tryattr("inflate_slow_option", self.UI_SAFETY_DEFAULTS["inflate_slow_option"]), \
+            self.state.tryattr("upscale", self.UI_SAFETY_DEFAULTS["upscale"]), \
+            self.state.tryattr("upscale_option", self.UI_SAFETY_DEFAULTS["upscale_option"]), \
             self.state.tryattr("summary_info6"), \
             self.state.tryattr("output_filepath")
 
@@ -1379,7 +1427,7 @@ class VideoRemixer(TabBase):
             # this is the first time project progress advances
             # user will expect to return to the setup tab on reopening
             self.log(f"saving new project at {self.state.project_filepath()}")
-            self.state.save_progress("setup")
+            self.save_progress("setup")
 
             Session().set("last-video-remixer-project", project_path)
 
@@ -1434,18 +1482,18 @@ class VideoRemixer(TabBase):
             else:
                 return \
                     self.config.remixer_settings["def_project_fps"], \
-                    self.state.UI_SAFETY_DEFAULTS["split_type"], \
-                    self.state.UI_SAFETY_DEFAULTS["scene_threshold"], \
-                    self.state.UI_SAFETY_DEFAULTS["break_duration"], \
-                    self.state.UI_SAFETY_DEFAULTS["break_ratio"], \
-                    self.state.UI_SAFETY_DEFAULTS["resize_w"], \
-                    self.state.UI_SAFETY_DEFAULTS["resize_h"], \
-                    self.state.UI_SAFETY_DEFAULTS["crop_w"], \
-                    self.state.UI_SAFETY_DEFAULTS["crop_h"], \
-                    self.state.UI_SAFETY_DEFAULTS["crop_offsets"], \
-                    self.state.UI_SAFETY_DEFAULTS["crop_offsets"], \
-                    self.state.UI_SAFETY_DEFAULTS["deinterlace"], \
-                    self.state.UI_SAFETY_DEFAULTS["split_time"]
+                    self.UI_SAFETY_DEFAULTS["split_type"], \
+                    self.UI_SAFETY_DEFAULTS["scene_threshold"], \
+                    self.UI_SAFETY_DEFAULTS["break_duration"], \
+                    self.UI_SAFETY_DEFAULTS["break_ratio"], \
+                    self.UI_SAFETY_DEFAULTS["resize_w"], \
+                    self.UI_SAFETY_DEFAULTS["resize_h"], \
+                    self.UI_SAFETY_DEFAULTS["crop_w"], \
+                    self.UI_SAFETY_DEFAULTS["crop_h"], \
+                    self.UI_SAFETY_DEFAULTS["crop_offsets"], \
+                    self.UI_SAFETY_DEFAULTS["crop_offsets"], \
+                    self.UI_SAFETY_DEFAULTS["deinterlace"], \
+                    self.UI_SAFETY_DEFAULTS["split_time"]
 
     ### SET UP PROJECT EVENT HANDLERS
 
@@ -1482,7 +1530,6 @@ class VideoRemixer(TabBase):
                 self.state.create_source_audio(
                     source_audio_crf, global_options, prevent_overwrite=True)
             except ValueError as error:
-                # ignore, don't create the file a second time if the user is restarting here
                 self.log(f"ignoring: {error}")
 
             self.log("saving project after creating audio source")
@@ -1571,14 +1618,13 @@ class VideoRemixer(TabBase):
         # clear cache to avoid display problems with cached thumbnails
         self.state.invalidate_split_scene_cache()
 
-        # TODO this is fine as part of project setup but does it belong here?
         self.state.clips_path = os.path.join(self.state.project_path, "CLIPS")
         self.log(f"creating clips directory {self.state.clips_path}")
         create_directory(self.state.clips_path)
 
         # user will expect to return to scene chooser on reopening
         self.log("saving project after setting up scene selection states")
-        self.state.save_progress("choose")
+        self.save_progress("choose")
 
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                format_markdown(self.TAB2_DEFAULT_MESSAGE), \
@@ -1806,7 +1852,7 @@ class VideoRemixer(TabBase):
 
         # user will expect to return to the compilation tab on reopening
         self.log("saving project after displaying scene choices")
-        self.state.save_progress("compile")
+        self.save_progress("compile")
 
         return gr.update(selected=self.TAB_COMPILE_SCENES), self.state.project_info4
 
@@ -1832,7 +1878,7 @@ class VideoRemixer(TabBase):
 
         # user will expect to return to the processing tab on reopening
         self.log("saving project after compiling scenes")
-        self.state.save_progress("process")
+        self.save_progress("process")
 
         return gr.update(selected=self.TAB_PROC_REMIX),  \
                format_markdown(self.TAB4_DEFAULT_MESSAGE), \
@@ -1914,7 +1960,7 @@ class VideoRemixer(TabBase):
 
         # user will expect to return to the save remix tab on reopening
         self.log("saving project after completing processing steps")
-        self.state.save_progress("save")
+        self.save_progress("save")
 
         return gr.update(selected=self.TAB_SAVE_REMIX), \
                 format_markdown(self.TAB5_DEFAULT_MESSAGE), \
@@ -1974,7 +2020,6 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return format_markdown(str(error), "error")
 
-    # TODO move
     def next_button62(self, marked_video_options, marked_audio_options, output_filepath):
         if not self.state.project_path:
             return format_markdown(
@@ -2017,7 +2062,6 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return format_markdown(str(error), "error")
 
-    # TODO move
     def next_button63(self,
                       label_text,
                       label_font_size,
@@ -2757,6 +2801,10 @@ class VideoRemixer(TabBase):
             self.state.recover_project(global_options=global_options,
                                     remixer_settings=self.config.remixer_settings,
                                     log_fn=self.log)
+
+            # user will expect to return to scene chooser on reopening
+            self.save_progress("choose")
+
             message = f"Project recovered"
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                 format_markdown(message), \
@@ -2771,11 +2819,10 @@ class VideoRemixer(TabBase):
             purge_root = self.state.purge_processed_content()
 
             # user will expect to return to the processing tab on reopening
-            self.state.save_progress("process")
+            self.save_progress("process")
             self.state.processed_content_invalid = True
             self.log("saving project after compiling scenes")
 
-            self.state.progress = self.state.PROGRESS_STEPS
             if purge_root:
                 message = format_markdown(
                     f"Processed content purged, and project file backed up, to {purge_root}")
