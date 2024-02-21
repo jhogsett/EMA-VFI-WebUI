@@ -4,7 +4,7 @@ extension-pkg-whitelist=cv2
 
 [TYPECHECK]
 
-generated-members=numpy.* ,torch.*, cv2.*
+generated-members=numpy.* ,torch.*, cv2.*, gradio.*
 
 [MESSAGES CONTROL]
 

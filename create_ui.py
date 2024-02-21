@@ -55,7 +55,7 @@ def create_ui(config : SimpleConfig,
 
     app_header = gr.HTML(SimpleIcons.APP_SYMBOL + "EMA-VFI Web UI", elem_id="appheading")
     sep = '  •  '
-    footer = (SimpleIcons.COPYRIGHT + ' 2023 J. Hogsett' +
+    footer = (SimpleIcons.COPYRIGHT + ' 2024 J. Hogsett' +
         sep + '<a href="https://github.com/jhogsett/EMA-VFI-WebUI">Github</a>' +
         sep + '<a href="https://github.com/MCG-NJU/EMA-VFI">EMA-VFI</a>' +
         sep + '<a href="https://gradio.app">Gradio</a>')
