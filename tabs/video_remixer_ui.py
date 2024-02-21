@@ -1238,7 +1238,7 @@ class VideoRemixer(TabBase):
 
     def get_progress_tab(self) -> int:
         try:
-            return self.PROGRESS_STEPS[self.progress]
+            return self.PROGRESS_STEPS[self.state.progress]
         except:
             return self.PROGRESS_STEPS["home"]
 
