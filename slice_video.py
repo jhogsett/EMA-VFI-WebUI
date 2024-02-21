@@ -143,7 +143,7 @@ class SliceVideo:
             return message
 
     # slice from a pre-grouped set of frame files
-    def _slice_frame_group(self, group_name, slice_name):
+    def _slice_frame_group(self, group_name, slice_name, type : str="png"):
         first_index, last_index, num_width = details_from_group_name(group_name)
         output_path = self.output_path or os.path.join(self.group_path, group_name)
 
@@ -163,7 +163,7 @@ class SliceVideo:
             last_index = first_index + 1
 
         frames_source = os.path.join(self.group_path, group_name)
-        pattern = determine_input_pattern(frames_source)
+        pattern = determine_input_pattern(frames_source, type)
         frames_path = os.path.join(frames_source, pattern)
         self.log(f"slicing from frames path {frames_path}")
 
@@ -228,7 +228,7 @@ class SliceVideo:
             Mtqdm().update_bar(bar)
         return errors
 
-    def slice_frame_group(self, group_name, ignore_errors=False, slice_name=""):
+    def slice_frame_group(self, group_name, ignore_errors=False, slice_name="", type : str="png"):
         validate_input_path(self.group_path, -1)
         if self.output_path:
             self.log(f"Creating output path {self.output_path}")
@@ -237,7 +237,7 @@ class SliceVideo:
         pbar_desc = f"Slice {self.type}"
         errors = []
         with Mtqdm().open_bar(total=1, desc=pbar_desc) as bar:
-            error = self._slice_frame_group(group_name, slice_name=slice_name)
+            error = self._slice_frame_group(group_name, slice_name=slice_name, type=type)
             if error:
                 errors.append({group_name : error})
                 if not ignore_errors:

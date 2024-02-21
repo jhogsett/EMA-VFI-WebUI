@@ -232,18 +232,18 @@ def create_zip(files : list, filepath : str):
     else:
         raise ValueError("'files' must be a list")
 
-def locate_frame_file(png_files_path : str, frame_number : int | float) -> str | None:
+def locate_frame_file(frame_files_path : str, frame_number : int | float, type : str="png") -> str | None:
     """Given a path and index, return the file found at that sorted position"""
-    if not isinstance(png_files_path, str):
-        raise ValueError("'png_files_path' must be a string")
-    if not is_safe_path(png_files_path):
-        raise ValueError("'png_files_path' must be a legal path")
+    if not isinstance(frame_files_path, str):
+        raise ValueError("'frame_files_path' must be a string")
+    if not is_safe_path(frame_files_path):
+        raise ValueError("'frame_files_path' must be a legal path")
     if not isinstance(frame_number, (int, float)):
         raise ValueError("'frame_number' must be an int or float")
     frame_number = int(frame_number)
-    files = sorted(get_files(png_files_path, "png"))
+    files = sorted(get_files(frame_files_path, type))
     if 0 <= frame_number < len(files):
-        if os.path.exists(png_files_path):
+        if os.path.exists(frame_files_path):
             return files[frame_number]
     return None
 

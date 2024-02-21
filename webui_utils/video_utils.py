@@ -15,34 +15,35 @@ QUALITY_NEAR_LOSSLESS = 17
 QUALITY_SMALLER_SIZE = 28
 QUALITY_DEFAULT = 23
 
-def determine_input_pattern(png_files_path : str) -> str:
-    """Determine the FFmpeg wildcard pattern needed to read a set of PNG files"""
-    files = sorted(glob.glob(os.path.join(png_files_path, "*.png")))
+def determine_input_pattern(files_path : str, type : str="png") -> str:
+    """Determine the FFmpeg wildcard pattern needed to read a set of image files"""
+    files = sorted(glob.glob(os.path.join(files_path, f"*.{type}")))
     first_file = files[0]
     file_count = len(files)
     num_width = len(str(file_count))
     _, name_part, ext_part = split_filepath(first_file)
     return f"{name_part[:-num_width]}%0{num_width}d{ext_part}"
 
-def determine_output_pattern(mp4_file_path : str) -> str:
+def determine_output_pattern(mp4_file_path : str, type : str="png") -> str:
     """Determine the FFmpeg wildcard pattern needed to write a set of PNG files"""
     frame_count = get_frame_count(mp4_file_path)
     num_width = len(str(frame_count))
     _, filename, _ = split_filepath(mp4_file_path)
-    return f"{filename}%0{num_width}d.png"
+    return f"{filename}%0{num_width}.{type}"
 
 def PNGtoMP4(input_path : str, # pylint: disable=invalid-name
             filename_pattern : str,
             frame_rate : float,
             output_filepath : str,
             crf : int=QUALITY_DEFAULT,
-            global_options : str=""):
+            global_options : str="",
+            type : str="png"):
     """Encapsulate logic for the PNG Sequence to MP4 feature"""
     # if filename_pattern is empty it uses the filename of the first found file
     # and the count of file to determine the pattern, .png as the file type
     # ffmpeg -framerate 60 -i .\upscaled_frames%05d.png -c:v libx264 -r 60  -pix_fmt yuv420p
     #   -crf 28 test.mp4
-    pattern = filename_pattern or determine_input_pattern(input_path)
+    pattern = filename_pattern or determine_input_pattern(input_path, type)
     ffcmd = FFmpeg(
         inputs= {os.path.join(input_path, pattern) : f"-framerate {frame_rate}"},
         outputs={output_filepath : f"-r {frame_rate} -pix_fmt yuv420p -c:v libx264 -crf {crf}"},
@@ -56,8 +57,9 @@ def PNGtoCustom(input_path : str, # pylint: disable=invalid-name
                 frame_rate : float,
                 output_filepath : str,
                 global_options : str="",
-                custom_options : str=""):
-    pattern = filename_pattern or determine_input_pattern(input_path)
+                custom_options : str="",
+                type : str="png"):
+    pattern = filename_pattern or determine_input_pattern(input_path, type)
     ffcmd = FFmpeg(
         inputs= {os.path.join(input_path, pattern) : f"-framerate {frame_rate}"},
         outputs={output_filepath : f"-r {frame_rate} -pix_fmt yuv420p {custom_options}"},
@@ -74,17 +76,20 @@ def MP4toPNG(input_path : str,  # pylint: disable=invalid-name
             output_path : str,
             start_number : int = 0,
             deinterlace : bool = False,
-            global_options : str = ""):
+            global_options : str = "",
+            type : str="png"):
     """Encapsulate logic for the MP4 to PNG Sequence feature"""
-    pattern = filename_pattern or determine_output_pattern(input_path)
+    pattern = filename_pattern or determine_output_pattern(input_path, type)
     if deinterlace:
         filter = f"bwdif=mode=send_field:parity=auto:deint=all,fps={frame_rate}"
     else:
         filter = f"fps={frame_rate}"
 
+    quality = "-q:v 2" if type == "jpg" else ""
+
     ffcmd = FFmpeg(inputs= {input_path : None},
         outputs={os.path.join(output_path, pattern) :
-            f"-filter:v {filter} -start_number {start_number}"},
+            f"-filter:v {filter} -start_number {start_number} {quality}"},
         global_options="-y " + global_options)
     cmd = ffcmd.cmd
     ffcmd.run()
@@ -98,10 +103,11 @@ def MP4toPNG(input_path : str,  # pylint: disable=invalid-name
 def PNGtoPalette(input_path : str, # pylint: disable=invalid-name
                 filename_pattern : str,
                 output_filepath : str,
-                global_options : str=""):
+                global_options : str="",
+                type : str="png"):
     """Create a palette from a set of PNG files to feed into animated GIF creation"""
     if filename_pattern == "auto":
-        filename_pattern = determine_input_pattern(input_path)
+        filename_pattern = determine_input_pattern(input_path, type)
     ffcmd = FFmpeg(inputs= {os.path.join(input_path, filename_pattern) : None},
                 outputs={output_filepath : "-vf palettegen"},
                 global_options="-y " + global_options)
@@ -113,16 +119,18 @@ def PNGtoGIF(input_path : str, # pylint: disable=invalid-name
             filename_pattern : str,
             output_filepath : str,
             frame_rate : float,
-            global_options : str=""):
+            global_options : str="",
+            type : str="jpg"):
     """Encapsulates logic for the PNG sequence to GIF feature"""
     # if filename_pattern is empty it uses the filename of the first found file
     # and the count of file to determine the pattern, .png as the file type
     # ffmpeg -i gifframes_%02d.png -i palette.png -lavfi paletteuse video.gif
     # ffmpeg -framerate 3 -i image%01d.png video.gif
-    pattern = filename_pattern or determine_input_pattern(input_path)
+    pattern = filename_pattern or determine_input_pattern(input_path, type)
     output_path, base_filename, _ = split_filepath(output_filepath)
     palette_filepath = os.path.join(output_path, base_filename + "-palette.png")
-    palette_cmd = PNGtoPalette(input_path, pattern, palette_filepath, global_options=global_options)
+    palette_cmd = PNGtoPalette(input_path, pattern, palette_filepath, global_options=global_options,
+                               type=type)
 
     ffcmd = FFmpeg(inputs= {
             os.path.join(input_path, pattern) : f"-framerate {frame_rate}",
@@ -136,7 +144,8 @@ def PNGtoGIF(input_path : str, # pylint: disable=invalid-name
 def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
             output_path : str,
             start_number : int = 0,
-            global_options : str = ""):
+            global_options : str = "",
+            type : str="png"):
     """Encapsulates logic for the GIF to PNG Sequence feature"""
     # ffmpeg -y -i images\example.gif -start_number 0 gifframes_%09d.png
     _, base_filename, extension = split_filepath(input_path)
@@ -150,7 +159,7 @@ def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
         frame_count = 1_000_000
 
     num_width = len(str(frame_count))
-    filename_pattern = f"{base_filename}%0{num_width}d.png"
+    filename_pattern = f"{base_filename}%0{num_width}d{type}"
     ffcmd = FFmpeg(inputs= {input_path : None},
         outputs={os.path.join(output_path, filename_pattern) : f"-start_number {start_number}"},
         global_options="-y " + global_options)
@@ -161,12 +170,13 @@ def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
 def deduplicate_frames(input_path : str,
                       output_path : str,
                       threshold : int,
-                      global_options : str = ""):
+                      global_options : str = "",
+                      type : str="jpg"):
     """Encapsulate logic for detecting and removing duplicate frames"""
     # ffmpeg -i "C:\CONTENT\ODDS\odds%04d.png"
     # -vf mpdecimate=hi=2047:lo=2047:frac=1:max=0,setpts=N/FRAME_RATE/TB
     # -start_number 0 "C:\CONTENT\TEST\odds%04d.png"
-    filename_pattern = determine_input_pattern(input_path)
+    filename_pattern = determine_input_pattern(input_path, type)
     input_sequence = os.path.join(input_path, filename_pattern)
     output_sequence = os.path.join(output_path, filename_pattern)
     filter = f"mpdecimate=hi={threshold}:lo={threshold}:frac=1:max=0,setpts=N/FRAME_RATE/TB"
@@ -326,7 +336,8 @@ def rate_adjusted_count(source_count : int, source_rate : float, new_rate : floa
     index_width = max(adjusted_index_width, source_index_width)
     return adjusted_count, index_width
 
-def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group : int):
+def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group : int,
+                         type : str="png"):
     """Use FFmpeg to get a list of duplicate frames without making changes
         - input_path: path to PNG frame files
         - threshold: passed to FFmpeg as 'hi' and 'lo' mpdecimate value
@@ -345,7 +356,7 @@ def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group 
     if max_dupes_per_group < 0:
         max_dupes_per_group = 0
 
-    filename_pattern = determine_input_pattern(input_path)
+    filename_pattern = determine_input_pattern(input_path, type)
     input_sequence = os.path.join(input_path, filename_pattern)
     output_sequence = "-"
     filter = f"mpdecimate=hi={threshold}:lo={threshold}:frac=1:max=0"
@@ -363,7 +374,7 @@ def get_duplicate_frames(input_path : str, threshold : int, max_dupes_per_group 
     for index, line in enumerate(keep_drop_lines):
         is_dupe_map[index] = " drop " in line
 
-    filenames = sorted(glob.glob(os.path.join(input_path, "*.png")))
+    filenames = sorted(glob.glob(os.path.join(input_path, f"*.{type}")))
     if len(filenames) != len(keep_drop_lines):
         raise ValueError(
     f"frame count mismatch FFmpeg ({len(keep_drop_lines)}) vs found files ({len(filenames)})")
@@ -461,7 +472,7 @@ def get_duplicate_frames_report(input_path : str,
             report.append(f"Frame#{key} : {entry[key]}")
     return "\r\n".join(report)
 
-def get_detected_scenes(input_path : str, threshold : float=0.5):
+def get_detected_scenes(input_path : str, threshold : float=0.5, type : str="png"):
     # ffmpeg -framerate 1 -i "G:\CONTENT\HH\TEST\png%05d.png" -filter_complex "select='gt(scene,0.6)',metadata=print:file=-" -f null -
     # frame:0    pts:5152    pts_time:5152
     # lavfi.scene_score=0.973331
@@ -472,7 +483,7 @@ def get_detected_scenes(input_path : str, threshold : float=0.5):
     if threshold < 0.0 or threshold > 1.0:
         raise ValueError(f"'threshold' must between 0.0 and 1.0")
 
-    filename_pattern = determine_input_pattern(input_path)
+    filename_pattern = determine_input_pattern(input_path, type)
     input_sequence = os.path.join(input_path, filename_pattern)
     output_sequence = "-"
     filter = f"select='gt(scene\\,{threshold})',metadata=print:file=-"
@@ -487,7 +498,7 @@ def get_detected_scenes(input_path : str, threshold : float=0.5):
     return [
         int(line.split()[1].split(":")[1]) for line in stdout_lines if line.startswith("frame:")]
 
-def get_detected_breaks(input_path : str, duration : float=0.5, ratio : float=0.98):
+def get_detected_breaks(input_path : str, duration : float=0.5, ratio : float=0.98, type : str="png"):
     # ffmpeg -framerate 1 -i "G:\CONTENT\HH\TEST\png%05d.png" -filter_complex "blackdetect=d=0.5,metadata=print:file=bldet.txt" -f null -
     # frame:5106 pts:5106    pts_time:5106
     # lavfi.black_start=5106
@@ -504,7 +515,7 @@ def get_detected_breaks(input_path : str, duration : float=0.5, ratio : float=0.
     if ratio < 0.0 or ratio > 1.0:
         raise ValueError(f"'ratio' must between 0.0 and 1.0")
 
-    filename_pattern = determine_input_pattern(input_path)
+    filename_pattern = determine_input_pattern(input_path, type)
     input_sequence = os.path.join(input_path, filename_pattern)
     output_sequence = "-"
     filter = f"blackdetect=d={duration}:pic_th={ratio},metadata=print:file=-"

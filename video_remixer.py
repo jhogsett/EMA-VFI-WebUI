@@ -416,7 +416,8 @@ class VideoRemixerState():
                                   frame_rate,
                                   self.frames_path,
                                   deinterlace=self.deinterlace,
-                                  global_options=global_options)
+                                  global_options=global_options,
+                                  type=self.frame_format)
             Mtqdm().update_bar(bar)
         return ffmpeg_cmd
 
@@ -633,7 +634,7 @@ class VideoRemixerState():
                         0.0,
                         log_fn,
                         global_options=global_options).slice_frame_group(scene_name,
-                            slice_name=thumbnail_filename)
+                            slice_name=thumbnail_filename, type=self.frame_format)
 
         elif self.thumbnail_type == "GIF":
             gif_fps = remixer_settings["default_gif_fps"]
@@ -665,7 +666,8 @@ class VideoRemixerState():
                         log_fn,
                         global_options=global_options).slice_frame_group(scene_name,
                                                                     ignore_errors=True,
-                                                                    slice_name=thumbnail_filename)
+                                                                    slice_name=thumbnail_filename,
+                                                                    type=self.frame_format)
         else:
             raise ValueError(f"thumbnail type '{self.thumbnail_type}' is not implemented")
 
@@ -2101,7 +2103,8 @@ class VideoRemixerState():
                                 video_clip_fps,
                                 scene_output_filepath,
                                 crf=self.output_quality,
-                                global_options=global_options)
+                                global_options=global_options,
+                                type=self.frame_format)
                 Mtqdm().update_bar(bar)
 
         self.video_clips = sorted(get_files(self.video_clips_path))
@@ -2299,7 +2302,8 @@ class VideoRemixerState():
                             video_clip_fps,
                             scene_output_filepath,
                             global_options=global_options,
-                            custom_options=use_custom_video_options)
+                            custom_options=use_custom_video_options,
+                            type=self.frame_format)
                 Mtqdm().update_bar(bar)
         self.video_clips = sorted(get_files(self.video_clips_path))
 
