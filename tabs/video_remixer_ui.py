@@ -1231,7 +1231,7 @@ class VideoRemixer(TabBase):
         "choose" : TAB_CHOOSE_SCENES,
         "compile" : TAB_COMPILE_SCENES,
         "process" : TAB_PROC_REMIX,
-        "save" : TAB_REMIX_EXTRA
+        "save" : TAB_SAVE_REMIX
     }
 
     def save_progress(self, progress : str, save_project : bool=True):
