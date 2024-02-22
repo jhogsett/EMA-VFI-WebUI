@@ -491,7 +491,7 @@ class VideoRemixerState():
                     self.split_frames,
                     "copy",
                     False,
-                    log_fn).split(type=self.frame_format)
+                    log_fn).split()
             else:
                 # single split
                 SplitFrames(
@@ -503,7 +503,7 @@ class VideoRemixerState():
                     0,
                     "copy",
                     False,
-                    log_fn).split(type=self.frame_format)
+                    log_fn).split()
             return None
         except ValueError as error:
             return error
