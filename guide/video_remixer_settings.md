@@ -48,5 +48,17 @@
 1. Click _Next_
     - The settings will be confirmed on the next page before any processing starts
 
+## More Options Accordion
+1. Click _More Options_ to access additional project setup options
+    - Click _Reuse Last-Used Settings_, to load the settings from the last created project
+        - Useful when processing a series of similar content such as TV programs
+    - Set _Crop X Offset_ and _Crop Y Offset_, useful for:
+        - Removing letter/pillar boxes
+        - Fixing incorrectly centered content
+        - Isolating part of a scene
+    - Leave _Frame Format_ set to _png_ or choose _jpg_
+        - _jpg_ requires less storage space than _png_
+        - _Tip:_ Use _jpg_ for **_4K_** and higher content
+
 ## Important
 - `ffmpeg.exe` must be available on the system path
