@@ -1567,7 +1567,7 @@ class VideoRemixerState():
                     crop_width=self.crop_w,
                     crop_height=self.crop_h,
                     crop_offset_x=self.crop_offset_x,
-                    crop_offset_y=self.crop_offset_y).resize()
+                    crop_offset_y=self.crop_offset_y).resize(type=self.frame_format)
 
     def resize_scenes(self, log_fn, kept_scenes, remixer_settings):
         scenes_base_path = self.scenes_source_path(self.RESIZE_STEP)
@@ -1591,10 +1591,12 @@ class VideoRemixerState():
                 Mtqdm().update_bar(bar)
 
     # TODO dry up this code with same in resynthesize_video_ui - maybe a specific resynth script
-    def one_pass_resynthesis(self, log_fn, input_path, output_path, output_basename, engine):
+    def one_pass_resynthesis(self, log_fn, input_path, output_path, output_basename,
+                             engine : InterpolateSeries):
         file_list = sorted(get_files(input_path, extension=self.frame_format))
         log_fn(f"beginning series of frame recreations at {output_path}")
-        engine.interpolate_series(file_list, output_path, 1, "interframe", offset=2)
+        engine.interpolate_series(file_list, output_path, 1, "interframe", offset=2,
+                                  type=self.frame_format)
 
         log_fn(f"auto-resequencing recreated frames at {output_path}")
         ResequenceFiles(output_path,
@@ -1606,13 +1608,15 @@ class VideoRemixerState():
                         True, # rename
                         log_fn).resequence()
 
-    def two_pass_resynth_pass(self, log_fn, input_path, output_path, output_basename, engine):
+    def two_pass_resynth_pass(self, log_fn, input_path, output_path, output_basename,
+                              engine : InterpolateSeries):
         file_list = sorted(get_files(input_path, extension=self.frame_format))
 
         inflated_frames = os.path.join(output_path, "inflated_frames")
         log_fn(f"beginning series of interframe recreations at {inflated_frames}")
         create_directory(inflated_frames)
-        engine.interpolate_series(file_list, inflated_frames, 1, "interframe")
+        engine.interpolate_series(file_list, inflated_frames, 1, "interframe",
+                                  type=self.frame_format)
 
         log_fn(f"selecting odd interframes only at {inflated_frames}")
         ResequenceFiles(inflated_frames,
