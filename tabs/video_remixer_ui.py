@@ -208,8 +208,9 @@ class VideoRemixer(TabBase):
                         with gr.Accordion(label="More Options", open=False):
                             reuse_prev_settings = gr.Button(value="Reuse Last-Used Settings", size="sm", scale=0)
                             with gr.Row(variant="compact"):
-                                crop_offset_x = gr.Number(label="Crop X Offset", value=-1, info="-1 to auto-center", container=False)
-                                crop_offset_y = gr.Number(label="Crop Y Offset", value=-1, info="-1 to auto-center", container=False)
+                                crop_offset_x = gr.Number(label="Crop X Offset (-1: center)", value=-1, container=False, scale=1)
+                                crop_offset_y = gr.Number(label="Crop Y Offset (-1: center)", value=-1, container=False, scale=1)
+                                frame_format = gr.Radio(choices=["png", "jpg"], value="png", label="Frame Format", container=False, scale=2)
 
                 message_box1 = gr.Markdown(value=format_markdown(self.TAB1_DEFAULT_MESSAGE))
                 with gr.Row():
@@ -891,7 +892,7 @@ class VideoRemixer(TabBase):
                            outputs=[tabs_video_remixer, message_box01, video_info1, project_path,
                                 project_fps, deinterlace, split_type, split_time, scene_threshold,
                                 break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
-                                crop_offset_x, crop_offset_y, project_info2, thumbnail_type,
+                                crop_offset_x, crop_offset_y, frame_format, project_info2, thumbnail_type,
                                 min_frames_per_scene, scene_index, scene_name, scene_image,
                                 scene_state, scene_info, set_scene_label, project_info4, resize,
                                 resynthesize, resynth_option, inflate, inflate_by_option, inflate_slow_option,
@@ -900,7 +901,7 @@ class VideoRemixer(TabBase):
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold,
                                 break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
-                                crop_offset_x, crop_offset_y, deinterlace, split_time],
+                                crop_offset_x, crop_offset_y, frame_format, deinterlace, split_time],
                            outputs=[tabs_video_remixer, message_box1, project_info2, message_box2,
                                 project_load_path])
 
@@ -909,7 +910,7 @@ class VideoRemixer(TabBase):
         reuse_prev_settings.click(self.reuse_prev_settings,
                                   outputs=[project_fps, split_type, scene_threshold,
                                            break_duration, break_ratio, resize_w, resize_h,
-                                           crop_w, crop_h, crop_offset_x, crop_offset_y,
+                                           crop_w, crop_h, crop_offset_x, crop_offset_y, frame_format,
                                            deinterlace, split_time])
 
         next_button2.click(self.next_button2,
@@ -1285,7 +1286,7 @@ class VideoRemixer(TabBase):
 
     # User has clicked Open Project > from Remix Home
     def next_button01(self, project_path):
-        empty_args = dummy_args(34)
+        empty_args = dummy_args(36)
         if not project_path:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    format_markdown("Enter a path to a Video Remixer project directory on this server to get started", "warning"), \
@@ -1339,8 +1340,7 @@ class VideoRemixer(TabBase):
             self.state.tryattr("deinterlace", self.UI_SAFETY_DEFAULTS["deinterlace"]), \
             self.state.tryattr("split_type", self.UI_SAFETY_DEFAULTS["split_type"]), \
             self.state.tryattr("split_time", self.UI_SAFETY_DEFAULTS["split_time"]), \
-            self.state.tryattr("scene_threshold", \
-                               self.UI_SAFETY_DEFAULTS["scene_threshold"]), \
+            self.state.tryattr("scene_threshold", self.UI_SAFETY_DEFAULTS["scene_threshold"]), \
             self.state.tryattr("break_duration", self.UI_SAFETY_DEFAULTS["break_duration"]), \
             self.state.tryattr("break_ratio", self.UI_SAFETY_DEFAULTS["break_ratio"]), \
             self.state.tryattr("resize_w"), \
@@ -1349,10 +1349,10 @@ class VideoRemixer(TabBase):
             self.state.tryattr("crop_h"), \
             self.state.tryattr("crop_offset_x", self.UI_SAFETY_DEFAULTS["crop_offsets"]), \
             self.state.tryattr("crop_offset_y", self.UI_SAFETY_DEFAULTS["crop_offsets"]), \
+            self.state.tryattr("frame_format", self.UI_SAFETY_DEFAULTS["frame_format"]), \
             self.state.tryattr("project_info2"), \
             self.state.tryattr("thumbnail_type", self.UI_SAFETY_DEFAULTS["thumbnail_type"]), \
-            self.state.tryattr("min_frames_per_scene", \
-                               self.UI_SAFETY_DEFAULTS["min_frames_per_scene"]), \
+            self.state.tryattr("min_frames_per_scene", self.UI_SAFETY_DEFAULTS["min_frames_per_scene"]), \
             *scene_details, \
             self.state.tryattr("project_info4"), \
             self.state.tryattr("resize", self.UI_SAFETY_DEFAULTS["resize"]), \
@@ -1382,6 +1382,7 @@ class VideoRemixer(TabBase):
                      crop_h,
                      crop_offset_x,
                      crop_offset_y,
+                     frame_format,
                      deinterlace,
                      split_time):
         empty_args = dummy_args(3)
@@ -1415,6 +1416,7 @@ class VideoRemixer(TabBase):
             self.state.crop_h = int(crop_h)
             self.state.crop_offset_x = int(crop_offset_x)
             self.state.crop_offset_y = int(crop_offset_y)
+            self.state.frame_format = frame_format
 
             # if redoing this step to save settings and the deinterlace option changed,
             # the source frames will need to be rendered again from the source video
@@ -1446,6 +1448,7 @@ class VideoRemixer(TabBase):
             last_settings["crop_h"] = self.state.crop_h
             last_settings["crop_offset_x"] = self.state.crop_offset_x
             last_settings["crop_offset_y"] = self.state.crop_offset_y
+            last_settings["frame_format"] = self.state.frame_format
             last_settings["deinterlace"] = self.state.deinterlace
             last_settings["split_time"] = self.state.split_time
             Session().set("last-video-remixer-settings", last_settings)
@@ -1479,6 +1482,7 @@ class VideoRemixer(TabBase):
                     last_settings["crop_h"], \
                     last_settings["crop_offset_x"], \
                     last_settings["crop_offset_y"], \
+                    last_settings["frame_format"], \
                     last_settings["deinterlace"], \
                     last_settings["split_time"]
             else:
@@ -1494,6 +1498,7 @@ class VideoRemixer(TabBase):
                     self.UI_SAFETY_DEFAULTS["crop_h"], \
                     self.UI_SAFETY_DEFAULTS["crop_offsets"], \
                     self.UI_SAFETY_DEFAULTS["crop_offsets"], \
+                    self.UI_SAFETY_DEFAULTS["frame_format"], \
                     self.UI_SAFETY_DEFAULTS["deinterlace"], \
                     self.UI_SAFETY_DEFAULTS["split_time"]
 

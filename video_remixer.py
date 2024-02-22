@@ -465,7 +465,7 @@ class VideoRemixerState():
                                 self.scene_threshold,
                                 0.0,
                                 0.0,
-                                log_fn).split()
+                                log_fn).split(type=self.frame_format)
                     Mtqdm().update_bar(bar)
 
             elif self.split_type == "Break":
@@ -478,7 +478,7 @@ class VideoRemixerState():
                                 0.0,
                                 float(self.break_duration),
                                 float(self.break_ratio),
-                                log_fn).split()
+                                log_fn).split(type=self.frame_format)
                     Mtqdm().update_bar(bar)
             elif self.split_type == "Time":
                 # split by seconds
@@ -491,7 +491,7 @@ class VideoRemixerState():
                     self.split_frames,
                     "copy",
                     False,
-                    log_fn).split()
+                    log_fn).split(type=self.frame_format)
             else:
                 # single split
                 SplitFrames(
@@ -503,7 +503,7 @@ class VideoRemixerState():
                     0,
                     "copy",
                     False,
-                    log_fn).split()
+                    log_fn).split(type=self.frame_format)
             return None
         except ValueError as error:
             return error
