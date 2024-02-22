@@ -2022,10 +2022,12 @@ class VideoRemixerState():
         motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate = \
             self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
                                                force_silent)
+
         if audio_slow_motion or silent_slow_motion:
             fps_factor = project_inflation_rate
         else:
             fps_factor = motion_factor
+
         return self.project_fps * fps_factor
 
     def compute_forced_inflation(self, scene_name):
@@ -2125,12 +2127,16 @@ class VideoRemixerState():
         audio_slow_motion = False
         silent_slow_motion = False
         project_inflation_rate = 1
+        audio_slow_motion = force_audio or self.inflate_slow_option == "Audio"
+        silent_slow_motion = force_silent or self.inflate_slow_option == "Silent"
 
         if self.inflate or force_inflation:
             if self.inflate:
-                project_inflation_rate = self.inflation_rate(self.inflate_by_option)
-            forced_inflation_rate = self.inflation_rate(force_inflate_by)
+                # for slow motion, the project FPS should not be increased
+                if not audio_slow_motion and not silent_slow_motion:
+                    project_inflation_rate = self.inflation_rate(self.inflate_by_option)
 
+            forced_inflation_rate = self.inflation_rate(force_inflate_by)
             motion_factor = project_inflation_rate
 
             if forced_inflation_rate != project_inflation_rate:
@@ -2138,12 +2144,6 @@ class VideoRemixerState():
                     motion_factor = forced_inflation_rate
                 else:
                     motion_factor = project_inflation_rate / float(forced_inflation_rate)
-
-            audio_slow_motion = force_audio or self.inflate_slow_option == "Audio"
-            silent_slow_motion = force_silent or self.inflate_slow_option == "Silent"
-
-            if audio_slow_motion and motion_factor == 1:
-                audio_slow_motion = False
 
         return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate
 
@@ -2153,23 +2153,26 @@ class VideoRemixerState():
         motion_factor, audio_slow_motion, silent_slow_motion, _ = \
             self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
                                                force_silent)
+
+        audio_motion_factor = self.inflation_rate(self.inflate_by_option) / motion_factor
+
         if audio_slow_motion:
-            if motion_factor == 8:
+            if audio_motion_factor == 8:
                 output_options = '-filter:a "atempo=0.5,atempo=0.5,atempo=0.5" -c:v copy -shortest ' \
                     + custom_audio_options
-            elif motion_factor == 4:
+            elif audio_motion_factor == 4:
                 output_options = '-filter:a "atempo=0.5,atempo=0.5" -c:v copy -shortest ' \
                     + custom_audio_options
-            elif motion_factor == 2:
+            elif audio_motion_factor == 2:
                 output_options = '-filter:a "atempo=0.5" -c:v copy -shortest ' + custom_audio_options
-            elif motion_factor == 1:
+            elif audio_motion_factor == 1:
                 output_options = '-filter:a "atempo=1.0" -c:v copy -shortest ' + custom_audio_options
-            elif motion_factor == 0.5:
+            elif audio_motion_factor == 0.5:
                 output_options = '-filter:a "atempo=2.0" -c:v copy -shortest ' + custom_audio_options
-            elif motion_factor == 0.25:
+            elif audio_motion_factor == 0.25:
                 output_options = '-filter:a "atempo=2.0,atempo=2.0" -c:v copy -shortest ' \
                     + custom_audio_options
-            elif motion_factor == 0.125:
+            elif audio_motion_factor == 0.125:
                 output_options = '-filter:a "atempo=2.0,atempo=2.0,atempo=2.0" -c:v copy -shortest ' \
                     + custom_audio_options
         elif silent_slow_motion:
