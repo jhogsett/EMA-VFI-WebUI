@@ -1721,7 +1721,8 @@ class VideoRemixerState():
                     series_interpolater.interpolate_series(file_list,
                                                         scene_output_path,
                                                         num_splits,
-                                                        output_basename)
+                                                        output_basename,
+                                                        type=self.frame_format)
                     ResequenceFiles(scene_output_path,
                                     self.frame_format,
                                     "inflated_frame",

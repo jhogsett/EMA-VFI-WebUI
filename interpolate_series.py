@@ -16,17 +16,19 @@ def main():
     parser.add_argument("--gpu_ids", type=str, default="0",
         help="gpu ids: e.g. 0  0,1,2, 0,2. use -1 for CPU")
     parser.add_argument("--input_path", default="images", type=str,
-        help="Input path for PNGs to interpolate")
+        help="Input path for frames to interpolate")
     parser.add_argument("--depth", default=2, type=int,
         help="How many doublings of the frames")
     parser.add_argument("--offset", default=1, type=int,
         help="Frame series offset, 1 for slow motion, 2+ for frame resynthesis")
     parser.add_argument("--output_path", default="images", type=str,
-        help="Output path for interpolated PNGs")
+        help="Output path for interpolated frames")
     parser.add_argument("--base_filename", default="interpolated_frames", type=str,
-        help="Base filename for interpolated PNGs")
+        help="Base filename for interpolated frames")
     parser.add_argument("--time_step", dest="time_step", default=False, action="store_true",
         help="Use Time Step instead of Binary Search interpolation (Default: False)")
+    parser.add_argument("--type", default="png", type=str,
+                        help="File type for frame files (Default 'png')")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
@@ -38,9 +40,9 @@ def main():
     deep_interpolater = DeepInterpolate(interpolater, args.time_step, log.log)
     series_interpolater = InterpolateSeries(deep_interpolater, log.log)
 
-    file_list = get_files(args.input_path, extension="png")
+    file_list = get_files(args.input_path, extension=args.type)
     series_interpolater.interpolate_series(file_list, args.output_path, args.depth,
-        args.base_filename, args.offset)
+        args.base_filename, args.offset, type=args.type)
 
 class InterpolateSeries():
     """Encapsulate logic for the Video Inflation feature"""
@@ -55,7 +57,8 @@ class InterpolateSeries():
                             output_path : str,
                             num_splits : int,
                             base_filename : str,
-                            offset : int = 1):
+                            offset : int = 1,
+                            type : str="png"):
         """Invoke the Video Inflation feature"""
         file_list = sorted(file_list)
         count = len(file_list)
@@ -82,9 +85,15 @@ class InterpolateSeries():
 
                 inner_bar_desc = f"Frame #{frame}"
                 self.log(f"creating inflated frames for frame files {before_file} - {after_file}")
-                self.deep_interpolater.split_frames(before_file, after_file, num_splits, output_path,
-                    filename, progress_label=inner_bar_desc, continued=continued,
-                    resynthesis=resynthesis)
+                self.deep_interpolater.split_frames(before_file,
+                                                    after_file,
+                                                    num_splits,
+                                                    output_path,
+                                                    filename,
+                                                    progress_label=inner_bar_desc,
+                                                    continued=continued,
+                                                    resynthesis=resynthesis,
+                                                    type=type)
                 Mtqdm().update_bar(bar)
 
     def log(self, message):
