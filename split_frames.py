@@ -12,9 +12,9 @@ from resequence_files import ResequenceFiles
 
 def main():
     """Use the Split Frames feature from the command line"""
-    parser = argparse.ArgumentParser(description='Split a directory of PNG frame files')
+    parser = argparse.ArgumentParser(description='Split a directory of frame files')
     parser.add_argument("--input_path", default=None, type=str,
-        help="Input path to PNG frame files to split")
+        help="Input path to frame files to split")
     parser.add_argument("--output_path", default=None, type=str,
         help="Base path for frame group directories")
     parser.add_argument("--file_ext", default="png", type=str,
