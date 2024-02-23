@@ -2019,15 +2019,15 @@ class VideoRemixerState():
     VIDEO_CLIPS_PATH = "VIDEO"
 
     def compute_inflated_fps(self, force_inflation, force_audio, force_inflate_by, force_silent):
-        motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate = \
+        _, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflated_rate = \
             self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
                                                force_silent)
-
+        fps_factor = 1
         if audio_slow_motion or silent_slow_motion:
             fps_factor = project_inflation_rate
         else:
-            fps_factor = motion_factor
-
+            if force_inflation:
+                fps_factor = forced_inflated_rate
         return self.project_fps * fps_factor
 
     def compute_forced_inflation(self, scene_name):
@@ -2123,39 +2123,22 @@ class VideoRemixerState():
 
     def compute_effective_slow_motion(self, force_inflation, force_audio, force_inflate_by,
                                       force_silent):
-        motion_factor = 1.0
-        audio_slow_motion = False
-        silent_slow_motion = False
-        project_inflation_rate = 1
         audio_slow_motion = force_audio or self.inflate_slow_option == "Audio"
         silent_slow_motion = force_silent or self.inflate_slow_option == "Silent"
-
-        if self.inflate or force_inflation:
-            if self.inflate:
-                # for slow motion, the project FPS should not be increased
-                if not audio_slow_motion and not silent_slow_motion:
-                    project_inflation_rate = self.inflation_rate(self.inflate_by_option)
-
-            forced_inflation_rate = self.inflation_rate(force_inflate_by)
-            motion_factor = project_inflation_rate
-
-            if forced_inflation_rate != project_inflation_rate:
-                if forced_inflation_rate > project_inflation_rate:
-                    motion_factor = forced_inflation_rate
-                else:
-                    motion_factor = project_inflation_rate / float(forced_inflation_rate)
-
-        return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate
+        project_inflation_rate = self.inflation_rate(self.inflate_by_option) if self.inflate else 1
+        forced_inflation_rate = self.inflation_rate(force_inflate_by) if force_inflation else 1
+        motion_factor = forced_inflation_rate / project_inflation_rate
+        return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflation_rate
 
     def compute_inflated_audio_options(self, custom_audio_options, force_inflation, force_audio,
                                        force_inflate_by, force_silent):
 
-        motion_factor, audio_slow_motion, silent_slow_motion, _ = \
+        motion_factor, audio_slow_motion, silent_slow_motion, _, _ = \
             self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
                                                force_silent)
 
-        audio_inflation = 1 #self.inflation_rate(self.inflate_by_option) if self.inflate else 1
-        audio_motion_factor = motion_factor / audio_inflation
+        # audio_inflation = 1 #self.inflation_rate(self.inflate_by_option) if self.inflate else 1
+        audio_motion_factor = motion_factor #/ audio_inflation
 
         if audio_slow_motion:
             if audio_motion_factor == 8:
