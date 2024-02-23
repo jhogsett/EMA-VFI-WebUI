@@ -2154,7 +2154,8 @@ class VideoRemixerState():
             self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
                                                force_silent)
 
-        audio_motion_factor = self.inflation_rate(self.inflate_by_option) / motion_factor
+        audio_inflation = self.inflation_rate(self.inflate_by_option) if self.inflate else 1
+        audio_motion_factor = motion_factor / audio_inflation
 
         if audio_slow_motion:
             if audio_motion_factor == 8:
