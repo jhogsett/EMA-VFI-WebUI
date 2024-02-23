@@ -6,7 +6,7 @@ import csv
 from typing import Callable
 from webui_utils.simple_log import SimpleLog
 from webui_utils.video_utils import get_duplicate_frames_report, get_duplicate_frames,\
-    compute_report_stats
+    compute_report_stats, determine_input_format
 from webui_utils.file_utils import split_filepath, create_directory
 from webui_utils.color_out import ColorOut
 from webui_utils.mtqdm import Mtqdm
@@ -129,6 +129,7 @@ class DeduplicateFrames:
                 writer = csv.DictWriter(csvfile, fieldnames = csv_fields)
                 writer.writeheader()
 
+        type = determine_input_format(self.input_path)
         try:
             with Mtqdm().open_bar(total=len(range(self.tune_min, self.tune_max+1, self.tune_step)),
                                   desc="Tuning") as bar:
@@ -137,7 +138,8 @@ class DeduplicateFrames:
                     self.log(message)
                     dupe_groups, frame_filenames, _ = get_duplicate_frames(self.input_path,
                                                                             threshold,
-                                                                            self.max_dupes)
+                                                                            self.max_dupes,
+                                                                            type)
                     stats = compute_report_stats(dupe_groups, frame_filenames)
                     message = f"dupe_percent={stats['dupe_percent']} max_group={stats['max_group']}" +\
                         f" dupe_count={stats['dupe_count']} first_dupe={stats['first_dupe']}"
@@ -183,10 +185,12 @@ class DeduplicateFrames:
                 ColorOut(message, "red")
 
     def invoke_report(self, suppress_output=False):
+        type = determine_input_format(self.input_path)
         try:
             self.log("calling 'get_duplicate_frames_report' with" + \
         f" input_path: {self.input_path} threshold: {self.threshold} max_dupes: {self.max_dupes} ")
-            report = get_duplicate_frames_report(self.input_path, self.threshold, self.max_dupes)
+            report = get_duplicate_frames_report(self.input_path, self.threshold, self.max_dupes,
+                                                 type)
             if self.output_path:
                 _path, _filename, _ext = split_filepath(self.output_path)
                 filename = _filename or "Duplicate Frames Report"
@@ -218,12 +222,14 @@ class DeduplicateFrames:
             raise ValueError("'output_path' must be specified")
         create_directory(self.output_path)
 
+        type = determine_input_format(self.input_path)
         try:
             self.log("invoke_delete() calling 'get_duplicate_frames' with" + \
         f" input_path: {self.input_path} threshold: {self.threshold} max_dupes: {self.max_dupes} ")
             dupe_groups, frame_filenames, mpdecimate_log = get_duplicate_frames(self.input_path,
                                                                                 self.threshold,
-                                                                                self.max_dupes)
+                                                                                self.max_dupes,
+                                                                                type)
             self.log("mpdecimate data received from 'get_duplicate_frames:")
             self.log("/r/n".join(mpdecimate_log))
             self.log(f"beginning processing of {len(dupe_groups)} duplicate groups for deletion")

@@ -91,6 +91,26 @@ def directory_populated(path : str, files_only=False):
             return True
     return False
 
+def directory_has_ext(path : str, ext : list) -> dict:
+    """Returns a list of bool entries corresponding to the extension list, set True if found"""
+    result = [False for _ in ext]
+
+    if not is_safe_path(path):
+        raise ValueError("'path' must be a legal path")
+
+    if os.path.exists(path):
+        iter = os.scandir(path)
+        for entry in iter:
+            if all(result):
+                break
+
+            if entry.is_file():
+                for index, item in enumerate(ext):
+                    if not result[index]:
+                        _, _, extension = split_filepath(entry.name)
+                        result[index] = extension[1:].lower() == item.lower()
+    return result
+
 def _get_files(path : str):
     entries = glob.glob(path)
     files = []

@@ -7,7 +7,7 @@ from fractions import Fraction
 from PIL import Image
 from ffmpy import FFmpeg, FFprobe, FFRuntimeError
 from .image_utils import gif_frame_count
-from .file_utils import split_filepath, get_directories, is_safe_path
+from .file_utils import split_filepath, get_directories, is_safe_path, directory_has_ext
 from .simple_utils import seconds_to_hms, get_frac_str_as_float
 from .jot import Jot
 
@@ -30,6 +30,16 @@ def determine_output_pattern(mp4_file_path : str, type : str="png") -> str:
     num_width = len(str(frame_count))
     _, filename, _ = split_filepath(mp4_file_path)
     return f"{filename}%0{num_width}.{type}"
+
+def determine_input_format(files_path : str) -> str:
+    """Determine the file type 'jpg' or 'png' for the files in the path
+       Returns None if not valid formats found"""
+    valid_formats = ["png","jpg"]
+    result = directory_has_ext(files_path, valid_formats)
+    for index, format in enumerate(valid_formats):
+        if result[index]:
+            return format
+    return None
 
 def PNGtoMP4(input_path : str, # pylint: disable=invalid-name
             filename_pattern : str,
@@ -447,12 +457,14 @@ def compute_report_stats(duplicate_frame_groups, filenames):
 
 def get_duplicate_frames_report(input_path : str,
                                 threshold : int,
-                                max_dupes_per_group : int) -> str:
+                                max_dupes_per_group : int,
+                                type : str="png") -> str:
     """Create a human-readable report of duplicate frame groups"""
     separator = ""
     duplicate_frame_groups, filenames, _ = get_duplicate_frames(input_path,
                                                                 threshold,
-                                                                max_dupes_per_group)
+                                                                max_dupes_per_group,
+                                                                type)
     stats = compute_report_stats(duplicate_frame_groups, filenames)
     report = []
     report.append("[Duplicate Frames Report]")
