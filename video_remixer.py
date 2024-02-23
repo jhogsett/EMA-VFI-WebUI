@@ -2022,12 +2022,13 @@ class VideoRemixerState():
         _, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflated_rate = \
             self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
                                                force_silent)
-        fps_factor = 1
         if audio_slow_motion or silent_slow_motion:
             fps_factor = project_inflation_rate
         else:
             if force_inflation:
                 fps_factor = forced_inflated_rate
+            else:
+                fps_factor = project_inflation_rate
         return self.project_fps * fps_factor
 
     def compute_forced_inflation(self, scene_name):
