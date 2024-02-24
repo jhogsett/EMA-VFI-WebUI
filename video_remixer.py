@@ -1396,16 +1396,16 @@ class VideoRemixerState():
     # content is stale if it is present on disk but not currently selected
     # stale content and its derivative content should be purged
     def purge_stale_processed_content(self, purge_resynth, purge_inflation, purge_upscale):
-        if self.processed_content_stale(self.resize, self.resize_path):
+        if self.processed_content_stale(self.resize_chosen(), self.resize_path):
             self.purge_processed_content(purge_from=self.RESIZE_STEP)
 
-        if self.processed_content_stale(self.resynthesize, self.resynthesis_path) or purge_resynth:
+        if self.processed_content_stale(self.resynthesize_chosen(), self.resynthesis_path) or purge_resynth:
             self.purge_processed_content(purge_from=self.RESYNTH_STEP)
 
-        if self.processed_content_stale(self.inflate, self.inflation_path) or purge_inflation:
+        if self.processed_content_stale(self.inflate_chosen(), self.inflation_path) or purge_inflation:
             self.purge_processed_content(purge_from=self.INFLATE_STEP)
 
-        if self.processed_content_stale(self.upscale, self.upscale_path) or purge_upscale:
+        if self.processed_content_stale(self.upscale_chosen(), self.upscale_path) or purge_upscale:
             self.purge_processed_content(purge_from=self.UPSCALE_STEP)
 
     def purge_incomplete_processed_content(self):
