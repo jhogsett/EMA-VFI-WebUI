@@ -2242,10 +2242,11 @@ class VideoRemixer(TabBase):
 
     def split_scene(self, scene_index, split_percent, keep_before, keep_after):
         global_options = self.config.ffmpeg_settings["global_options"]
+        backup_split_scenes = self.config.remixer_settings["backup_split_scenes"]
         try:
             message = self.state.split_scene(self.log, scene_index, split_percent,
                                              self.config.remixer_settings, global_options,
-                                             keep_before, keep_after)
+                                             keep_before, keep_after, backup_split_scenes)
             self.state.save()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
