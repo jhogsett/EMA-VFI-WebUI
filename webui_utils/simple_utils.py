@@ -336,3 +336,7 @@ def format_table(header_row : list,
 
 def dummy_args(num, arg=None):
     return [arg for _ in range(num)]
+
+def evenify(value) -> int:
+    """Return the highest multiple of 2 integer contained in the value"""
+    return (int(value / 2)) * 2
