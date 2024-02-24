@@ -10,7 +10,7 @@ from webui_utils.file_utils import split_filepath, create_directory, get_directo
     clean_directories, clean_filename, remove_directories, copy_files, directory_populated, \
     simple_sanitize_filename, duplicate_directory
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table
+from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table, evenify
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
     MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom, SourceToMP4, \
     rate_adjusted_count, image_size
@@ -720,6 +720,24 @@ class VideoRemixerState():
                 results[parts[0].upper()] = parts[1].upper()
         return results
 
+    def get_hint(self, scene_label, hint_type):
+        """return a found hint of the passed type if the label exists and it is found"""
+        if scene_label:
+            _, hint, _ = self.split_label(scene_label)
+            if hint:
+                hints = self.split_hint(hint)
+                return hints.get(hint_type)
+        return None
+
+    def hint_present(self, hint_type):
+        """return True if any kept scene has the passed hint type"""
+        kept_scenes = self.kept_scenes()
+        for scene_name in kept_scenes:
+            label = self.scene_labels.get(scene_name)
+            if self.get_hint(label, hint_type):
+                return True
+        return False
+
     def set_scene_label(self, scene_index, scene_label):
         if scene_label:
             this_scene_name = self.scene_names[scene_index]
@@ -1197,38 +1215,30 @@ class VideoRemixerState():
                                           self.processed_content_complete(self.INFLATE_STEP),
                                           self.processed_content_complete(self.UPSCALE_STEP))
 
+    def resize_chosen(self):
+        return self.resize or self.hint_present("R")
+
     def resize_needed(self):
-        return self.resize \
-            and not self.processed_content_complete(self.RESIZE_STEP)
+        return self.resize_chosen() and not self.processed_content_complete(self.RESIZE_STEP)
+
+    def resynthesize_chosen(self):
+        return self.resynthesize or self.hint_present("S")
 
     def resynthesize_needed(self):
-        return self.resynthesize \
-            and not self.processed_content_complete(self.RESYNTH_STEP)
+        return self.resynthesize_chosen() and not self.processed_content_complete(self.RESYNTH_STEP)
 
     def inflate_chosen(self):
-        if self.inflate:
-            return True
-
-        # see if a processing hint requires inflation
-        kept_scenes = self.kept_scenes()
-        for scene_name in kept_scenes:
-            label = self.scene_labels.get(scene_name)
-            if label:
-                _, hint, _ = self.split_label(label)
-                if hint:
-                    hints = self.split_hint(hint)
-                    inflation_hint = hints.get("I")
-                    if inflation_hint:
-                        return True
-        return False
+        return self.inflate or self.hint_present("I")
 
     def inflate_needed(self):
         if self.inflate_chosen() and not self.processed_content_complete(self.INFLATE_STEP):
             return True
 
+    def upscale_chosen(self):
+        return self.upscale or self.hint_present("U")
+
     def upscale_needed(self):
-        return self.upscale \
-            and not self.processed_content_complete(self.UPSCALE_STEP)
+        return self.upscale_chosen() and not self.processed_content_complete(self.UPSCALE_STEP)
 
     def purge_paths(self, path_list : list, keep_original=False, purged_path=None, skip_empty_paths=False, additional_path=""):
         """Purge a list of paths to the purged content directory
@@ -1386,31 +1396,31 @@ class VideoRemixerState():
     # content is stale if it is present on disk but not currently selected
     # stale content and its derivative content should be purged
     def purge_stale_processed_content(self, purge_resynth, purge_inflation, purge_upscale):
-        if self.processed_content_stale(self.resize, self.resize_path):
+        if self.processed_content_stale(self.resize_chosen(), self.resize_path):
             self.purge_processed_content(purge_from=self.RESIZE_STEP)
 
-        if self.processed_content_stale(self.resynthesize, self.resynthesis_path) or purge_resynth:
+        if self.processed_content_stale(self.resynthesize_chosen(), self.resynthesis_path) or purge_resynth:
             self.purge_processed_content(purge_from=self.RESYNTH_STEP)
 
-        if self.processed_content_stale(self.inflate, self.inflation_path) or purge_inflation:
+        if self.processed_content_stale(self.inflate_chosen(), self.inflation_path) or purge_inflation:
             self.purge_processed_content(purge_from=self.INFLATE_STEP)
 
-        if self.processed_content_stale(self.upscale, self.upscale_path) or purge_upscale:
+        if self.processed_content_stale(self.upscale_chosen(), self.upscale_path) or purge_upscale:
             self.purge_processed_content(purge_from=self.UPSCALE_STEP)
 
     def purge_incomplete_processed_content(self):
         # content is incomplete if the wrong number of scene directories are present
         # if it is currently selected and incomplete, it should be purged
-        if self.resize and not self.processed_content_complete(self.RESIZE_STEP):
+        if self.resize_chosen() and not self.processed_content_complete(self.RESIZE_STEP):
             self.purge_processed_content(purge_from=self.RESIZE_STEP)
 
-        if self.resynthesize and not self.processed_content_complete(self.RESYNTH_STEP):
+        if self.resynthesize_chosen() and not self.processed_content_complete(self.RESYNTH_STEP):
             self.purge_processed_content(purge_from=self.RESYNTH_STEP)
 
         if self.inflate_chosen() and not self.processed_content_complete(self.INFLATE_STEP):
             self.purge_processed_content(purge_from=self.INFLATE_STEP)
 
-        if self.upscale and not self.processed_content_complete(self.UPSCALE_STEP):
+        if self.upscale_chosen() and not self.processed_content_complete(self.UPSCALE_STEP):
             self.purge_processed_content(purge_from=self.UPSCALE_STEP)
 
     def scenes_source_path(self, processing_step):
@@ -1422,16 +1432,16 @@ class VideoRemixerState():
 
         elif processing_step == self.RESYNTH_STEP:
             # resynthesis is the second processing step
-            if self.resize:
+            if self.resize_chosen():
                 # if resize is enabled, draw from the resized scenes path
                 processing_path = self.resize_path
 
         elif processing_step == self.INFLATE_STEP:
             # inflation is the third processing step
-            if self.resynthesize:
+            if self.resynthesize_chosen():
                 # if resynthesis is enabled, draw from the resyntheized scenes path
                 processing_path = self.resynthesis_path
-            elif self.resize:
+            elif self.resize_chosen():
                 # if resize is enabled, draw from the resized scenes path
                 processing_path = self.resize_path
 
@@ -1440,20 +1450,20 @@ class VideoRemixerState():
             if self.inflate_chosen():
                 # if inflation is enabled, draw from the inflation path
                 processing_path = self.inflation_path
-            elif self.resynthesize:
+            elif self.resynthesize_chosen():
                 # if resynthesis is enabled, draw from the resyntheized scenes path
                 processing_path = self.resynthesis_path
-            elif self.resize:
+            elif self.resize_chosen():
                 # if resize is enabled, draw from the resized scenes path
                 processing_path = self.resize_path
 
         return processing_path
 
-    def get_resize_params(self, content_width, content_height, remixer_settings):
-        if self.resize_w == content_width and self.resize_h == content_height:
+    def get_resize_params(self, resize_w, resize_h, crop_w, crop_h, content_width, content_height, remixer_settings):
+        if resize_w == content_width and resize_h == content_height:
             scale_type = "none"
         else:
-            if self.resize_w <= content_width and self.resize_h <= content_height:
+            if resize_w <= content_width and resize_h <= content_height:
                 # use the down scaling type if there are only reductions
                 # the default "area" type preserves details better on reducing
                 scale_type = remixer_settings["scale_type_down"]
@@ -1462,10 +1472,10 @@ class VideoRemixerState():
                 # the default "lanczos" type preserves details better on enlarging
                 scale_type = remixer_settings["scale_type_up"]
 
-        if self.crop_w == self.resize_w and self.crop_h == self.resize_h:
-            # disable cropping if noop
+        if crop_w == resize_w and crop_h == resize_h:
+            # disable cropping if none to do
             crop_type = "none"
-        elif self.crop_w > self.resize_w or self.crop_h > self.resize_h:
+        elif crop_w > resize_w or crop_h > resize_h:
             # disable cropping if it will wrap/is invalid
             # TODO put bounds on the crop parameters instead of disabling
             crop_type = "none"
@@ -1554,6 +1564,10 @@ class VideoRemixerState():
                      scene_output_path,
                      resize_w,
                      resize_h,
+                     crop_w,
+                     crop_h,
+                     crop_offset_x,
+                     crop_offset_y,
                      scale_type,
                      crop_type="none"):
 
@@ -1564,10 +1578,10 @@ class VideoRemixerState():
                     scale_type,
                     log_fn,
                     crop_type=crop_type,
-                    crop_width=self.crop_w,
-                    crop_height=self.crop_h,
-                    crop_offset_x=self.crop_offset_x,
-                    crop_offset_y=self.crop_offset_y).resize(type=self.frame_format)
+                    crop_width=crop_w,
+                    crop_height=crop_h,
+                    crop_offset_x=crop_offset_x,
+                    crop_offset_y=crop_offset_y).resize(type=self.frame_format)
 
     def resize_scenes(self, log_fn, kept_scenes, remixer_settings):
         scenes_base_path = self.scenes_source_path(self.RESIZE_STEP)
@@ -1575,19 +1589,99 @@ class VideoRemixerState():
 
         content_width = self.video_details["content_width"]
         content_height = self.video_details["content_height"]
-        scale_type, crop_type= self.get_resize_params(content_width, content_height, remixer_settings)
+        scale_type, crop_type= self.get_resize_params(self.resize_w, self.resize_h, self.crop_w,
+                                                      self.crop_h, content_width, content_height,
+                                                      remixer_settings)
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Resize") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_path = os.path.join(self.resize_path, scene_name)
-                self.resize_scene(log_fn,
-                                  scene_input_path,
-                                  scene_output_path,
-                                  int(self.resize_w),
-                                  int(self.resize_h),
-                                  scale_type,
-                                  crop_type)
+                create_directory(scene_output_path)
+
+                resize_handled = False
+                resize_hint = self.get_hint(self.scene_labels.get(scene_name), "R")
+                if resize_hint:
+                    try:
+                        if "/" in resize_hint:
+                            if len(resize_hint) >= 3:
+                                # interpret 'x/y' as
+                                # x: quadrant, y: square number of quadrants
+                                # '5/9' and '13/25' would be the center squares of 3x3 and 5x5 grids
+                                #   zoomed in at 300% and 500%
+                                split_pos = resize_hint.index("/")
+                                quadrant = resize_hint[:split_pos]
+                                quadrants = resize_hint[split_pos+1:]
+                                if quadrant and quadrants:
+                                    quadrant = int(quadrant) - 1
+                                    quadrants = int(quadrants)
+                                    magnitude = int(math.sqrt(quadrants))
+                                    row = int(quadrant / magnitude)
+                                    column = quadrant % magnitude
+
+                                    # based on the zoom magnitude, compute new resize & crop
+                                    resize_w = evenify(content_width * magnitude)
+                                    resize_h = evenify(content_height * magnitude)
+                                    crop_offset_x = column * content_width
+                                    crop_offset_y = row * content_height
+                                    scale_type = remixer_settings["scale_type_up"]
+
+                                    self.resize_scene(log_fn,
+                                                    scene_input_path,
+                                                    scene_output_path,
+                                                    int(resize_w),
+                                                    int(resize_h),
+                                                    int(self.crop_w),
+                                                    int(self.crop_h),
+                                                    int(crop_offset_x),
+                                                    int(crop_offset_y),
+                                                    scale_type,
+                                                    crop_type="crop")
+                                    resize_handled = True
+
+                        elif "%" in resize_hint:
+                            if len(resize_hint) >= 4:
+                                # interpret z% as zoom percent to zoom into center
+                                zoom_percent = int(resize_hint.replace("%", ""))
+                                if zoom_percent >= 100:
+                                    magnitude = zoom_percent / 100.0
+                                    resize_w = evenify(content_width * magnitude)
+                                    resize_h = evenify(content_height * magnitude)
+                                    scale_type = remixer_settings["scale_type_up"]
+
+                                    self.resize_scene(log_fn,
+                                                    scene_input_path,
+                                                    scene_output_path,
+                                                    int(resize_w),
+                                                    int(resize_h),
+                                                    int(self.crop_w),
+                                                    int(self.crop_h),
+                                                    -1,
+                                                    -1,
+                                                    scale_type,
+                                                    crop_type="crop")
+                                    resize_handled = True
+                                else:
+                                    # zooming out past 100% isn't supported
+                                    log_fn(f"resize_scenes() ignoring unsupported zoom {zoom_percent}%")
+                    except Exception as error:
+                        log_fn(
+f"Error in resize_scenes() handling processing hint {resize_hint} - skipping processing: {error}")
+                        resize_handled = False
+
+                if not resize_handled:
+                    self.resize_scene(log_fn,
+                                    scene_input_path,
+                                    scene_output_path,
+                                    int(self.resize_w),
+                                    int(self.resize_h),
+                                    int(self.crop_w),
+                                    int(self.crop_h),
+                                    int(self.crop_offset_x),
+                                    int(self.crop_offset_y),
+                                    scale_type,
+                                    crop_type)
+
                 Mtqdm().update_bar(bar)
 
     # TODO dry up this code with same in resynthesize_video_ui - maybe a specific resynth script
@@ -1686,29 +1780,17 @@ class VideoRemixerState():
                 num_splits = 0
                 disable_inflation = False
 
-                # see if the scene has a processing hint such as 'I:4A'
-                label = self.scene_labels.get(scene_name)
-                if label:
-                    _, hint, _ = self.split_label(label)
-                    if hint:
-                        log_fn(f"inflate_scenes(): found processing hint: {hint}")
-                        hints = self.split_hint(hint)
-                        inflation_hint = hints.get("I")
-                        if inflation_hint:
-                            log_fn(f"found inflation processing hint: {inflation_hint}")
-                            if "1" in inflation_hint:
-                                log_fn("forcing disable of inflation")
-                                num_splits = 0
-                                disable_inflation = True
-                            elif "2" in inflation_hint:
-                                log_fn("forcing 2X inflation")
-                                num_splits = 1
-                            elif "4" in inflation_hint:
-                                log_fn("forcing 4X inflation")
-                                num_splits = 2
-                            elif "8" in inflation_hint:
-                                log_fn("forcing 8X inflation")
-                                num_splits = 3
+                inflation_hint = self.get_hint(self.scene_labels.get(scene_name), "I")
+                if inflation_hint:
+                    if "1" in inflation_hint:
+                        num_splits = 0
+                        disable_inflation = True
+                    elif "2" in inflation_hint:
+                        num_splits = 1
+                    elif "4" in inflation_hint:
+                        num_splits = 2
+                    elif "8" in inflation_hint:
+                        num_splits = 3
 
                 if num_splits == 0 and self.inflate and not disable_inflation:
                     if self.inflate_by_option == "2X":
@@ -1784,6 +1866,8 @@ class VideoRemixerState():
         log_fn(f"about to create working path {working_path}")
         create_directory(working_path)
 
+        # TODO make this logic general
+
         # upscale first at the engine's native scale
         file_list = sorted(get_files(scene_input_path))
         output_basename = "upscaled_frames"
@@ -1807,12 +1891,12 @@ class VideoRemixerState():
         if downscaled_width != width or downscaled_height != height:
             # downsample to final size
             log_fn(f"about to downscale images in {working_path} to {scene_output_path}")
-            self.resize_scene(log_fn,
-                                    working_path,
-                                    scene_output_path,
-                                    downscaled_width,
-                                    downscaled_height,
-                                    downscale_type)
+            ResizeFrames(scene_input_path,
+                        scene_output_path,
+                        downscaled_width,
+                        downscaled_height,
+                        downscale_type,
+                        log_fn).resize(type=self.frame_format)
         else:
             log_fn("copying instead of unneeded downscaling")
             copy_files(working_path, scene_output_path)
@@ -1846,34 +1930,84 @@ class VideoRemixerState():
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_path = os.path.join(self.upscale_path, scene_name)
-                self.upscale_scene(log_fn, upscaler, scene_input_path, scene_output_path, upscale_factor,
-                                   downscale_type=downscale_type)
+                create_directory(scene_output_path)
+
+                upscale_handled = False
+                upscale_hint = self.get_hint(self.scene_labels.get(scene_name), "U")
+
+                if upscale_hint:
+                    try:
+                        # for now ignore the hint value and upscale just at 1X, to clean up zooming
+                        self.upscale_scene(log_fn,
+                                        upscaler,
+                                        scene_input_path,
+                                        scene_output_path,
+                                        1.0,
+                                        downscale_type=downscale_type)
+                        upscale_handled = True
+
+                    except Exception as error:
+                        log_fn(
+f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping processing: {error}")
+                        upscale_handled = False
+
+                if not upscale_handled:
+                    if self.upscale:
+                        self.upscale_scene(log_fn,
+                                        upscaler,
+                                        scene_input_path,
+                                        scene_output_path,
+                                        upscale_factor,
+                                        downscale_type=downscale_type)
+                    else:
+                        # no need to upscale so just copy the files using the resequencer
+                        ResequenceFiles(scene_input_path,
+                                        self.frame_format,
+                                        "upscaled_frames",
+                                        1, 1,
+                                        1, 0,
+                                        -1,
+                                        False,
+                                        log_fn,
+                                        output_path=scene_output_path).resequence()
                 Mtqdm().update_bar(bar)
 
     def remix_filename_suffix(self, extra_suffix):
         label = "remix"
-        label += "-rc" if self.resize else "-or"
-        if self.resynthesize:
-            label += "-re"
-            if self.resynth_option == "Clean":
-                label += "C"
-            elif self.resynth_option == "Scrub":
-                label += "S"
-            elif self.resynth_option == "Replace":
-                label += "R"
+
+        if self.resize_chosen():
+            label += "-rc" if self.resize else "-rcH"
+        else:
+            label += "-or"
+
+        if self.resynthesize_chosen():
+            if self.resynthesize:
+                label += "-re"
+                if self.resynth_option == "Clean":
+                    label += "C"
+                elif self.resynth_option == "Scrub":
+                    label += "S"
+                elif self.resynth_option == "Replace":
+                    label += "R"
+            else:
+                label += "-reH"
+
         if self.inflate_chosen():
             if self.inflate:
-                # enabled overall in the project
                 label += "-in" + self.inflate_by_option[0]
+                if self.inflate_slow_option == "Audio":
+                    label += "SA"
+                elif self.inflate_slow_option == "Silent":
+                    label += "SM"
             else:
-                # enabled via a processing hint
                 label += "-inH"
-            if self.inflate_slow_option == "Audio":
-                label += "SA"
-            elif self.inflate_slow_option == "Silent":
-                label += "SM"
 
-        label += "-up" + self.upscale_option[0] if self.upscale else ""
+        if self.upscale_chosen():
+            if self.upscale:
+                label += "-up" + self.upscale_option[0]
+            else:
+                label += "-upH"
+
         label += "-" + extra_suffix if extra_suffix else ""
         return label
 
@@ -1905,8 +2039,19 @@ class VideoRemixerState():
 
         return report.lines
 
-
-
+    # get path to the furthest processed content
+    def furthest_processed_path(self):
+        if self.upscale_chosen():
+            path = self.upscale_path
+        elif self.inflate_chosen():
+            path = self.inflation_path
+        elif self.resynthesize_chosen():
+            path = self.resynthesis_path
+        elif self.resize_chosen():
+            path = self.resize_path
+        else:
+            path = self.scenes_path
+        return path
 
     # drop a kept scene after scene compiling has already been done
     # used for dropping empty processed scenes, and force dropping processed scenes
@@ -1924,16 +2069,7 @@ class VideoRemixerState():
     # find scenes that are empty now after processing and should be automatically dropped
     # this can happen when resynthesis and/or inflation are used on scenes with only a few frames
     def drop_empty_processed_scenes(self, kept_scenes):
-        if self.upscale:
-            scenes_base_path = self.upscale_path
-        elif self.inflate_chosen():
-            scenes_base_path = self.inflation_path
-        elif self.resynthesize:
-            scenes_base_path = self.resynthesis_path
-        elif self.resize:
-            scenes_base_path = self.resize_path
-        else:
-            scenes_base_path = self.scenes_path
+        scenes_base_path = self.furthest_processed_path()
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Checking Clips") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
@@ -2036,30 +2172,26 @@ class VideoRemixerState():
         force_audio = False
         force_inflate_by = None
         force_silent = False
-        label = self.scene_labels.get(scene_name)
-        if label:
-            _, hint, _ = self.split_label(label)
-            if hint:
-                hints = self.split_hint(hint)
-                inflation_hint = hints.get("I")
-                if inflation_hint:
-                    if "1" in inflation_hint:
-                        # noop inflation
-                        force_inflate_by = "1X"
-                    elif "2" in inflation_hint:
-                        force_inflation = True
-                        force_inflate_by = "2X"
-                    elif "4" in inflation_hint:
-                        force_inflation = True
-                        force_inflate_by = "4X"
-                    elif "8" in inflation_hint:
-                        force_inflation = True
-                        force_inflate_by = "8X"
 
-                    if "A" in inflation_hint:
-                        force_audio = True
-                    elif "S" in inflation_hint:
-                        force_silent = True
+        inflation_hint = self.get_hint(self.scene_labels.get(scene_name), "I")
+        if inflation_hint:
+            if "1" in inflation_hint:
+                # disable inflation
+                force_inflate_by = "1X"
+            elif "2" in inflation_hint:
+                force_inflation = True
+                force_inflate_by = "2X"
+            elif "4" in inflation_hint:
+                force_inflation = True
+                force_inflate_by = "4X"
+            elif "8" in inflation_hint:
+                force_inflation = True
+                force_inflate_by = "8X"
+
+            if "A" in inflation_hint:
+                force_audio = True
+            elif "S" in inflation_hint:
+                force_silent = True
         return force_inflation, force_audio, force_inflate_by, force_silent
 
     def compute_scene_fps(self, scene_name):
@@ -2077,17 +2209,7 @@ class VideoRemixerState():
         # save the project now to preserve the newly established path
         self.save()
 
-        if self.upscale:
-            scenes_base_path = self.upscale_path
-        elif self.inflate_chosen():
-            scenes_base_path = self.inflation_path
-        elif self.resynthesize:
-            scenes_base_path = self.resynthesis_path
-        elif self.resize:
-            scenes_base_path = self.resize_path
-        else:
-            scenes_base_path = self.scenes_path
-
+        scenes_base_path = self.furthest_processed_path()
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
@@ -2124,12 +2246,13 @@ class VideoRemixerState():
 
     def compute_effective_slow_motion(self, force_inflation, force_audio, force_inflate_by,
                                       force_silent):
-        audio_slow_motion = force_audio or self.inflate_slow_option == "Audio"
-        silent_slow_motion = force_silent or self.inflate_slow_option == "Silent"
+        audio_slow_motion = force_audio or (self.inflate and self.inflate_slow_option == "Audio")
+        silent_slow_motion = force_silent or (self.inflate and self.inflate_slow_option == "Silent")
         project_inflation_rate = self.inflation_rate(self.inflate_by_option) if self.inflate else 1
         forced_inflation_rate = self.inflation_rate(force_inflate_by) if force_inflation else 1
         motion_factor = forced_inflation_rate / project_inflation_rate
-        return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflation_rate
+        return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, \
+            forced_inflation_rate
 
     def compute_inflated_audio_options(self, custom_audio_options, force_inflation, force_audio,
                                        force_inflate_by, force_silent):
@@ -2210,17 +2333,7 @@ class VideoRemixerState():
         # save the project now to preserve the newly established path
         self.save()
 
-        if self.upscale:
-            scenes_base_path = self.upscale_path
-        elif self.inflate_chosen():
-            scenes_base_path = self.inflation_path
-        elif self.resynthesize:
-            scenes_base_path = self.resynthesis_path
-        elif self.resize:
-            scenes_base_path = self.resize_path
-        else:
-            scenes_base_path = self.scenes_path
-
+        scenes_base_path = self.furthest_processed_path()
         if custom_video_options.find("<LABEL>") != -1:
             if not draw_text_options:
                 raise RuntimeError("'draw_text_options' is None at create_custom_video_clips()")
