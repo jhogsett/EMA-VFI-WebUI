@@ -1393,6 +1393,7 @@ class VideoRemixer(TabBase):
                 format_markdown(f"The project path is not valid", "warning"),\
                 *empty_args
 
+        # this prevents updating existing project settings
         # if os.path.exists(project_path):
         #     return gr.update(selected=self.TAB_REMIX_SETTINGS), \
         #         format_markdown(f"The project path is already in use", "warning"),\
