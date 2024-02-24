@@ -1930,8 +1930,46 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_path = os.path.join(self.upscale_path, scene_name)
-                self.upscale_scene(log_fn, upscaler, scene_input_path, scene_output_path, upscale_factor,
-                                   downscale_type=downscale_type)
+                create_directory(scene_output_path)
+
+                upscale_handled = False
+                upscale_hint = self.get_hint(self.scene_labels.get(scene_name), "U")
+
+                if upscale_hint:
+                    try:
+                        # for now ignore the hint value and upscale just at 1X, to clean up zooming
+                        self.upscale_scene(log_fn,
+                                        upscaler,
+                                        scene_input_path,
+                                        scene_output_path,
+                                        1.0,
+                                        downscale_type=downscale_type)
+                        upscale_handled = True
+
+                    except Exception as error:
+                        log_fn(
+f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping processing: {error}")
+                        upscale_handled = False
+
+                if not upscale_handled:
+                    if self.upscale:
+                        self.upscale_scene(log_fn,
+                                        upscaler,
+                                        scene_input_path,
+                                        scene_output_path,
+                                        upscale_factor,
+                                        downscale_type=downscale_type)
+                    else:
+                        # no need to upscale so just copy the files using the resequencer
+                        ResequenceFiles(scene_input_path,
+                                        self.frame_format,
+                                        "upscaled_frames",
+                                        1, 1,
+                                        1, 0,
+                                        -1,
+                                        False,
+                                        log_fn,
+                                        output_path=scene_output_path).resequence()
                 Mtqdm().update_bar(bar)
 
     def remix_filename_suffix(self, extra_suffix):
