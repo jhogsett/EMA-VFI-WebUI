@@ -720,6 +720,24 @@ class VideoRemixerState():
                 results[parts[0].upper()] = parts[1].upper()
         return results
 
+    def get_hint(self, scene_label, hint_type):
+        """return a found hint of the passed type if the label exists and it is found"""
+        if scene_label:
+            _, hint, _ = self.split_label(scene_label)
+            if hint:
+                hints = self.split_hint(hint)
+                return hints.get(hint_type)
+        return None
+
+    def hint_present(self, hint_type):
+        """return True if any kept scene has the passed hint type"""
+        kept_scenes = self.kept_scenes()
+        for scene_name in kept_scenes:
+            label = self.scene_labels.get(scene_name)
+            if self.get_hint(label, hint_type):
+                return True
+        return False
+
     def set_scene_label(self, scene_index, scene_label):
         if scene_label:
             this_scene_name = self.scene_names[scene_index]
@@ -1197,38 +1215,30 @@ class VideoRemixerState():
                                           self.processed_content_complete(self.INFLATE_STEP),
                                           self.processed_content_complete(self.UPSCALE_STEP))
 
+    def resize_chosen(self):
+        return self.resize or self.hint_present("R")
+
     def resize_needed(self):
-        return self.resize \
-            and not self.processed_content_complete(self.RESIZE_STEP)
+        return self.resize_chosen() and not self.processed_content_complete(self.RESIZE_STEP)
+
+    def resynthesize_chosen(self):
+        return self.resynthesize or self.hint_present("S")
 
     def resynthesize_needed(self):
-        return self.resynthesize \
-            and not self.processed_content_complete(self.RESYNTH_STEP)
+        return self.resynthesize_chosen() and not self.processed_content_complete(self.RESYNTH_STEP)
 
     def inflate_chosen(self):
-        if self.inflate:
-            return True
-
-        # see if a processing hint requires inflation
-        kept_scenes = self.kept_scenes()
-        for scene_name in kept_scenes:
-            label = self.scene_labels.get(scene_name)
-            if label:
-                _, hint, _ = self.split_label(label)
-                if hint:
-                    hints = self.split_hint(hint)
-                    inflation_hint = hints.get("I")
-                    if inflation_hint:
-                        return True
-        return False
+        return self.inflate or self.hint_present("I")
 
     def inflate_needed(self):
         if self.inflate_chosen() and not self.processed_content_complete(self.INFLATE_STEP):
             return True
 
+    def upscale_chosen(self):
+        return self.upscale or self.hint_present("U")
+
     def upscale_needed(self):
-        return self.upscale \
-            and not self.processed_content_complete(self.UPSCALE_STEP)
+        return self.upscale_chosen() and not self.processed_content_complete(self.UPSCALE_STEP)
 
     def purge_paths(self, path_list : list, keep_original=False, purged_path=None, skip_empty_paths=False, additional_path=""):
         """Purge a list of paths to the purged content directory
@@ -1686,29 +1696,17 @@ class VideoRemixerState():
                 num_splits = 0
                 disable_inflation = False
 
-                # see if the scene has a processing hint such as 'I:4A'
-                label = self.scene_labels.get(scene_name)
-                if label:
-                    _, hint, _ = self.split_label(label)
-                    if hint:
-                        log_fn(f"inflate_scenes(): found processing hint: {hint}")
-                        hints = self.split_hint(hint)
-                        inflation_hint = hints.get("I")
-                        if inflation_hint:
-                            log_fn(f"found inflation processing hint: {inflation_hint}")
-                            if "1" in inflation_hint:
-                                log_fn("forcing disable of inflation")
-                                num_splits = 0
-                                disable_inflation = True
-                            elif "2" in inflation_hint:
-                                log_fn("forcing 2X inflation")
-                                num_splits = 1
-                            elif "4" in inflation_hint:
-                                log_fn("forcing 4X inflation")
-                                num_splits = 2
-                            elif "8" in inflation_hint:
-                                log_fn("forcing 8X inflation")
-                                num_splits = 3
+                inflation_hint = self.get_hint(self.scene_labels.get(scene_name), "I")
+                if inflation_hint:
+                    if "1" in inflation_hint:
+                        num_splits = 0
+                        disable_inflation = True
+                    elif "2" in inflation_hint:
+                        num_splits = 1
+                    elif "4" in inflation_hint:
+                        num_splits = 2
+                    elif "8" in inflation_hint:
+                        num_splits = 3
 
                 if num_splits == 0 and self.inflate and not disable_inflation:
                     if self.inflate_by_option == "2X":
@@ -2036,30 +2034,26 @@ class VideoRemixerState():
         force_audio = False
         force_inflate_by = None
         force_silent = False
-        label = self.scene_labels.get(scene_name)
-        if label:
-            _, hint, _ = self.split_label(label)
-            if hint:
-                hints = self.split_hint(hint)
-                inflation_hint = hints.get("I")
-                if inflation_hint:
-                    if "1" in inflation_hint:
-                        # noop inflation
-                        force_inflate_by = "1X"
-                    elif "2" in inflation_hint:
-                        force_inflation = True
-                        force_inflate_by = "2X"
-                    elif "4" in inflation_hint:
-                        force_inflation = True
-                        force_inflate_by = "4X"
-                    elif "8" in inflation_hint:
-                        force_inflation = True
-                        force_inflate_by = "8X"
 
-                    if "A" in inflation_hint:
-                        force_audio = True
-                    elif "S" in inflation_hint:
-                        force_silent = True
+        inflation_hint = self.get_hint(self.scene_labels.get(scene_name), "I")
+        if inflation_hint:
+            if "1" in inflation_hint:
+                # disable inflation
+                force_inflate_by = "1X"
+            elif "2" in inflation_hint:
+                force_inflation = True
+                force_inflate_by = "2X"
+            elif "4" in inflation_hint:
+                force_inflation = True
+                force_inflate_by = "4X"
+            elif "8" in inflation_hint:
+                force_inflation = True
+                force_inflate_by = "8X"
+
+            if "A" in inflation_hint:
+                force_audio = True
+            elif "S" in inflation_hint:
+                force_silent = True
         return force_inflation, force_audio, force_inflate_by, force_silent
 
     def compute_scene_fps(self, scene_name):
@@ -2124,12 +2118,13 @@ class VideoRemixerState():
 
     def compute_effective_slow_motion(self, force_inflation, force_audio, force_inflate_by,
                                       force_silent):
-        audio_slow_motion = force_audio or self.inflate_slow_option == "Audio"
-        silent_slow_motion = force_silent or self.inflate_slow_option == "Silent"
+        audio_slow_motion = force_audio or (self.inflate and self.inflate_slow_option == "Audio")
+        silent_slow_motion = force_silent or (self.inflate and self.inflate_slow_option == "Silent")
         project_inflation_rate = self.inflation_rate(self.inflate_by_option) if self.inflate else 1
         forced_inflation_rate = self.inflation_rate(force_inflate_by) if force_inflation else 1
         motion_factor = forced_inflation_rate / project_inflation_rate
-        return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflation_rate
+        return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, \
+            forced_inflation_rate
 
     def compute_inflated_audio_options(self, custom_audio_options, force_inflation, force_audio,
                                        force_inflate_by, force_silent):
