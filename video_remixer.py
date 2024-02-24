@@ -1945,32 +1945,29 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         if self.resynthesize_chosen():
             if self.resynthesize:
                 label += "-re"
-            if self.resynth_option == "Clean":
-                label += "C"
-            elif self.resynth_option == "Scrub":
-                label += "S"
-            elif self.resynth_option == "Replace":
-                label += "R"
-        else:
-            label += "-reH"
+                if self.resynth_option == "Clean":
+                    label += "C"
+                elif self.resynth_option == "Scrub":
+                    label += "S"
+                elif self.resynth_option == "Replace":
+                    label += "R"
+            else:
+                label += "-reH"
 
         if self.inflate_chosen():
             if self.inflate:
-                # enabled overall in the project
                 label += "-in" + self.inflate_by_option[0]
                 if self.inflate_slow_option == "Audio":
                     label += "SA"
                 elif self.inflate_slow_option == "Silent":
                     label += "SM"
             else:
-                # enabled via a processing hint
                 label += "-inH"
 
         if self.upscale_chosen():
             if self.upscale:
                 label += "-up" + self.upscale_option[0]
             else:
-                # enabled via a processing hint
                 label += "-upH"
 
         label += "-" + extra_suffix if extra_suffix else ""
