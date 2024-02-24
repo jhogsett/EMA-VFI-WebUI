@@ -1602,42 +1602,72 @@ class VideoRemixerState():
                 resize_handled = False
                 resize_hint = self.get_hint(self.scene_labels.get(scene_name), "R")
                 if resize_hint:
-                    if "/" in resize_hint and len(resize_hint) >= 3:
-                        # interpret 'x/y' as
-                        # x: quadrant, y: square number of quadrants
-                        # '5/9' and '13/25' would be the center squares of 3x3 and 5x5 grids
-                        #   zoomed in at 300% and 500%
-                        split_pos = resize_hint.index("/")
-                        quadrant = resize_hint[:split_pos]
-                        quadrants = resize_hint[split_pos+1:]
-                        if quadrant and quadrants:
-                            quadrant = int(quadrant) - 1
-                            quadrants = int(quadrants)
-                            magnitude = int(math.sqrt(quadrants))
-                            row = int(quadrant / magnitude)
-                            column = quadrant % magnitude
+                    try:
+                        if "/" in resize_hint:
+                            if len(resize_hint) >= 3:
+                                # interpret 'x/y' as
+                                # x: quadrant, y: square number of quadrants
+                                # '5/9' and '13/25' would be the center squares of 3x3 and 5x5 grids
+                                #   zoomed in at 300% and 500%
+                                split_pos = resize_hint.index("/")
+                                quadrant = resize_hint[:split_pos]
+                                quadrants = resize_hint[split_pos+1:]
+                                if quadrant and quadrants:
+                                    quadrant = int(quadrant) - 1
+                                    quadrants = int(quadrants)
+                                    magnitude = int(math.sqrt(quadrants))
+                                    row = int(quadrant / magnitude)
+                                    column = quadrant % magnitude
 
-                            # based on the zoom magnitude, compute new resize & crop
-                            resize_w = evenify(content_width * magnitude)
-                            resize_h = evenify(content_height * magnitude)
-                            crop_w = self.crop_w
-                            crop_h = self.crop_h
-                            crop_offset_x = column * content_width
-                            crop_offset_y = row * content_height
-                            scale_type = remixer_settings["scale_type_up"]
+                                    # based on the zoom magnitude, compute new resize & crop
+                                    resize_w = evenify(content_width * magnitude)
+                                    resize_h = evenify(content_height * magnitude)
+                                    crop_offset_x = column * content_width
+                                    crop_offset_y = row * content_height
+                                    scale_type = remixer_settings["scale_type_up"]
 
-                            self.resize_scene(log_fn,
-                                              scene_input_path,
-                                              scene_output_path,
-                                              int(resize_w),
-                                              int(resize_h),
-                                              int(crop_w),
-                                              int(crop_h),
-                                              int(crop_offset_x),
-                                              int(crop_offset_y),
-                                              scale_type,
-                                              crop_type="crop")
-                            resize_handled = True
+                                    self.resize_scene(log_fn,
+                                                    scene_input_path,
+                                                    scene_output_path,
+                                                    int(resize_w),
+                                                    int(resize_h),
+                                                    int(self.crop_w),
+                                                    int(self.crop_h),
+                                                    int(crop_offset_x),
+                                                    int(crop_offset_y),
+                                                    scale_type,
+                                                    crop_type="crop")
+                                    resize_handled = True
+
+                        elif "%" in resize_hint:
+                            if len(resize_hint) >= 4:
+                                # interpret z% as zoom percent to zoom into center
+                                zoom_percent = int(resize_hint.replace("%", ""))
+                                if zoom_percent >= 100:
+                                    magnitude = zoom_percent / 100.0
+                                    resize_w = evenify(content_width * magnitude)
+                                    resize_h = evenify(content_height * magnitude)
+                                    scale_type = remixer_settings["scale_type_up"]
+
+                                    self.resize_scene(log_fn,
+                                                    scene_input_path,
+                                                    scene_output_path,
+                                                    int(resize_w),
+                                                    int(resize_h),
+                                                    int(self.crop_w),
+                                                    int(self.crop_h),
+                                                    -1,
+                                                    -1,
+                                                    scale_type,
+                                                    crop_type="crop")
+                                    resize_handled = True
+                                else:
+                                    # zooming out past 100% isn't supported
+                                    log_fn(f"resize_scenes() ignoring unsupported zoom {zoom_percent}%")
+                    except Exception as error:
+                        log_fn(
+f"Error in resize_scenes() handling processing hint {resize_hint} - skipping processing: {error}")
+                        resize_handled = False
 
                 if not resize_handled:
                     self.resize_scene(log_fn,
