@@ -1393,12 +1393,32 @@ class VideoRemixer(TabBase):
                 format_markdown(f"The project path is not valid", "warning"),\
                 *empty_args
 
+        if os.path.exists(project_path):
+            return gr.update(selected=self.TAB_REMIX_SETTINGS), \
+                format_markdown(f"The project path is already in use", "warning"),\
+                *empty_args
+
+        if resize_h < 1 or resize_w < 1 or crop_h < 1 or crop_w < 1:
+            return gr.update(selected=self.TAB_REMIX_SETTINGS), \
+                format_markdown(f"Resize/Crop values should be >= 1", "warning"),\
+                *empty_args
+
+        if crop_h > resize_h or crop_w > resize_w:
+            return gr.update(selected=self.TAB_REMIX_SETTINGS), \
+                format_markdown(f"Crop values should be <= Resize values", "warning"),\
+                *empty_args
+
+        if crop_offset_x < -1 or crop_offset_x > crop_w - 1 or \
+                crop_offset_y < -1 or crop_offset_y > crop_h - 1:
+            return gr.update(selected=self.TAB_REMIX_SETTINGS), \
+                format_markdown(f"Crop Offset values should be >= -1 and less than Crop values",
+                                "warning"),\
+                *empty_args
+
         if split_time < 1:
             return gr.update(selected=self.TAB_REMIX_SETTINGS), \
                 format_markdown(f"Scene Split Seconds should be >= 1", "warning"),\
                 *empty_args
-
-        # TODO validate the other entries
 
         try:
             # this is first project write
@@ -2222,10 +2242,11 @@ class VideoRemixer(TabBase):
 
     def split_scene(self, scene_index, split_percent, keep_before, keep_after):
         global_options = self.config.ffmpeg_settings["global_options"]
+        backup_split_scenes = self.config.remixer_settings["backup_split_scenes"]
         try:
             message = self.state.split_scene(self.log, scene_index, split_percent,
                                              self.config.remixer_settings, global_options,
-                                             keep_before, keep_after)
+                                             keep_before, keep_after, backup_split_scenes)
             self.state.save()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
