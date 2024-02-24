@@ -29,6 +29,8 @@ def main():
         help="Base filename for interpolated PNGs")
     parser.add_argument("--time_step", dest="time_step", default=False, action="store_true",
         help="Use Time Step instead of Binary Search interpolation (Default: False)")
+    parser.add_argument("--type", default="png", type=str,
+                        help="File type for frame files (Default 'png')")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
@@ -38,8 +40,12 @@ def main():
     engine = InterpolateEngine(args.model, args.gpu_ids, use_time_step=args.time_step)
     interpolater = Interpolate(engine.model, log.log)
     deep_interpolater = DeepInterpolate(interpolater, args.time_step, log.log)
-    deep_interpolater.split_frames(args.img_before, args.img_after, args.depth, args.output_path,
-        args.base_filename)
+    deep_interpolater.split_frames(args.img_before,
+                                   args.img_after,
+                                   args.depth,
+                                   args.output_path,
+                                   args.base_filename,
+                                   type=args.type)
 
 class DeepInterpolate():
     """Encapsulates logic for the Frame Interpolation feature"""
@@ -63,7 +69,8 @@ class DeepInterpolate():
                     base_filename,
                     progress_label="Frame",
                     continued=False,
-                    resynthesis=False):
+                    resynthesis=False,
+                    type : str="png"):
         """Invoke the Frame Interpolation feature"""
         self.init_frame_register()
         self.reset_split_manager(num_splits)
@@ -78,23 +85,24 @@ class DeepInterpolate():
                 self.register_frame(path)
             self.interpolater.output_paths = []
         else:
-            self._set_up_outer_frames(before_filepath, after_filepath, output_filepath_prefix)
-            self._recursive_split_frames(0.0, 1.0, output_filepath_prefix)
-        self._integerize_filenames(output_path, base_filename, continued, resynthesis)
+            self._set_up_outer_frames(before_filepath, after_filepath, output_filepath_prefix, type)
+            self._recursive_split_frames(0.0, 1.0, output_filepath_prefix, type)
+        self._integerize_filenames(output_path, base_filename, continued, resynthesis, type)
         self.close_progress()
 
     def _set_up_outer_frames(self,
-                            before_file,
-                            after_file,
-                            output_filepath_prefix):
+                            before_file : str,
+                            after_file : str,
+                            output_filepath_prefix : str,
+                            type : str):
         """Start with the original frames at 0.0 and 1.0"""
         img0 = cv2.imread(before_file)
         img1 = cv2.imread(after_file)
 
         # create outer 0.0 and 1.0 versions of original frames
         before_index, after_index = 0.0, 1.0
-        before_file = self.indexed_filepath(output_filepath_prefix, before_index)
-        after_file = self.indexed_filepath(output_filepath_prefix, after_index)
+        before_file = self.indexed_filepath(output_filepath_prefix, before_index, type)
+        after_file = self.indexed_filepath(output_filepath_prefix, after_index, type)
 
         cv2.imwrite(before_file, img0)
         self.register_frame(before_file)
@@ -107,24 +115,25 @@ class DeepInterpolate():
     def _recursive_split_frames(self,
                                 first_index : float,
                                 last_index : float,
-                                filepath_prefix : str):
+                                filepath_prefix : str,
+                                type : str):
         """Create a new frame between the given frames, and re-enter to split deeper"""
         if self.enter_split():
             mid_index = first_index + (last_index - first_index) / 2.0
-            first_filepath = self.indexed_filepath(filepath_prefix, first_index)
-            last_filepath = self.indexed_filepath(filepath_prefix, last_index)
-            mid_filepath = self.indexed_filepath(filepath_prefix, mid_index)
+            first_filepath = self.indexed_filepath(filepath_prefix, first_index, type)
+            last_filepath = self.indexed_filepath(filepath_prefix, last_index, type)
+            mid_filepath = self.indexed_filepath(filepath_prefix, mid_index, type)
 
             self.interpolater.create_between_frame(first_filepath, last_filepath, mid_filepath)
             self.register_frame(mid_filepath)
             self.step_progress()
 
             # deal with two new split regions
-            self._recursive_split_frames(first_index, mid_index, filepath_prefix)
-            self._recursive_split_frames(mid_index, last_index, filepath_prefix)
+            self._recursive_split_frames(first_index, mid_index, filepath_prefix, type)
+            self._recursive_split_frames(mid_index, last_index, filepath_prefix, type)
             self.exit_split()
 
-    def _integerize_filenames(self, output_path, base_name, continued, resynthesis):
+    def _integerize_filenames(self, output_path, base_name, continued, resynthesis, type):
         """Keep the interpolated frame files with an index number for sorting"""
         file_prefix = os.path.join(output_path, base_name)
         frame_files = self.sorted_registered_frames()
@@ -144,7 +153,7 @@ class DeepInterpolate():
                 os.remove(file)
                 self.log("continuation - removed uneeded " + file)
             else:
-                new_filename = file_prefix + str(index).zfill(num_width) + ".png"
+                new_filename = file_prefix + str(index).zfill(num_width) + "." + type
                 os.replace(file, new_filename)
                 self.output_paths.append(new_filename)
                 self.log("renamed " + file + " to " + new_filename)
@@ -195,10 +204,10 @@ class DeepInterpolate():
             Mtqdm().leave_bar(self.progress)
 
     # filepath prefix representing the split position while splitting
-    def indexed_filepath(self, filepath_prefix, index):
+    def indexed_filepath(self, filepath_prefix, index, type : str="png"):
         """Filepath prefix representing the split position while splitting"""
         float_index = sortable_float_index(index, fixed_width=True)
-        return filepath_prefix + f"{float_index}.png"
+        return filepath_prefix + f"{float_index}.{type}"
 
     def log(self, message):
         """Logging"""

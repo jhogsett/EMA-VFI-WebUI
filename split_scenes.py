@@ -69,13 +69,13 @@ class SplitScenes:
         if not self.type in valid_types:
             raise ValueError(f"'type' must be one of {', '.join([t for t in valid_types])}")
 
-    def split_scenes(self):
+    def split_scenes(self, format : str="png"):
         files = sorted(glob.glob(os.path.join(self.input_path, f"*.{self.file_ext}")))
         num_files = len(files)
         num_width = len(str(num_files))
         self.log(f"calling `get_detected_scenes` with input path '{self.input_path}'" +\
                  f" threshold '{self.scene_threshold}'")
-        scenes = get_detected_scenes(self.input_path, float(self.scene_threshold))
+        scenes = get_detected_scenes(self.input_path, float(self.scene_threshold), type=format)
         # add one more final fake detection past the end to include frames past the last detection
         scenes.append(num_files+1)
         ranges = scene_list_to_ranges(scenes, num_files)
@@ -99,7 +99,7 @@ class SplitScenes:
                     self.log(f"Creating directory {group_path}")
                     create_directory(group_path)
 
-                desc = "Copying" # if self.action == "copy" else "Moving"
+                desc = "Copying"
                 with Mtqdm().open_bar(total=group_size, desc=desc) as file_bar:
                     for index in range(first_index, last_index+1):
                         frame_file = files[index]
@@ -115,27 +115,16 @@ class SplitScenes:
                         Mtqdm().update_bar(file_bar)
                 Mtqdm().update_bar(scene_bar)
 
-        # if self.action != "copy":
-        #     with Mtqdm().open_bar(total=num_files, desc="Deleting") as bar:
-        #         for file in files:
-        #             if os.path.exists(file):
-        #                 if self.dry_run:
-        #                     print(f"[Dry Run] Deleting {file}")
-        #                 else:
-        #                     self.log(f"Deleting {file}")
-        #                     os.remove(file)
-        #             Mtqdm().update_bar(bar)
-
         return group_paths
 
-    def split_breaks(self):
+    def split_breaks(self, format : str="jpg"):
         files = sorted(glob.glob(os.path.join(self.input_path, f"*.{self.file_ext}")))
         num_files = len(files)
         num_width = len(str(num_files))
         self.log(f"calling `get_detected_breaks` with input path '{self.input_path}'" +\
                  f" duration '{self.break_duration}' ratio '{self.break_ratio}'")
         scenes = get_detected_breaks(self.input_path, float(self.break_duration),
-                                     float(self.break_ratio))
+                                     float(self.break_ratio), type=format)
         # add one more final fake detection past the end to include frames past the last detection
         scenes.append(num_files+1)
         ranges = scene_list_to_ranges(scenes, num_files)
@@ -159,7 +148,7 @@ class SplitScenes:
                     self.log(f"Creating directory {group_path}")
                     create_directory(group_path)
 
-                desc = "Copying" # if self.action == "copy" else "Moving"
+                desc = "Copying"
                 with Mtqdm().open_bar(total=group_size, desc=desc) as file_bar:
                     for index in range(first_index, last_index+1):
                         frame_file = files[index]
@@ -175,20 +164,9 @@ class SplitScenes:
                         Mtqdm().update_bar(file_bar)
                 Mtqdm().update_bar(scene_bar)
 
-        # if self.action != "copy":
-        #     with Mtqdm().open_bar(total=num_files, desc="Deleting") as bar:
-        #         for file in files:
-        #             if os.path.exists(file):
-        #                 if self.dry_run:
-        #                     print(f"[Dry Run] Deleting {file}")
-        #                 else:
-        #                     self.log(f"Deleting {file}")
-        #                     os.remove(file)
-        #             Mtqdm().update_bar(bar)
-
         return group_paths
 
-    def split(self) -> list:
+    def split(self, type : str="png") -> list:
         """Invoke the Split Scenes feature"""
         # files = sorted(glob.glob(os.path.join(self.input_path, f"*.{self.file_ext}")))
         # num_files = len(files)
@@ -197,13 +175,13 @@ class SplitScenes:
         if self.type == "scene":
             if self.scene_threshold < 0.0 or self.scene_threshold > 1.0:
                 raise ValueError("'scene_threshold' must be between 0.0 and 1.0")
-            self.split_scenes()
+            self.split_scenes(type)
         else:
             if self.break_duration < 0.0:
                 raise ValueError("'break_duration' >= 0.0")
             if self.break_ratio < 0.0 or self.break_ratio > 1.0:
                 raise ValueError("'break_ratio' must be between 0.0 and 1.0")
-            self.split_breaks()
+            self.split_breaks(type)
 
         if self.dry_run:
             print(f"[Dry Run] Creating base output path {self.output_path}")

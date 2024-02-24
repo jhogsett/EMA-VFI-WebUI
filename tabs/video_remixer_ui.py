@@ -64,7 +64,9 @@ class VideoRemixer(TabBase):
         "resize_w" : 1920,
         "resize_h" : 1080,
         "crop_w" : 1920,
-        "crop_h" : 1080
+        "crop_h" : 1080,
+        "frame_format" : "png",
+        "sound_format" : "wav"
     }
 
     TAB_REMIX_HOME = 0
@@ -206,8 +208,9 @@ class VideoRemixer(TabBase):
                         with gr.Accordion(label="More Options", open=False):
                             reuse_prev_settings = gr.Button(value="Reuse Last-Used Settings", size="sm", scale=0)
                             with gr.Row(variant="compact"):
-                                crop_offset_x = gr.Number(label="Crop X Offset", value=-1, info="-1 to auto-center", container=False)
-                                crop_offset_y = gr.Number(label="Crop Y Offset", value=-1, info="-1 to auto-center", container=False)
+                                crop_offset_x = gr.Number(label="Crop X Offset (-1: center)", value=-1, container=False, scale=1)
+                                crop_offset_y = gr.Number(label="Crop Y Offset (-1: center)", value=-1, container=False, scale=1)
+                                frame_format = gr.Radio(choices=["png", "jpg"], value="png", label="Frame Format", container=False, scale=2)
 
                 message_box1 = gr.Markdown(value=format_markdown(self.TAB1_DEFAULT_MESSAGE))
                 with gr.Row():
@@ -446,7 +449,7 @@ class VideoRemixer(TabBase):
                     with gr.Tab(label="Create Custom Remix"):
                         custom_video_options = gr.Textbox(value=custom_ffmpeg_video, max_lines=1,
                             label="Custom FFmpeg Video Output Options",
-                    info="Passed to FFmpeg as output video settings when converting PNG frames")
+                    info="Passed to FFmpeg as output video settings when converting frames to video")
                         custom_audio_options = gr.Textbox(value=custom_ffmpeg_audio, max_lines=1,
                             label="Custom FFmpeg Audio Output Options",
                     info="Passed to FFmpeg as output audio settings when combining with video")
@@ -471,7 +474,7 @@ class VideoRemixer(TabBase):
                     with gr.Tab(label="Create Marked Remix"):
                         marked_video_options = gr.Textbox(value=marked_ffmpeg_video, max_lines=1,
                             label="Marked FFmpeg Video Output Options",
-                    info="Passed to FFmpeg as output video settings when converting PNG frames")
+                    info="Passed to FFmpeg as output video settings when converting frames to video")
                         marked_audio_options = gr.Textbox(value=marked_ffmpeg_audio, max_lines=1,
                             label="Marked FFmpeg Audio Output Options",
                     info="Passed to FFmpeg as output audio settings when combining with video")
@@ -775,13 +778,13 @@ class VideoRemixer(TabBase):
                                     with gr.Tab(SimpleIcons.CROSSMARK +
                                                 " Remove Scene Chooser Content"):
                                         gr.Markdown(
-                                "**_Delete source PNG frame files, thumbnails and dropped scenes_**")
+                                "**_Delete source frame files, thumbnails and dropped scenes_**")
                                         with gr.Row():
                                             delete_source_711 = gr.Checkbox(value=True,
                                                 label="Remove Source Video Frames")
                                             with gr.Column(variant="compact"):
                                                 gr.Markdown(
-                            "Delete source video PNG frame files used to split content into scenes.")
+                            "Delete source video frame files used to split content into scenes.")
                                         with gr.Row():
                                             delete_dropped_711 = gr.Checkbox(
                                                 label="Remove Dropped Scenes")
@@ -823,26 +826,26 @@ class VideoRemixer(TabBase):
                                             label="Remove Resized Frames")
                                         with gr.Column(variant="compact"):
                                             gr.Markdown(
-    "Delete Resized PNG frame files used as inputs for processing and creating remix video clips.")
+    "Delete Resized frame files used as inputs for processing and creating remix video clips.")
                                     with gr.Row():
                                         delete_resynth_712 = gr.Checkbox(value=True,
                                             label="Remove Resynthesized Frames")
                                         with gr.Column(variant="compact"):
                                             gr.Markdown(
-                                        "Delete Resynthesized PNG frame files used as inputs " +\
+                                        "Delete Resynthesized frame files used as inputs " +\
                                         "for processing and creating remix video clips.")
                                     with gr.Row():
                                         delete_inflated_712 = gr.Checkbox(value=True,
                                             label="Remove Inflated Frames")
                                         with gr.Column(variant="compact"):
                                             gr.Markdown(
-    "Delete Inflated PNG frame files used as inputs for processing and creating remix video clips.")
+    "Delete Inflated frame files used as inputs for processing and creating remix video clips.")
                                     with gr.Row():
                                         delete_upscaled_712 = gr.Checkbox(value=True,
                                             label="Remove Upscaled Frames")
                                         with gr.Column(variant="compact"):
                                             gr.Markdown(
-    "Delete Upscaled PNG frame files used as inputs for processing and creating remix video clips.")
+    "Delete Upscaled frame files used as inputs for processing and creating remix video clips.")
                                     with gr.Row():
                                         delete_audio_712 = gr.Checkbox(label="Delete Audio Clips")
                                         with gr.Column(variant="compact"):
@@ -889,7 +892,7 @@ class VideoRemixer(TabBase):
                            outputs=[tabs_video_remixer, message_box01, video_info1, project_path,
                                 project_fps, deinterlace, split_type, split_time, scene_threshold,
                                 break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
-                                crop_offset_x, crop_offset_y, project_info2, thumbnail_type,
+                                crop_offset_x, crop_offset_y, frame_format, project_info2, thumbnail_type,
                                 min_frames_per_scene, scene_index, scene_name, scene_image,
                                 scene_state, scene_info, set_scene_label, project_info4, resize,
                                 resynthesize, resynth_option, inflate, inflate_by_option, inflate_slow_option,
@@ -898,7 +901,7 @@ class VideoRemixer(TabBase):
         next_button1.click(self.next_button1,
                            inputs=[project_path, project_fps, split_type, scene_threshold,
                                 break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h,
-                                crop_offset_x, crop_offset_y, deinterlace, split_time],
+                                crop_offset_x, crop_offset_y, frame_format, deinterlace, split_time],
                            outputs=[tabs_video_remixer, message_box1, project_info2, message_box2,
                                 project_load_path])
 
@@ -907,7 +910,7 @@ class VideoRemixer(TabBase):
         reuse_prev_settings.click(self.reuse_prev_settings,
                                   outputs=[project_fps, split_type, scene_threshold,
                                            break_duration, break_ratio, resize_w, resize_h,
-                                           crop_w, crop_h, crop_offset_x, crop_offset_y,
+                                           crop_w, crop_h, crop_offset_x, crop_offset_y, frame_format,
                                            deinterlace, split_time])
 
         next_button2.click(self.next_button2,
@@ -1283,7 +1286,7 @@ class VideoRemixer(TabBase):
 
     # User has clicked Open Project > from Remix Home
     def next_button01(self, project_path):
-        empty_args = dummy_args(34)
+        empty_args = dummy_args(36)
         if not project_path:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    format_markdown("Enter a path to a Video Remixer project directory on this server to get started", "warning"), \
@@ -1337,8 +1340,7 @@ class VideoRemixer(TabBase):
             self.state.tryattr("deinterlace", self.UI_SAFETY_DEFAULTS["deinterlace"]), \
             self.state.tryattr("split_type", self.UI_SAFETY_DEFAULTS["split_type"]), \
             self.state.tryattr("split_time", self.UI_SAFETY_DEFAULTS["split_time"]), \
-            self.state.tryattr("scene_threshold", \
-                               self.UI_SAFETY_DEFAULTS["scene_threshold"]), \
+            self.state.tryattr("scene_threshold", self.UI_SAFETY_DEFAULTS["scene_threshold"]), \
             self.state.tryattr("break_duration", self.UI_SAFETY_DEFAULTS["break_duration"]), \
             self.state.tryattr("break_ratio", self.UI_SAFETY_DEFAULTS["break_ratio"]), \
             self.state.tryattr("resize_w"), \
@@ -1347,10 +1349,10 @@ class VideoRemixer(TabBase):
             self.state.tryattr("crop_h"), \
             self.state.tryattr("crop_offset_x", self.UI_SAFETY_DEFAULTS["crop_offsets"]), \
             self.state.tryattr("crop_offset_y", self.UI_SAFETY_DEFAULTS["crop_offsets"]), \
+            self.state.tryattr("frame_format", self.UI_SAFETY_DEFAULTS["frame_format"]), \
             self.state.tryattr("project_info2"), \
             self.state.tryattr("thumbnail_type", self.UI_SAFETY_DEFAULTS["thumbnail_type"]), \
-            self.state.tryattr("min_frames_per_scene", \
-                               self.UI_SAFETY_DEFAULTS["min_frames_per_scene"]), \
+            self.state.tryattr("min_frames_per_scene", self.UI_SAFETY_DEFAULTS["min_frames_per_scene"]), \
             *scene_details, \
             self.state.tryattr("project_info4"), \
             self.state.tryattr("resize", self.UI_SAFETY_DEFAULTS["resize"]), \
@@ -1380,6 +1382,7 @@ class VideoRemixer(TabBase):
                      crop_h,
                      crop_offset_x,
                      crop_offset_y,
+                     frame_format,
                      deinterlace,
                      split_time):
         empty_args = dummy_args(3)
@@ -1413,6 +1416,7 @@ class VideoRemixer(TabBase):
             self.state.crop_h = int(crop_h)
             self.state.crop_offset_x = int(crop_offset_x)
             self.state.crop_offset_y = int(crop_offset_y)
+            self.state.frame_format = frame_format
 
             # if redoing this step to save settings and the deinterlace option changed,
             # the source frames will need to be rendered again from the source video
@@ -1444,6 +1448,7 @@ class VideoRemixer(TabBase):
             last_settings["crop_h"] = self.state.crop_h
             last_settings["crop_offset_x"] = self.state.crop_offset_x
             last_settings["crop_offset_y"] = self.state.crop_offset_y
+            last_settings["frame_format"] = self.state.frame_format
             last_settings["deinterlace"] = self.state.deinterlace
             last_settings["split_time"] = self.state.split_time
             Session().set("last-video-remixer-settings", last_settings)
@@ -1477,6 +1482,7 @@ class VideoRemixer(TabBase):
                     last_settings["crop_h"], \
                     last_settings["crop_offset_x"], \
                     last_settings["crop_offset_y"], \
+                    last_settings["frame_format"], \
                     last_settings["deinterlace"], \
                     last_settings["split_time"]
             else:
@@ -1492,6 +1498,7 @@ class VideoRemixer(TabBase):
                     self.UI_SAFETY_DEFAULTS["crop_h"], \
                     self.UI_SAFETY_DEFAULTS["crop_offsets"], \
                     self.UI_SAFETY_DEFAULTS["crop_offsets"], \
+                    self.UI_SAFETY_DEFAULTS["frame_format"], \
                     self.UI_SAFETY_DEFAULTS["deinterlace"], \
                     self.UI_SAFETY_DEFAULTS["split_time"]
 
@@ -1540,16 +1547,16 @@ class VideoRemixer(TabBase):
             self.log("resetting project on rendering for project settings")
             self.state.reset_at_project_settings()
 
-            # split video into raw PNG frames, avoid doing again if redoing setup
+            # split video into frames, avoid doing again if redoing setup
             # unless the source frames were flagged invalid in the previous step
-            self.log("splitting source video into PNG frames")
+            self.log("splitting source video into frames")
             prevent_overwrite = not self.state.source_frames_invalid
             ffcmd = self.state.render_source_frames(global_options=global_options,
                                                     prevent_overwrite=prevent_overwrite)
             if not ffcmd:
                 self.log("rendering source frames skipped")
             else:
-                self.log("saving project after converting video to PNG frames")
+                self.log("saving project after converting video to frames")
                 self.state.save()
                 self.log(f"FFmpeg command: {ffcmd}")
 
@@ -2339,7 +2346,7 @@ class VideoRemixer(TabBase):
 
         self.state.uncompile_scenes()
 
-        # the native size of the on-disk PNG frames is needed
+        # the native dimensions of the on-disk frame files are needed
         # older project.yaml files won't have this data
         try:
             self.state.enhance_video_info(self.log, ignore_errors=False)
@@ -2447,7 +2454,7 @@ class VideoRemixer(TabBase):
         # resequence the files within the selected scenes contiguously
         self.log("about to call resequence_groups() with the selected scene names")
         ResequenceFiles(self.state.scenes_path,
-                        "png",
+                        self.state.frame_format,
                         "merged_frame",
                         0, 1,
                         1, 0,

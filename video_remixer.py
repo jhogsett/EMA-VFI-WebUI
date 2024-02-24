@@ -54,6 +54,8 @@ class VideoRemixerState():
         self.split_time = None
         self.crop_offset_x = None
         self.crop_offset_y = None
+        self.frame_format = None
+        self.sound_format = None
 
         # set on confirming set up options
         self.split_frames = None
@@ -142,6 +144,8 @@ class VideoRemixerState():
         self.inflate_by_option = defaults["inflate_by_option"]
         self.inflate_slow_option = defaults["inflate_slow_option"]
         self.resynth_option = defaults["resynth_option"]
+        self.frame_format = defaults["frame_format"]
+        self.audio_format = defaults["sound_format"]
 
     DEF_FILENAME = "project.yaml"
 
@@ -388,11 +392,11 @@ class VideoRemixerState():
 
     FRAMES_PATH = "SOURCE"
 
-    # split video into raw PNG frames
+    # split video into frames
     def render_source_frames(self, global_options, prevent_overwrite=False):
         self.frames_path = os.path.join(self.project_path, self.FRAMES_PATH)
         if prevent_overwrite:
-            if os.path.exists(self.frames_path) and get_files(self.frames_path, "png"):
+            if os.path.exists(self.frames_path) and get_files(self.frames_path, self.frame_format):
                 return None
 
         video_path = self.source_video
@@ -401,29 +405,30 @@ class VideoRemixerState():
         source_frame_count = int(self.video_details["frame_count"])
         _, index_width = rate_adjusted_count(source_frame_count, source_frame_rate, self.project_fps)
 
-        self.output_pattern = f"source_%0{index_width}d.png"
+        self.output_pattern = f"source_%0{index_width}d.{self.frame_format}"
         frame_rate = self.project_fps
         create_directory(self.frames_path)
 
         with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
-            Mtqdm().message(bar, "Copying source video frames to PNG files - no ETA")
+            Mtqdm().message(bar, "Copying source video to frame files - no ETA")
             ffmpeg_cmd = MP4toPNG(video_path,
                                   self.output_pattern,
                                   frame_rate,
                                   self.frames_path,
                                   deinterlace=self.deinterlace,
-                                  global_options=global_options)
+                                  global_options=global_options,
+                                  type=self.frame_format)
             Mtqdm().update_bar(bar)
         return ffmpeg_cmd
 
     # this is intended to be called after source frames have been rendered
     def enhance_video_info(self, log_fn, ignore_errors=True):
-        """Get the actual dimensions of the PNG frame files"""
+        """Get the actual dimensions of the frame files"""
         if self.scene_names and not self.video_details.get("source_width", None):
             self.uncompile_scenes()
             first_scene_name = self.scene_names[0]
             first_scene_path = os.path.join(self.scenes_path, first_scene_name)
-            scene_files = sorted(get_files(first_scene_path, "png"))
+            scene_files = sorted(get_files(first_scene_path, self.frame_format))
             if scene_files:
                 try:
                     width, height = image_size(scene_files[0])
@@ -434,7 +439,7 @@ class VideoRemixerState():
                     if not ignore_errors:
                         raise error
                 return
-            message = f"no frame PNG files found in {first_scene_path}"
+            message = f"no frame files found in {first_scene_path}"
             if ignore_errors:
                 log_fn(message)
             else:
@@ -455,12 +460,12 @@ class VideoRemixerState():
                     Mtqdm().message(bar, "Splitting video by detected scene - no ETA")
                     SplitScenes(self.frames_path,
                                 self.scenes_path,
-                                "png",
+                                self.frame_format,
                                 "scene",
                                 self.scene_threshold,
                                 0.0,
                                 0.0,
-                                log_fn).split()
+                                log_fn).split(type=self.frame_format)
                     Mtqdm().update_bar(bar)
 
             elif self.split_type == "Break":
@@ -468,19 +473,19 @@ class VideoRemixerState():
                     Mtqdm().message(bar, "Splitting video by detected break - no ETA")
                     SplitScenes(self.frames_path,
                                 self.scenes_path,
-                                "png",
+                                self.frame_format,
                                 "break",
                                 0.0,
                                 float(self.break_duration),
                                 float(self.break_ratio),
-                                log_fn).split()
+                                log_fn).split(type=self.frame_format)
                     Mtqdm().update_bar(bar)
             elif self.split_type == "Time":
                 # split by seconds
                 SplitFrames(
                     self.frames_path,
                     self.scenes_path,
-                    "png",
+                    self.frame_format,
                     "precise",
                     0,
                     self.split_frames,
@@ -492,7 +497,7 @@ class VideoRemixerState():
                 SplitFrames(
                     self.frames_path,
                     self.scenes_path,
-                    "png",
+                    self.frame_format,
                     "precise",
                     1,
                     0,
@@ -600,7 +605,7 @@ class VideoRemixerState():
         _, index_width = rate_adjusted_count(source_frame_count, source_frame_rate, self.project_fps)
 
         log_fn(f"auto-resequencing source frames at {frames_source}")
-        ResequenceFiles(frames_source, "png", "scene_frame", 0, 1, 1, 0, index_width, True,
+        ResequenceFiles(frames_source, self.frame_format, "scene_frame", 0, 1, 1, 0, index_width, True,
             log_fn).resequence()
 
         thumbnail_filename = f"thumbnail[{scene_name}]"
@@ -628,8 +633,8 @@ class VideoRemixerState():
                         0.0,
                         0.0,
                         log_fn,
-                        global_options=global_options).slice_png_group(scene_name,
-                            slice_name=thumbnail_filename)
+                        global_options=global_options).slice_frame_group(scene_name,
+                            slice_name=thumbnail_filename, type=self.frame_format)
 
         elif self.thumbnail_type == "GIF":
             gif_fps = remixer_settings["default_gif_fps"]
@@ -659,9 +664,10 @@ class VideoRemixerState():
                         gif_fps,
                         gif_end_delay,
                         log_fn,
-                        global_options=global_options).slice_png_group(scene_name,
+                        global_options=global_options).slice_frame_group(scene_name,
                                                                     ignore_errors=True,
-                                                                    slice_name=thumbnail_filename)
+                                                                    slice_name=thumbnail_filename,
+                                                                    type=self.frame_format)
         else:
             raise ValueError(f"thumbnail type '{self.thumbnail_type}' is not implemented")
 
@@ -1561,7 +1567,7 @@ class VideoRemixerState():
                     crop_width=self.crop_w,
                     crop_height=self.crop_h,
                     crop_offset_x=self.crop_offset_x,
-                    crop_offset_y=self.crop_offset_y).resize()
+                    crop_offset_y=self.crop_offset_y).resize(type=self.frame_format)
 
     def resize_scenes(self, log_fn, kept_scenes, remixer_settings):
         scenes_base_path = self.scenes_source_path(self.RESIZE_STEP)
@@ -1585,31 +1591,36 @@ class VideoRemixerState():
                 Mtqdm().update_bar(bar)
 
     # TODO dry up this code with same in resynthesize_video_ui - maybe a specific resynth script
-    def one_pass_resynthesis(self, log_fn, input_path, output_path, output_basename, engine):
-        file_list = sorted(get_files(input_path, extension="png"))
+    def one_pass_resynthesis(self, log_fn, input_path, output_path, output_basename,
+                             engine : InterpolateSeries):
+        file_list = sorted(get_files(input_path, extension=self.frame_format))
         log_fn(f"beginning series of frame recreations at {output_path}")
-        engine.interpolate_series(file_list, output_path, 1, "interframe", offset=2)
+        engine.interpolate_series(file_list, output_path, 1, "interframe", offset=2,
+                                  type=self.frame_format)
 
         log_fn(f"auto-resequencing recreated frames at {output_path}")
         ResequenceFiles(output_path,
-                        "png", "resynthesized_frame",
+                        self.frame_format,
+                        "resynthesized_frame",
                         1, 1, # start, step
                         1, 0, # stride, offset
                         -1,   # auto-zero fill
                         True, # rename
                         log_fn).resequence()
 
-    def two_pass_resynth_pass(self, log_fn, input_path, output_path, output_basename, engine):
-        file_list = sorted(get_files(input_path, extension="png"))
+    def two_pass_resynth_pass(self, log_fn, input_path, output_path, output_basename,
+                              engine : InterpolateSeries):
+        file_list = sorted(get_files(input_path, extension=self.frame_format))
 
         inflated_frames = os.path.join(output_path, "inflated_frames")
         log_fn(f"beginning series of interframe recreations at {inflated_frames}")
         create_directory(inflated_frames)
-        engine.interpolate_series(file_list, inflated_frames, 1, "interframe")
+        engine.interpolate_series(file_list, inflated_frames, 1, "interframe",
+                                  type=self.frame_format)
 
         log_fn(f"selecting odd interframes only at {inflated_frames}")
         ResequenceFiles(inflated_frames,
-                        "png",
+                        self.frame_format,
                         output_basename,
                         1, 1,  # start, step
                         2, 1,  # stride, offset
@@ -1710,13 +1721,14 @@ class VideoRemixerState():
                 if num_splits:
                     # the scene needs inflating
                     output_basename = "interpolated_frames"
-                    file_list = sorted(get_files(scene_input_path, extension="png"))
+                    file_list = sorted(get_files(scene_input_path, extension=self.frame_format))
                     series_interpolater.interpolate_series(file_list,
                                                         scene_output_path,
                                                         num_splits,
-                                                        output_basename)
+                                                        output_basename,
+                                                        type=self.frame_format)
                     ResequenceFiles(scene_output_path,
-                                    "png",
+                                    self.frame_format,
                                     "inflated_frame",
                                     1, 1,
                                     1, 0,
@@ -1726,7 +1738,7 @@ class VideoRemixerState():
                 else:
                     # no need to inflate so just copy the files using the resequencer
                     ResequenceFiles(scene_input_path,
-                                    "png",
+                                    self.frame_format,
                                     "inflated_frame",
                                     1, 1,
                                     1, 0,
@@ -1777,7 +1789,7 @@ class VideoRemixerState():
         output_basename = "upscaled_frames"
         log_fn(f"about to upscale images to {working_path}")
         upscaler.upscale_series(file_list, working_path, self.FIXED_UPSCALE_FACTOR, output_basename,
-                                "png")
+                                self.frame_format)
 
         # get size of upscaled frames
         upscaled_files = sorted(get_files(working_path))
@@ -2007,13 +2019,16 @@ class VideoRemixerState():
     VIDEO_CLIPS_PATH = "VIDEO"
 
     def compute_inflated_fps(self, force_inflation, force_audio, force_inflate_by, force_silent):
-        motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate = \
+        _, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflated_rate = \
             self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
                                                force_silent)
         if audio_slow_motion or silent_slow_motion:
             fps_factor = project_inflation_rate
         else:
-            fps_factor = motion_factor
+            if force_inflation:
+                fps_factor = forced_inflated_rate
+            else:
+                fps_factor = project_inflation_rate
         return self.project_fps * fps_factor
 
     def compute_forced_inflation(self, scene_name):
@@ -2081,7 +2096,7 @@ class VideoRemixerState():
                 video_clip_fps = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
-                                "png",
+                                self.frame_format,
                                 "processed_frame",
                                 1,
                                 1,
@@ -2096,7 +2111,8 @@ class VideoRemixerState():
                                 video_clip_fps,
                                 scene_output_filepath,
                                 crf=self.output_quality,
-                                global_options=global_options)
+                                global_options=global_options,
+                                type=self.frame_format)
                 Mtqdm().update_bar(bar)
 
         self.video_clips = sorted(get_files(self.video_clips_path))
@@ -2108,55 +2124,40 @@ class VideoRemixerState():
 
     def compute_effective_slow_motion(self, force_inflation, force_audio, force_inflate_by,
                                       force_silent):
-        motion_factor = 1.0
-        audio_slow_motion = False
-        silent_slow_motion = False
-        project_inflation_rate = 1
-
-        if self.inflate or force_inflation:
-            if self.inflate:
-                project_inflation_rate = self.inflation_rate(self.inflate_by_option)
-            forced_inflation_rate = self.inflation_rate(force_inflate_by)
-
-            motion_factor = project_inflation_rate
-
-            if forced_inflation_rate != project_inflation_rate:
-                if forced_inflation_rate > project_inflation_rate:
-                    motion_factor = forced_inflation_rate
-                else:
-                    motion_factor = project_inflation_rate / float(forced_inflation_rate)
-
-            audio_slow_motion = force_audio or self.inflate_slow_option == "Audio"
-            silent_slow_motion = force_silent or self.inflate_slow_option == "Silent"
-
-            if audio_slow_motion and motion_factor == 1:
-                audio_slow_motion = False
-
-        return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate
+        audio_slow_motion = force_audio or self.inflate_slow_option == "Audio"
+        silent_slow_motion = force_silent or self.inflate_slow_option == "Silent"
+        project_inflation_rate = self.inflation_rate(self.inflate_by_option) if self.inflate else 1
+        forced_inflation_rate = self.inflation_rate(force_inflate_by) if force_inflation else 1
+        motion_factor = forced_inflation_rate / project_inflation_rate
+        return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflation_rate
 
     def compute_inflated_audio_options(self, custom_audio_options, force_inflation, force_audio,
                                        force_inflate_by, force_silent):
 
-        motion_factor, audio_slow_motion, silent_slow_motion, _ = \
+        motion_factor, audio_slow_motion, silent_slow_motion, _, _ = \
             self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
                                                force_silent)
+
+        # audio_inflation = 1 #self.inflation_rate(self.inflate_by_option) if self.inflate else 1
+        audio_motion_factor = motion_factor #/ audio_inflation
+
         if audio_slow_motion:
-            if motion_factor == 8:
+            if audio_motion_factor == 8:
                 output_options = '-filter:a "atempo=0.5,atempo=0.5,atempo=0.5" -c:v copy -shortest ' \
                     + custom_audio_options
-            elif motion_factor == 4:
+            elif audio_motion_factor == 4:
                 output_options = '-filter:a "atempo=0.5,atempo=0.5" -c:v copy -shortest ' \
                     + custom_audio_options
-            elif motion_factor == 2:
+            elif audio_motion_factor == 2:
                 output_options = '-filter:a "atempo=0.5" -c:v copy -shortest ' + custom_audio_options
-            elif motion_factor == 1:
+            elif audio_motion_factor == 1:
                 output_options = '-filter:a "atempo=1.0" -c:v copy -shortest ' + custom_audio_options
-            elif motion_factor == 0.5:
+            elif audio_motion_factor == 0.5:
                 output_options = '-filter:a "atempo=2.0" -c:v copy -shortest ' + custom_audio_options
-            elif motion_factor == 0.25:
+            elif audio_motion_factor == 0.25:
                 output_options = '-filter:a "atempo=2.0,atempo=2.0" -c:v copy -shortest ' \
                     + custom_audio_options
-            elif motion_factor == 0.125:
+            elif audio_motion_factor == 0.125:
                 output_options = '-filter:a "atempo=2.0,atempo=2.0,atempo=2.0" -c:v copy -shortest ' \
                     + custom_audio_options
         elif silent_slow_motion:
@@ -2280,7 +2281,7 @@ class VideoRemixerState():
                 video_clip_fps = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
-                                "png",
+                                self.frame_format,
                                 "processed_frame",
                                 1,
                                 1,
@@ -2294,7 +2295,8 @@ class VideoRemixerState():
                             video_clip_fps,
                             scene_output_filepath,
                             global_options=global_options,
-                            custom_options=use_custom_video_options)
+                            custom_options=use_custom_video_options,
+                            type=self.frame_format)
                 Mtqdm().update_bar(bar)
         self.video_clips = sorted(get_files(self.video_clips_path))
 
@@ -2710,6 +2712,17 @@ class VideoRemixerState():
                         state.resynth_option = "Scrub"
                 except AttributeError:
                         state.resynth_option = "Scrub"
+                # new frame and found format options
+                try:
+                    if not state.frame_format:
+                        state.frame_format = "png"
+                except AttributeError:
+                        state.frame_format = "png"
+                try:
+                    if not state.sound_format:
+                        state.sound_format = "wav"
+                except AttributeError:
+                        state.sound_format = "wav"
 
                 return state
 

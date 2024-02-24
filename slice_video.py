@@ -5,7 +5,7 @@ from typing import Callable
 from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import create_directory, is_safe_path
 from webui_utils.video_utils import validate_input_path, details_from_group_name, slice_video, \
-    determine_input_pattern, slice_png_frames
+    determine_input_pattern, slice_video_frames
 from webui_utils.mtqdm import Mtqdm
 from ffmpy import FFRuntimeError
 
@@ -142,12 +142,12 @@ class SliceVideo:
             self.log(message)
             return message
 
-    # slice from a pre-grouped set of PNG frames
-    def _slice_png_group(self, group_name, slice_name):
+    # slice from a pre-grouped set of frame files
+    def _slice_frame_group(self, group_name, slice_name, type : str="png"):
         first_index, last_index, num_width = details_from_group_name(group_name)
         output_path = self.output_path or os.path.join(self.group_path, group_name)
 
-        # offset to zero time - the PNG frames should start at the beginning
+        # offset to zero time - the frame files should start at the beginning
         last_index -= first_index
         first_index = 0
 
@@ -163,12 +163,12 @@ class SliceVideo:
             last_index = first_index + 1
 
         frames_source = os.path.join(self.group_path, group_name)
-        pattern = determine_input_pattern(frames_source)
+        pattern = determine_input_pattern(frames_source, type)
         frames_path = os.path.join(frames_source, pattern)
         self.log(f"slicing from frames path {frames_path}")
 
         try:
-            ffmpeg_cmd, errors = slice_png_frames(frames_path,
+            ffmpeg_cmd, errors = slice_video_frames(frames_path,
                         self.fps,
                         output_path,
                         num_width,
@@ -228,7 +228,7 @@ class SliceVideo:
             Mtqdm().update_bar(bar)
         return errors
 
-    def slice_png_group(self, group_name, ignore_errors=False, slice_name=""):
+    def slice_frame_group(self, group_name, ignore_errors=False, slice_name="", type : str="png"):
         validate_input_path(self.group_path, -1)
         if self.output_path:
             self.log(f"Creating output path {self.output_path}")
@@ -237,7 +237,7 @@ class SliceVideo:
         pbar_desc = f"Slice {self.type}"
         errors = []
         with Mtqdm().open_bar(total=1, desc=pbar_desc) as bar:
-            error = self._slice_png_group(group_name, slice_name=slice_name)
+            error = self._slice_frame_group(group_name, slice_name=slice_name, type=type)
             if error:
                 errors.append({group_name : error})
                 if not ignore_errors:

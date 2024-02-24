@@ -100,14 +100,14 @@ class ResizeFrames:
         except KeyError:
             raise ValueError(f"The crop type {crop_type} is unknown")
 
-    def resize(self) -> None:
+    def resize(self, type : str="png") -> None:
         """Invoke the Resize Frames feature"""
         if not self.scale_width:
             raise ValueError("scale_width must be provided")
         if not self.scale_height:
             raise ValueError("scale_height must be provided")
 
-        files = sorted(glob.glob(os.path.join(self.input_path, "*.png")))
+        files = sorted(glob.glob(os.path.join(self.input_path, "*." + type)))
         num_files = len(files)
         self.log(f"Found {num_files} files")
         create_directory(self.output_path)
