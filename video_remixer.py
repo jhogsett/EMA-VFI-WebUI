@@ -1223,7 +1223,7 @@ class VideoRemixerState():
         return self.resize_chosen() and not self.processed_content_complete(self.RESIZE_STEP)
 
     def resynthesize_chosen(self):
-        return self.resynthesize or self.hint_present("S")
+        return self.resynthesize or self.hint_present("Y")
 
     def resynthesize_needed(self):
         return self.resynthesize_chosen() and not self.processed_content_complete(self.RESYNTH_STEP)
@@ -1755,11 +1755,37 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                 scene_output_path = os.path.join(self.resynthesis_path, scene_name)
                 create_directory(scene_output_path)
 
-                if resynth_option == "Replace":
-                    self.one_pass_resynthesis(log_fn, scene_input_path, scene_output_path, output_basename, series_interpolater)
+                resynth_type = resynth_option if self.resize else None
+                resynth_hint = self.get_hint(self.scene_labels.get(scene_name), "Y")
+                if resynth_hint:
+                    if "C" in resynth_hint:
+                        resynth_type = "Clean"
+                    elif "S" in resynth_hint:
+                        resynth_type = "Scrub"
+                    elif "R" in resynth_hint:
+                        resynth_type = "Replace"
+                    elif "N" in resynth_hint:
+                        resynth_type = None
+
+                if resynth_type == "Replace":
+                    self.one_pass_resynthesis(log_fn, scene_input_path, scene_output_path,
+                                              output_basename, series_interpolater)
+                elif resynth_type == "Clean" or resynth_type == "Scrub":
+                    one_pass_only = resynth_type == "Clean"
+                    self.two_pass_resynthesis(log_fn, scene_input_path, scene_output_path,
+                                              output_basename, series_interpolater,
+                                              one_pass_only=one_pass_only)
                 else:
-                    one_pass_only = resynth_option == "Clean"
-                    self.two_pass_resynthesis(log_fn, scene_input_path, scene_output_path, output_basename, series_interpolater, one_pass_only=one_pass_only)
+                    # no need to resynthesize so just copy the files using the resequencer
+                    ResequenceFiles(scene_input_path,
+                                    self.frame_format,
+                                    "resynthesized_frame",
+                                    1, 1,
+                                    1, 0,
+                                    -1,
+                                    False,
+                                    log_fn,
+                                    output_path=scene_output_path).resequence()
 
                 Mtqdm().update_bar(bar)
 
@@ -1936,7 +1962,9 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                 upscale_handled = False
                 upscale_hint = self.get_hint(self.scene_labels.get(scene_name), "U")
 
-                if upscale_hint:
+                if upscale_hint and not self.upscale:
+                    # only apply the hint if not already upscaling, otherwise the
+                    # frames may have mismatched sizes
                     try:
                         # for now ignore the hint value and upscale just at 1X, to clean up zooming
                         self.upscale_scene(log_fn,
