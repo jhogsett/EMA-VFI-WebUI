@@ -101,6 +101,8 @@ class VideoRemixer(TabBase):
     TAB62_DEFAULT_MESSAGE = "Click Save Marked Remix to: Apply Marking Options and save Marked Remix Video"
     TAB63_DEFAULT_MESSAGE = "Click Save Labeled Remix to: Add Label and save Remix Video"
 
+    FONTS_ROOT = "fonts"
+
     def render_tab(self):
         """Render tab into UI"""
         def_project_fps = self.config.remixer_settings["def_project_fps"]
@@ -123,9 +125,9 @@ class VideoRemixer(TabBase):
         default_label_draw_shadow = self.config.remixer_settings["marked_draw_shadow"]
         default_label_shadow_color = self.config.remixer_settings["marked_shadow_color"]
         default_label_shadow_size = self.config.remixer_settings["marked_shadow_size"]
-
         custom_ffmpeg_video = self.config.remixer_settings["custom_ffmpeg_video"]
         custom_ffmpeg_audio = self.config.remixer_settings["custom_ffmpeg_audio"]
+        _, default_label_font_file, _ = split_filepath(default_label_font_file)
 
         gr.Markdown(
             SimpleIcons.MOVIE + "Restore & Remix Videos with Audio")
@@ -133,6 +135,8 @@ class VideoRemixer(TabBase):
 
             ### NEW PROJECT
             with gr.Tab(SimpleIcons.ONE + " Remix Home", id=self.TAB_REMIX_HOME):
+
+                gr.ColorPicker()
                 with gr.Row():
                     with gr.Column():
                         gr.Markdown("**Input a video to get started remixing**")
@@ -507,7 +511,7 @@ class VideoRemixer(TabBase):
                             label_position_v = gr.Radio(choices=["Top", "Middle", "Bottom"], value=default_label_position_v, label="Label Position", info="Vertical location for the label")
                             label_position_h = gr.Radio(choices=["Left", "Center", "Right"], value=default_label_position_h, label="Label Position", info="Horizontal location for the label")
                         with gr.Row():
-                            label_font_file = gr.Textbox(value=default_label_font_file, label="Font File", max_lines=1, info="Font file within the application directory")
+                            label_font_file = gr.Dropdown(choices=self.gather_fonts(), value=default_label_font_file, label="Font File", info="Font file within the /fonts directory")
                             label_font_size = gr.Number(value=default_label_font_size, label="Font Factor", info="Size as a factor of frame width, smaller values produce larger text")
                             label_font_color = gr.Textbox(value=default_label_font_color, label="Font Color", max_lines=1, info="Font color and opacity in FFmpeg 'drawtext' filter format")
                         with gr.Row():
@@ -1233,6 +1237,14 @@ class VideoRemixer(TabBase):
                                     set_scene_label])
 
         purge_button715.click(self.purge_button715, outputs=[tabs_video_remixer, message_box715])
+
+    def gather_fonts(self):
+        fonts = get_files(self.FONTS_ROOT, "ttf")
+        result = []
+        for font in fonts:
+            _, filename, _ = split_filepath(font)
+            result.append(filename)
+        return sorted(result)
 
     # how far progressed into project and the tab ID to return to on re-opening
     PROGRESS_STEPS = {
@@ -2123,20 +2135,19 @@ class VideoRemixer(TabBase):
         if not self.state.project_path:
             return format_markdown("The project has not yet been set up from the Set Up Project tab.", "error")
 
+        if not label_font_file:
+           return format_markdown("The Font File must not be blank", "warning")
+        font_path = os.path.join(self.FONTS_ROOT, label_font_file + ".ttf")
+        if not os.path.exists(font_path):
+           return format_markdown(f"The Font File {os.path.abspath(font_path)} was not found", "error")
+        # FFmpeg requires forward slashes in font file path
+        label_font_file = font_path.replace(r"\\", "/").replace("\\", "/")
+
         if label_font_size <= 0.0:
             return format_markdown("The Font Factor must be > 0", "warning")
 
-        if not label_font_file:
-           return format_markdown("The Font File must not be blank", "warning")
-        if not os.path.exists(label_font_file):
-           return format_markdown(f"The Font File {os.path.abspath(label_font_file)} was not found", "error")
-        if not label_font_file:
-           return format_markdown("The Font File must not be blank", "warning")
         if not label_font_color:
            return format_markdown("The Font Color must not be blank", "warning")
-
-        # FFmpeg requires forward slashes in font file path
-        label_font_file = label_font_file.replace(r"\\", "/").replace("\\", "/")
 
         if label_draw_shadow:
             # if (label_border_size <= 0.0):

@@ -123,8 +123,8 @@ remixer_settings:
   marked_font_file: fonts/trim.ttf
   marked_position_v: "Top"
   marked_position_h: "Center"
-  marked_shadow_size: 0
-  marked_shadow_color: black@0.0
+  marked_shadow_size: 20
+  marked_shadow_color: black@7.0
   max_project_fps: 60.0
   max_thumb_size: 512
   maximum_crf: 28
