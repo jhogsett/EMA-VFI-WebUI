@@ -35,29 +35,22 @@ The _Processed Content_ box shows a summary of the completed processing.
         - Enter the _Label Text_
         - Leave the remaining options set _as-is_
             - Optionally, customize the label settings:
-            - Uncheck _Label at Top_ to place the label at the bottom
-            - Set _Font File_ to a font file within the application's root folder
-                - The font must be one supported by the installed version of FFmpeg
-                - Font files outside of the appplication root folder are not supported
+            - Choose the _Font File_
+                - _Tip:_ More font *.ttf files can be added in the application `fonts/` folder
             - Set _Font Factor_ to the size of the label text
                 - Smaller values produce larger text
                 - Font size is computed as _image width_ / _font factor_
-            - Set _Font Color_ to the color and opacity of the label text
-                - Color can be specified in any format recognized by the FFmpeg _drawtext_ filter
-                - Examples:
-                    - `CornflowerBlue`
-                    - `#32CD32`
-                    - `random`
-                - Opacity can optionally be set:
-                    - `white@0.9`
-                    - `0x9400D3@0x4f`
-                    - `#FA8072AA`
-            - Leave _Background_ checked to draw a box underneath the label text
-            - Set _Border Factor_ to the size of the margin between the text and the background
-                - Smaller values produce larger margins
-                - Margin size is computed as _computed font size_ / _border factor_
-            - Set _Border Color_ to the color and opacity of the label text
-                - Color can be specified in any format recognized by the FFmpeg _drawtext_ filter
+            - Use the _Font Color_ color picker and _Font Alpha_ slider to choose the font color
+            - Check the _Drop Shadow_ checkbox to add a drop shadow under the label text
+                - Set the _Shadow Factor_ to the size of the drop shadow offset
+                    - smaller values produce a larger offset
+                    - Shadow offset is computed as _computed font size_ / _shadow factor_
+                - Choose the drop shadow color and alpha
+            - Check the _Background_ checkbox to add a background rectangle under the label text
+                - Set the _Border Factor_ to the size of the background inner margin margin
+                    - smaller values produce a larger margin
+                    - Border size is computed as _computed font size_ / _border factor_
+                - Choose the background color and alpha
 1. Click _Save Remix, Save Custom Remix_, _Save Marked Remix_ or _Save Labeled Remix_
     - The previously processed video and audio clips are merged
     - Note: The final video is concatenated from the clips without being re-encoding for the highest quality
@@ -79,4 +72,3 @@ _Disclaimer: these are proofs of concept, but not necessarily great recommendati
 _* The console showed many buffer underrun errors while concatenating into remix video_
 
 _** Likely there are 'quality' command line switches that would fix this_
-

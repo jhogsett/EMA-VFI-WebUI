@@ -101,6 +101,8 @@ class VideoRemixer(TabBase):
     TAB62_DEFAULT_MESSAGE = "Click Save Marked Remix to: Apply Marking Options and save Marked Remix Video"
     TAB63_DEFAULT_MESSAGE = "Click Save Labeled Remix to: Add Label and save Remix Video"
 
+    FONTS_ROOT = "fonts"
+
     def render_tab(self):
         """Render tab into UI"""
         def_project_fps = self.config.remixer_settings["def_project_fps"]
@@ -118,9 +120,17 @@ class VideoRemixer(TabBase):
         default_label_draw_box = self.config.remixer_settings["marked_draw_box"]
         default_label_box_color = self.config.remixer_settings["marked_box_color"]
         default_label_border_size = self.config.remixer_settings["marked_border_size"]
-        default_label_position = self.config.remixer_settings["marked_position"]
+        default_label_position_v = self.config.remixer_settings["marked_position_v"]
+        default_label_position_h = self.config.remixer_settings["marked_position_h"]
+        default_label_draw_shadow = self.config.remixer_settings["marked_draw_shadow"]
+        default_label_shadow_color = self.config.remixer_settings["marked_shadow_color"]
+        default_label_shadow_size = self.config.remixer_settings["marked_shadow_size"]
         custom_ffmpeg_video = self.config.remixer_settings["custom_ffmpeg_video"]
         custom_ffmpeg_audio = self.config.remixer_settings["custom_ffmpeg_audio"]
+        _, default_label_font_file, _ = split_filepath(default_label_font_file)
+        default_label_font_color, default_label_font_alpha = self.split_color_alpha(default_label_font_color)
+        default_label_shadow_color, default_label_shadow_alpha = self.split_color_alpha(default_label_shadow_color)
+        default_label_box_color, default_label_box_alpha = self.split_color_alpha(default_label_box_color)
 
         gr.Markdown(
             SimpleIcons.MOVIE + "Restore & Remix Videos with Audio")
@@ -499,15 +509,23 @@ class VideoRemixer(TabBase):
                     with gr.Tab(label="Create Labeled Remix"):
                         with gr.Row():
                             label_text = gr.Textbox(label="Label Text", max_lines=1, info="Scenes with set labels will override this label")
-                            label_position = gr.Radio(choices=["Top", "Middle", "Bottom"], value=default_label_position, label="Label Position", info="Vertical location for the label")
+                            label_position_v = gr.Radio(choices=["Top", "Middle", "Bottom"], value=default_label_position_v, label="Label Position", info="Vertical location for the label")
+                            label_position_h = gr.Radio(choices=["Left", "Center", "Right"], value=default_label_position_h, label="Label Position", info="Horizontal location for the label")
                         with gr.Row():
-                            label_font_file = gr.Textbox(value=default_label_font_file, label="Font File", max_lines=1, info="Font file within the application directory")
-                            label_font_size = gr.Number(value=default_label_font_size, label="Font Factor", info="Size as a factor of frame width, smaller values produce larger text")
-                            label_font_color = gr.Textbox(value=default_label_font_color, label="Font Color", max_lines=1, info="Font color and opacity in FFmpeg 'drawtext' filter format")
+                            label_font_file = gr.Dropdown(choices=self.gather_fonts(), value=default_label_font_file, label="Font File", info="Font file within the /fonts directory")
+                            label_font_size = gr.Slider(value=default_label_font_size, label="Font Factor", minimum=2, maximum=100, step=1, info="Size as a factor of frame width, smaller values produce larger text")
+                            label_font_color = gr.ColorPicker(value=default_label_font_color, label="Font Color", info="Color for the label text")
+                            label_font_alpha = gr.Slider(value=default_label_font_alpha, minimum=0.0, maximum=1.0, step=0.1, label="Font Alpha", info="Opacity for the label text")
+                        with gr.Row():
+                            label_draw_shadow = gr.Checkbox(value=default_label_draw_shadow, label="Drop Shadow", info="Draw a drop shadow underneath the label text")
+                            label_shadow_size = gr.Slider(value=default_label_shadow_size, label="Shadow Factor", minimum=1, maximum=100, step=1, info="Shadow offset as a factor of computed font size, smaller values produce a larger offset")
+                            label_shadow_color = gr.ColorPicker(value=default_label_shadow_color, label="Shadow Color", info="Color for the drop shadow text")
+                            label_shadow_alpha = gr.Slider(value=default_label_shadow_alpha, minimum=0.0, maximum=1.0, step=0.1, label="Shadow Alpha", info="Opacity for the shadow text")
                         with gr.Row():
                             label_draw_box = gr.Checkbox(value=default_label_draw_box, label="Background", info="Draw a background underneath the label text")
-                            label_border_size = gr.Number(value=default_label_border_size, label="Border Factor", info="Size as a factor of computed font size, smaller values produce a large margin")
-                            label_box_color = gr.Textbox(value=default_label_box_color, label="Background Color", max_lines=1, info="Background color and opacity in FFmpeg 'drawtext' filter format")
+                            label_border_size = gr.Slider(value=default_label_border_size, label="Border Factor", minimum=1, maximum=100, step=1, info="Size as a factor of computed font size, smaller values produce a larger margin")
+                            label_box_color = gr.ColorPicker(value=default_label_box_color, label="Background Color", info="Color for the background rectangle")
+                            label_box_alpha = gr.Slider(value=default_label_box_alpha, minimum=0.0, maximum=1.0, step=0.1, label="Box Alpha", info="Opacity for the background rectangle")
                         with gr.Row():
                             quality_slider_labeled = gr.Slider(minimum=minimum_crf,
                                 maximum=maximum_crf, step=1, value=default_crf,
@@ -1078,9 +1096,12 @@ class VideoRemixer(TabBase):
         back_button62.click(self.back_button62, outputs=tabs_video_remixer)
 
         next_button63.click(self.next_button63,
-                        inputs=[label_text, label_font_size, label_font_color, label_font_file,
-                                label_draw_box, label_box_color, label_border_size, label_position,
-                                output_filepath_labeled, quality_slider_labeled],
+                        inputs=[label_text, label_font_size, label_font_color, label_font_alpha,
+                                label_font_file, label_draw_shadow, label_shadow_color,
+                                label_shadow_alpha, label_shadow_size, label_draw_box,
+                                label_box_color, label_box_alpha, label_border_size,
+                                label_position_v, label_position_h, output_filepath_labeled,
+                                quality_slider_labeled],
                         outputs=message_box63)
 
         back_button63.click(self.back_button63, outputs=tabs_video_remixer)
@@ -1222,6 +1243,33 @@ class VideoRemixer(TabBase):
                                     set_scene_label])
 
         purge_button715.click(self.purge_button715, outputs=[tabs_video_remixer, message_box715])
+
+    def gather_fonts(self):
+        fonts = get_files(self.FONTS_ROOT, "ttf")
+        result = []
+        for font in fonts:
+            _, filename, _ = split_filepath(font)
+            result.append(filename)
+        return sorted(result)
+
+    def split_color_alpha(self, color_alpha : str, default_color="#000000", default_alpha="1.0",
+                          ignore_errors=False):
+        """Split a string like `#FFFFFF@0.9` into `#FFFFFF` and `0.9` """
+        if len(color_alpha):
+            if color_alpha.index("@") >= 0:
+                parts = color_alpha.split("@")
+                if len(parts) >= 2:
+                    return parts[0], parts[1]
+            else:
+                return color_alpha, default_alpha
+
+        if ignore_errors:
+            return default_color, default_alpha
+        else:
+            raise ValueError(f"split_color_alpha(): unable to parse {color_alpha}")
+
+    def join_color_alpha(self, color : str, alpha : str="1.0"):
+        return f"{color}@{alpha}"
 
     # how far progressed into project and the tab ID to return to on re-opening
     PROGRESS_STEPS = {
@@ -2065,7 +2113,11 @@ class VideoRemixer(TabBase):
             draw_text_options["draw_box"] = self.config.remixer_settings["marked_draw_box"]
             draw_text_options["box_color"] = self.config.remixer_settings["marked_box_color"]
             draw_text_options["border_size"] = self.config.remixer_settings["marked_border_size"]
-            draw_text_options["marked_position"] = self.config.remixer_settings["marked_position"]
+            draw_text_options["label_position_v"] = self.config.remixer_settings["marked_position_v"]
+            draw_text_options["label_position_h"] = self.config.remixer_settings["marked_position_h"]
+            draw_text_options["draw_shadow"] = self.config.remixer_settings["marked_draw_shadow"]
+            draw_text_options["shadow_color"] = self.config.remixer_settings["marked_shadow_color"]
+            draw_text_options["shadow_size"] = self.config.remixer_settings["marked_shadow_size"]
 
             # account for upscaling
             upscale_factor = self.state.upscale_factor_from_options()
@@ -2094,30 +2146,34 @@ class VideoRemixer(TabBase):
                       label_text,
                       label_font_size,
                       label_font_color,
+                      label_font_alpha,
                       label_font_file,
+                      label_draw_shadow,
+                      label_shadow_color,
+                      label_shadow_alpha,
+                      label_shadow_size,
                       label_draw_box,
                       label_box_color,
+                      label_box_alpha,
                       label_border_size,
-                      label_position,
+                      label_position_v,
+                      label_position_h,
                       output_filepath,
                       quality):
         if not self.state.project_path:
             return format_markdown("The project has not yet been set up from the Set Up Project tab.", "error")
-        if label_font_size <= 0.0:
-            return format_markdown("The Font Factor must be > 0", "warning")
+
         if not label_font_file:
            return format_markdown("The Font File must not be blank", "warning")
-        if not os.path.exists(label_font_file):
-           return format_markdown(f"The Font File {os.path.abspath(label_font_file)} was not found", "error")
-        if not label_font_file:
-           return format_markdown("The Font File must not be blank", "warning")
-        if not label_font_color:
-           return format_markdown("The Font Color must not be blank", "warning")
-        if label_draw_box:
-            if (label_border_size <= 0.0):
-                return format_markdown("The Border Factor must be > 0", "warning")
-        if not label_box_color:
-           return format_markdown("The Background Color must not be blank", "warning")
+        font_path = os.path.join(self.FONTS_ROOT, label_font_file + ".ttf")
+        if not os.path.exists(font_path):
+           return format_markdown(f"The Font File {os.path.abspath(font_path)} was not found", "error")
+        # FFmpeg requires forward slashes in font file path
+        label_font_file = font_path.replace(r"\\", "/").replace("\\", "/")
+
+        label_font_color = self.join_color_alpha(label_font_color, label_font_alpha)
+        label_shadow_color = self.join_color_alpha(label_shadow_color, label_shadow_alpha)
+        label_box_color = self.join_color_alpha(label_box_color, label_box_alpha)
 
         try:
             global_options = self.config.ffmpeg_settings["global_options"]
@@ -2131,19 +2187,26 @@ class VideoRemixer(TabBase):
             draw_text_options["draw_box"] = label_draw_box
             draw_text_options["box_color"] = label_box_color
             draw_text_options["border_size"] = label_border_size
-            draw_text_options["marked_position"] = label_position
+            draw_text_options["label_position_v"] = label_position_v
+            draw_text_options["label_position_h"] = label_position_h
+            draw_text_options["draw_shadow"] = label_draw_shadow
+            draw_text_options["shadow_color"] = label_shadow_color
+            draw_text_options["shadow_size"] = label_shadow_size
 
             # account for upscaling
             upscale_factor = self.state.upscale_factor_from_options()
             draw_text_options["crop_width"] = self.state.crop_w * upscale_factor
             draw_text_options["crop_height"] = self.state.crop_h * upscale_factor
 
-            # create labels
             labels = []
+            title = None
             kept_scenes = self.state.kept_scenes()
             for scene_name in kept_scenes:
-                scene_label = self.state.scene_labels.get(scene_name, label_text)
-                labels.append(scene_label)
+                scene_label = self.state.scene_labels.get(scene_name)
+                if scene_label:
+                    _, _, title = self.state.split_label(scene_label)
+                title = title or label_text
+                labels.append(title)
             draw_text_options["labels"] = labels
 
             labeled_video_options = self.config.remixer_settings["labeled_ffmpeg_video"]

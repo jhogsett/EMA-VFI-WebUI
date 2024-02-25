@@ -113,14 +113,18 @@ remixer_settings:
   labeled_ffmpeg_video: -vf "drawtext=<LABEL>" -c:v libx264 -crf <CRF>
   labeled_ffmpeg_audio: -c:a aac -shortest
   marked_border_size: 5
-  marked_box_color: black@0.5
+  marked_box_color: "#000000@0.5"
   marked_draw_box: True
+  marked_draw_shadow: False
   marked_ffmpeg_video: -vf "drawtext=<LABEL>" -c:v libx264 -crf 28
   marked_ffmpeg_audio: -c:a aac -shortest
-  marked_font_color: white@0.9
+  marked_font_color: "#FFFFFF@0.9"
   marked_font_size: 30
   marked_font_file: fonts/trim.ttf
-  marked_position: "Top"
+  marked_position_v: "Top"
+  marked_position_h: "Center"
+  marked_shadow_size: 20
+  marked_shadow_color: "#000000@0.9"
   max_project_fps: 60.0
   max_thumb_size: 512
   maximum_crf: 28
