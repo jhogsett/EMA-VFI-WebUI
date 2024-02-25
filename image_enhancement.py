@@ -15,13 +15,15 @@ def main():
         description=
         'Image Enhancement using Contrast Limited Adaptive Histogram Equalization')
     parser.add_argument("--input_path", default="images", type=str,
-        help="Input path to PNG files to enhance")
+        help="Input path to image files to enhance")
     parser.add_argument("--output_path", default="images/enhanced", type=str,
-        help="Base path for enhanced PNG files")
+        help="Base path for enhanced image files")
     parser.add_argument("--clip_limit", default=2.0, type=float,
                         help="Threshold value for contrast limiting (default 2.0)")
     parser.add_argument("--tile_grid_size", default=1, type=int,
                         help="Size of grid for histogram equalization (default 1 for full image)")
+    parser.add_argument("--type", default="png", type=str,
+                        help="File type for frame files (Default 'png')")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
@@ -31,7 +33,7 @@ def main():
                      args.output_path,
                      args.clip_limit,
                      log.log,
-                     tile_grid_size=args.tile_grid_size).enhance()
+                     tile_grid_size=args.tile_grid_size).enhance(type=args.type)
 
 class ImageEnhancement:
     """Encapsulate logic for Split Channels feature"""
@@ -47,9 +49,9 @@ class ImageEnhancement:
         self.log_fn = log_fn
         self.tile_grid_size = tile_grid_size
 
-    def enhance(self) -> None:
+    def enhance(self, type : str="png") -> None:
         """Invoke the Image Enhancement feature"""
-        files = sorted(glob.glob(os.path.join(self.input_path, "*.png")))
+        files = sorted(glob.glob(os.path.join(self.input_path, "*." + type)))
         num_files = len(files)
         self.log(f"Found {num_files} files")
 

@@ -7,6 +7,7 @@ from webui_utils.simple_icons import SimpleIcons
 from webui_utils.file_utils import get_directories, is_safe_path, create_directory
 from webui_utils.mtqdm import Mtqdm
 from webui_utils.simple_utils import format_markdown
+from webui_utils.video_utils import determine_input_format
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
@@ -61,15 +62,15 @@ class EnhanceFrames(TabBase):
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.enhance_frames.render()
 
-        enhance_button.click(self.enhance_png_files,
+        enhance_button.click(self.enhance_image_files,
                              inputs=[input_path, output_path, clip_threshold],
                              outputs=message_box_single)
 
-        enhance_batch.click(self.enhance_png_batch,
+        enhance_batch.click(self.enhance_image_batch,
                             inputs=[input_path_batch, output_path_batch, clip_threshold],
                              outputs=message_box_batch)
 
-    def enhance_png_batch(self, input_path : str, output_path : str, clip_threshold : float):
+    def enhance_image_batch(self, input_path : str, output_path : str, clip_threshold : float):
         """Clean Batch button handler"""
         if not input_path or not output_path:
             return format_markdown("Please enter an input path and output path to begin", "warning")
@@ -92,13 +93,13 @@ class EnhanceFrames(TabBase):
             for group_name in group_names:
                 group_input_path = os.path.join(input_path, group_name)
                 group_output_path = os.path.join(output_path, group_name)
-                self.enhance_png_files(group_input_path, group_output_path, clip_threshold,
+                self.enhance_image_files(group_input_path, group_output_path, clip_threshold,
                                         interactive=False)
                 Mtqdm().update_bar(bar)
 
         return format_markdown(f"Input directories processed to {output_path}")
 
-    def enhance_png_files(self,
+    def enhance_image_files(self,
                           input_path : str,
                           output_path : str,
                           clip_threshold : float,
@@ -130,7 +131,15 @@ class EnhanceFrames(TabBase):
                 raise ValueError(message)
         create_directory(output_path)
 
-        ImageEnhancement(input_path, output_path, clip_threshold, self.log_fn).enhance()
+        image_format = determine_input_format(input_path)
+        if not image_format:
+            message = f"The output path {input_path} contains no usable image files"
+            if interactive:
+                return format_markdown(message, "error")
+            else:
+                raise ValueError(message)
+
+        ImageEnhancement(input_path, output_path, clip_threshold, self.log_fn).enhance(type=image_format)
 
         if interactive:
             return format_markdown(f"Enhanced images saved to {output_path}")

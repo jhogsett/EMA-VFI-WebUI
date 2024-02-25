@@ -1125,6 +1125,7 @@ class VideoRemixerState():
             self.upscale_path
         ]
         processed_content_split = False
+        purge_root = None
         for path in paths:
             if path and os.path.exists(path):
                 dirs = get_directories(path)
