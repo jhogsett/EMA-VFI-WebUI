@@ -118,7 +118,12 @@ class VideoRemixer(TabBase):
         default_label_draw_box = self.config.remixer_settings["marked_draw_box"]
         default_label_box_color = self.config.remixer_settings["marked_box_color"]
         default_label_border_size = self.config.remixer_settings["marked_border_size"]
-        default_label_position = self.config.remixer_settings["marked_position"]
+        default_label_position_v = self.config.remixer_settings["marked_position_v"]
+        default_label_position_h = self.config.remixer_settings["marked_position_h"]
+        default_label_draw_shadow = self.config.remixer_settings["marked_draw_shadow"]
+        default_label_shadow_color = self.config.remixer_settings["marked_shadow_color"]
+        default_label_shadow_size = self.config.remixer_settings["marked_shadow_size"]
+
         custom_ffmpeg_video = self.config.remixer_settings["custom_ffmpeg_video"]
         custom_ffmpeg_audio = self.config.remixer_settings["custom_ffmpeg_audio"]
 
@@ -499,14 +504,19 @@ class VideoRemixer(TabBase):
                     with gr.Tab(label="Create Labeled Remix"):
                         with gr.Row():
                             label_text = gr.Textbox(label="Label Text", max_lines=1, info="Scenes with set labels will override this label")
-                            label_position = gr.Radio(choices=["Top", "Middle", "Bottom"], value=default_label_position, label="Label Position", info="Vertical location for the label")
+                            label_position_v = gr.Radio(choices=["Top", "Middle", "Bottom"], value=default_label_position_v, label="Label Position", info="Vertical location for the label")
+                            label_position_h = gr.Radio(choices=["Left", "Center", "Right"], value=default_label_position_h, label="Label Position", info="Horizontal location for the label")
                         with gr.Row():
                             label_font_file = gr.Textbox(value=default_label_font_file, label="Font File", max_lines=1, info="Font file within the application directory")
                             label_font_size = gr.Number(value=default_label_font_size, label="Font Factor", info="Size as a factor of frame width, smaller values produce larger text")
                             label_font_color = gr.Textbox(value=default_label_font_color, label="Font Color", max_lines=1, info="Font color and opacity in FFmpeg 'drawtext' filter format")
                         with gr.Row():
+                            label_draw_shadow = gr.Checkbox(value=default_label_draw_shadow, label="Drop Shadow", info="Draw a drop shadow underneath the label text")
+                            label_shadow_size = gr.Number(value=default_label_shadow_size, label="Shadow Factor", info="Shadow offset as a factor of computed font size, smaller values produce a larger offset")
+                            label_shadow_color = gr.Textbox(value=default_label_shadow_color, label="Shadow Color", max_lines=1, info="Drop Shadow color and opacity in FFmpeg 'drawtext' filter format")
+                        with gr.Row():
                             label_draw_box = gr.Checkbox(value=default_label_draw_box, label="Background", info="Draw a background underneath the label text")
-                            label_border_size = gr.Number(value=default_label_border_size, label="Border Factor", info="Size as a factor of computed font size, smaller values produce a large margin")
+                            label_border_size = gr.Number(value=default_label_border_size, label="Border Factor", info="Size as a factor of computed font size, smaller values produce a larger margin")
                             label_box_color = gr.Textbox(value=default_label_box_color, label="Background Color", max_lines=1, info="Background color and opacity in FFmpeg 'drawtext' filter format")
                         with gr.Row():
                             quality_slider_labeled = gr.Slider(minimum=minimum_crf,
@@ -1079,8 +1089,9 @@ class VideoRemixer(TabBase):
 
         next_button63.click(self.next_button63,
                         inputs=[label_text, label_font_size, label_font_color, label_font_file,
-                                label_draw_box, label_box_color, label_border_size, label_position,
-                                output_filepath_labeled, quality_slider_labeled],
+                                label_draw_shadow, label_shadow_color, label_shadow_size,
+                                label_draw_box, label_box_color, label_border_size, label_position_v,
+                                label_position_h, output_filepath_labeled, quality_slider_labeled],
                         outputs=message_box63)
 
         back_button63.click(self.back_button63, outputs=tabs_video_remixer)
@@ -2065,7 +2076,11 @@ class VideoRemixer(TabBase):
             draw_text_options["draw_box"] = self.config.remixer_settings["marked_draw_box"]
             draw_text_options["box_color"] = self.config.remixer_settings["marked_box_color"]
             draw_text_options["border_size"] = self.config.remixer_settings["marked_border_size"]
-            draw_text_options["marked_position"] = self.config.remixer_settings["marked_position"]
+            draw_text_options["label_position_v"] = self.config.remixer_settings["marked_position_v"]
+            draw_text_options["label_position_h"] = self.config.remixer_settings["marked_position_h"]
+            draw_text_options["draw_shadow"] = self.config.remixer_settings["marked_draw_shadow"]
+            draw_text_options["shadow_color"] = self.config.remixer_settings["marked_shadow_color"]
+            draw_text_options["shadow_size"] = self.config.remixer_settings["marked_shadow_size"]
 
             # account for upscaling
             upscale_factor = self.state.upscale_factor_from_options()
@@ -2095,16 +2110,22 @@ class VideoRemixer(TabBase):
                       label_font_size,
                       label_font_color,
                       label_font_file,
+                      label_draw_shadow,
+                      label_shadow_color,
+                      label_shadow_size,
                       label_draw_box,
                       label_box_color,
                       label_border_size,
-                      label_position,
+                      label_position_v,
+                      label_position_h,
                       output_filepath,
                       quality):
         if not self.state.project_path:
             return format_markdown("The project has not yet been set up from the Set Up Project tab.", "error")
+
         if label_font_size <= 0.0:
             return format_markdown("The Font Factor must be > 0", "warning")
+
         if not label_font_file:
            return format_markdown("The Font File must not be blank", "warning")
         if not os.path.exists(label_font_file):
@@ -2113,11 +2134,21 @@ class VideoRemixer(TabBase):
            return format_markdown("The Font File must not be blank", "warning")
         if not label_font_color:
            return format_markdown("The Font Color must not be blank", "warning")
+
+        # FFmpeg requires forward slashes in font file path
+        label_font_file = label_font_file.replace(r"\\", "/").replace("\\", "/")
+
+        if label_draw_shadow:
+            # if (label_border_size <= 0.0):
+            #     return format_markdown("The Border Factor must be > 0", "warning")
+            if not label_shadow_color:
+                return format_markdown("The Shadow Color must not be blank", "warning")
+
         if label_draw_box:
             if (label_border_size <= 0.0):
                 return format_markdown("The Border Factor must be > 0", "warning")
-        if not label_box_color:
-           return format_markdown("The Background Color must not be blank", "warning")
+            if not label_box_color:
+                return format_markdown("The Background Color must not be blank", "warning")
 
         try:
             global_options = self.config.ffmpeg_settings["global_options"]
@@ -2131,7 +2162,11 @@ class VideoRemixer(TabBase):
             draw_text_options["draw_box"] = label_draw_box
             draw_text_options["box_color"] = label_box_color
             draw_text_options["border_size"] = label_border_size
-            draw_text_options["marked_position"] = label_position
+            draw_text_options["label_position_v"] = label_position_v
+            draw_text_options["label_position_h"] = label_position_h
+            draw_text_options["draw_shadow"] = label_draw_shadow
+            draw_text_options["shadow_color"] = label_shadow_color
+            draw_text_options["shadow_size"] = label_shadow_size
 
             # account for upscaling
             upscale_factor = self.state.upscale_factor_from_options()

@@ -2370,10 +2370,14 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                 font_factor = draw_text_options["font_size"]
                 font_color = draw_text_options["font_color"]
                 font_file = draw_text_options["font_file"]
+                draw_shadow = draw_text_options["draw_shadow"]
+                shadow_color = draw_text_options["shadow_color"]
+                shadow_factor = draw_text_options["shadow_size"]
                 draw_box = draw_text_options["draw_box"]
                 box_color = draw_text_options["box_color"]
                 border_factor = draw_text_options["border_size"]
-                marked_position = draw_text_options["marked_position"]
+                label_position_v = draw_text_options["label_position_v"]
+                label_position_h = draw_text_options["label_position_h"]
                 crop_width = draw_text_options["crop_width"]
                 labels = draw_text_options["labels"]
 
@@ -2382,15 +2386,29 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
 
             font_size = crop_width / float(font_factor)
             border_size = font_size / float(border_factor)
-            box_x = "(w-text_w)/2"
+            shadow_offset = font_size / float(shadow_factor)
 
-            if marked_position == "Bottom":
+            shadow_x = f"((w-text_w)/2)+{shadow_offset}"
+
+            # using text height as a left/right margin
+            if label_position_h == "Left":
+                box_x = "(text_h)"
+            elif label_position_h == "Center":
+                box_x = "(w-text_w)/2"
+            else:
+                box_x = "(w-text_w)-text_h"
+            shadow_x = f"{box_x}+{shadow_offset}"
+
+            if label_position_v == "Bottom":
                 box_y = f"h-(text_h*2)-({2*int(border_size)})"
-            elif marked_position == "Middle":
+            elif label_position_v == "Middle":
                 box_y = f"(h/2)-(text_h/2)-({int(border_size)})"
             else:
                 box_y = "(text_h*1)"
-            box = "1" if draw_box else "0"
+            shadow_y = f"{box_y}+{shadow_offset}"
+
+            # FFmpeg requires forward slashes in font file path
+            font_file = font_file.replace(r"\\", "/").replace("\\", "/")
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
             for index, scene_name in enumerate(kept_scenes):
@@ -2410,12 +2428,14 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
 
                         # FFmpeg needs the colons escaped
                         label = label.replace(":", "\:")
-                        if draw_box:
-                            draw_text = f"text='{label}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}':box={box}:boxcolor={box_color}:boxborderw={border_size}"
-                        else:
-                            draw_text = f"text='{label}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}':box={box}"
+
+                        box_part = f":box=1:boxcolor={box_color}:boxborderw={border_size}" if draw_box else ""
+                        label_part = f"text='{label}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}'{box_part}"
+                        shadow_part = f"text='{label}':x={shadow_x}:y={shadow_y}:fontsize={font_size}:fontcolor={shadow_color}:fontfile='{font_file}'" if draw_shadow else ""
+                        draw_text = f"{shadow_part},drawtext={label_part}" if draw_shadow else label_part
                         use_custom_video_options = use_custom_video_options \
                             .replace("<LABEL>", draw_text)
+
                     except IndexError as error:
                         use_custom_video_options = use_custom_video_options\
                             .replace("<LABEL>", f"[{error}]")
