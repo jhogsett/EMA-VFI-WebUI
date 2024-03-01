@@ -54,6 +54,12 @@
 - _**Note:**_
     - The original source frames and dropped scenes are not duplicated
 
+#### Import Scenes - Import scenes exported from the same source video
+
+- **Used For:** Recombining scenes exported from the same source video
+- _Enter the path to the project to import_
+- _All scenes, scene states, scene labels and thumbnails will be imported_
+
 #### Purge Processed Content - Soft-Delete processed content
 
 - **Used For:** Setting aside previously processed content ahead of another processing round

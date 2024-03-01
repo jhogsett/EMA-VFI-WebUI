@@ -63,6 +63,7 @@ def _copy(source_path, dest_path):
     return retval
 
 def duplicate_directory(source_dir, dest_dir):
+    """Copies contents of source_dir to dest_dir (no mirroring/deletion)"""
     global _duplicate_directory_progress
     if source_dir == dest_dir:
         raise ValueError("'source_dir' and 'dest_dir' must be different")

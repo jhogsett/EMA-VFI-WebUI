@@ -367,6 +367,13 @@ class VideoRemixerState():
         shutil.copy(project_file, saved_project_file)
         return saved_project_file
 
+    def backup_project_file(self, purged_path=None):
+        if not purged_path:
+            purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
+            create_directory(purged_root_path)
+            purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory(self.PURGED_DIR)
+        return self.copy_project_file(purged_path)
+
     SCENES_PATH = "SCENES"
     DROPPED_SCENES_PATH = "DROPPED_SCENES"
 
@@ -514,6 +521,7 @@ class VideoRemixerState():
 
     @staticmethod
     def decode_scene_name(scene_name):
+        """Returns the first frame, last frame and count of frames"""
         if not scene_name:
             raise ValueError("'scene_name' is required")
 
@@ -1171,6 +1179,7 @@ class VideoRemixerState():
     VIDEO_STEP = "video"
 
     PURGED_CONTENT = "purged_content"
+    PURGED_DIR = "purged"
 
     def prepare_process_remix(self, redo_resynth, redo_inflate, redo_upscale):
         self.setup_processing_paths()
@@ -1261,7 +1270,7 @@ class VideoRemixerState():
         create_directory(purged_root_path)
 
         if not purged_path:
-            purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory("purged")
+            purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory(self.PURGED_DIR)
 
         for path in paths_to_purge:
             use_purged_path = os.path.join(purged_path, additional_path)

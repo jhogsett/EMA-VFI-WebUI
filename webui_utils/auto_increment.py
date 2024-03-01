@@ -33,7 +33,8 @@ class AutoIncrementDirectory():
         self.running_dir_count = len(get_directories(path))
 
     def next_directory(self, basename : str, auto_create=True) -> tuple[str, int]:
-        """Compute the next directory and optionally create it"""
+        """Compute the next directory and optionally create it
+            Returns new directory path, new auto index"""
         if isinstance(basename, str):
             if basename:
                 dirname = os.path.join(self.path, f"{basename}{self.running_dir_count}")

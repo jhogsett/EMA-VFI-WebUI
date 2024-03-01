@@ -699,21 +699,32 @@ class VideoRemixer(TabBase):
                         "Video Blend Scene", variant="stop", scale=0)
 
                     # EXPORT KEPT SCENES
-                    with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_EXPORT_SCENES):
-                        gr.Markdown("**_Save Kept Scenes as a New Project_**")
-                        with gr.Row():
-                            export_path_703 = gr.Textbox(label="Exported Project Root Directory", max_lines=1,
-                                    info="Enter a path on this server for the root directory of the new project",
-                                    value=lambda : Session().get("last-video-remixer-export-dir"))
-                            project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
-                                    info="Enter a name for the new project")
-                        with gr.Row():
-                            message_box703 = gr.Markdown(format_markdown("Click Export Project to: Save the kept scenes as a new project"))
-                        export_project_703 = gr.Button("Export Project " + SimpleIcons.SLOW_SYMBOL,
-                                                variant="stop", scale=0)
-                        with gr.Row():
-                            result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
-                            open_result703 = gr.Button("Open New Project", visible=False, scale=0)
+                    with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Import/Export Scenes", id=self.TAB_EXTRA_EXPORT_SCENES):
+                        with gr.Tabs():
+                            with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes"):
+                                gr.Markdown("**_Save Kept Scenes as a New Project_**")
+                                with gr.Row():
+                                    export_path_703 = gr.Textbox(label="Exported Project Root Directory", max_lines=1,
+                                            info="Enter a path on this server for the root directory of the new project",
+                                            value=lambda : Session().get("last-video-remixer-export-dir"))
+                                    project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
+                                            info="Enter a name for the new project")
+                                with gr.Row():
+                                    message_box703 = gr.Markdown(format_markdown("Click Export Project to: Save the kept scenes as a new project"))
+                                export_project_703 = gr.Button("Export Project " + SimpleIcons.SLOW_SYMBOL,
+                                                        variant="stop", scale=0)
+                                with gr.Row():
+                                    result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
+                                    open_result703 = gr.Button("Open New Project", visible=False, scale=0)
+                            with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Import Scenes"):
+                                gr.Markdown("**_Import Scenes Exported from the Same Source Video_**")
+                                with gr.Row():
+                                    import_path_7032 = gr.Textbox(label="Path to Project to Import", max_lines=1,
+                                            info="Enter a path on this server to the directory containing the project to import")
+                                with gr.Row():
+                                    message_box7032 = gr.Markdown(format_markdown("Click Import Project to: Add the project's scenes to this project"))
+                                import_project_7032 = gr.Button("Import Project " + SimpleIcons.SLOW_SYMBOL,
+                                                        variant="stop", scale=0)
 
                     # MANAGE STORAGE
                     with gr.Tab(SimpleIcons.HERB +" Manage Storage",
@@ -1176,6 +1187,11 @@ class VideoRemixer(TabBase):
 
         open_result703.click(self.open_result703, inputs=result_box703,
                                 outputs=[tabs_video_remixer, project_load_path, message_box01])
+
+        import_project_7032.click(self.import_project_7032, inputs=import_path_7032,
+                                  outputs=[tabs_video_remixer, message_box7032, scene_index,
+                                             scene_name, scene_image, scene_state, scene_info,
+                                             set_scene_label])
 
         cleanse_button704.click(self.cleanse_button704, outputs=message_box704)
 
@@ -2419,6 +2435,110 @@ class VideoRemixer(TabBase):
         return gr.update(selected=self.TAB_REMIX_HOME), \
             new_project_path, \
             format_markdown(self.TAB01_DEFAULT_MESSAGE)
+
+    def scene_frame_limits(self, state):
+        import sys
+        highest_frame = -1
+        lowest_frame = sys.maxsize
+        for scene_name in sorted(state.scene_names):
+            first, last, _ = details_from_group_name(scene_name)
+            lowest_frame = first if first < lowest_frame else lowest_frame
+            highest_frame = last if last > highest_frame else highest_frame
+        return lowest_frame, highest_frame
+
+    def range_overlap(self, range1, range2) -> range:
+        return range(max(range1[0], range2[0]), min(range1[-1], range2[-1])+1)
+
+    def ranges_overlap(self, range1, range2) -> bool:
+        return bool(len(self.range_overlap(range1, range2)))
+
+    def import_project_7032(self, import_path):
+        empty_args = dummy_args(6)
+
+        if not os.path.exists(import_path):
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    format_markdown(f"Directory '{import_path}' was not found", "error"), \
+                    *empty_args
+        try:
+            import_file = VideoRemixerState.determine_project_filepath(import_path)
+        except ValueError as error:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    format_markdown(str(error), "error"), \
+                    *empty_args
+
+        try:
+            imported = VideoRemixerState.load(import_file, self.log)
+        except ValueError as error:
+            self.log(f"error opening project: {error}")
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    format_markdown(str(error), "error"), \
+                    *empty_args
+
+        if imported.project_ported(import_file):
+            try:
+                imported = VideoRemixerState.load_ported(imported.project_path, import_file,
+                                                         self.log)
+            except ValueError as error:
+                self.log(f"error opening ported project at {import_file}: {error}")
+                return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    format_markdown(str(error), "error"), \
+                    *empty_args
+
+        messages = imported.post_load_integrity_check()
+        self.log("import_project_7032(): " + messages)
+
+        _, source_video, source_ext = split_filepath(self.state.source_video)
+        _, import_video, import_ext = split_filepath(imported.source_video)
+        source_video += source_ext
+        import_video += import_ext
+
+        if source_video != import_video:
+           message = format_markdown(
+               "Unable to import from a project created from a different source video",
+               "warning")
+           return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    message, \
+                    *empty_args
+
+        current_lowest, current_highest = self.scene_frame_limits(self.state)
+        import_lowest, import_highest = self.scene_frame_limits(imported)
+        current_range = range(current_lowest, current_highest + 1)
+        import_range = range(import_lowest, import_highest + 1)
+        if self.ranges_overlap(current_range, import_range):
+           message = format_markdown(
+               "Unable to import from a project with overlapping scene ranges",
+               "warning")
+           return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    message, \
+                    *empty_args
+
+        self.state.uncompile_scenes()
+        imported.uncompile_scenes()
+
+        self.state.backup_project_file()
+
+        self.state.scene_names = sorted(self.state.scene_names + imported.scene_names)
+
+        for scene_name, state in imported.scene_states.items():
+            self.state.scene_states[scene_name] = state
+
+        for scene_name, label in imported.scene_labels.items():
+            self.state.scene_labels[scene_name] = label
+
+        duplicate_directory(imported.scenes_path, self.state.scenes_path)
+        duplicate_directory(imported.thumbnail_path, self.state.thumbnail_path)
+
+        self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
+
+        self.state.current_scene = self.state.scene_names.index(imported.scene_names[0])
+
+        self.state.save()
+
+        message = format_markdown("Project successfully imported")
+        return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+                    message, \
+                    *self.scene_chooser_details(self.state.current_scene)
+
 
     CLEANSE_SCENES_PATH = "cleansed_scenes"
     CLEANSE_SCENES_FACTOR = 4.0
