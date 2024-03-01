@@ -5,7 +5,7 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import format_markdown, style_report, dummy_args
+from webui_utils.simple_utils import format_markdown, style_report, dummy_args, ranges_overlap
 from webui_utils.file_utils import get_files, create_directory, get_directories, split_filepath, \
     is_safe_path, duplicate_directory, move_files
 from webui_utils.video_utils import details_from_group_name
@@ -2436,22 +2436,6 @@ class VideoRemixer(TabBase):
             new_project_path, \
             format_markdown(self.TAB01_DEFAULT_MESSAGE)
 
-    def scene_frame_limits(self, state):
-        import sys
-        highest_frame = -1
-        lowest_frame = sys.maxsize
-        for scene_name in sorted(state.scene_names):
-            first, last, _ = details_from_group_name(scene_name)
-            lowest_frame = first if first < lowest_frame else lowest_frame
-            highest_frame = last if last > highest_frame else highest_frame
-        return lowest_frame, highest_frame
-
-    def range_overlap(self, range1, range2) -> range:
-        return range(max(range1[0], range2[0]), min(range1[-1], range2[-1])+1)
-
-    def ranges_overlap(self, range1, range2) -> bool:
-        return bool(len(self.range_overlap(range1, range2)))
-
     def import_project_7032(self, import_path):
         empty_args = dummy_args(6)
 
@@ -2460,79 +2444,11 @@ class VideoRemixer(TabBase):
                     format_markdown(f"Directory '{import_path}' was not found", "error"), \
                     *empty_args
         try:
-            import_file = VideoRemixerState.determine_project_filepath(import_path)
+            self.state.import_project(self.log, import_path)
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                     format_markdown(str(error), "error"), \
                     *empty_args
-
-        try:
-            imported = VideoRemixerState.load(import_file, self.log)
-        except ValueError as error:
-            self.log(f"error opening project: {error}")
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                    format_markdown(str(error), "error"), \
-                    *empty_args
-
-        if imported.project_ported(import_file):
-            try:
-                imported = VideoRemixerState.load_ported(imported.project_path, import_file,
-                                                         self.log)
-            except ValueError as error:
-                self.log(f"error opening ported project at {import_file}: {error}")
-                return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                    format_markdown(str(error), "error"), \
-                    *empty_args
-
-        messages = imported.post_load_integrity_check()
-        self.log("import_project_7032(): " + messages)
-
-        _, source_video, source_ext = split_filepath(self.state.source_video)
-        _, import_video, import_ext = split_filepath(imported.source_video)
-        source_video += source_ext
-        import_video += import_ext
-
-        if source_video != import_video:
-           message = format_markdown(
-               "Unable to import from a project created from a different source video",
-               "warning")
-           return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                    message, \
-                    *empty_args
-
-        current_lowest, current_highest = self.scene_frame_limits(self.state)
-        import_lowest, import_highest = self.scene_frame_limits(imported)
-        current_range = range(current_lowest, current_highest + 1)
-        import_range = range(import_lowest, import_highest + 1)
-        if self.ranges_overlap(current_range, import_range):
-           message = format_markdown(
-               "Unable to import from a project with overlapping scene ranges",
-               "warning")
-           return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                    message, \
-                    *empty_args
-
-        self.state.uncompile_scenes()
-        imported.uncompile_scenes()
-
-        self.state.backup_project_file()
-
-        self.state.scene_names = sorted(self.state.scene_names + imported.scene_names)
-
-        for scene_name, state in imported.scene_states.items():
-            self.state.scene_states[scene_name] = state
-
-        for scene_name, label in imported.scene_labels.items():
-            self.state.scene_labels[scene_name] = label
-
-        duplicate_directory(imported.scenes_path, self.state.scenes_path)
-        duplicate_directory(imported.thumbnail_path, self.state.thumbnail_path)
-
-        self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
-
-        self.state.current_scene = self.state.scene_names.index(imported.scene_names[0])
-
-        self.state.save()
 
         message = format_markdown("Project successfully imported")
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \

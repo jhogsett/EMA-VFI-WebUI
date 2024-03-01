@@ -340,3 +340,13 @@ def dummy_args(num, arg=None):
 def evenify(value) -> int:
     """Return the highest multiple of 2 integer contained in the value"""
     return (int(value / 2)) * 2
+
+def range_overlap(range1, range2, step=1) -> range:
+    """Returns the intersection of two ranges or an empty range if no intersection"""
+    if step != 1:
+        raise ValueError("range_overlap(): step other than `1` is not suppported.")
+    return range(max(range1[0], range2[0]), min(range1[-1], range2[-1])+1)
+
+def ranges_overlap(range1, range2, step=1) -> bool:
+    """Returns True if the two ranges overlap """
+    return bool(len(range_overlap(range1, range2, step)))
