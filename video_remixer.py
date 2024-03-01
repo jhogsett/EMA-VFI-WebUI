@@ -2392,19 +2392,19 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
 
             # using text height as a left/right margin
             if label_position_h == "Left":
-                box_x = "(text_h)"
+                box_x = "(text_h-bottom_d)"
             elif label_position_h == "Center":
                 box_x = "(w-text_w)/2"
             else:
-                box_x = "(w-text_w)-text_h"
+                box_x = "(w-text_w)-(text_h-bottom_d)"
             shadow_x = f"{box_x}+{shadow_offset}"
 
             if label_position_v == "Bottom":
-                box_y = f"h-(text_h*2)-({2*int(border_size)})"
+                box_y = f"h-((text_h-bottom_d)*2)-({2*int(border_size)})"
             elif label_position_v == "Middle":
-                box_y = f"(h/2)-(text_h/2)-({int(border_size)})"
+                box_y = f"(h/2)-((text_h-bottom_d)/2)-({int(border_size)})"
             else:
-                box_y = "(text_h*1)"
+                box_y = "((text_h-bottom_d)*1)"
             shadow_y = f"{box_y}+{shadow_offset}"
 
             # FFmpeg requires forward slashes in font file path
