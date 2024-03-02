@@ -2879,6 +2879,9 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
 
         self.current_scene = self.scene_names.index(imported.scene_names[0])
 
+        # save the imported project state since its been altered
+        imported.save()
+
         self.save()
 
     def scene_frame_limits(self, state):
