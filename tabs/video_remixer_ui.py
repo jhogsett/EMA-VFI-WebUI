@@ -5,7 +5,7 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import format_markdown, style_report, dummy_args
+from webui_utils.simple_utils import format_markdown, style_report, dummy_args, ranges_overlap
 from webui_utils.file_utils import get_files, create_directory, get_directories, split_filepath, \
     is_safe_path, duplicate_directory, move_files
 from webui_utils.video_utils import details_from_group_name
@@ -699,21 +699,32 @@ class VideoRemixer(TabBase):
                         "Video Blend Scene", variant="stop", scale=0)
 
                     # EXPORT KEPT SCENES
-                    with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes", id=self.TAB_EXTRA_EXPORT_SCENES):
-                        gr.Markdown("**_Save Kept Scenes as a New Project_**")
-                        with gr.Row():
-                            export_path_703 = gr.Textbox(label="Exported Project Root Directory", max_lines=1,
-                                    info="Enter a path on this server for the root directory of the new project",
-                                    value=lambda : Session().get("last-video-remixer-export-dir"))
-                            project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
-                                    info="Enter a name for the new project")
-                        with gr.Row():
-                            message_box703 = gr.Markdown(format_markdown("Click Export Project to: Save the kept scenes as a new project"))
-                        export_project_703 = gr.Button("Export Project " + SimpleIcons.SLOW_SYMBOL,
-                                                variant="stop", scale=0)
-                        with gr.Row():
-                            result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
-                            open_result703 = gr.Button("Open New Project", visible=False, scale=0)
+                    with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Import/Export Scenes", id=self.TAB_EXTRA_EXPORT_SCENES):
+                        with gr.Tabs():
+                            with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Export Kept Scenes"):
+                                gr.Markdown("**_Save Kept Scenes as a New Project_**")
+                                with gr.Row():
+                                    export_path_703 = gr.Textbox(label="Exported Project Root Directory", max_lines=1,
+                                            info="Enter a path on this server for the root directory of the new project",
+                                            value=lambda : Session().get("last-video-remixer-export-dir"))
+                                    project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
+                                            info="Enter a name for the new project")
+                                with gr.Row():
+                                    message_box703 = gr.Markdown(format_markdown("Click Export Project to: Save the kept scenes as a new project"))
+                                export_project_703 = gr.Button("Export Project " + SimpleIcons.SLOW_SYMBOL,
+                                                        variant="stop", scale=0)
+                                with gr.Row():
+                                    result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
+                                    open_result703 = gr.Button("Open New Project", visible=False, scale=0)
+                            with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Import Scenes"):
+                                gr.Markdown("**_Import Scenes Exported from the Same Source Video_**")
+                                with gr.Row():
+                                    import_path_7032 = gr.Textbox(label="Path to Project to Import", max_lines=1,
+                                            info="Enter a path on this server to the directory containing the project to import")
+                                with gr.Row():
+                                    message_box7032 = gr.Markdown(format_markdown("Click Import Project to: Add the project's scenes to this project"))
+                                import_project_7032 = gr.Button("Import Project " + SimpleIcons.SLOW_SYMBOL,
+                                                        variant="stop", scale=0)
 
                     # MANAGE STORAGE
                     with gr.Tab(SimpleIcons.HERB +" Manage Storage",
@@ -1176,6 +1187,11 @@ class VideoRemixer(TabBase):
 
         open_result703.click(self.open_result703, inputs=result_box703,
                                 outputs=[tabs_video_remixer, project_load_path, message_box01])
+
+        import_project_7032.click(self.import_project_7032, inputs=import_path_7032,
+                                  outputs=[tabs_video_remixer, message_box7032, scene_index,
+                                             scene_name, scene_image, scene_state, scene_info,
+                                             set_scene_label])
 
         cleanse_button704.click(self.cleanse_button704, outputs=message_box704)
 
@@ -2419,6 +2435,26 @@ class VideoRemixer(TabBase):
         return gr.update(selected=self.TAB_REMIX_HOME), \
             new_project_path, \
             format_markdown(self.TAB01_DEFAULT_MESSAGE)
+
+    def import_project_7032(self, import_path):
+        empty_args = dummy_args(6)
+
+        if not os.path.exists(import_path):
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    format_markdown(f"Directory '{import_path}' was not found", "error"), \
+                    *empty_args
+        try:
+            self.state.import_project(self.log, import_path)
+        except ValueError as error:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    format_markdown(str(error), "error"), \
+                    *empty_args
+
+        message = format_markdown("Project successfully imported")
+        return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+                    message, \
+                    *self.scene_chooser_details(self.state.current_scene)
+
 
     CLEANSE_SCENES_PATH = "cleansed_scenes"
     CLEANSE_SCENES_FACTOR = 4.0

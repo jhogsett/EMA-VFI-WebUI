@@ -3,6 +3,7 @@ import os
 import math
 import re
 import shutil
+import sys
 import yaml
 from yaml import Loader, YAMLError
 from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
@@ -10,7 +11,7 @@ from webui_utils.file_utils import split_filepath, create_directory, get_directo
     clean_directories, clean_filename, remove_directories, copy_files, directory_populated, \
     simple_sanitize_filename, duplicate_directory
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table, evenify
+from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table, evenify, ranges_overlap
 from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
     MP4toPNG, PNGtoMP4, combine_video_audio, combine_videos, PNGtoCustom, SourceToMP4, \
     rate_adjusted_count, image_size
@@ -367,6 +368,13 @@ class VideoRemixerState():
         shutil.copy(project_file, saved_project_file)
         return saved_project_file
 
+    def backup_project_file(self, purged_path=None):
+        if not purged_path:
+            purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
+            create_directory(purged_root_path)
+            purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory(self.PURGED_DIR)
+        return self.copy_project_file(purged_path)
+
     SCENES_PATH = "SCENES"
     DROPPED_SCENES_PATH = "DROPPED_SCENES"
 
@@ -514,6 +522,7 @@ class VideoRemixerState():
 
     @staticmethod
     def decode_scene_name(scene_name):
+        """Returns the first frame, last frame and count of frames"""
         if not scene_name:
             raise ValueError("'scene_name' is required")
 
@@ -1171,6 +1180,7 @@ class VideoRemixerState():
     VIDEO_STEP = "video"
 
     PURGED_CONTENT = "purged_content"
+    PURGED_DIR = "purged"
 
     def prepare_process_remix(self, redo_resynth, redo_inflate, redo_upscale):
         self.setup_processing_paths()
@@ -1261,7 +1271,7 @@ class VideoRemixerState():
         create_directory(purged_root_path)
 
         if not purged_path:
-            purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory("purged")
+            purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory(self.PURGED_DIR)
 
         for path in paths_to_purge:
             use_purged_path = os.path.join(purged_path, additional_path)
@@ -2802,6 +2812,84 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         new_state.progress = "choose"
 
         new_state.save()
+
+    def import_project(self, log_fn, import_path):
+        try:
+            import_file = VideoRemixerState.determine_project_filepath(import_path)
+        except ValueError as error:
+            message = f"import_project(): error determining project filepath: {error}"
+            log_fn(message)
+            raise ValueError(message)
+
+        try:
+            imported = VideoRemixerState.load(import_file, log_fn)
+        except ValueError as error:
+            message = f"import_project(): error loading import project: {error}"
+            log_fn(message)
+            raise ValueError(message)
+
+        if imported.project_ported(import_file):
+            try:
+                imported = VideoRemixerState.load_ported(imported.project_path, import_file, log_fn)
+            except ValueError as error:
+                message = f"import_project(): error loading ported import project: {error}"
+                log_fn(message)
+                raise ValueError(message)
+
+        messages = imported.post_load_integrity_check()
+        log_fn(f"import_project(): port_load_integrity_check():\r\n{messages}")
+
+        _, source_video, source_ext = split_filepath(self.source_video)
+        _, import_video, import_ext = split_filepath(imported.source_video)
+        source_video += source_ext
+        import_video += import_ext
+
+        if source_video != import_video:
+            message = "Unable to import from a project created from a different source video"
+            log_fn(message)
+            raise ValueError(message)
+
+        current_lowest, current_highest = self.scene_frame_limits(self)
+        import_lowest, import_highest = self.scene_frame_limits(imported)
+        current_range = range(current_lowest, current_highest + 1)
+        import_range = range(import_lowest, import_highest + 1)
+
+        if ranges_overlap(current_range, import_range):
+            message = "Unable to import from a project with overlapping scene ranges"
+            log_fn(message)
+            raise ValueError(message)
+
+        self.uncompile_scenes()
+        imported.uncompile_scenes()
+
+        self.backup_project_file()
+
+        self.scene_names = sorted(self.scene_names + imported.scene_names)
+
+        for scene_name, state in imported.scene_states.items():
+            self.scene_states[scene_name] = state
+
+        for scene_name, label in imported.scene_labels.items():
+            self.scene_labels[scene_name] = label
+
+        duplicate_directory(imported.scenes_path, self.scenes_path)
+        duplicate_directory(imported.thumbnail_path, self.thumbnail_path)
+
+        self.thumbnails = sorted(get_files(self.thumbnail_path))
+
+        self.current_scene = self.scene_names.index(imported.scene_names[0])
+
+        self.save()
+
+    def scene_frame_limits(self, state):
+        highest_frame = -1
+        lowest_frame = sys.maxsize
+        for scene_name in sorted(state.scene_names):
+            first, last, _ = details_from_group_name(scene_name)
+            lowest_frame = first if first < lowest_frame else lowest_frame
+            highest_frame = last if last > highest_frame else highest_frame
+        return lowest_frame, highest_frame
+
 
     @staticmethod
     def load(filepath : str, log_fn):
