@@ -198,7 +198,7 @@ class ResynthesizeVideo(TabBase):
                 if interactive:
                     return format_markdown(message, "error")
                 else:
-                    raise ValueError(f"The output path {input_path} is not valid")
+                    raise ValueError(message)
             self.log(f"creating output path {output_path}")
             create_directory(output_path)
         else:
