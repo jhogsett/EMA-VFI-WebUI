@@ -64,14 +64,14 @@ class DedupeFrames(TabBase):
                 # repurpose max_dupes for delete to mean: skip delete on groups larger than this size
                 ignore_over_size = max_dupes
                 max_dupes = 0
-                message, _, _, deleted_files = DeduplicateFrames(None,
-                                                                input_path,
-                                                                output_path,
-                                                                threshold,
-                                                                max_dupes,
-                                                                None,
-                                                                self.log).invoke_delete(
-                                                                    suppress_output=True,
+                message, _, _, deleted_files, _ = DeduplicateFrames(None,
+                                                                    input_path,
+                                                                    output_path,
+                                                                    threshold,
+                                                                    max_dupes,
+                                                                    None,
+                                                                    self.log).invoke_delete(
+                                                                        suppress_output=True,
                                                             max_size_for_delete=ignore_over_size)
                 report = self.create_delete_report(input_path,
                                                      output_path,

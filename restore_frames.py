@@ -32,6 +32,8 @@ def main():
         help="Base filename for interpolated PNGs")
     parser.add_argument("--time_step", dest="time_step", default=False, action="store_true",
         help="Use Time Step instead of Binary Search interpolation (Default: False)")
+    parser.add_argument("--type", default="png", type=str,
+                        help="File type for frame files (Default 'png')")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
@@ -39,9 +41,10 @@ def main():
     log = SimpleLog(args.verbose)
     create_directory(args.output_path)
     engine = InterpolateEngine(args.model, args.gpu_ids, use_time_step=args.time_step)
-    interpolater = Interpolate(engine.model, log.log)
-    target_interpolater = TargetInterpolate(interpolater, log.log)
-    frame_restorer = RestoreFrames(interpolater, target_interpolater, args.time_step, log.log)
+    interpolater = Interpolate(engine.model, log.log, type=args.type)
+    target_interpolater = TargetInterpolate(interpolater, log.log, type=args.type)
+    frame_restorer = RestoreFrames(interpolater, target_interpolater, args.time_step, log.log,
+                                   type=args.type)
 
     frame_restorer.restore_frames(args.img_before, args.img_after, args.num_frames,
         args.depth, args.output_path, args.base_filename)
@@ -52,11 +55,13 @@ class RestoreFrames():
                 interpolater : Interpolate,
                 target_interpolater : TargetInterpolate,
                 time_step : bool,
-                log_fn : Callable | None):
+                log_fn : Callable | None,
+                type : str="png"):
         self.interpolater = interpolater
         self.target_interpolater = target_interpolater
         self.time_step = time_step
         self.log_fn = log_fn
+        self.type = type
         self.output_paths = []
 
     def restore_frames(self,

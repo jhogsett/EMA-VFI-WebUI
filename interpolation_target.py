@@ -9,7 +9,7 @@ from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_utils import float_range_in_range, sortable_float_index
-from webui_utils.file_utils import create_directory
+from webui_utils.file_utils import create_directory, split_filepath
 from webui_utils.mtqdm import Mtqdm
 
 def main():
@@ -37,6 +37,8 @@ def main():
         help="Keep the interative sample PNGs (Default: False)")
     parser.add_argument("--time_step", dest="time_step", default=False, action="store_true",
         help="Use Time Step instead of Binary Search interpolation (Default: False)")
+    parser.add_argument("--type", default="png", type=str,
+                        help="File type for frame files (Default 'png')")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details (Default: False)")
     args = parser.parse_args()
@@ -49,13 +51,13 @@ def main():
         engine = InterpolateEngine(args.model, args.gpu_ids, use_time_step=True)
         interpolater = Interpolate(engine.model, log.log)
         midpoint = args.min_target + (args.max_target - args.min_target) / 2.0
-        img_new = os.path.join(args.output_path, f"{args.base_filename}@{midpoint}.png")
+        img_new = os.path.join(args.output_path, f"{args.base_filename}@{midpoint}.{args.type}")
         interpolater.create_between_frame(args.img_before, args.img_after, img_new, midpoint)
     else:
         # use binary search interpolation to reach the target range
         engine = InterpolateEngine(args.model, args.gpu_ids, use_time_step=False)
         interpolater = Interpolate(engine.model, log.log)
-        target_interpolater = TargetInterpolate(interpolater, log.log)
+        target_interpolater = TargetInterpolate(interpolater, log.log, type=args.type)
         target_interpolater.split_frames(args.img_before, args.img_after, args.depth,
                                          args.min_target, args.max_target, args.output_path,
                                          args.base_filename, args.keep_samples)
@@ -64,13 +66,15 @@ class TargetInterpolate():
     """Enscapsulate logic for the Frame Search feature"""
     def __init__(self,
                 interpolater : Interpolate,
-                log_fn : Callable | None):
+                log_fn : Callable | None,
+                type : str="png"):
         self.interpolater = interpolater
         self.log_fn = log_fn
         self.split_count = 0
         self.frame_register = []
         self.progress = None
         self.output_paths = []
+        self.type = type
 
     def split_frames(self,
                     before_filepath : str,
@@ -235,7 +239,7 @@ class TargetInterpolate():
     def indexed_filepath(self, filepath_prefix, index):
         """Filepath prefix representing the split position while splitting"""
         float_index = sortable_float_index(index)
-        return filepath_prefix + f"{float_index}.png"
+        return filepath_prefix + f"{float_index}.{self.type}"
 
     def split_indexed_filepath(self, filepath : str):
         """Split an indexed filepath, return filename, index, extension"""

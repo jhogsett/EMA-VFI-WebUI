@@ -41,6 +41,8 @@ def main():
                         help="Maximum threshold for tuning (default 25000)")
     parser.add_argument("--tune_step", default=100, type=int,
                         help="Threshold step for tuning (default 100)")
+    parser.add_argument("--type", default="png", type=str,
+                        help="File type for frame files (Default 'png')")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
                         help="Show extra details")
     args = parser.parse_args()
@@ -48,7 +50,7 @@ def main():
     log = SimpleLog(args.verbose)
     engine = InterpolateEngine(args.model, args.gpu_ids, use_time_step=args.time_step)
     interpolater = Interpolate(engine.model, log.log)
-    target_interpolater = TargetInterpolate(interpolater, log.log)
+    target_interpolater = TargetInterpolate(interpolater, log.log, args.type)
     frame_restorer = RestoreFrames(interpolater, target_interpolater, args.time_step, log.log)
 
     DeduplicateFrames(frame_restorer,
@@ -74,7 +76,8 @@ class DeduplicateFrames:
                 log_fn : Callable | None,
                 tune_min : int=0,
                 tune_max : int=25000,
-                tune_step : int=100):
+                tune_step : int=100,
+                type : str="png"):
         self.frame_restorer = frame_restorer
         self.input_path = input_path
         self.output_path = output_path
@@ -85,6 +88,8 @@ class DeduplicateFrames:
         self.tune_min = tune_min
         self.tune_max = tune_max
         self.tune_step = tune_step
+        self.type = type
+
         if not self.input_path:
             raise ValueError("'input_path' must be specified")
         if not os.path.exists(self.input_path):
@@ -129,7 +134,6 @@ class DeduplicateFrames:
                 writer = csv.DictWriter(csvfile, fieldnames = csv_fields)
                 writer.writeheader()
 
-        type = determine_input_format(self.input_path)
         try:
             with Mtqdm().open_bar(total=len(range(self.tune_min, self.tune_max+1, self.tune_step)),
                                   desc="Tuning") as bar:
@@ -139,7 +143,7 @@ class DeduplicateFrames:
                     dupe_groups, frame_filenames, _ = get_duplicate_frames(self.input_path,
                                                                             threshold,
                                                                             self.max_dupes,
-                                                                            type)
+                                                                            type=self.type)
                     stats = compute_report_stats(dupe_groups, frame_filenames)
                     message = f"dupe_percent={stats['dupe_percent']} max_group={stats['max_group']}" +\
                         f" dupe_count={stats['dupe_count']} first_dupe={stats['first_dupe']}"
@@ -185,12 +189,11 @@ class DeduplicateFrames:
                 ColorOut(message, "red")
 
     def invoke_report(self, suppress_output=False):
-        type = determine_input_format(self.input_path)
         try:
             self.log("calling 'get_duplicate_frames_report' with" + \
         f" input_path: {self.input_path} threshold: {self.threshold} max_dupes: {self.max_dupes} ")
             report = get_duplicate_frames_report(self.input_path, self.threshold, self.max_dupes,
-                                                 type)
+                                                 type=self.type)
             if self.output_path:
                 _path, _filename, _ext = split_filepath(self.output_path)
                 filename = _filename or "Duplicate Frames Report"
@@ -222,14 +225,13 @@ class DeduplicateFrames:
             raise ValueError("'output_path' must be specified")
         create_directory(self.output_path)
 
-        type = determine_input_format(self.input_path)
         try:
             self.log("invoke_delete() calling 'get_duplicate_frames' with" + \
         f" input_path: {self.input_path} threshold: {self.threshold} max_dupes: {self.max_dupes} ")
             dupe_groups, frame_filenames, mpdecimate_log = get_duplicate_frames(self.input_path,
                                                                                 self.threshold,
                                                                                 self.max_dupes,
-                                                                                type)
+                                                                                type=self.type)
             self.log("mpdecimate data received from 'get_duplicate_frames:")
             self.log("/r/n".join(mpdecimate_log))
             self.log(f"beginning processing of {len(dupe_groups)} duplicate groups for deletion")
@@ -267,7 +269,7 @@ class DeduplicateFrames:
             self.log(message)
             if not suppress_output:
                 print(message)
-            return message, dupe_groups, all_filenames, deleted_files
+            return message, dupe_groups, all_filenames, deleted_files, type
 
         except RuntimeError as error:
             message = f"Error generating report: {error}"
@@ -277,15 +279,16 @@ class DeduplicateFrames:
             else:
                 ColorOut(message, "red")
 
-    def invoke_autofill(self, suppress_output=False):
+    def invoke_autofill(self, suppress_output=False, supress_error=True):
         self.log("invoke_autofill() using invoke_delete() to copy non-duplicate frames")
 
         # repurpose max_dupes for auto-fill to mean: skip auto-fill on groups larger than this size
         ignore_over_size = self.max_dupes
         self.max_dupes = 0
-        _, dupe_groups, frame_filenames, _ = self.invoke_delete(True,
+        _, dupe_groups, frame_filenames, _, type = self.invoke_delete(True,
                                                              max_size_for_delete=ignore_over_size)
 
+        errors = []
         self.log(f"beginning processing of {len(dupe_groups)} duplicate frame groups")
         restored_total = 0
         with Mtqdm().open_bar(total=len(dupe_groups), desc="Auto-Filling") as bar:
@@ -317,7 +320,10 @@ class DeduplicateFrames:
                     message = "\r\n".join(message)
                     self.log(message)
                     if suppress_output:
-                        raise RuntimeError(message)
+                        if supress_error:
+                            errors.append(message)
+                        else:
+                            raise RuntimeError(message)
                     else:
                         ColorOut("Warning: " + message, "red")
                 else:
@@ -355,7 +361,7 @@ class DeduplicateFrames:
         self.log(message)
         if not suppress_output:
             print(message)
-        return message, auto_filled_files
+        return message, auto_filled_files, type
 
     def log(self, message : str) -> None:
         """Logging"""

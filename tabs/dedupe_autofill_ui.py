@@ -1,4 +1,5 @@
 """Auto-Fill Duplicate Frames feature UI and event handlers"""
+import os
 from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
@@ -11,6 +12,8 @@ from interpolate import Interpolate
 from interpolation_target import TargetInterpolate
 from restore_frames import RestoreFrames
 from webui_utils.auto_increment import AutoIncrementDirectory, AutoIncrementFilename
+from webui_utils.video_utils import determine_input_format
+from webui_utils.file_utils import create_directory
 
 class AutofillFrames(TabBase):
     """Encapsulates UI elements and events for the Deduplicate Frames feature"""
@@ -68,24 +71,27 @@ class AutofillFrames(TabBase):
         """Deduplicate Frames button handler"""
         if input_path:
             try:
+                type = determine_input_format(input_path)
+
                 if not output_path:
                     base_output_path = self.config.directories["output_deduplication"]
                     output_path, _ = AutoIncrementDirectory(base_output_path).next_directory("run")
 
-                interpolater = Interpolate(self.engine.model, self.log)
-                target_interpolater = TargetInterpolate(interpolater, self.log)
+                interpolater = Interpolate(self.engine.model, self.log, type=type)
+                target_interpolater = TargetInterpolate(interpolater, self.log, type=type)
                 use_time_step = self.config.engine_settings["use_time_step"]
                 frame_restorer = RestoreFrames(interpolater, target_interpolater, use_time_step,
-                                               self.log)
+                                               self.log, type=type)
 
-                message, auto_filled_files = DeduplicateFrames(frame_restorer,
-                                                               input_path,
-                                                               output_path,
-                                                               threshold,
-                                                               max_dupes,
-                                                               depth,
-                                                               self.log).invoke_autofill(
-                                                                suppress_output=True)
+                message, auto_filled_files, _ = DeduplicateFrames(frame_restorer,
+                                                                  input_path,
+                                                                  output_path,
+                                                                  threshold,
+                                                                  max_dupes,
+                                                                  depth,
+                                                                  self.log,
+                                                                  type=type).invoke_autofill(
+                                                                      suppress_output=True)
                 report = self.create_autofill_report(input_path,
                                                      output_path,
                                                      threshold,
@@ -94,8 +100,12 @@ class AutofillFrames(TabBase):
                                                      message,
                                                      auto_filled_files)
 
-                report_filepath, _ = AutoIncrementFilename(output_path, "txt").next_filename(
-                                                                        "autofill-report", "txt")
+                report_name = "autofill-report"
+                report_path = os.path.join(output_path, report_name)
+                create_directory(report_path)
+                report_filepath, _ = AutoIncrementFilename(report_path, "txt").next_filename(
+                                                                                        report_name,
+                                                                                        "txt")
                 with open(report_filepath, "w", encoding="UTF-8") as file:
                     file.write(report)
                 return gr.update(value=message, visible=True)
