@@ -1765,7 +1765,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                 scene_output_path = os.path.join(self.resynthesis_path, scene_name)
                 create_directory(scene_output_path)
 
-                resynth_type = resynth_option if self.resize else None
+                resynth_type = resynth_option if self.resynthesize else None
                 resynth_hint = self.get_hint(self.scene_labels.get(scene_name), "Y")
                 if resynth_hint:
                     if "C" in resynth_hint:
