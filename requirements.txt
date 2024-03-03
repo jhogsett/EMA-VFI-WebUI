@@ -1,5 +1,6 @@
 ffmpy==0.3.0
 gradio==3.36.1
+gradio_client==0.7.1
 matplotlib==3.6.3
 numpy==1.23.5
 opencv_python==4.8.1.78
