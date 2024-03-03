@@ -2515,7 +2515,7 @@ class VideoRemixer(TabBase):
                                         -1,
                                         -1,
                                         scale_type,
-                                        crop_type="crop")
+                                        crop_type="none")
                 Mtqdm().update_bar(bar)
 
         self.log("purging scenes before replacing with cleansed scenes")
