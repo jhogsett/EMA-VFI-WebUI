@@ -313,46 +313,45 @@ class DeduplicateFrames:
                 # index after last index in group is the next "keep" frame
                 after_index = group_indexes[-1] + 1
                 if after_index >= len(frame_filenames):
-                    message = [
-                        "The last group has no 'after' file for interpolation, skipping.",
-                        "Affected files:"]
-                    message += group_files[1:]
-                    message = "\r\n".join(message)
-                    self.log(message)
-                    if suppress_output:
-                        if supress_error:
-                            errors.append(message)
-                        else:
-                            raise RuntimeError(message)
-                    else:
-                        ColorOut("Warning: " + message, "red")
+                    # There is no 'after' file to interpolate replacement frames along with the
+                    # 'before' file. This must be because the remaining frames are all duplicates.
+                    # The deduplication deletion above has removed all but the first frame from
+                    # this group, leaving a gap in the overall frame sequence that needs to be
+                    # filled. Normally the frame restorer would take care of this.
+
+                    # Since the frames needing to be filled are all duplicates of the first frame,
+                    # just duplicate the frame and use it as the after file to ensure no gap.
+                    path, filename, ext = split_filepath(before_file)
+                    after_file = os.path.join(path, f"{filename}-dummy-after{ext}")
+                    self.log(f"invoke_autofill(): about to copy {before_file} to {after_file}")
+                    shutil.copyfile(before_file, after_file)
                 else:
                     after_file = frame_filenames[after_index]
                     self.log(f"after frame file: {after_file}")
 
-                    # use frame restorer
-                    self.log(f"using frame restorer with: img_before={before_file}" +\
-                            f" img_after={after_file} num_frames={restore_count} depth={self.depth}")
+                # use frame restorer
+                self.log(f"using frame restorer with: img_before={before_file}" +\
+                        f" img_after={after_file} num_frames={restore_count} depth={self.depth}")
 
-                    self.frame_restorer.restore_frames(before_file,
-                                                    after_file,
-                                                    restore_count,
-                                                    self.depth,
-                                                    self.output_path,
-                                                    "autofilled_frame")
-                    restored_total += restore_count
-                    restored_files = self.frame_restorer.output_paths
-                    self.frame_restorer.output_paths = []
-                    self.log(f"restored files: {','.join(restored_files)}")
+                self.frame_restorer.restore_frames(before_file,
+                                                after_file,
+                                                restore_count,
+                                                self.depth,
+                                                self.output_path,
+                                                "autofilled_frame")
+                restored_total += restore_count
+                restored_files = self.frame_restorer.output_paths
+                self.frame_restorer.output_paths = []
+                self.log(f"restored files: {','.join(restored_files)}")
 
-                    for index, file in enumerate(group_files):
-                        if index: # skip the first ("keep") file
-                            _, filename, ext = split_filepath(file)
-                            restored_file = restored_files[index-1]
-                            new_filename = os.path.join(self.output_path, filename + ext)
-                            self.log(f"renaming {restored_file} to {new_filename}")
-                            os.replace(restored_file, new_filename)
-                            auto_filled_files.append(new_filename)
+                for index, file in enumerate(group_files):
+                    if index: # skip the first ("keep") file
+                        _, filename, ext = split_filepath(file)
+                        restored_file = restored_files[index-1]
+                        new_filename = os.path.join(self.output_path, filename + ext)
+                        self.log(f"renaming {restored_file} to {new_filename}")
+                        os.replace(restored_file, new_filename)
+                        auto_filled_files.append(new_filename)
                 Mtqdm().update_bar(bar)
 
         self.log(f"auto-filled files: {','.join(auto_filled_files)}")
