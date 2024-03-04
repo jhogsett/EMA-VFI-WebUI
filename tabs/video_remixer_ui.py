@@ -385,7 +385,7 @@ class VideoRemixer(TabBase):
                 with gr.Row():
                     inflate = gr.Checkbox(label="Inflate New Frames",value=True, scale=1)
                     inflate_by_option = gr.Radio(label="Inflate By", value="2X", scale=3,
-                                                choices=["2X", "4X", "8X"], info="Adds 1, 3 or 7 Between Frames")
+                                                choices=["2X", "4X", "8X", "16X"], info="Adds 1, 3, 7 or 15 Between Frames")
                     inflate_slow_option = gr.Radio(label="Slow Motion", value="No",
                                                    choices=["No", "Audio", "Silent"],
                                                    scale=3, info="Audio: Pitch and FPS adjusted, Silent: No FPS adjustment")
