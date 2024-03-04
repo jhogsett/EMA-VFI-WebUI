@@ -1817,25 +1817,47 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                 num_splits = 0
                 disable_inflation = False
 
-                inflation_hint = self.get_hint(self.scene_labels.get(scene_name), "I")
-                if inflation_hint:
-                    if "1" in inflation_hint:
-                        num_splits = 0
-                        disable_inflation = True
-                    elif "2" in inflation_hint:
-                        num_splits = 1
-                    elif "4" in inflation_hint:
-                        num_splits = 2
-                    elif "8" in inflation_hint:
-                        num_splits = 3
-
-                if num_splits == 0 and self.inflate and not disable_inflation:
+                project_splits = 0
+                if self.inflate:
+                    if self.inflate_by_option == "1X":
+                        project_splits = 0
                     if self.inflate_by_option == "2X":
-                        num_splits = 1
+                        project_splits = 1
                     elif self.inflate_by_option == "4X":
-                        num_splits = 2
+                        project_splits = 2
                     elif self.inflate_by_option == "8X":
-                        num_splits = 3
+                        project_splits = 3
+                    elif self.inflate_by_option == "16X":
+                        project_splits = 4
+
+                # if it's for slow motion, the split should be relative to the
+                # project inflation rate
+
+                hinted_splits = 0
+                force_inflation, force_audio, force_inflate_by, force_silent =\
+                    self.compute_forced_inflation(scene_name)
+                if force_inflation:
+                    if force_inflate_by == "1X":
+                        disable_inflation = True
+                    elif force_inflate_by == "2X":
+                        hinted_splits = 1
+                    elif force_inflate_by == "4X":
+                        hinted_splits = 2
+                    elif force_inflate_by == "8X":
+                        hinted_splits = 3
+                    elif force_inflate_by == "16X":
+                        hinted_splits = 4
+
+                if hinted_splits:
+                    if force_audio or force_silent:
+                        # the figures for audio slow motion are relative to the project split rate
+                        # splits are really exponents of 2^n
+                        num_splits = project_splits + hinted_splits
+                    else:
+                        # if not for slow motion, force an exact split
+                        num_splits = hinted_splits
+                else:
+                    num_splits = 0 if disable_inflation else project_splits
 
                 if num_splits:
                     # the scene needs inflating
@@ -2214,8 +2236,11 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
 
         inflation_hint = self.get_hint(self.scene_labels.get(scene_name), "I")
         if inflation_hint:
-            if "1" in inflation_hint:
-                # disable inflation
+            if "16" in inflation_hint:
+                force_inflation = True
+                force_inflate_by = "16X"
+            elif "1" in inflation_hint:
+                force_inflation = True
                 force_inflate_by = "1X"
             elif "2" in inflation_hint:
                 force_inflation = True
@@ -2281,14 +2306,23 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
     def inflation_rate(self, inflate_by : str):
         if not inflate_by:
             return 1
-        return int(inflate_by[0])
+        return int(inflate_by[:-1])
 
     def compute_effective_slow_motion(self, force_inflation, force_audio, force_inflate_by,
                                       force_silent):
+
         audio_slow_motion = force_audio or (self.inflate and self.inflate_slow_option == "Audio")
         silent_slow_motion = force_silent or (self.inflate and self.inflate_slow_option == "Silent")
+
         project_inflation_rate = self.inflation_rate(self.inflate_by_option) if self.inflate else 1
         forced_inflation_rate = self.inflation_rate(force_inflate_by) if force_inflation else 1
+
+        # For slow motion hints, interpret the 'force_inflate_by' as relative to the project rate
+        # If the forced inflation rate is 1 it means no inflation, not even at the projecr fate
+        if audio_slow_motion or silent_slow_motion:
+            if forced_inflation_rate != 1:
+                forced_inflation_rate *= project_inflation_rate
+
         motion_factor = forced_inflation_rate / project_inflation_rate
         return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, \
             forced_inflation_rate
@@ -2300,8 +2334,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
             self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
                                                force_silent)
 
-        # audio_inflation = 1 #self.inflation_rate(self.inflate_by_option) if self.inflate else 1
-        audio_motion_factor = motion_factor #/ audio_inflation
+        audio_motion_factor = motion_factor
 
         if audio_slow_motion:
             if audio_motion_factor == 8:
@@ -2322,6 +2355,8 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
             elif audio_motion_factor == 0.125:
                 output_options = '-filter:a "atempo=2.0,atempo=2.0,atempo=2.0" -c:v copy -shortest ' \
                     + custom_audio_options
+            else:
+                raise ValueError(f"audio_motion_factor {audio_motion_factor} is not supported")
         elif silent_slow_motion:
             # check for an existing audio sample rate, so the silent footage will blend properly
             # with non-silent footage, otherwise there may be an audio/video data length mismatch

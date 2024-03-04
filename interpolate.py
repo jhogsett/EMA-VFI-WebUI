@@ -35,6 +35,8 @@ def main():
         type=float, help="Middle frame time step if one frame (Default: 0.5)")
     parser.add_argument("--multiple", dest="multiple", default=1,
         type=int, help="Create multiple evenly-spaced frames if > 1 (Default: 1)")
+    parser.add_argument("--type", default="png", type=str,
+                        help="File type for frame files (Default 'png')")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
@@ -57,9 +59,11 @@ class Interpolate:
 
     def __init__(self,
                 model,
-                log_fn : Callable | None):
+                log_fn : Callable | None,
+                type : str="png"):
         self.model = model
         self.log_fn = log_fn
+        self.type = type
         self.output_paths = []
 
     def create_between_frame(self,
@@ -110,7 +114,7 @@ class Interpolate:
         set_count = 2 if frame_count < 1 else frame_count + 1
 
         output_path, filename, extension = split_filepath(middle_filepath)
-        output_filepath = os.path.join(output_path, f"{filename}@0.0.png")
+        output_filepath = os.path.join(output_path, f"{filename}@0.0.{self.type}")
         images = [I0[:, :, ::-1]]
         imsave(output_filepath, images[0])
         self.output_paths.append(output_filepath)
@@ -125,13 +129,13 @@ class Interpolate:
             for index, image in enumerate(images):
                 if 0 < index < len(images) - 1:
                     time = sortable_float_index(index / set_count)
-                    output_filepath = os.path.join(output_path, f"{filename}@{time}.png")
+                    output_filepath = os.path.join(output_path, f"{filename}@{time}.{self.type}")
                     imsave(output_filepath, image)
                     self.output_paths.append(output_filepath)
                     self.log("create_between_frames() saved " + output_filepath)
                 Mtqdm().update_bar(bar)
 
-        output_filepath = os.path.join(output_path, f"{filename}@1.0.png")
+        output_filepath = os.path.join(output_path, f"{filename}@1.0.{self.type}")
         imsave(output_filepath, images[-1])
         self.output_paths.append(output_filepath)
         self.log("create_between_frames() saved " + output_filepath)
