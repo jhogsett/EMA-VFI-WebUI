@@ -362,10 +362,10 @@ def simple_sanitize_filename(filename, default_filename=None):
        Uses the default_filename if a safe filename cannot be produced
        Raises ValueError if default_filename is not provided
     """
-    # Keep only alphanumeric chars and spaces, and convert all space sequences into underscores
+    # Keep only alphanumeric chars, hyphens, and spaces, and convert all space sequences into underscores
     safe_name = re.sub(r' +',
                        '_',
-                       re.sub(r'[^A-Za-z0-9 ]+',
+                       re.sub(r'[^-A-Za-z0-9 ]+',
                               '',
                               filename)) or default_filename
     if safe_name:

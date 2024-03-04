@@ -313,10 +313,9 @@ class VideoRemixer(TabBase):
                                     next_labeled_scene = gr.Button(">", size="sm", min_width=20,
                                                                    scale=0)
                                 with gr.Row():
-                                    auto_label_scenes = gr.Button(value="Auto Label Scenes",
-                                                                  size="sm", min_width=80)
-                                    reset_scene_labels = gr.Button(value="Reset Scene Labels",
-                                                                   size="sm", min_width=80)
+                                    auto_label_scenes = gr.Button(value="+ Sort Keys", size="sm", min_width=60)
+                                    auto_title_scenes = gr.Button(value="+ Titles", size="sm", min_width=60)
+                                    reset_scene_labels = gr.Button(value="Reset", size="sm", min_width=60)
                                 with gr.Row():
                                     add_2x_slomo = gr.Button(value="+ 2X Slo Mo", size="sm", min_width=60, elem_id="highlightbutton")
                                     add_4x_slomo = gr.Button(value="+ 4X Slo Mo", size="sm", min_width=60, elem_id="highlightbutton")
@@ -1028,6 +1027,10 @@ class VideoRemixer(TabBase):
                                      scene_info, set_scene_label])
 
         auto_label_scenes.click(self.auto_label_scenes,
+                                outputs=[scene_index, scene_name, scene_image, scene_state,
+                                         scene_info, set_scene_label])
+
+        auto_title_scenes.click(self.auto_title_scenes,
                                 outputs=[scene_index, scene_name, scene_image, scene_state,
                                          scene_info, set_scene_label])
 
@@ -1867,6 +1870,20 @@ class VideoRemixer(TabBase):
             self.state.set_scene_label(scene_index, formatted_label)
         return self.scene_chooser_details(self.state.current_scene)
 
+    def auto_title_scenes(self):
+        num_scenes = len(self.state.scene_names)
+        # num_width = len(str(num_scenes))
+        for scene_index in range(len(self.state.scene_names)):
+            scene_name = self.state.scene_names[scene_index]
+            title = self.scene_title(scene_name)
+            scene_label = self.state.scene_labels.get(scene_name)
+            sort_mark, hint_mark = None, None
+            if scene_label:
+                sort_mark, hint_mark, _ = self.state.split_label(scene_label)
+            formatted_label = self.state.compose_label(sort_mark, hint_mark, title)
+            self.state.set_scene_label(scene_index, formatted_label)
+        return self.scene_chooser_details(self.state.current_scene)
+
     def reset_scene_labels(self):
         self.state.clear_all_scene_labels()
         return self.scene_chooser_details(self.state.current_scene)
@@ -2154,6 +2171,17 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return format_markdown(str(error), "error")
 
+    def scene_marker(self, scene_name):
+        scene_index = self.state.scene_names.index(scene_name)
+        _, _, _, _, scene_start, scene_duration, _, _ = self.state.scene_chooser_data(scene_index)
+        marker = f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]"
+        return marker
+
+    def scene_title(self, scene_name):
+        scene_index = self.state.scene_names.index(scene_name)
+        _, _, _, scene_position, _, _, _, _ = self.state.scene_chooser_data(scene_index)
+        return scene_position
+
     def next_button62(self, marked_video_options, marked_audio_options, output_filepath):
         if not self.state.project_path:
             return format_markdown(
@@ -2186,10 +2214,7 @@ class VideoRemixer(TabBase):
             labels = []
             kept_scenes = self.state.kept_scenes()
             for scene_name in kept_scenes:
-                scene_index = self.state.scene_names.index(scene_name)
-                _, _, _, _, scene_start, scene_duration, _, _ = \
-                    self.state.scene_chooser_data(scene_index)
-                labels.append(f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]")
+                labels.append(self.scene_marker(scene_name))
             draw_text_options["labels"] = labels
 
             self.state.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
