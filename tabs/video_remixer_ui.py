@@ -412,7 +412,6 @@ class VideoRemixer(TabBase):
                         gr.Markdown(format_markdown(
                             "Deselect All Steps to use original source content for remix video",
                             color="more", bold=True))
-
                 message_box5 = gr.Markdown(value=format_markdown(self.TAB5_DEFAULT_MESSAGE))
                 gr.Markdown(
                     format_markdown(
@@ -424,6 +423,10 @@ class VideoRemixer(TabBase):
                     next_button5 = gr.Button(value="Process Remix " +
                                 SimpleIcons.SLOW_SYMBOL, variant="primary",
                                 elem_id="actionbutton")
+                    with gr.Accordion(label="Advanced Options", open=False):
+                        with gr.Row(variant="compact"):
+                            auto_save_remix = gr.Checkbox(label="Automatically save default MP4 video", container=False)
+                            auto_delete_remix = gr.Checkbox(label="Delete processed content after saving", container=False)
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_remixer_processing.render()
 
@@ -1080,7 +1083,8 @@ class VideoRemixer(TabBase):
 
         next_button5.click(self.next_button5,
                     inputs=[resynthesize, inflate, resize, upscale, upscale_option,
-                            inflate_by_option, inflate_slow_option, resynth_option],
+                            inflate_by_option, inflate_slow_option, resynth_option,
+                            auto_save_remix, auto_delete_remix],
                     outputs=[tabs_video_remixer, message_box5, summary_info6, output_filepath,
                              output_filepath_custom, output_filepath_marked, output_filepath_labeled,
                              message_box60, message_box61, message_box62, message_box63])
@@ -1996,7 +2000,9 @@ class VideoRemixer(TabBase):
                      upscale_option,
                      inflate_by_option,
                      inflate_slow_option,
-                     resynth_option):
+                     resynth_option,
+                     auto_save_remix,
+                     auto_delete_remix):
         empty_args = dummy_args(9)
 
         if not self.state.project_path or not self.state.scenes_path:
@@ -2061,17 +2067,43 @@ class VideoRemixer(TabBase):
         self.log("saving project after completing processing steps")
         self.save_progress("save")
 
-        return gr.update(selected=self.TAB_SAVE_REMIX), \
-                format_markdown(self.TAB5_DEFAULT_MESSAGE), \
-                styled_report, \
-                self.state.output_filepath, \
-                output_filepath_custom, \
-                output_filepath_marked, \
-                output_filepath_labeled, \
-                format_markdown(self.TAB60_DEFAULT_MESSAGE), \
-                format_markdown(self.TAB61_DEFAULT_MESSAGE), \
-                format_markdown(self.TAB62_DEFAULT_MESSAGE), \
-                format_markdown(self.TAB63_DEFAULT_MESSAGE)
+        if auto_save_remix:
+            messages = []
+            try:
+                self.save_mp4_video(self.state.output_filepath)
+                messages.append(f"Remixed video {self.state.output_filepath} is complete.")
+            except ValueError as error:
+                return gr.update(selected=self.TAB_PROC_REMIX), \
+                    format_markdown(
+                        f"An error occurred while automatically saving MP4 video: {error}", "error"), \
+                    *empty_args
+
+            if auto_delete_remix:
+                try:
+                    message = self.delete_all_project_content()
+                    messages.append(message)
+                except ValueError as error:
+                    return gr.update(selected=self.TAB_PROC_REMIX), \
+                        format_markdown(
+                            f"An error occurred while automatically deleting project content: {error}", "error"), \
+                        *empty_args
+
+            return gr.update(selected=self.TAB_PROC_REMIX), \
+                format_markdown("\r\n".join(messages)), \
+                *empty_args
+
+        else:
+            return gr.update(selected=self.TAB_SAVE_REMIX), \
+                    format_markdown(self.TAB5_DEFAULT_MESSAGE), \
+                    styled_report, \
+                    self.state.output_filepath, \
+                    output_filepath_custom, \
+                    output_filepath_marked, \
+                    output_filepath_labeled, \
+                    format_markdown(self.TAB60_DEFAULT_MESSAGE), \
+                    format_markdown(self.TAB61_DEFAULT_MESSAGE), \
+                    format_markdown(self.TAB62_DEFAULT_MESSAGE), \
+                    format_markdown(self.TAB63_DEFAULT_MESSAGE)
 
     def back_button5(self):
         return gr.update(selected=self.TAB_COMPILE_SCENES)
@@ -2081,24 +2113,27 @@ class VideoRemixer(TabBase):
 
     ### SAVE REMIX EVENT HANDLERS
 
+    def save_mp4_video(self, output_filepath, quality=None):
+        self.state.output_filepath = output_filepath
+        self.state.output_quality = quality or self.config.remixer_settings["default_crf"]
+
+        self.log("saving after storing remix output choices")
+        self.state.save()
+
+        global_options = self.config.ffmpeg_settings["global_options"]
+        remixer_settings = self.config.remixer_settings
+        kept_scenes = self.state.prepare_save_remix(self.log, global_options, remixer_settings,
+                                                    output_filepath)
+        self.state.save_remix(self.log, global_options, kept_scenes)
+
     def next_button60(self, output_filepath, quality):
         if not self.state.project_path:
             return format_markdown(
                 "The project has not yet been set up from the Set Up Project tab.", "error")
 
-        self.state.output_filepath = output_filepath
-        self.state.output_quality = quality
-        self.log("saving after storing remix output choices")
-        self.state.save()
-
         try:
-            global_options = self.config.ffmpeg_settings["global_options"]
-            remixer_settings = self.config.remixer_settings
-            kept_scenes = self.state.prepare_save_remix(self.log, global_options, remixer_settings,
-                                                        output_filepath)
-            self.state.save_remix(self.log, global_options, kept_scenes)
+            self.save_mp4_video(output_filepath, quality)
             return format_markdown(f"Remixed video {output_filepath} is complete.", "highlight")
-
         except ValueError as error:
             return format_markdown(str(error), "error")
 
@@ -2909,28 +2944,32 @@ class VideoRemixer(TabBase):
     def select_none_button712(self):
         return False, False, False, False, False, False, False, False
 
+    def delete_all_project_content(self):
+        removed = []
+        removed.append(self.state.delete_purged_content())
+        removed.append(self.state.delete_path(self.state.frames_path))
+        removed.append(self.state.delete_path(self.state.dropped_scenes_path))
+        removed.append(self.state.delete_path(self.state.thumbnail_path))
+        removed.append(self.state.delete_path(self.state.scenes_path))
+        removed.append(self.state.delete_path(self.state.resize_path))
+        removed.append(self.state.delete_path(self.state.resynthesis_path))
+        removed.append(self.state.delete_path(self.state.inflation_path))
+        removed.append(self.state.delete_path(self.state.upscale_path))
+        removed.append(self.state.delete_path(self.state.audio_clips_path))
+        removed.append(self.state.delete_path(self.state.video_clips_path))
+        removed.append(self.state.delete_path(self.state.clips_path))
+        removed = [_ for _ in removed if _]
+        if removed:
+            removed_str = "\r\n".join(removed)
+            message = f"Removed:\r\n{removed_str}"
+        else:
+            message = f"Removed: None"
+        return message
+
     def delete_button713(self, delete_all):
         if self.state.project_path:
-            removed = []
             if delete_all:
-                removed.append(self.state.delete_purged_content())
-                removed.append(self.state.delete_path(self.state.frames_path))
-                removed.append(self.state.delete_path(self.state.dropped_scenes_path))
-                removed.append(self.state.delete_path(self.state.thumbnail_path))
-                removed.append(self.state.delete_path(self.state.scenes_path))
-                removed.append(self.state.delete_path(self.state.resize_path))
-                removed.append(self.state.delete_path(self.state.resynthesis_path))
-                removed.append(self.state.delete_path(self.state.inflation_path))
-                removed.append(self.state.delete_path(self.state.upscale_path))
-                removed.append(self.state.delete_path(self.state.audio_clips_path))
-                removed.append(self.state.delete_path(self.state.video_clips_path))
-                removed.append(self.state.delete_path(self.state.clips_path))
-            removed = [_ for _ in removed if _]
-            if removed:
-                removed_str = "\r\n".join(removed)
-                message = f"Removed:\r\n{removed_str}"
-            else:
-                message = f"Removed: None"
+                message = self.delete_all_project_content()
             return format_markdown(message)
         else:
             return format_markdown("There is no loaded project.", "error")
