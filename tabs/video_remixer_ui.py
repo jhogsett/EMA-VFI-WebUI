@@ -412,7 +412,6 @@ class VideoRemixer(TabBase):
                         gr.Markdown(format_markdown(
                             "Deselect All Steps to use original source content for remix video",
                             color="more", bold=True))
-
                 message_box5 = gr.Markdown(value=format_markdown(self.TAB5_DEFAULT_MESSAGE))
                 gr.Markdown(
                     format_markdown(
@@ -423,7 +422,11 @@ class VideoRemixer(TabBase):
                     back_button5 = gr.Button(value="< Back", variant="secondary", scale=0)
                     next_button5 = gr.Button(value="Process Remix " +
                                 SimpleIcons.SLOW_SYMBOL, variant="primary",
-                                elem_id="actionbutton")
+                                elem_id="actionbutton", scale=1)
+                    with gr.Accordion(label="Advanced Options", open=False):
+                        with gr.Row(variant="compact"):
+                            auto_save_remix = gr.Checkbox(label="Automatically save default MP4 video", container=False, scale=1)
+                            auto_delete_remix = gr.Checkbox(label="Automatically delete processed content", container=False, scale=1)
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_remixer_processing.render()
 
