@@ -1850,7 +1850,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
 
                 if hinted_splits:
                     if force_audio or force_silent:
-                        # the figures for audio slow motion are relateive to the project split rate
+                        # the figures for audio slow motion are relative to the project split rate
                         # splits are really exponents of 2^n
                         num_splits = project_splits + hinted_splits
                     else:
@@ -2236,8 +2236,11 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
 
         inflation_hint = self.get_hint(self.scene_labels.get(scene_name), "I")
         if inflation_hint:
-            if "1" in inflation_hint:
-                # disable inflation
+            if "16" in inflation_hint:
+                force_inflation = True
+                force_inflate_by = "16X"
+            elif "1" in inflation_hint:
+                force_inflation = True
                 force_inflate_by = "1X"
             elif "2" in inflation_hint:
                 force_inflation = True
@@ -2248,9 +2251,6 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
             elif "8" in inflation_hint:
                 force_inflation = True
                 force_inflate_by = "8X"
-            elif "16" in inflation_hint:
-                force_inflation = True
-                force_inflate_by = "16X"
 
             if "A" in inflation_hint:
                 force_audio = True
@@ -2306,19 +2306,22 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
     def inflation_rate(self, inflate_by : str):
         if not inflate_by:
             return 1
-        return int(inflate_by[0])
+        return int(inflate_by[:-1])
 
     def compute_effective_slow_motion(self, force_inflation, force_audio, force_inflate_by,
                                       force_silent):
+
         audio_slow_motion = force_audio or (self.inflate and self.inflate_slow_option == "Audio")
         silent_slow_motion = force_silent or (self.inflate and self.inflate_slow_option == "Silent")
 
         project_inflation_rate = self.inflation_rate(self.inflate_by_option) if self.inflate else 1
         forced_inflation_rate = self.inflation_rate(force_inflate_by) if force_inflation else 1
 
-        # for slow motion hints, interpret the 'force_inflate_by' as relative to the project rate
+        # For slow motion hints, interpret the 'force_inflate_by' as relative to the project rate
+        # If the forced inflation rate is 1 it means no inflation, not even at the projecr fate
         if audio_slow_motion or silent_slow_motion:
-            forced_inflation_rate *= project_inflation_rate
+            if forced_inflation_rate != 1:
+                forced_inflation_rate *= project_inflation_rate
 
         motion_factor = forced_inflation_rate / project_inflation_rate
         return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, \
@@ -2331,7 +2334,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
             self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
                                                force_silent)
 
-        audio_motion_factor = motion_factor #/ audio_inflation
+        audio_motion_factor = motion_factor
 
         if audio_slow_motion:
             if audio_motion_factor == 8:
