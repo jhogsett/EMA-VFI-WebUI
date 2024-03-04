@@ -318,10 +318,9 @@ class VideoRemixer(TabBase):
                                     reset_scene_labels = gr.Button(value="Reset Scene Labels",
                                                                    size="sm", min_width=80)
                                 with gr.Row():
-                                    add_2x_slomo = gr.Button(value="Add 2X Audio Slo Mo", size="sm",
-                                                             min_width=80, elem_id="highlightbutton")
-                                    add_4x_slomo = gr.Button(value="Add 4X Audio Slo Mo", size="sm",
-                                                             min_width=80, elem_id="highlightbutton")
+                                    add_2x_slomo = gr.Button(value="+ 2X Slo Mo", size="sm", min_width=60, elem_id="highlightbutton")
+                                    add_4x_slomo = gr.Button(value="+ 4X Slo Mo", size="sm", min_width=60, elem_id="highlightbutton")
+                                    add_8x_slomo = gr.Button(value="+ 8X Slo Mo", size="sm", min_width=60, elem_id="highlightbutton")
                             with gr.Accordion(label="Danger Zone", open=False):
                                 with gr.Row():
                                     keep_all_button = gr.Button(value="Keep All Scenes",
@@ -1038,6 +1037,10 @@ class VideoRemixer(TabBase):
                                      scene_info, set_scene_label])
 
         add_4x_slomo.click(self.add_4x_slomo, inputs=scene_index,
+                            outputs=[scene_index, scene_name, scene_image, scene_state,
+                                     scene_info, set_scene_label])
+
+        add_8x_slomo.click(self.add_8x_slomo, inputs=scene_index,
                             outputs=[scene_index, scene_name, scene_image, scene_state,
                                      scene_info, set_scene_label])
 
@@ -1875,10 +1878,14 @@ class VideoRemixer(TabBase):
         self.state.save()
 
     def add_2x_slomo(self, scene_index):
-        self.add_slomo(scene_index, "I:4A")
+        self.add_slomo(scene_index, "I:2A")
         return self.scene_chooser_details(self.state.current_scene)
 
     def add_4x_slomo(self, scene_index):
+        self.add_slomo(scene_index, "I:4A")
+        return self.scene_chooser_details(self.state.current_scene)
+
+    def add_8x_slomo(self, scene_index):
         self.add_slomo(scene_index, "I:8A")
         return self.scene_chooser_details(self.state.current_scene)
 
