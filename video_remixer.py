@@ -696,6 +696,8 @@ class VideoRemixerState():
     def split_label(self, label):
         """Splits a label such as '(01){I:2S} My Title (part1){b}' into
         sort: '01', hint: 'I:2S' label: 'My Title (part1){b}' parts """
+        if not label:
+            return None, None, None
         try:
             matches = re.search(self.SPLIT_LABELS, label)
             groups = matches.groups()

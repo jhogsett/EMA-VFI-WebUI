@@ -1856,33 +1856,49 @@ class VideoRemixer(TabBase):
     def prev_labeled_scene(self, scene_index, scene_name):
         return self.scan_for_label(range(scene_index-1, -1, -1))
 
+    # TODO move
+    # add sorting marks to each scene label, removing existing ones first
     def auto_label_scenes(self):
         num_scenes = len(self.state.scene_names)
         num_width = len(str(num_scenes))
+        # remove existing sort marks
         for scene_index in range(len(self.state.scene_names)):
             scene_name = self.state.scene_names[scene_index]
             scene_label = self.state.scene_labels.get(scene_name)
-            hint_mark, title = None, None
-            if scene_label:
-                _, hint_mark, title = self.state.split_label(scene_label)
+            _, hint_mark, title = self.state.split_label(scene_label)
+            formatted_label = self.state.compose_label(None, hint_mark, title)
+            self.state.set_scene_label(scene_index, formatted_label)
+        for scene_index in range(len(self.state.scene_names)):
+            scene_name = self.state.scene_names[scene_index]
+            scene_label = self.state.scene_labels.get(scene_name)
+            _, hint_mark, title = self.state.split_label(scene_label)
             sort_mark = str(scene_index).zfill(num_width)
             formatted_label = self.state.compose_label(sort_mark, hint_mark, title)
             self.state.set_scene_label(scene_index, formatted_label)
+        self.clean_scene_labels()
         return self.scene_chooser_details(self.state.current_scene)
 
+    # TODO more inspired default title, move
+    # add a default title to each scene label, if not already set
     def auto_title_scenes(self):
-        num_scenes = len(self.state.scene_names)
-        # num_width = len(str(num_scenes))
         for scene_index in range(len(self.state.scene_names)):
             scene_name = self.state.scene_names[scene_index]
             title = self.scene_title(scene_name)
             scene_label = self.state.scene_labels.get(scene_name)
-            sort_mark, hint_mark = None, None
-            if scene_label:
-                sort_mark, hint_mark, _ = self.state.split_label(scene_label)
-            formatted_label = self.state.compose_label(sort_mark, hint_mark, title)
-            self.state.set_scene_label(scene_index, formatted_label)
+            sort_mark, hint_mark, existing_title = self.state.split_label(scene_label)
+            if not existing_title:
+                formatted_label = self.state.compose_label(sort_mark, hint_mark, title)
+                self.state.set_scene_label(scene_index, formatted_label)
+        self.clean_scene_labels()
         return self.scene_chooser_details(self.state.current_scene)
+
+    # remove scene labels that do not have a corresponding scene name
+    def clean_scene_labels(self):
+        for scene_name, scene_label in self.state.scene_labels.copy().items():
+            if not scene_name in self.state.scene_names:
+                self.log(f"deleting unused scene label {scene_label}")
+                del self.state.scene_labels[scene_name]
+        self.state.save()
 
     def reset_scene_labels(self):
         self.state.clear_all_scene_labels()
