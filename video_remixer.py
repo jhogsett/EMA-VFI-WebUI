@@ -2490,7 +2490,6 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                             replace("%", "\%")
 
                         box_part = f":box=1:boxcolor={box_color}:boxborderw={border_size}" if draw_box else ""
-                        # label_part = f"text='{label}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}':expansion=none:{box_part}"
                         label_part = f"text='{label}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}':expansion=none{box_part}"
                         shadow_part = f"text='{label}':x={shadow_x}:y={shadow_y}:fontsize={font_size}:fontcolor={shadow_color}:fontfile='{font_file}'" if draw_shadow else ""
                         draw_text = f"{shadow_part},drawtext={label_part}" if draw_shadow else label_part
