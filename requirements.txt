@@ -14,3 +14,5 @@ timm==0.6.12
 torch==1.13.1
 torchvision==0.14.1
 tqdm==4.64.1
+setuptools>=65.5.1 # not directly required, pinned by Snyk to avoid a vulnerability
+wheel>=0.38.0 # not directly required, pinned by Snyk to avoid a vulnerability
