@@ -2163,7 +2163,8 @@ class VideoRemixer(TabBase):
             global_options = self.config.ffmpeg_settings["global_options"]
             remixer_settings = self.config.remixer_settings
             kept_scenes = self.state.prepare_save_remix(self.log, global_options,
-                                                        remixer_settings, output_filepath)
+                                                        remixer_settings, output_filepath,
+                                                        invalidate_video_clips=False)
             self.state.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
                                          custom_video_options, custom_audio_options)
             return format_markdown(f"Remixed custom video {output_filepath} is complete.",

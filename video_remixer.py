@@ -1345,7 +1345,7 @@ class VideoRemixerState():
             clean_paths = clean_paths[1:]
             self.video_clips = []
             self.clips = []
-        elif purge_from == "scene_clips":
+        elif purge_from == "remix_clips":
             clean_paths = clean_paths[2:]
             self.clips = []
 
@@ -1494,7 +1494,8 @@ class VideoRemixerState():
             crop_type = "crop"
         return scale_type, crop_type
 
-    def prepare_save_remix(self, log_fn, global_options, remixer_settings, output_filepath : str):
+    def prepare_save_remix(self, log_fn, global_options, remixer_settings, output_filepath : str,
+                           invalidate_video_clips=True):
         if not output_filepath:
             raise ValueError("Enter a path for the remixed video to proceed")
 
@@ -1520,13 +1521,20 @@ class VideoRemixerState():
             self.create_audio_clips(log_fn, global_options, audio_format=audio_format)
             self.save()
 
-        # always recreate video and scene clips
-        self.clean_remix_content(purge_from="video_clips")
+        # leave video clips if they are complete since we may be only making audio changes
+        if invalidate_video_clips or not self.processed_content_complete(self.VIDEO_STEP):
+            self.clean_remix_content(purge_from="video_clips")
+        else:
+            # always recreate remix clips
+            self.clean_remix_content(purge_from="remix_clips")
+
         return kept_scenes
 
     def save_remix(self, log_fn, global_options, kept_scenes):
-        self.create_video_clips(log_fn, kept_scenes, global_options)
-        self.save()
+        # leave video clips if they are complete since we may be only making audio changes
+        if not self.processed_content_complete(self.VIDEO_STEP):
+            self.create_video_clips(log_fn, kept_scenes, global_options)
+            self.save()
 
         self.create_scene_clips(log_fn, kept_scenes, global_options)
         self.save()
@@ -1550,11 +1558,13 @@ class VideoRemixerState():
         _, _, output_ext = split_filepath(output_filepath)
         output_ext = output_ext[1:]
 
-        self.create_custom_video_clips(log_fn, kept_scenes, global_options,
-                                             custom_video_options=custom_video_options,
-                                             custom_ext=output_ext,
-                                             draw_text_options=draw_text_options)
-        self.save()
+        # leave video clips if they are complete since we may be only making audio changes
+        if not self.processed_content_complete(self.VIDEO_STEP):
+            self.create_custom_video_clips(log_fn, kept_scenes, global_options,
+                                                custom_video_options=custom_video_options,
+                                                custom_ext=output_ext,
+                                                draw_text_options=draw_text_options)
+            self.save()
 
         self.create_custom_scene_clips(kept_scenes, global_options,
                                              custom_audio_options=custom_audio_options,
@@ -2165,8 +2175,8 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
             self.resynthesis_path,
             self.inflation_path,
             self.upscale_path,
-            self.audio_clips_path,
             self.video_clips_path,
+            self.audio_clips_path,
             self.clips_path
         ]:
             content_path = os.path.join(path, scene_name)
@@ -2471,11 +2481,17 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                         # trim whitespace
                         label = label.strip() if label else ""
 
-                        # FFmpeg needs the colons escaped
-                        label = label.replace(":", "\:")
+                        # FFmpeg needs some things escaped
+                        label = label.\
+                            replace(":", "\:").\
+                            replace(",", "\,").\
+                            replace("{", "\{").\
+                            replace("}", "\}").\
+                            replace("%", "\%")
 
                         box_part = f":box=1:boxcolor={box_color}:boxborderw={border_size}" if draw_box else ""
-                        label_part = f"text='{label}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}'{box_part}"
+                        # label_part = f"text='{label}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}':expansion=none:{box_part}"
+                        label_part = f"text='{label}':x={box_x}:y={box_y}:fontsize={font_size}:fontcolor={font_color}:fontfile='{font_file}':expansion=none{box_part}"
                         shadow_part = f"text='{label}':x={shadow_x}:y={shadow_y}:fontsize={font_size}:fontcolor={shadow_color}:fontfile='{font_file}'" if draw_shadow else ""
                         draw_text = f"{shadow_part},drawtext={label_part}" if draw_shadow else label_part
                         use_custom_video_options = use_custom_video_options \
