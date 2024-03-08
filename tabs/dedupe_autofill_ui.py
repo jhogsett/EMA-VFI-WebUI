@@ -71,7 +71,7 @@ class AutofillFrames(TabBase):
                             placeholder="Path on this server for the deduplicated PNG files")
                     message_box_batch = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_BATCH))
                     gr.Markdown("*Progress can be tracked in the console*")
-                    dedupe_batch = gr.Button("Deduplicate Frames " + SimpleIcons.SLOW_SYMBOL,
+                    dedupe_batch = gr.Button("Deduplicate Batch " + SimpleIcons.SLOW_SYMBOL,
                                              variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.autofill_duplicates.render()
