@@ -216,7 +216,10 @@ class VideoRemixer(TabBase):
                             crop_w = gr.Number(1920, label="Crop Width", precision=0)
                             crop_h = gr.Number(1080, label="Crop Height", precision=0)
                         with gr.Accordion(label="More Options", open=False):
-                            reuse_prev_settings = gr.Button(value="Reuse Last-Used Settings", size="sm", scale=0)
+                            with gr.Row(variant="compact"):
+                                reuse_prev_settings = gr.Button(value="Reuse Last-Used Settings", size="sm", scale=1)
+                                use_saved_settings = gr.Button(value="Use Memorized Settings", size="sm", scale=1)
+                                save_settings = gr.Button(value="Remember These Settings", size="sm", scale=1)
                             with gr.Row(variant="compact"):
                                 crop_offset_x = gr.Number(label="Crop X Offset (-1: center)", value=-1, container=False, scale=1)
                                 crop_offset_y = gr.Number(label="Crop Y Offset (-1: center)", value=-1, container=False, scale=1)
@@ -940,8 +943,20 @@ class VideoRemixer(TabBase):
         reuse_prev_settings.click(self.reuse_prev_settings,
                                   outputs=[project_fps, split_type, scene_threshold,
                                            break_duration, break_ratio, resize_w, resize_h,
-                                           crop_w, crop_h, crop_offset_x, crop_offset_y, frame_format,
-                                           deinterlace, split_time])
+                                           crop_w, crop_h, crop_offset_x, crop_offset_y,
+                                           frame_format, deinterlace, split_time])
+
+        use_saved_settings.click(self.use_saved_settings,
+                                  outputs=[project_fps, split_type, scene_threshold,
+                                           break_duration, break_ratio, resize_w, resize_h,
+                                           crop_w, crop_h, crop_offset_x, crop_offset_y,
+                                           frame_format, deinterlace, split_time])
+
+        save_settings.click(self.save_settings,
+                                  inputs=[project_fps, split_type, scene_threshold,
+                                           break_duration, break_ratio, resize_w, resize_h,
+                                           crop_w, crop_h, crop_offset_x, crop_offset_y,
+                                           frame_format, deinterlace, split_time])
 
         next_button2.click(self.next_button2,
                            inputs=[thumbnail_type, min_frames_per_scene, skip_detection],
@@ -1531,22 +1546,7 @@ class VideoRemixer(TabBase):
             Session().set("last-video-remixer-project", project_path)
 
             # memorize these settings
-            last_settings = {}
-            last_settings["project_fps"] = self.state.project_fps
-            last_settings["split_type"] = self.state.split_type
-            last_settings["scene_threshold"] = self.state.scene_threshold
-            last_settings["break_duration"] = self.state.break_duration
-            last_settings["break_ratio"] = self.state.break_ratio
-            last_settings["resize_w"] = self.state.resize_w
-            last_settings["resize_h"] = self.state.resize_h
-            last_settings["crop_w"] = self.state.crop_w
-            last_settings["crop_h"] = self.state.crop_h
-            last_settings["crop_offset_x"] = self.state.crop_offset_x
-            last_settings["crop_offset_y"] = self.state.crop_offset_y
-            last_settings["frame_format"] = self.state.frame_format
-            last_settings["deinterlace"] = self.state.deinterlace
-            last_settings["split_time"] = self.state.split_time
-            Session().set("last-video-remixer-settings", last_settings)
+            self.save_named_settings("last-video-remixer-settings", self.state)
 
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                 format_markdown(self.TAB1_DEFAULT_MESSAGE), \
@@ -1562,40 +1562,89 @@ class VideoRemixer(TabBase):
     def back_button1(self):
         return gr.update(selected=self.TAB_REMIX_HOME)
 
+    def save_named_settings(self, name, state : VideoRemixerState):
+        settings = {}
+        settings["project_fps"] = state.project_fps
+        settings["split_type"] = state.split_type
+        settings["scene_threshold"] = state.scene_threshold
+        settings["break_duration"] = state.break_duration
+        settings["break_ratio"] = state.break_ratio
+        settings["resize_w"] = state.resize_w
+        settings["resize_h"] = state.resize_h
+        settings["crop_w"] = state.crop_w
+        settings["crop_h"] = state.crop_h
+        settings["crop_offset_x"] = state.crop_offset_x
+        settings["crop_offset_y"] = state.crop_offset_y
+        settings["frame_format"] = state.frame_format
+        settings["deinterlace"] = state.deinterlace
+        settings["split_time"] = state.split_time
+        Session().set(name, settings)
+
+    def use_named_settings(self, name):
+        settings = Session().get(name)
+        if settings:
+            try:
+                return \
+                    settings["project_fps"], \
+                    settings["split_type"], \
+                    settings["scene_threshold"], \
+                    settings["break_duration"], \
+                    settings["break_ratio"], \
+                    settings["resize_w"], \
+                    settings["resize_h"], \
+                    settings["crop_w"], \
+                    settings["crop_h"], \
+                    settings["crop_offset_x"], \
+                    settings["crop_offset_y"], \
+                    settings["frame_format"], \
+                    settings["deinterlace"], \
+                    settings["split_time"]
+            except Exception:
+                pass
+        return self.use_default_settings()
+
+    def use_default_settings(self):
+        return \
+            self.config.remixer_settings["def_project_fps"], \
+            self.UI_SAFETY_DEFAULTS["split_type"], \
+            self.UI_SAFETY_DEFAULTS["scene_threshold"], \
+            self.UI_SAFETY_DEFAULTS["break_duration"], \
+            self.UI_SAFETY_DEFAULTS["break_ratio"], \
+            self.UI_SAFETY_DEFAULTS["resize_w"], \
+            self.UI_SAFETY_DEFAULTS["resize_h"], \
+            self.UI_SAFETY_DEFAULTS["crop_w"], \
+            self.UI_SAFETY_DEFAULTS["crop_h"], \
+            self.UI_SAFETY_DEFAULTS["crop_offsets"], \
+            self.UI_SAFETY_DEFAULTS["crop_offsets"], \
+            self.UI_SAFETY_DEFAULTS["frame_format"], \
+            self.UI_SAFETY_DEFAULTS["deinterlace"], \
+            self.UI_SAFETY_DEFAULTS["split_time"]
+
     def reuse_prev_settings(self):
-            last_settings = Session().get("last-video-remixer-settings")
-            if last_settings:
-                return \
-                    last_settings["project_fps"], \
-                    last_settings["split_type"], \
-                    last_settings["scene_threshold"], \
-                    last_settings["break_duration"], \
-                    last_settings["break_ratio"], \
-                    last_settings["resize_w"], \
-                    last_settings["resize_h"], \
-                    last_settings["crop_w"], \
-                    last_settings["crop_h"], \
-                    last_settings["crop_offset_x"], \
-                    last_settings["crop_offset_y"], \
-                    last_settings["frame_format"], \
-                    last_settings["deinterlace"], \
-                    last_settings["split_time"]
-            else:
-                return \
-                    self.config.remixer_settings["def_project_fps"], \
-                    self.UI_SAFETY_DEFAULTS["split_type"], \
-                    self.UI_SAFETY_DEFAULTS["scene_threshold"], \
-                    self.UI_SAFETY_DEFAULTS["break_duration"], \
-                    self.UI_SAFETY_DEFAULTS["break_ratio"], \
-                    self.UI_SAFETY_DEFAULTS["resize_w"], \
-                    self.UI_SAFETY_DEFAULTS["resize_h"], \
-                    self.UI_SAFETY_DEFAULTS["crop_w"], \
-                    self.UI_SAFETY_DEFAULTS["crop_h"], \
-                    self.UI_SAFETY_DEFAULTS["crop_offsets"], \
-                    self.UI_SAFETY_DEFAULTS["crop_offsets"], \
-                    self.UI_SAFETY_DEFAULTS["frame_format"], \
-                    self.UI_SAFETY_DEFAULTS["deinterlace"], \
-                    self.UI_SAFETY_DEFAULTS["split_time"]
+        return self.use_named_settings("last-video-remixer-settings")
+
+    def use_saved_settings(self):
+        return self.use_named_settings("saved-video-remixer-settings")
+
+    def save_settings(self, project_fps, split_type, scene_threshold, break_duration, break_ratio,
+                      resize_w, resize_h, crop_w, crop_h, crop_offset_x, crop_offset_y,
+                      frame_format, deinterlace, split_time):
+        state = VideoRemixerState()
+        state.project_fps = project_fps
+        state.split_type = split_type
+        state.scene_threshold = scene_threshold
+        state.break_duration = break_duration
+        state.break_ratio = break_ratio
+        state.resize_w = resize_w
+        state.resize_h = resize_h
+        state.crop_w = crop_w
+        state.crop_h = crop_h
+        state.crop_offset_x = crop_offset_x
+        state.crop_offset_y = crop_offset_y
+        state.frame_format = frame_format
+        state.deinterlace = deinterlace
+        state.split_time = split_time
+        self.save_named_settings("saved-video-remixer-settings", state)
 
     ### SET UP PROJECT EVENT HANDLERS
 
