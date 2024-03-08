@@ -50,8 +50,10 @@
 
 ## More Options Accordion
 1. Click _More Options_ to access additional project setup options
-    - Click _Reuse Last-Used Settings_, to load the settings from the last created project
+    - Click _Reuse Last-Used Settings_ to load the settings from the last created project
         - Useful when processing a series of similar content such as TV programs
+    - Click _Use Memorized Setting_ to load the settings that were previously _remembered_
+    - Click _Remember These Settings_ to save the settings for later use
     - Set _Crop X Offset_ and _Crop Y Offset_, useful for:
         - Removing letter/pillar boxes
         - Fixing incorrectly centered content
