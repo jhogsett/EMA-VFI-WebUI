@@ -44,8 +44,10 @@ _Scene Label_
 - Labels can be used to rearrange scene order in the remix video
   - When a label starts with a value inside parentheses, the value will be used to arrange the clips in sorted order
   - _Tip:_ use the _+ Sort Keys_ button to automatically add a sorting mark to each scene
-- Labels can be used to mark a scene for 2X, 4X or 8X audio slow motion
-  - Use the _+ 2X Slo Mo_, _+ 4X Slo Mo_ or _+ 8X Slo Mo_ buttons to add a _processing hint_ to the scene label that adds audio pitch-adjusted slow motion
+- Labels can be used to add _Processing Hints_
+  - Use the _+ 2X Slo Mo_, _+ 4X Slo Mo_ or _+ 8X Slo Mo_ buttons to add a _Processing Hint_ to the scene label that adds audio pitch-adjusted slow motion
+
+_Tip: See below for more details on_ Processing Hints
 
 _+ Sort Keys_
 - Automatically adds a sorting mark to each scene
@@ -90,6 +92,38 @@ _Mark Scene_
 
 _Merge Scenes_
 - Shortcut that takes you to the Remix Extra _Merge Scenes_ tab
+
+## Processing Hints
+
+Resize:
+- `{R:x/y}` zoom into quadrant `x` of `y` sized grid
+  - Example:
+  - `{R:1/4}` zoom into upper left quadrant of 2x2 grid
+  - `{R:5/9}` zoom into center quadrant of 3x3 grid (like a telephone keypad)
+- `{R:z%}` zoom in the center at `z` percent
+  - Example:
+  - `{R:200%}` zoom in at 200%
+
+Resynthesize:
+- `{Y:type}` enable resynthesis of `type`
+  - Types:
+  - `C` clean (first past only of two pass resynth)
+  - `S` scrub (two pass resynth)
+  - `R` replace (one pass resynth)
+  - `N` no resynthesis
+
+Inflation:
+- `{I:nt}` inflate amount `n` with type `y`
+  - Amounts: `1`, `2`, `4`, `8`, `16`
+    - `1` means don't inflate
+  - Types:
+  - `A` slow motion with audio pitch adjust
+  - `S` slow motion with silent audio
+  - `N` no slow motion (can be omitted)
+
+Upscale:
+- `{U:_}` upscale at 1X for clean-up
+  - `_` reserved for future use
 
 ## Important
 - `ffmpeg.exe` must be available on the system path

@@ -2268,6 +2268,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                 force_audio = True
             elif "S" in inflation_hint:
                 force_silent = True
+            # else "N" for no slow motion
         return force_inflation, force_audio, force_inflate_by, force_silent
 
     def compute_scene_fps(self, scene_name):
