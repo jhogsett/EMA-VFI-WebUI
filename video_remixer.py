@@ -1625,6 +1625,29 @@ class VideoRemixerState():
                 resize_handled = False
                 resize_hint = self.get_hint(self.scene_labels.get(scene_name), "R")
                 if resize_hint:
+                    # use the main resize/crop settings if resizing, or the content native
+                    # dimensions if not, as a foundation for handling resize hints
+                    if self.resize:
+                        main_resize_w = self.resize_w
+                        main_resize_h = self.resize_h
+                        main_crop_w = self.crop_w
+                        main_crop_h = self.crop_h
+                        if self.crop_offset_x < 0:
+                            main_offset_x = (main_resize_w - main_crop_w) / 2.0
+                        else:
+                            main_offset_x = self.crop_offset_x
+                        if self.crop_offset_y < 0:
+                            main_offset_y = (main_resize_h - main_crop_h) / 2.0
+                        else:
+                            main_offset_y = self.crop_offset_y
+                    else:
+                        main_resize_w = content_width
+                        main_resize_h = content_height
+                        main_crop_w = content_width
+                        main_crop_h = content_height
+                        main_offset_x = 0
+                        main_offset_y = 0
+
                     try:
                         if "/" in resize_hint:
                             if len(resize_hint) >= 3:
@@ -1642,11 +1665,12 @@ class VideoRemixerState():
                                     row = int(quadrant / magnitude)
                                     column = quadrant % magnitude
 
-                                    # based on the zoom magnitude, compute new resize & crop
-                                    resize_w = evenify(content_width * magnitude)
-                                    resize_h = evenify(content_height * magnitude)
-                                    crop_offset_x = column * content_width
-                                    crop_offset_y = row * content_height
+                                    resize_w = evenify(main_resize_w * magnitude)
+                                    resize_h = evenify(main_resize_h * magnitude)
+                                    main_offset_x *= magnitude
+                                    main_offset_y *= magnitude
+                                    crop_offset_x = (column * main_crop_w) + main_offset_x
+                                    crop_offset_y = (row * main_crop_h) + main_offset_y
                                     scale_type = remixer_settings["scale_type_up"]
 
                                     self.resize_scene(log_fn,
@@ -1654,8 +1678,8 @@ class VideoRemixerState():
                                                     scene_output_path,
                                                     int(resize_w),
                                                     int(resize_h),
-                                                    int(self.crop_w),
-                                                    int(self.crop_h),
+                                                    int(main_crop_w),
+                                                    int(main_crop_h),
                                                     int(crop_offset_x),
                                                     int(crop_offset_y),
                                                     scale_type,
@@ -1668,8 +1692,20 @@ class VideoRemixerState():
                                 zoom_percent = int(resize_hint.replace("%", ""))
                                 if zoom_percent >= 100:
                                     magnitude = zoom_percent / 100.0
-                                    resize_w = evenify(content_width * magnitude)
-                                    resize_h = evenify(content_height * magnitude)
+
+                                    resize_w = evenify(main_resize_w * magnitude)
+                                    resize_h = evenify(main_resize_h * magnitude)
+
+                                    if self.crop_offset_x == -1:
+                                        crop_offset_x = ((resize_w - main_crop_w) / 2.0)
+                                    else:
+                                        crop_offset_x = main_offset_x * magnitude
+
+                                    if self.crop_offset_y == -1:
+                                        crop_offset_y = ((resize_h - main_crop_h) / 2.0)
+                                    else:
+                                        crop_offset_y + main_offset_y * magnitude
+
                                     scale_type = remixer_settings["scale_type_up"]
 
                                     self.resize_scene(log_fn,
@@ -1677,10 +1713,10 @@ class VideoRemixerState():
                                                     scene_output_path,
                                                     int(resize_w),
                                                     int(resize_h),
-                                                    int(self.crop_w),
-                                                    int(self.crop_h),
-                                                    -1,
-                                                    -1,
+                                                    int(main_crop_w),
+                                                    int(main_crop_h),
+                                                    int(crop_offset_x),
+                                                    int(crop_offset_y),
                                                     scale_type,
                                                     crop_type="crop")
                                     resize_handled = True
