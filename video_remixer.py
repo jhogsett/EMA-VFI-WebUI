@@ -4,6 +4,7 @@ import math
 import re
 import shutil
 import sys
+from typing import Callable
 import yaml
 from yaml import Loader, YAMLError
 from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
@@ -1592,7 +1593,8 @@ class VideoRemixerState():
                      crop_offset_x,
                      crop_offset_y,
                      scale_type,
-                     crop_type="none"):
+                     crop_type,
+                     params_fn : Callable | None = None):
 
         ResizeFrames(scene_input_path,
                     scene_output_path,
@@ -1604,7 +1606,61 @@ class VideoRemixerState():
                     crop_width=crop_w,
                     crop_height=crop_h,
                     crop_offset_x=crop_offset_x,
-                    crop_offset_y=crop_offset_y).resize(type=self.frame_format)
+                    crop_offset_y=crop_offset_y,
+                    params_fn=params_fn).resize(type=self.frame_format)
+
+    def setup_resize_hint(self, content_width, content_height):
+        # use the main resize/crop settings if resizing, or the content native
+        # dimensions if not, as a foundation for handling resize hints
+        if self.resize:
+            main_resize_w = self.resize_w
+            main_resize_h = self.resize_h
+            main_crop_w = self.crop_w
+            main_crop_h = self.crop_h
+            if self.crop_offset_x < 0:
+                main_offset_x = (main_resize_w - main_crop_w) / 2.0
+            else:
+                main_offset_x = self.crop_offset_x
+            if self.crop_offset_y < 0:
+                main_offset_y = (main_resize_h - main_crop_h) / 2.0
+            else:
+                main_offset_y = self.crop_offset_y
+        else:
+            main_resize_w = content_width
+            main_resize_h = content_height
+            main_crop_w = content_width
+            main_crop_h = content_height
+            main_offset_x = 0
+            main_offset_y = 0
+        return main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y
+
+    def compute_quadrant_zoom(self, quadrant, quadrants, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
+        quadrant = int(quadrant) - 1
+        quadrants = int(quadrants)
+        magnitude = int(math.sqrt(quadrants))
+        row = int(quadrant / magnitude)
+        column = quadrant % magnitude
+        resize_w = evenify(main_resize_w * magnitude)
+        resize_h = evenify(main_resize_h * magnitude)
+        offset_x = main_offset_x * magnitude
+        offset_y = main_offset_y * magnitude
+        crop_offset_x = (column * main_crop_w) + offset_x
+        crop_offset_y = (row * main_crop_h) + offset_y
+        return resize_w, resize_h, crop_offset_x, crop_offset_y
+
+    def compute_percent_zoom(self, zoom_percent, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
+        magnitude = zoom_percent / 100.0
+        resize_w = evenify(main_resize_w * magnitude)
+        resize_h = evenify(main_resize_h * magnitude)
+        if self.crop_offset_x == -1:
+            crop_offset_x = ((resize_w - main_crop_w) / 2.0)
+        else:
+            crop_offset_x = main_offset_x * magnitude
+        if self.crop_offset_y == -1:
+            crop_offset_y = ((resize_h - main_crop_h) / 2.0)
+        else:
+            crop_offset_y = main_offset_y * magnitude
+        return resize_w, resize_h, crop_offset_x, crop_offset_y
 
     def resize_scenes(self, log_fn, kept_scenes, remixer_settings):
         scenes_base_path = self.scenes_source_path(self.RESIZE_STEP)
@@ -1625,89 +1681,50 @@ class VideoRemixerState():
                 resize_handled = False
                 resize_hint = self.get_hint(self.scene_labels.get(scene_name), "R")
                 if resize_hint:
-                    # use the main resize/crop settings if resizing, or the content native
-                    # dimensions if not, as a foundation for handling resize hints
-                    if self.resize:
-                        main_resize_w = self.resize_w
-                        main_resize_h = self.resize_h
-                        main_crop_w = self.crop_w
-                        main_crop_h = self.crop_h
-                        if self.crop_offset_x < 0:
-                            main_offset_x = (main_resize_w - main_crop_w) / 2.0
-                        else:
-                            main_offset_x = self.crop_offset_x
-                        if self.crop_offset_y < 0:
-                            main_offset_y = (main_resize_h - main_crop_h) / 2.0
-                        else:
-                            main_offset_y = self.crop_offset_y
-                    else:
-                        main_resize_w = content_width
-                        main_resize_h = content_height
-                        main_crop_w = content_width
-                        main_crop_h = content_height
-                        main_offset_x = 0
-                        main_offset_y = 0
+                    main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, \
+                        main_offset_y = self.setup_resize_hint(content_width, content_width)
 
                     try:
-                        if "/" in resize_hint:
-                            if len(resize_hint) >= 3:
-                                # interpret 'x/y' as
-                                # x: quadrant, y: square number of quadrants
-                                # '5/9' and '13/25' would be the center squares of 3x3 and 5x5 grids
-                                #   zoomed in at 300% and 500%
-                                split_pos = resize_hint.index("/")
-                                quadrant = resize_hint[:split_pos]
-                                quadrants = resize_hint[split_pos+1:]
-                                if quadrant and quadrants:
-                                    quadrant = int(quadrant) - 1
-                                    quadrants = int(quadrants)
-                                    magnitude = int(math.sqrt(quadrants))
-                                    row = int(quadrant / magnitude)
-                                    column = quadrant % magnitude
+                        if "/" in resize_hint and len(resize_hint) >= 3:
+                            # interpret 'x/y' as x: quadrant, y: square-based number of quadrants
+                            # '5/9' and '13/25' would be the center squares of 3x3 and 5x5 grids
+                            #   zoomed in at 300% and 500%
+                            split_pos = resize_hint.index("/")
+                            quadrant = resize_hint[:split_pos]
+                            quadrants = resize_hint[split_pos+1:]
+                            if quadrant and quadrants:
+                                resize_w, resize_h, crop_offset_x, crop_offset_y = \
+                                    self.compute_quadrant_zoom(quadrant, quadrants,
+                                                               main_resize_w, main_resize_h,
+                                                               main_offset_x, main_offset_y,
+                                                               main_crop_w, main_crop_h)
 
-                                    resize_w = evenify(main_resize_w * magnitude)
-                                    resize_h = evenify(main_resize_h * magnitude)
-                                    main_offset_x *= magnitude
-                                    main_offset_y *= magnitude
-                                    crop_offset_x = (column * main_crop_w) + main_offset_x
-                                    crop_offset_y = (row * main_crop_h) + main_offset_y
-                                    scale_type = remixer_settings["scale_type_up"]
+                                scale_type = remixer_settings["scale_type_up"]
+                                self.resize_scene(log_fn,
+                                                scene_input_path,
+                                                scene_output_path,
+                                                int(resize_w),
+                                                int(resize_h),
+                                                int(main_crop_w),
+                                                int(main_crop_h),
+                                                int(crop_offset_x),
+                                                int(crop_offset_y),
+                                                scale_type,
+                                                crop_type="crop")
+                                resize_handled = True
 
-                                    self.resize_scene(log_fn,
-                                                    scene_input_path,
-                                                    scene_output_path,
-                                                    int(resize_w),
-                                                    int(resize_h),
-                                                    int(main_crop_w),
-                                                    int(main_crop_h),
-                                                    int(crop_offset_x),
-                                                    int(crop_offset_y),
-                                                    scale_type,
-                                                    crop_type="crop")
-                                    resize_handled = True
-
-                        elif "%" in resize_hint:
-                            if len(resize_hint) >= 4:
+                        elif "%" in resize_hint and len(resize_hint) >= 4:
                                 # interpret z% as zoom percent to zoom into center
                                 zoom_percent = int(resize_hint.replace("%", ""))
                                 if zoom_percent >= 100:
-                                    magnitude = zoom_percent / 100.0
+                                    resize_w, resize_h, crop_offset_x, crop_offset_y = \
+                                        self.compute_percent_zoom(zoom_percent,
+                                                                    main_resize_w, main_resize_h,
+                                                                    main_offset_x, main_offset_y,
+                                                                    main_crop_w, main_crop_h)
 
-                                    resize_w = evenify(main_resize_w * magnitude)
-                                    resize_h = evenify(main_resize_h * magnitude)
-
-                                    if self.crop_offset_x == -1:
-                                        crop_offset_x = ((resize_w - main_crop_w) / 2.0)
-                                    else:
-                                        crop_offset_x = main_offset_x * magnitude
-
-                                    if self.crop_offset_y == -1:
-                                        crop_offset_y = ((resize_h - main_crop_h) / 2.0)
-                                    else:
-                                        crop_offset_y + main_offset_y * magnitude
 
                                     scale_type = remixer_settings["scale_type_up"]
-
                                     self.resize_scene(log_fn,
                                                     scene_input_path,
                                                     scene_output_path,
