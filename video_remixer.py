@@ -1233,7 +1233,8 @@ class VideoRemixerState():
         return self.resize or self.hint_present("R")
 
     def resize_needed(self):
-        return self.resize_chosen() and not self.processed_content_complete(self.RESIZE_STEP)
+        return (self.resize and not self.processed_content_complete(self.RESIZE_STEP)) \
+            or self.resize_chosen()
 
     def resynthesize_chosen(self):
         return self.resynthesize or self.hint_present("Y")
@@ -1682,7 +1683,7 @@ class VideoRemixerState():
                 resize_hint = self.get_hint(self.scene_labels.get(scene_name), "R")
                 if resize_hint:
                     main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, \
-                        main_offset_y = self.setup_resize_hint(content_width, content_width)
+                        main_offset_y = self.setup_resize_hint(content_width, content_height)
 
                     try:
                         if "/" in resize_hint and len(resize_hint) >= 3:
