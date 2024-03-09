@@ -65,8 +65,7 @@ class ResizeFrames:
                 crop_height : int=-1,
                 crop_offset_x : int=-1,
                 crop_offset_y : int=-1,
-                crop_type : str="none",
-                params_fn : Callable | None=None):
+                crop_type : str="none"):
         self.input_path = input_path
         self.output_path = output_path
         self.scale_width = scale_width
@@ -78,7 +77,6 @@ class ResizeFrames:
         self.crop_offset_x = crop_offset_x
         self.crop_offset_y = crop_offset_y
         self.crop_type = crop_type
-        self.params_fn = params_fn
 
     def get_scale_type(self, scale_type : str) -> int:
         try:
@@ -102,11 +100,11 @@ class ResizeFrames:
         except KeyError:
             raise ValueError(f"The crop type {crop_type} is unknown")
 
-    def resize(self, type : str="png") -> None:
+    def resize(self, type : str="png", params_fn : Callable | None=None, params_context : any=None) -> None:
         """Invoke the Resize Frames feature"""
-        if not self.scale_width:
+        if not self.scale_width and not params_fn:
             raise ValueError("scale_width must be provided")
-        if not self.scale_height:
+        if not self.scale_height and not params_fn:
             raise ValueError("scale_height must be provided")
 
         files = sorted(glob.glob(os.path.join(self.input_path, "*." + type)))
@@ -118,28 +116,29 @@ class ResizeFrames:
 
         with Mtqdm().open_bar(len(files), desc="Resizing") as bar:
             for index, file in enumerate(files):
-                self.log(f"processing {file}")
                 image = cv2.imread(file)
 
-                if self.params_fn:
-                    self.log(f"calling 'param_fn' to get parameters")
-                    scale_width, \
-                    scale_height, \
-                    crop_width, \
-                    crop_height, \
-                    crop_offset_x, \
-                    crop_offset_y = self.params_fn(index)
+                if params_fn:
+                    try:
+                        self.log(f"calling 'param_fn' to get parameters")
+                        scale_width, \
+                        scale_height, \
+                        crop_offset_x, \
+                        crop_offset_y = params_fn(index, params_context)
+                    except Exception as error:
+                        print(error)
+                        1/0
                 else:
                     scale_width = self.scale_width
                     scale_height = self.scale_height
-                    crop_width = self.crop_width
-                    crop_height = self.crop_height
                     crop_offset_x = self.crop_offset_x
                     crop_offset_y = self.crop_offset_y
 
+                crop_width = self.crop_width
+                crop_height = self.crop_height
+
                 if scale_type:
                     size = (scale_width, scale_height)
-                    self.log(f"resizing {file} to {scale_width}x{scale_height}")
                     image = cv2.resize(image, size, interpolation=scale_type)
 
                 if crop_type:
@@ -161,7 +160,6 @@ class ResizeFrames:
 
                 _, filename, ext = split_filepath(file)
                 output_filepath = os.path.join(self.output_path, f"{filename}{ext}")
-                self.log(f"saving resized file {output_filepath}")
                 cv2.imwrite(output_filepath, image)
                 Mtqdm().update_bar(bar)
 
