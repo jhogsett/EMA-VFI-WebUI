@@ -119,15 +119,11 @@ class ResizeFrames:
                 image = cv2.imread(file)
 
                 if params_fn:
-                    try:
-                        self.log(f"calling 'param_fn' to get parameters")
-                        scale_width, \
-                        scale_height, \
-                        crop_offset_x, \
-                        crop_offset_y = params_fn(index, params_context)
-                    except Exception as error:
-                        print(error)
-                        1/0
+                    self.log(f"calling 'param_fn' to get parameters")
+                    scale_width, \
+                    scale_height, \
+                    crop_offset_x, \
+                    crop_offset_y = params_fn(index, params_context)
                 else:
                     scale_width = self.scale_width
                     scale_height = self.scale_height

@@ -181,11 +181,9 @@ class ResequenceFiles:
                 if self.rename:
                     new_filepath = os.path.join(self.input_path, new_filename)
                     os.replace(old_filepath, new_filepath)
-                    self.log(f"File {file} renamed to {new_filepath}")
                 else:
                     new_filepath = os.path.join(self.output_path, new_filename)
                     shutil.copy(old_filepath, new_filepath)
-                    self.log(f"File {file} copied to {new_filepath}")
 
                 running_index += self.index_step
                 Mtqdm().update_bar(bar)
