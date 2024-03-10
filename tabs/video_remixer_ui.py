@@ -2061,6 +2061,11 @@ class VideoRemixer(TabBase):
         self.log("purging now-stale remix content")
         self.state.clean_remix_content(purge_from="audio_clips")
 
+        # TODO reconcile with the line above
+        # Compiling scenes implies a last state before processing,
+        # and the user may expect that all content will be processed
+        self.state.processed_content_invalid = True
+
         # user will expect to return to the processing tab on reopening
         self.log("saving project after compiling scenes")
         self.save_progress("process")
