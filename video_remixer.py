@@ -1743,17 +1743,27 @@ class VideoRemixerState():
     # TODO this doesn't always work as expected, something like, the magnitudes are different
     # between both, so things don't line up
     def compute_combined_zoom(self, quadrant, quadrants, zoom_percent, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
-        resize_w, resize_h, _, _ = self.compute_percent_zoom(zoom_percent,
+        percent_resize_w, percent_resize_h, _, _ = self.compute_percent_zoom(zoom_percent,
                                                             main_resize_w, main_resize_h,
                                                             main_offset_x, main_offset_y,
                                                             main_crop_w, main_crop_h)
 
-        _, _, crop_offset_x, crop_offset_y = self.compute_quadrant_zoom(quadrant, quadrants,
+        quadrant_resize_w, _, quadrant_offset_x, quadrant_offset_y = self.compute_quadrant_zoom(quadrant, quadrants,
                                                             main_resize_w, main_resize_h,
                                                             main_offset_x, main_offset_y,
                                                             main_crop_w, main_crop_h, centered=True)
 
-        return resize_w, resize_h, crop_offset_x, crop_offset_y
+        scale = percent_resize_w / quadrant_resize_w
+        scaled_offset_x = quadrant_offset_x * scale
+        scaled_offset_y = quadrant_offset_y * scale
+
+        # both return the upper left corner of a main_crop-sized rectangle in their resize domain
+        # adding 1/2 the main_crop size will give the centerpoint in that domain
+        # scaling by the difference in domain size will make the rectangles compatible
+        # want the centerpoint of the quadrant resize to dominate
+        # once scaled by the percent resize size, the quadrant offset will work without needing to compute centerpoints
+
+        return percent_resize_w, percent_resize_h, scaled_offset_x, scaled_offset_y
 
     def compute_zoom_type(self, type, param1, param2, param3, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
         if type == self.COMBINED_ZOOM_HINT:
