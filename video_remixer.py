@@ -1655,8 +1655,6 @@ class VideoRemixerState():
             else:
                 quadrant, quadrants = 1, 1
 
-            print(quadrant, quadrants)
-
             return quadrant, quadrants
         else:
             return None, None
@@ -1845,6 +1843,7 @@ class VideoRemixerState():
                                                             main_crop_w, main_crop_h)
 
         # scale the quadrant center point to the percent resize
+        # this seems to work on the left and middle but not on the right
         scale = percent_resize_w / quadrant_resize_w
         center_x = quadrant_center_x * scale
         center_y = quadrant_center_y * scale
@@ -2045,6 +2044,7 @@ class VideoRemixerState():
                                                     crop_type="crop")
                                     resize_handled = True
                     except Exception as error:
+                        # TODO
                         print(error)
                         raise
                         log_fn(
