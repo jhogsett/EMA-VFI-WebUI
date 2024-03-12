@@ -1637,6 +1637,7 @@ class VideoRemixerState():
         return main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y
 
     QUADRANT_ZOOM_HINT = "/"
+    QUADRANT_GRID_CHAR = "X"
     PERCENT_ZOOM_HINT = "%"
     COMBINED_ZOOM_HINT = "@"
     ANIMATED_ZOOM_HINT = "-"
@@ -1653,38 +1654,67 @@ class VideoRemixerState():
                 quadrants = hint[split_pos+1:]
             else:
                 quadrant, quadrants = 1, 1
+
+            print(quadrant, quadrants)
+
             return quadrant, quadrants
         else:
             return None, None
 
     def compute_quadrant_zoom(self, quadrant, quadrants, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, centered=False):
         quadrant = int(quadrant) - 1
-        quadrants = int(quadrants)
-        magnitude = int(math.sqrt(quadrants))
-        row = int(quadrant / magnitude)
-        column = quadrant % magnitude
-        resize_w = evenify(main_resize_w * magnitude)
-        resize_h = evenify(main_resize_h * magnitude)
-        offset_x = main_offset_x * magnitude
-        offset_y = main_offset_y * magnitude
-
-        if centered:
-            # move the offset to the center of the grid box
-            centering_offset_x = main_crop_w / 2
-            centering_offset_y = main_crop_h / 2
+        if self.QUADRANT_GRID_CHAR in quadrants:
+            parts = quadrants.split(self.QUADRANT_GRID_CHAR)
+            if len(parts) == 2:
+                grid_x = int(parts[0])
+                grid_y = int(parts[1])
+                magnitude_x = grid_x
+                magnitude_y = grid_y
+                magnitude = max(magnitude_x, magnitude_y)
+                row = int(quadrant / magnitude)
+                column = quadrant % magnitude
+            else:
+                magnitude = 1
+                magnitude_x = magnitude
+                magnitude_y = magnitude
+                row = 0
+                column = 0
         else:
-            centering_offset_x = 0
-            centering_offset_y = 0
+            magnitude = int(math.sqrt(int(quadrants)))
+            magnitude_x = magnitude
+            magnitude_y = magnitude
+            row = int(quadrant / magnitude)
+            column = quadrant % magnitude
 
-        crop_offset_x = (column * main_crop_w) + offset_x + centering_offset_x
-        crop_offset_y = (row * main_crop_h) + offset_y + centering_offset_y
+        resize_w = main_resize_w * magnitude
+        resize_h = main_resize_h * magnitude
+        crop_w = main_crop_w * magnitude
+        crop_h = main_crop_h * magnitude
 
-        if crop_offset_x + main_crop_w > resize_w:
-            crop_offset_x = resize_w - main_crop_w
-        if crop_offset_y + main_crop_h > resize_h:
-            crop_offset_y =resize_h - main_crop_h
+        crop_offset_x = 0
+        crop_offset_y = 0
+        if main_offset_x >= 0:
+            crop_offset_x = main_offset_x * magnitude
+        if main_offset_y >= 0:
+            crop_offset_y = main_offset_y * magnitude
 
-        return resize_w, resize_h, crop_offset_x, crop_offset_y
+        cell_width = crop_w / magnitude_x
+        cell_height = crop_h / magnitude_y
+        cell_centering_x = 0
+        cell_centering_y = 0
+        if cell_width > main_crop_w:
+            cell_centering_x = (cell_width - main_crop_w) / 2
+        elif main_crop_w > cell_width:
+            cell_centering_x = (main_crop_w - cell_width) / 2
+        if cell_height > main_crop_h:
+            cell_centering_y = (cell_height - main_crop_h) / 2
+        elif main_crop_h > cell_height:
+            cell_centering_y = (main_crop_h - cell_height) / 2
+
+        cell_offset_x = column * cell_width + crop_offset_x + cell_centering_x
+        cell_offset_y = row * cell_height + crop_offset_y + cell_centering_y
+
+        return resize_w, resize_h, cell_offset_x, cell_offset_y
 
     def get_percent_zoom(self, hint):
         if self.PERCENT_ZOOM_HINT in hint:
@@ -1722,6 +1752,7 @@ class VideoRemixerState():
                                                             main_resize_w, main_resize_h,
                                                             main_offset_x, main_offset_y,
                                                             main_crop_w, main_crop_h, centered=True)
+
         return resize_w, resize_h, crop_offset_x, crop_offset_y
 
     def compute_zoom_type(self, type, param1, param2, param3, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
@@ -1970,6 +2001,8 @@ class VideoRemixerState():
                                                     crop_type="crop")
                                     resize_handled = True
                     except Exception as error:
+                        print(error)
+                        raise
                         log_fn(
 f"Error in resize_scenes() handling processing hint {resize_hint} - skipping processing: {error}")
                         resize_handled = False
