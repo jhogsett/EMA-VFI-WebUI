@@ -1815,27 +1815,49 @@ class VideoRemixerState():
         return resize_w, resize_h, crop_offset_x, crop_offset_y
 
     def compute_combined_zoom(self, quadrant, quadrants, zoom_percent, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
-        percent_resize_w, percent_resize_h, _, _ = self.compute_percent_zoom(zoom_percent,
+        percent_resize_w, percent_resize_h, percent_offset_x, percent_offset_y = self.compute_percent_zoom(zoom_percent,
+                                                            main_resize_w, main_resize_h,
+                                                            main_offset_x, main_offset_y,
+                                                            main_crop_w, main_crop_h)
+        # the offsets are based on the center of the screen not the quadrant
+
+        quadrant_resize_w, quadrant_resize_h, quadrant_offset_x, quadrant_offset_y = self.compute_quadrant_zoom(quadrant, quadrants,
                                                             main_resize_w, main_resize_h,
                                                             main_offset_x, main_offset_y,
                                                             main_crop_w, main_crop_h)
 
-        quadrant_resize_w, _, quadrant_offset_x, quadrant_offset_y = self.compute_quadrant_zoom(quadrant, quadrants,
-                                                            main_resize_w, main_resize_h,
-                                                            main_offset_x, main_offset_y,
-                                                            main_crop_w, main_crop_h)
+        # quadrant_zoom_percent = (main_resize_w / quadrant_resize_w) * 100.0
 
+        # percent_resize_w2, percent_resize_h2, percent_offset_x2, percent_offset_y2 = self.compute_percent_zoom(quadrant_zoom_percent,
+        #                                                     main_resize_w, main_resize_h,
+        #                                                     main_offset_x, main_offset_y,
+        #                                                     main_crop_w, main_crop_h)
+
+        # diff_w = percent_offset_x - percent_offset_x2
+        # diff_h = percent_offset_y - percent_offset_y2
+
+        # return quadrant_resize_w, quadrant_resize_h, quadrant_offset_x - diff_w, quadrant_offset_y - diff_h
+
+        # reality check, should just be the quadrant zoom - does
+        # return quadrant_resize_w, quadrant_resize_h, quadrant_offset_x, quadrant_offset_y
+
+        # seems to work the same as the below
+        # scale = percent_resize_w / quadrant_resize_w
+        # scaled_offset_x = ((quadrant_offset_x + (main_crop_w / 2)) * scale) - (main_crop_w / 2)
+        # scaled_offset_y = ((quadrant_offset_y + (main_crop_h / 2)) * scale) - (main_crop_h / 2)
+        # return percent_resize_w, percent_resize_h, scaled_offset_x, scaled_offset_y
+
+        # close but center point shifts
         scale = percent_resize_w / quadrant_resize_w
         scaled_offset_x = quadrant_offset_x * scale
         scaled_offset_y = quadrant_offset_y * scale
-
-        # both return the upper left corner of a main_crop-sized rectangle in their resize domain
-        # adding 1/2 the main_crop size will give the centerpoint in that domain
-        # scaling by the difference in domain size will make the rectangles compatible
-        # want the centerpoint of the quadrant resize to dominate
-        # once scaled by the percent resize size, the quadrant offset will work without needing to compute centerpoints
-
         return percent_resize_w, percent_resize_h, scaled_offset_x, scaled_offset_y
+
+        # definitely not right
+        # scale = quadrant_resize_w / percent_resize_w
+        # scaled_offset_x = quadrant_offset_x * scale
+        # scaled_offset_y = quadrant_offset_y * scale
+        # return percent_resize_w, percent_resize_h, scaled_offset_x, scaled_offset_y
 
     def compute_animated_zoom(self, num_frames, from_type, from_param1, from_param2, from_param3,
                                     to_type, to_param1, to_param2, to_param3,
