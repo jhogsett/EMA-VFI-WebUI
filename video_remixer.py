@@ -1845,6 +1845,9 @@ class VideoRemixerState():
         diff_crop_offset_x = to_crop_offset_x - from_crop_offset_x
         diff_crop_offset_y = to_crop_offset_y - from_crop_offset_y
 
+        # ensure the final transition occurs
+        num_frames -= 1
+
         step_resize_w = diff_resize_w / num_frames
         step_resize_h = diff_resize_h / num_frames
         step_crop_offset_x = diff_crop_offset_x / num_frames
