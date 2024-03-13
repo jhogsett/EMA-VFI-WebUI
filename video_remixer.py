@@ -1756,9 +1756,15 @@ class VideoRemixerState():
                 grid_y = int(parts[1])
                 magnitude_x = grid_x
                 magnitude_y = grid_y
-                magnitude = max(magnitude_x, magnitude_y)
-                row = int(quadrant / magnitude)
-                column = quadrant % magnitude
+
+                if magnitude_x >= magnitude_y:
+                    magnitude = magnitude_x
+                    row = int(quadrant / magnitude_x)
+                    column = quadrant % magnitude_x
+                else:
+                    magnitude = magnitude_y
+                    row = int(quadrant / magnitude_x)
+                    column = quadrant % magnitude_x
             else:
                 magnitude = 1
                 magnitude_x = magnitude
