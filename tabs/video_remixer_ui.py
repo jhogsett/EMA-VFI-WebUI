@@ -584,14 +584,22 @@ class VideoRemixer(TabBase):
                                 with gr.Row():
                                     with gr.Column(scale=1):
                                         with gr.Row(equal_height=True, variant="panel", elem_id="highlightbutton"):
+                                            go_to_f_button702 = gr.Button(value="Go to Frame",
+                                                                            variant="secondary",
+                                                                            size="sm", min_width=120)
+                                            go_to_f_702 = gr.Number(value=0, show_label=False,
+                                                                    info=None,
+                                                                    precision=0, container=False,
+                                                                    min_width=120)
+                                    with gr.Column(scale=1):
+                                        with gr.Row(equal_height=True, variant="panel", elem_id="highlightbutton"):
                                             go_to_s_button702 = gr.Button(value="Go to Second",
                                                                             variant="secondary",
                                                                             size="sm", min_width=120)
                                             go_to_s_702 = gr.Number(value=0, show_label=False,
-                                                                    info=None, minimum=0,
+                                                                    info=None,
                                                                     precision=0, container=False,
                                                                     min_width=120)
-                                    gr.Column(scale=7)
                             with gr.Column():
                                 preview_image702 = gr.Image(type="filepath",
                         label="Split Frame Preview", tool=None, height=max_thumb_size)
@@ -1186,6 +1194,14 @@ class VideoRemixer(TabBase):
 
         go_to_s_702.submit(self.go_to_s_submit702,
                                 inputs=[scene_id_702, split_percent_702, go_to_s_702],
+                                outputs=split_percent_702, show_progress=False)
+
+        go_to_f_button702.click(self.go_to_f_click702,
+                                inputs=[scene_id_702, split_percent_702, go_to_f_702],
+                                outputs=split_percent_702, show_progress=False)
+
+        go_to_f_702.submit(self.go_to_f_submit702,
+                                inputs=[scene_id_702, split_percent_702, go_to_f_702],
                                 outputs=split_percent_702, show_progress=False)
 
         split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
@@ -2541,6 +2557,16 @@ class VideoRemixer(TabBase):
 
     def go_to_s_submit702(self, scene_index, split_percent, go_to_second):
         return self.go_to_s_button702(scene_index, split_percent, go_to_second)
+
+    def go_to_f_button702(self, scene_index, split_percent, go_to_frame):
+        return self.state.compute_advance_702(scene_index, split_percent, False, by_exact_frame=True,
+                                        exact_frame=go_to_frame)
+
+    def go_to_f_click702(self, scene_index, split_percent, go_to_frame):
+        return self.go_to_f_button702(scene_index, split_percent, go_to_frame)
+
+    def go_to_f_submit702(self, scene_index, split_percent, go_to_frame):
+        return self.go_to_f_button702(scene_index, split_percent, go_to_frame)
 
     def export_project_703(self, new_project_path : str, new_project_name : str):
         empty_args = dummy_args(2, lambda : gr.update(visible=True))
