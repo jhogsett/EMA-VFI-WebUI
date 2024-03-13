@@ -1848,6 +1848,15 @@ class VideoRemixerState():
         center_x = quadrant_center_x * scale
         center_y = quadrant_center_y * scale
 
+        crop_offset_x = center_x - (main_crop_w / 2.0)
+        crop_offset_y = center_y - (main_crop_h / 2.0)
+        if crop_offset_x < 0 or crop_offset_x + main_crop_w > percent_resize_w \
+            or crop_offset_y < 0 or crop_offset_y + main_crop_h > percent_resize_h:
+            # if out of bounds, resort to a quadrant zoom
+            resize_w, resize_h, center_x, center_y = \
+                self.compute_quadrant_zoom(quadrant, quadrants, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+            return resize_w, resize_h, center_x, center_y
+
         return percent_resize_w, percent_resize_h, center_x, center_y
 
     def compute_animated_zoom(self, num_frames, from_type, from_param1, from_param2, from_param3,
@@ -1975,9 +1984,10 @@ class VideoRemixerState():
                                                                main_offset_x, main_offset_y,
                                                                main_crop_w, main_crop_h)
 
-                                scale_type = remixer_settings["scale_type_up"]
                                 crop_offset_x = center_x - (main_crop_w / 2.0)
                                 crop_offset_y = center_y - (main_crop_h / 2.0)
+
+                                scale_type = remixer_settings["scale_type_up"]
                                 self.resize_scene(log_fn,
                                                 scene_input_path,
                                                 scene_output_path,
