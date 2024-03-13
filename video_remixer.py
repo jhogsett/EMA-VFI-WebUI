@@ -1831,33 +1831,56 @@ class VideoRemixerState():
 
         return resize_w, resize_h, center_x, center_y
 
+    MAX_SELF_FIT_ZOOM = 1000
+
     def compute_combined_zoom(self, quadrant, quadrants, zoom_percent, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
-        percent_resize_w, percent_resize_h, percent_center_x, percent_center_y = self.compute_percent_zoom(zoom_percent,
+        resize_w, resize_h, _, _ = self.compute_percent_zoom(zoom_percent,
                                                             main_resize_w, main_resize_h,
                                                             main_offset_x, main_offset_y,
                                                             main_crop_w, main_crop_h)
-
-        quadrant_resize_w, quadrant_resize_h, quadrant_center_x, quadrant_center_y = self.compute_quadrant_zoom(quadrant, quadrants,
+        quadrant_resize_w, _, quadrant_center_x, quadrant_center_y = self.compute_quadrant_zoom(quadrant, quadrants,
                                                             main_resize_w, main_resize_h,
                                                             main_offset_x, main_offset_y,
                                                             main_crop_w, main_crop_h)
 
         # scale the quadrant center point to the percent resize
-        # this seems to work on the left and middle but not on the right
-        scale = percent_resize_w / quadrant_resize_w
+        scale = resize_w / quadrant_resize_w
         center_x = quadrant_center_x * scale
         center_y = quadrant_center_y * scale
 
+        if self.check_crop_bounds(resize_w, resize_h, center_x, center_y, main_crop_w, main_crop_h):
+            # fit the requested zoom percent to be in bounds
+            fit_zoom_percent = zoom_percent
+            while fit_zoom_percent < self.MAX_SELF_FIT_ZOOM and \
+            self.check_crop_bounds(resize_w, resize_h, center_x, center_y, main_crop_w, main_crop_h):
+                fit_zoom_percent += 1
+                resize_w, resize_h, _, _ = self.compute_percent_zoom(fit_zoom_percent,
+                                                                    main_resize_w, main_resize_h,
+                                                                    main_offset_x, main_offset_y,
+                                                                    main_crop_w, main_crop_h)
+                quadrant_resize_w, _, quadrant_center_x, quadrant_center_y = self.compute_quadrant_zoom(quadrant, quadrants,
+                                                                    main_resize_w, main_resize_h,
+                                                                    main_offset_x, main_offset_y,
+                                                                    main_crop_w, main_crop_h)
+
+                # scale the quadrant center point to the percent resize
+                # this seems to work on the left and middle but not on the right
+                scale = resize_w / quadrant_resize_w
+                center_x = quadrant_center_x * scale
+                center_y = quadrant_center_y * scale
+
+            # if still out of bounds, restore to quadrant zoom
+            if self.check_crop_bounds(resize_w, resize_h, center_x, center_y, main_crop_w, main_crop_h):
+                resize_w, resize_h, center_x, center_y = \
+                    self.compute_quadrant_zoom(quadrant, quadrants, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+        return resize_w, resize_h, center_x, center_y
+
+    def check_crop_bounds(self, resize_w, resize_h, center_x, center_y, main_crop_w, main_crop_h):
         crop_offset_x = center_x - (main_crop_w / 2.0)
         crop_offset_y = center_y - (main_crop_h / 2.0)
-        if crop_offset_x < 0 or crop_offset_x + main_crop_w > percent_resize_w \
-            or crop_offset_y < 0 or crop_offset_y + main_crop_h > percent_resize_h:
-            # if out of bounds, resort to a quadrant zoom
-            resize_w, resize_h, center_x, center_y = \
-                self.compute_quadrant_zoom(quadrant, quadrants, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
-            return resize_w, resize_h, center_x, center_y
-
-        return percent_resize_w, percent_resize_h, center_x, center_y
+        return crop_offset_x < 0 or crop_offset_x + main_crop_w > resize_w \
+            or crop_offset_y < 0 or crop_offset_y + main_crop_h > resize_h
 
     def compute_animated_zoom(self, num_frames, from_type, from_param1, from_param2, from_param3,
                                     to_type, to_param1, to_param2, to_param3,
