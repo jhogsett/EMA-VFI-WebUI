@@ -2150,12 +2150,17 @@ class VideoRemixer(TabBase):
                                             inflate_option_changed,
                                             upscale_option_changed)
 
-        remix_report = self.state.process_remix(self.log,
-                                                kept_scenes,
-                                                self.config.remixer_settings,
-                                                self.engine,
-                                                self.config.engine_settings,
-                                                self.config.realesrgan_settings)
+        self.state.process_remix(self.log,
+                                 kept_scenes,
+                                 self.config.remixer_settings,
+                                 self.engine,
+                                 self.config.engine_settings,
+                                 self.config.realesrgan_settings)
+
+        remix_report = self.generate_remix_report(self.processed_content_complete(self.RESIZE_STEP),
+                                          self.processed_content_complete(self.RESYNTH_STEP),
+                                          self.processed_content_complete(self.INFLATE_STEP),
+                                          self.processed_content_complete(self.UPSCALE_STEP))
 
         styled_report = style_report("Content Ready for Remix Video:", remix_report, color="info")
         self.state.summary_info6 = styled_report
