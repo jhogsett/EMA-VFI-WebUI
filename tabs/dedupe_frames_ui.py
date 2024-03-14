@@ -8,6 +8,7 @@ from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
 from deduplicate_frames import DeduplicateFrames
 from webui_utils.auto_increment import AutoIncrementDirectory, AutoIncrementFilename
+from webui_utils.video_utils import determine_input_format
 
 class DedupeFrames(TabBase):
     """Encapsulates UI elements and events for the Deduplicate Frames feature"""
@@ -61,6 +62,7 @@ class DedupeFrames(TabBase):
                     base_output_path = self.config.directories["output_deduplication"]
                     output_path, _ = AutoIncrementDirectory(base_output_path).next_directory("run")
 
+                type = determine_input_format(input_path)
                 # repurpose max_dupes for delete to mean: skip delete on groups larger than this size
                 ignore_over_size = max_dupes
                 max_dupes = 0
@@ -70,7 +72,8 @@ class DedupeFrames(TabBase):
                                                                     threshold,
                                                                     max_dupes,
                                                                     None,
-                                                                    self.log).invoke_delete(
+                                                                    self.log,
+                                                                    type=type).invoke_delete(
                                                                         suppress_output=True,
                                                             max_size_for_delete=ignore_over_size)
                 report = self.create_delete_report(input_path,
@@ -79,7 +82,6 @@ class DedupeFrames(TabBase):
                                                      ignore_over_size,
                                                      message,
                                                      deleted_files)
-
                 report_filepath, _ = AutoIncrementFilename(output_path, "txt").next_filename(
                                                                         "remove-report", "txt")
                 with open(report_filepath, "w", encoding="UTF-8") as file:
