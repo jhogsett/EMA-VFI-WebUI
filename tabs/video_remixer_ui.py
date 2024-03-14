@@ -105,7 +105,6 @@ class VideoRemixer(TabBase):
     TAB62_DEFAULT_MESSAGE = "Click Save Marked Remix to: Apply Marking Options and save Marked Remix Video"
     TAB63_DEFAULT_MESSAGE = "Click Save Labeled Remix to: Add Label and save Remix Video"
 
-    FONTS_ROOT = "fonts"
 
     def render_tab(self):
         """Render tab into UI"""
@@ -275,7 +274,7 @@ class VideoRemixer(TabBase):
                     with gr.Column(scale=2):
                         with gr.Row():
                             scene_state = gr.Radio(label="Choose", value=None,
-                                                choices=["Keep", "Drop"])
+                                choices=[VideoRemixerState.KEEP_MARK, VideoRemixerState.DROP_MARK])
                             with gr.Column(variant="compact", elem_id="mainhighlightdim"):
                                 scene_index = gr.Number(label="Scene Index", precision=0)
                 with gr.Row():
@@ -665,8 +664,8 @@ class VideoRemixer(TabBase):
                                                         label="Ending Scene Index")
                         with gr.Row():
                             scene_state_701 = gr.Radio(label="Scenes Choice",
-                                                        value=None,
-                                                        choices=["Keep", "Drop"])
+                                                       value=None,
+                                choices=[VideoRemixerState.KEEP_MARK, VideoRemixerState.DROP_MARK])
                         with gr.Row():
                             message_box701 = gr.Markdown(
                                 format_markdown(
@@ -1306,7 +1305,7 @@ class VideoRemixer(TabBase):
         purge_button715.click(self.purge_button715, outputs=[tabs_video_remixer, message_box715])
 
     def gather_fonts(self):
-        fonts = get_files(self.FONTS_ROOT, "ttf")
+        fonts = get_files(self.state.FONTS_ROOT, "ttf")
         result = []
         for font in fonts:
             _, filename, _ = split_filepath(font)
@@ -1836,12 +1835,12 @@ class VideoRemixer(TabBase):
         return self.scene_chooser_details(self.state.current_scene)
 
     def keep_next(self, scene_index, scene_name):
-        self.state.scene_states[scene_name] = "Keep"
+        self.state.scene_states[scene_name] = self.state.KEEP_MARK
         self.state.save()
         return self.next_scene(scene_index, scene_name)
 
     def drop_next(self, scene_index, scene_name):
-        self.state.scene_states[scene_name] = "Drop"
+        self.state.scene_states[scene_name] = self.state.DROP_MARK
         self.state.save()
         return self.next_scene(scene_index, scene_name)
 
@@ -1860,7 +1859,7 @@ class VideoRemixer(TabBase):
     def scan_for_keep(self, range):
         for index in range:
             scene_name = self.state.scene_names[index]
-            if self.state.scene_states[scene_name] == "Keep":
+            if self.state.scene_states[scene_name] == self.state.KEEP_MARK:
                 self.state.current_scene = index
                 break
         return self.scene_chooser_details(self.state.current_scene)
@@ -2347,7 +2346,7 @@ class VideoRemixer(TabBase):
 
         if not label_font_file:
            return format_markdown("The Font File must not be blank", "warning")
-        font_path = os.path.join(self.FONTS_ROOT, label_font_file + ".ttf")
+        font_path = os.path.join(self.state.FONTS_ROOT, label_font_file + ".ttf")
         if not os.path.exists(font_path):
            return format_markdown(f"The Font File {os.path.abspath(font_path)} was not found", "error")
         # FFmpeg requires forward slashes in font file path
@@ -2468,7 +2467,7 @@ class VideoRemixer(TabBase):
                     "warning"), \
                 *empty_args
 
-        if scene_state not in ["Keep", "Drop"]:
+        if scene_state not in [VideoRemixerState.KEEP_MARK, VideoRemixerState.DROP_MARK]:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 format_markdown("Please make a Scenes Choice to get started", "warning"), \
                 *empty_args

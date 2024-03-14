@@ -142,6 +142,38 @@ class VideoRemixerState():
         self.audio_format = defaults["sound_format"]
 
     DEF_FILENAME = "project.yaml"
+    PROJECT_PATH_PREFIX = "REMIX-"
+    FILENAME_FILTER = [" ", "'", "[", "]"]
+    SCENES_PATH = "SCENES"
+    DROPPED_SCENES_PATH = "DROPPED_SCENES"
+    FRAMES_PATH = "SOURCE"
+    THUMBNAILS_PATH = "THUMBNAILS"
+    SPLIT_LABELS = r"(?P<sort>\(.*?\))?(?P<hint>\{.*?\})?\s*(?P<title>.*)?"
+    KEEP_MARK = "Keep"
+    DROP_MARK = "Drop"
+    RESIZE_HINT = "R"
+    RESYNTHESIS_HINT = "Y"
+    INFLATION_HINT = "I"
+    UPSCALE_HINT = "U"
+    RESIZE_STEP = "resize"
+    RESYNTH_STEP = "resynth"
+    INFLATE_STEP = "inflate"
+    UPSCALE_STEP = "upscale"
+    AUDIO_STEP = "audio"
+    VIDEO_STEP = "video"
+    PURGED_CONTENT = "purged_content"
+    PURGED_DIR = "purged"
+    RESIZE_PATH = "SCENES-RC"
+    RESYNTH_PATH = "SCENES-RE"
+    INFLATE_PATH = "SCENES-IN"
+    UPSCALE_PATH = "SCENES-UP"
+    CLIPS_PATH = "CLIPS"
+    AUDIO_CLIPS_PATH = "AUDIO"
+    VIDEO_CLIPS_PATH = "VIDEO"
+    FONTS_ROOT = "fonts"
+
+    # TODO this is a UI concern
+    GAP = " " * 5
 
     def save(self, filepath : str=None):
         filepath = filepath or self.project_filepath()
@@ -173,9 +205,6 @@ class VideoRemixerState():
             SimpleIcons.YES_SYMBOL if self.video_details['has_audio'] else SimpleIcons.NO_SYMBOL]]
         return format_table(header_row, data_rows, color="more", title=title)
 
-    PROJECT_PATH_PREFIX = "REMIX-"
-    FILENAME_FILTER = [" ", "'", "[", "]"]
-
     def ingest_video(self, video_path):
         """Inspect submitted video and collect important details about it for project set up"""
         self.source_video = video_path
@@ -205,18 +234,6 @@ class VideoRemixerState():
         self.crop_offset_x = -1
         self.crop_offset_y = -1
         self.project_fps = float(video_details['frame_rate'])
-
-    # TODO move to the bottom
-    @staticmethod
-    def determine_project_filepath(project_path):
-        if os.path.isdir(project_path):
-            project_file = os.path.join(project_path, VideoRemixerState.DEF_FILENAME)
-        else:
-            project_file = project_path
-            project_path, _, _ = split_filepath(project_path)
-        if not os.path.exists(project_file):
-            raise ValueError(f"Project file {project_file} was not found")
-        return project_file
 
     def _project_settings_report_scene(self):
         header_row = [
@@ -369,9 +386,6 @@ class VideoRemixerState():
             purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory(self.PURGED_DIR)
         return self.copy_project_file(purged_path)
 
-    SCENES_PATH = "SCENES"
-    DROPPED_SCENES_PATH = "DROPPED_SCENES"
-
     # when advancing forward from the Set Up Project step
     # the user may be redoing the project from this step
     # need to purge anything created based on old settings
@@ -391,8 +405,6 @@ class VideoRemixerState():
         self.scene_names = []
         self.current_scene = 0
         self.thumbnails = []
-
-    FRAMES_PATH = "SOURCE"
 
     # split video into frames
     def render_source_frames(self, global_options, prevent_overwrite=False):
@@ -594,8 +606,6 @@ class VideoRemixerState():
             Mtqdm().update_bar(bar)
         log_fn(f"shrunk container data: {shrunk_container_data}")
 
-    THUMBNAILS_PATH = "THUMBNAILS"
-
     # create a scene thumbnail, assumes:
     # - scenes uncompiled
     # - thumbnail path already exists
@@ -685,8 +695,6 @@ class VideoRemixerState():
                 self.create_thumbnail(scene_name, log_fn, global_options, remixer_settings)
                 Mtqdm().update_bar(bar)
 
-    SPLIT_LABELS = r"(?P<sort>\(.*?\))?(?P<hint>\{.*?\})?\s*(?P<title>.*)?"
-
     def split_label(self, label):
         """Splits a label such as '(01){I:2S} My Title (part1){b}' into
         sort: '01', hint: 'I:2S' label: 'My Title (part1){b}' parts """
@@ -733,11 +741,6 @@ class VideoRemixerState():
                 hints = self.split_hint(hint)
                 return hints.get(hint_type)
         return None
-
-    RESIZE_HINT = "R"
-    RESYNTHESIS_HINT = "Y"
-    INFLATION_HINT = "I"
-    UPSCALE_HINT = "U"
 
     def hint_present(self, hint_type):
         """return True if any kept scene has the passed hint type"""
@@ -786,19 +789,16 @@ class VideoRemixerState():
             self.clear_scene_label(scene_index)
 
     def keep_all_scenes(self):
-        self.scene_states = {scene_name : "Keep" for scene_name in self.scene_names}
+        self.scene_states = {scene_name : self.KEEP_MARK for scene_name in self.scene_names}
 
     def drop_all_scenes(self):
-        self.scene_states = {scene_name : "Drop" for scene_name in self.scene_names}
+        self.scene_states = {scene_name : self.DROP_MARK for scene_name in self.scene_names}
 
     def invert_all_scenes(self):
         new_states = {}
         for k, v in self.scene_states.items():
-            new_states[k] = "Keep" if v == "Drop" else "Drop"
+            new_states[k] = self.KEEP_MARK if v == self.DROP_MARK else self.DROP_MARK
         self.scene_states = new_states
-
-    # TODO this is a UI concern
-    GAP = " " * 5
 
     def scene_chooser_data(self, scene_index):
         # prevent an error if the thumbnails have been purged
@@ -819,7 +819,7 @@ class VideoRemixerState():
             scene_duration = seconds_to_hmsf(
                 ((last_index + 1) - first_index) / self.project_fps,
                 self.project_fps)
-            keep_state = True if scene_state == "Keep" else False
+            keep_state = True if scene_state == self.KEEP_MARK else False
             scene_label = self.scene_labels.get(scene_name)
             return scene_name, thumbnail_path, scene_state, scene_position, scene_start, \
                 scene_duration, keep_state, scene_label
@@ -845,11 +845,11 @@ class VideoRemixerState():
 
     def kept_scenes(self) -> list:
         """Returns kept scene names sorted"""
-        return sorted([scene for scene in self.scene_states if self.scene_states[scene] == "Keep"])
+        return sorted([scene for scene in self.scene_states if self.scene_states[scene] == self.KEEP_MARK])
 
     def dropped_scenes(self) -> list:
         """Returns dropped scene names sorted"""
-        return sorted([scene for scene in self.scene_states if self.scene_states[scene] == "Drop"])
+        return sorted([scene for scene in self.scene_states if self.scene_states[scene] == self.DROP_MARK])
 
     def sort_marked_scenes(self) -> dict:
         """Returns dict mapping scene sort mark to scene name."""
@@ -1129,12 +1129,12 @@ class VideoRemixerState():
         del self.scene_states[scene_name]
 
         if keep_before:
-            self.scene_states[new_lower_scene_name] = "Keep"
-            self.scene_states[new_upper_scene_name] = "Drop"
+            self.scene_states[new_lower_scene_name] = self.KEEP_MARK
+            self.scene_states[new_upper_scene_name] = self.DROP_MARK
             self.current_scene = scene_index
         elif keep_after:
-            self.scene_states[new_lower_scene_name] = "Drop"
-            self.scene_states[new_upper_scene_name] = "Keep"
+            self.scene_states[new_lower_scene_name] = self.DROP_MARK
+            self.scene_states[new_upper_scene_name] = self.KEEP_MARK
             self.current_scene = scene_index + 1
         else:
             # retain original scene state for both splits
@@ -1194,16 +1194,6 @@ class VideoRemixerState():
         self.invalidate_split_scene_cache()
 
         return f"Scene split into new scenes {new_lower_scene_name} and {new_upper_scene_name}"
-
-    RESIZE_STEP = "resize"
-    RESYNTH_STEP = "resynth"
-    INFLATE_STEP = "inflate"
-    UPSCALE_STEP = "upscale"
-    AUDIO_STEP = "audio"
-    VIDEO_STEP = "video"
-
-    PURGED_CONTENT = "purged_content"
-    PURGED_DIR = "purged"
 
 #     ## Purging ##
 
@@ -1312,15 +1302,6 @@ class VideoRemixerState():
 
     def clean_remix_audio(self):
         clean_directories([self.audio_clips_path])
-
-    RESIZE_PATH = "SCENES-RC"
-    RESYNTH_PATH = "SCENES-RE"
-    INFLATE_PATH = "SCENES-IN"
-    UPSCALE_PATH = "SCENES-UP"
-
-    CLIPS_PATH = "CLIPS"
-    AUDIO_CLIPS_PATH = "AUDIO"
-    VIDEO_CLIPS_PATH = "VIDEO"
 
     def default_remix_filepath(self, extra_suffix=""):
         _, filename, _ = split_filepath(self.source_video)
@@ -1621,9 +1602,9 @@ class VideoRemixerState():
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Exporting") as bar:
             for index, scene_name in enumerate(self.scene_names):
                 state = self.scene_states[scene_name]
-                if state == "Keep":
+                if state == self.KEEP_MARK:
                     scene_name = self.scene_names[index]
-                    new_state.scene_states[scene_name] = "Keep"
+                    new_state.scene_states[scene_name] = self.KEEP_MARK
 
                     new_state.scene_names.append(scene_name)
                     scene_dir = os.path.join(self.scenes_path, scene_name)
@@ -1877,3 +1858,15 @@ class VideoRemixerState():
     def project_ported(self, opened_project_file):
         opened_path, _, _ = split_filepath(opened_project_file)
         return self.project_path != opened_path
+
+    @staticmethod
+    def determine_project_filepath(project_path):
+        if os.path.isdir(project_path):
+            project_file = os.path.join(project_path, VideoRemixerState.DEF_FILENAME)
+        else:
+            project_file = project_path
+            project_path, _, _ = split_filepath(project_path)
+        if not os.path.exists(project_file):
+            raise ValueError(f"Project file {project_file} was not found")
+        return project_file
+

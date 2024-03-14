@@ -1178,7 +1178,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
     # drop a kept scene after scene compiling has already been done
     # used for dropping empty processed scenes, and force dropping processed scenes
     def drop_kept_scene(self, scene_name):
-        self.state.scene_states[scene_name] = "Drop"
+        self.state.scene_states[scene_name] = self.state.DROP_MARK
         current_path = os.path.join(self.state.scenes_path, scene_name)
         dropped_path = os.path.join(self.state.dropped_scenes_path, scene_name)
         if os.path.exists(current_path):
