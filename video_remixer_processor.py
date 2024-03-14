@@ -35,8 +35,6 @@ class VideoRemixerProcessor():
     FIXED_UPSCALE_FACTOR = 4.0
     TEMP_UPSCALE_PATH = "upscaled_frames"
     DEFAULT_DOWNSCALE_TYPE = "area"
-    AUDIO_CLIPS_PATH = "AUDIO"
-    VIDEO_CLIPS_PATH = "VIDEO"
 
     ### Exports
 
@@ -1252,7 +1250,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         return removed
 
     def create_audio_clips(self, log_fn, global_options, audio_format):
-        self.state.audio_clips_path = os.path.join(self.state.clips_path, self.state.audio_clips_path)
+        self.state.audio_clips_path = os.path.join(self.state.clips_path, self.state.AUDIO_CLIPS_PATH)
         create_directory(self.state.audio_clips_path)
         # save the project now to preserve the newly established path
         self.state.save()

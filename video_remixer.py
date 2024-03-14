@@ -1318,6 +1318,9 @@ class VideoRemixerState():
     INFLATE_PATH = "SCENES-IN"
     UPSCALE_PATH = "SCENES-UP"
 
+    AUDIO_CLIPS_PATH = "AUDIO"
+    VIDEO_CLIPS_PATH = "VIDEO"
+
     def default_remix_filepath(self, extra_suffix=""):
         _, filename, _ = split_filepath(self.source_video)
         suffix = self.remix_filename_suffix(extra_suffix)
