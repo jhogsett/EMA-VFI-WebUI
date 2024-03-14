@@ -119,7 +119,6 @@ class ResizeFrames:
                 image = cv2.imread(file)
 
                 if params_fn:
-                    self.log(f"calling 'param_fn' to get parameters")
                     scale_width, \
                     scale_height, \
                     crop_offset_x, \
@@ -151,7 +150,6 @@ class ResizeFrames:
                     max_x = int(min_x + crop_width)
                     max_y = int(min_y + crop_height)
 
-                    self.log(f"cropping {file} with [{min_y}:{max_y}, {min_x}:{max_x}]")
                     image = image[min_y:max_y, min_x:max_x]
 
                 _, filename, ext = split_filepath(file)

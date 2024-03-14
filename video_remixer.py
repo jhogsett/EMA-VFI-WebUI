@@ -1646,6 +1646,7 @@ class VideoRemixerState():
         return main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y
 
     QUADRANT_ZOOM_HINT = "/"
+    QUADRANT_GRID_CHAR = "X"
     PERCENT_ZOOM_HINT = "%"
     COMBINED_ZOOM_HINT = "@"
     ANIMATED_ZOOM_HINT = "-"
@@ -1662,38 +1663,10 @@ class VideoRemixerState():
                 quadrants = hint[split_pos+1:]
             else:
                 quadrant, quadrants = 1, 1
+
             return quadrant, quadrants
         else:
             return None, None
-
-    def compute_quadrant_zoom(self, quadrant, quadrants, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, centered=False):
-        quadrant = int(quadrant) - 1
-        quadrants = int(quadrants)
-        magnitude = int(math.sqrt(quadrants))
-        row = int(quadrant / magnitude)
-        column = quadrant % magnitude
-        resize_w = evenify(main_resize_w * magnitude)
-        resize_h = evenify(main_resize_h * magnitude)
-        offset_x = main_offset_x * magnitude
-        offset_y = main_offset_y * magnitude
-
-        if centered:
-            # move the offset to the center of the grid box
-            centering_offset_x = main_crop_w / 2
-            centering_offset_y = main_crop_h / 2
-        else:
-            centering_offset_x = 0
-            centering_offset_y = 0
-
-        crop_offset_x = (column * main_crop_w) + offset_x + centering_offset_x
-        crop_offset_y = (row * main_crop_h) + offset_y + centering_offset_y
-
-        if crop_offset_x + main_crop_w > resize_w:
-            crop_offset_x = resize_w - main_crop_w
-        if crop_offset_y + main_crop_h > resize_h:
-            crop_offset_y =resize_h - main_crop_h
-
-        return resize_w, resize_h, crop_offset_x, crop_offset_y
 
     def get_percent_zoom(self, hint):
         if self.PERCENT_ZOOM_HINT in hint:
@@ -1704,57 +1677,6 @@ class VideoRemixerState():
             return 100
         else:
             return None
-
-    def compute_percent_zoom(self, zoom_percent, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
-        magnitude = zoom_percent / 100.0
-        resize_w = evenify(main_resize_w * magnitude)
-        resize_h = evenify(main_resize_h * magnitude)
-        if self.crop_offset_x == -1:
-            crop_offset_x = ((resize_w - main_crop_w) / 2.0)
-        else:
-            crop_offset_x = main_offset_x * magnitude
-        if self.crop_offset_y == -1:
-            crop_offset_y = ((resize_h - main_crop_h) / 2.0)
-        else:
-            crop_offset_y = main_offset_y * magnitude
-        return resize_w, resize_h, crop_offset_x, crop_offset_y
-
-    # TODO this doesn't always work as expected, something like, the magnitudes are different
-    # between both, so things don't line up
-    def compute_combined_zoom(self, quadrant, quadrants, zoom_percent, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
-        resize_w, resize_h, _, _ = self.compute_percent_zoom(zoom_percent,
-                                                            main_resize_w, main_resize_h,
-                                                            main_offset_x, main_offset_y,
-                                                            main_crop_w, main_crop_h)
-
-        _, _, crop_offset_x, crop_offset_y = self.compute_quadrant_zoom(quadrant, quadrants,
-                                                            main_resize_w, main_resize_h,
-                                                            main_offset_x, main_offset_y,
-                                                            main_crop_w, main_crop_h, centered=True)
-        return resize_w, resize_h, crop_offset_x, crop_offset_y
-
-    def compute_zoom_type(self, type, param1, param2, param3, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
-        if type == self.COMBINED_ZOOM_HINT:
-            quadrant, quadrants, zoom_percent = param1, param2, param3
-            if quadrant and quadrants and zoom_percent:
-                return self.compute_combined_zoom(quadrant, quadrants, zoom_percent,
-                                                  main_resize_w, main_resize_h,
-                                                  main_offset_x, main_offset_y,
-                                                  main_crop_w, main_crop_h)
-        elif type == self.QUADRANT_ZOOM_HINT:
-            quadrant, quadrants = param1, param2
-            if quadrant and quadrants:
-                return self.compute_quadrant_zoom(quadrant, quadrants,
-                                                  main_resize_w, main_resize_h,
-                                                  main_offset_x, main_offset_y,
-                                                  main_crop_w, main_crop_h)
-        elif type == self.PERCENT_ZOOM_HINT:
-            zoom_percent = param3
-            if zoom_percent:
-                return self.compute_percent_zoom(zoom_percent,
-                                                 main_resize_w, main_resize_h,
-                                                 main_offset_x, main_offset_y,
-                                                 main_crop_w, main_crop_h)
 
     def get_zoom_part(self, hint):
         if self.COMBINED_ZOOM_HINT in hint and len(hint) >= self.COMBINED_ZOOM_MIN_LEN:
@@ -1801,59 +1723,251 @@ class VideoRemixerState():
                     return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3
         return None, None, None, None, None, None, None, None
 
+    def compute_zoom_type(self, type, param1, param2, param3, main_resize_w, main_resize_h,
+            main_offset_x, main_offset_y, main_crop_w, main_crop_h, log_fn):
+        if type == self.COMBINED_ZOOM_HINT:
+            quadrant, quadrants, zoom_percent = param1, param2, param3
+            if quadrant and quadrants and zoom_percent:
+                return self.compute_combined_zoom(quadrant, quadrants, zoom_percent,
+                                                  main_resize_w, main_resize_h,
+                                                  main_offset_x, main_offset_y,
+                                                  main_crop_w, main_crop_h, log_fn=log_fn)
+        elif type == self.QUADRANT_ZOOM_HINT:
+            quadrant, quadrants = param1, param2
+            if quadrant and quadrants:
+                return self.compute_quadrant_zoom(quadrant, quadrants,
+                                                  main_resize_w, main_resize_h,
+                                                  main_offset_x, main_offset_y,
+                                                  main_crop_w, main_crop_h, log_fn=log_fn)
+        elif type == self.PERCENT_ZOOM_HINT:
+            zoom_percent = param3
+            if zoom_percent:
+                return self.compute_percent_zoom(zoom_percent,
+                                                 main_resize_w, main_resize_h,
+                                                 main_offset_x, main_offset_y,
+                                                 main_crop_w, main_crop_h, log_fn=log_fn)
+
+    def compute_quadrant_zoom(self, quadrant, quadrants, main_resize_w, main_resize_h,
+            main_offset_x, main_offset_y, main_crop_w, main_crop_h, log_fn):
+        quadrant = int(quadrant) - 1
+
+        if self.QUADRANT_GRID_CHAR in quadrants:
+            parts = quadrants.split(self.QUADRANT_GRID_CHAR)
+            if len(parts) == 2:
+                grid_x = int(parts[0])
+                grid_y = int(parts[1])
+                magnitude_x = grid_x
+                magnitude_y = grid_y
+
+                if magnitude_x >= magnitude_y:
+                    magnitude = magnitude_x
+                    row = int(quadrant / magnitude_x)
+                    column = quadrant % magnitude_x
+                else:
+                    magnitude = magnitude_y
+                    row = int(quadrant / magnitude_x)
+                    column = quadrant % magnitude_x
+            else:
+                magnitude = 1
+                magnitude_x = magnitude
+                magnitude_y = magnitude
+                row = 0
+                column = 0
+        else:
+            magnitude = int(math.sqrt(int(quadrants)))
+            magnitude_x = magnitude
+            magnitude_y = magnitude
+            row = int(quadrant / magnitude)
+            column = quadrant % magnitude
+
+        # compute frame scaling
+        resize_w = main_resize_w * magnitude
+        resize_h = main_resize_h * magnitude
+
+        # compute crop area scaling
+        crop_w = main_crop_w * magnitude
+        crop_h = main_crop_h * magnitude
+
+        # if the main crop offset is negative, auto-center it within the frame
+        # otherwise scale up the specific offset
+        offset_x, offset_y = 0, 0
+        if main_offset_x < 0:
+            offset_x = (resize_w - crop_w) / 2.0
+        else:
+            offset_x = main_offset_x * magnitude
+        if main_offset_y < 0:
+            offset_y = (resize_h - crop_h) / 2.0
+        else:
+            offset_y = main_offset_y * magnitude
+
+        # compute the dimensions of one grid cell given the crop and magnitude(s)
+        cell_width = crop_w / magnitude_x
+        cell_height = crop_h / magnitude_y
+
+        # compute the upper left corner of the grid cell given the cell dimensions,
+        # and row, column; unadjusted for main crop offset
+        cell_offset_x = column * cell_width
+        cell_offset_y = row * cell_height
+
+        # add the main offset
+        cell_offset_x += offset_x
+        cell_offset_y += offset_y
+
+        # compute the center point
+        center_x = cell_offset_x + (cell_width / 2.0)
+        center_y = cell_offset_y + (cell_height / 2.0)
+
+        return resize_w, resize_h, center_x, center_y
+
+    def compute_percent_zoom(self, zoom_percent, main_resize_w, main_resize_h, main_offset_x,
+                            main_offset_y, main_crop_w, main_crop_h, log_fn):
+        magnitude = zoom_percent / 100.0
+
+        # compute frame scaling
+        resize_w = main_resize_w * magnitude
+        resize_h = main_resize_h * magnitude
+
+        # compute crop area scaling
+        crop_w = main_crop_w * magnitude
+        crop_h = main_crop_h * magnitude
+
+        # if the main crop offset is negative, auto-center it within the frame
+        # otherwise scale up the specific offset
+        offset_x, offset_y = 0, 0
+        if main_offset_x < 0:
+            offset_x = (resize_w - crop_w) / 2.0
+        else:
+            offset_x = main_offset_x * magnitude
+        if main_offset_y < 0:
+            offset_y = (resize_h - crop_h) / 2.0
+        else:
+            offset_y = main_offset_y * magnitude
+
+        # compute the centerpoint of the scaled crop area
+        center_x = (crop_w / 2.0) + offset_x
+        center_y = (crop_h / 2.0) + offset_y
+
+        return resize_w, resize_h, center_x, center_y
+
+    MAX_SELF_FIT_ZOOM = 1000
+
+    def compute_combined_zoom(self, quadrant, quadrants, zoom_percent, main_resize_w, main_resize_h,
+            main_offset_x, main_offset_y, main_crop_w, main_crop_h, log_fn):
+        resize_w, resize_h, _, _ = self.compute_percent_zoom(zoom_percent,
+                                                            main_resize_w, main_resize_h,
+                                                            main_offset_x, main_offset_y,
+                                                            main_crop_w, main_crop_h, log_fn)
+        quadrant_resize_w, _, quadrant_center_x, quadrant_center_y = self.compute_quadrant_zoom(quadrant, quadrants,
+                                                            main_resize_w, main_resize_h,
+                                                            main_offset_x, main_offset_y,
+                                                            main_crop_w, main_crop_h, log_fn)
+
+        # scale the quadrant center point to the percent resize
+        scale = resize_w / quadrant_resize_w
+        center_x = quadrant_center_x * scale
+        center_y = quadrant_center_y * scale
+
+        if self.check_crop_bounds(resize_w, resize_h, center_x, center_y, main_crop_w, main_crop_h):
+            # fit the requested zoom percent to be in bounds
+            fit_zoom_percent = zoom_percent
+            while fit_zoom_percent < self.MAX_SELF_FIT_ZOOM and \
+            self.check_crop_bounds(resize_w, resize_h, center_x, center_y, main_crop_w, main_crop_h):
+                fit_zoom_percent += 1
+                resize_w, resize_h, _, _ = self.compute_percent_zoom(fit_zoom_percent,
+                                                                    main_resize_w, main_resize_h,
+                                                                    main_offset_x, main_offset_y,
+                                                                    main_crop_w, main_crop_h, log_fn)
+                quadrant_resize_w, _, quadrant_center_x, quadrant_center_y = self.compute_quadrant_zoom(quadrant, quadrants,
+                                                                    main_resize_w, main_resize_h,
+                                                                    main_offset_x, main_offset_y,
+                                                                    main_crop_w, main_crop_h, log_fn)
+
+                # scale the quadrant center point to the percent resize
+                # this seems to work on the left and middle but not on the right
+                scale = resize_w / quadrant_resize_w
+                center_x = quadrant_center_x * scale
+                center_y = quadrant_center_y * scale
+
+            # if still out of bounds, restore to quadrant zoom
+            if self.check_crop_bounds(resize_w, resize_h, center_x, center_y, main_crop_w, main_crop_h):
+                log_fn("Can't find fitting zoom percentage; ignoring percent part.")
+                resize_w, resize_h, center_x, center_y = \
+                    self.compute_quadrant_zoom(quadrant, quadrants, main_resize_w, main_resize_h,
+                                    main_offset_x, main_offset_y, main_crop_w, main_crop_h, log_fn)
+            else:
+                log_fn(f"Found fitting zoom percentage: {fit_zoom_percent}%.")
+
+        return resize_w, resize_h, center_x, center_y
+
+    def check_crop_bounds(self, resize_w, resize_h, center_x, center_y, main_crop_w, main_crop_h):
+        crop_offset_x = center_x - (main_crop_w / 2.0)
+        crop_offset_y = center_y - (main_crop_h / 2.0)
+        return crop_offset_x < 0 or crop_offset_x + main_crop_w > resize_w \
+            or crop_offset_y < 0 or crop_offset_y + main_crop_h > resize_h
+
     def compute_animated_zoom(self, num_frames, from_type, from_param1, from_param2, from_param3,
                                     to_type, to_param1, to_param2, to_param3,
                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
-                                    main_crop_w, main_crop_h):
+                                    main_crop_w, main_crop_h, log_fn):
 
-        from_resize_w, from_resize_h, from_crop_offset_x, from_crop_offset_y = \
+        from_resize_w, from_resize_h, from_center_x, from_center_y = \
             self.compute_zoom_type(from_type, from_param1, from_param2, from_param3,
                                     main_resize_w, main_resize_h,
                                     main_offset_x, main_offset_y,
-                                    main_crop_w, main_crop_h)
+                                    main_crop_w, main_crop_h, log_fn=log_fn)
 
-        to_resize_w, to_resize_h, to_crop_offset_x, to_crop_offset_y = \
+        to_resize_w, to_resize_h, to_center_x, to_center_y = \
             self.compute_zoom_type(to_type, to_param1, to_param2, to_param3,
                                     main_resize_w, main_resize_h,
                                     main_offset_x, main_offset_y,
-                                    main_crop_w, main_crop_h)
+                                    main_crop_w, main_crop_h, log_fn=log_fn)
 
         diff_resize_w = to_resize_w - from_resize_w
         diff_resize_h = to_resize_h - from_resize_h
-        diff_crop_offset_x = to_crop_offset_x - from_crop_offset_x
-        diff_crop_offset_y = to_crop_offset_y - from_crop_offset_y
+        diff_center_x = to_center_x - from_center_x
+        diff_center_y = to_center_y - from_center_y
+
+        # ensure the final transition occurs
+        num_frames -= 1
 
         step_resize_w = diff_resize_w / num_frames
         step_resize_h = diff_resize_h / num_frames
-        step_crop_offset_x = diff_crop_offset_x / num_frames
-        step_crop_offset_y = diff_crop_offset_y / num_frames
+        step_center_x = diff_center_x / num_frames
+        step_center_y = diff_center_y / num_frames
 
         context = {}
         context["from_resize_w"] = from_resize_w
         context["from_resize_h"] = from_resize_h
-        context["from_crop_offset_x"] = from_crop_offset_x
-        context["from_crop_offset_y"] = from_crop_offset_y
+        context["from_center_x"] = from_center_x
+        context["from_center_y"] = from_center_y
         context["step_resize_w"] = step_resize_w
         context["step_resize_h"] = step_resize_h
-        context["step_crop_offset_x"] = step_crop_offset_x
-        context["step_crop_offset_y"] = step_crop_offset_y
+        context["step_center_x"] = step_center_x
+        context["step_center_y"] = step_center_y
+        context["main_crop_w"] = main_crop_w
+        context["main_crop_h"] = main_crop_h
         return context
 
     def _resize_frame_param(self, index, context):
         from_resize_w = context["from_resize_w"]
         from_resize_h = context["from_resize_h"]
-        from_crop_offset_x = context["from_crop_offset_x"]
-        from_crop_offset_y = context["from_crop_offset_y"]
+        from_center_x = context["from_center_x"]
+        from_center_y = context["from_center_y"]
         step_resize_w = context["step_resize_w"]
         step_resize_h = context["step_resize_h"]
-        step_crop_offset_x = context["step_crop_offset_x"]
-        step_crop_offset_y = context["step_crop_offset_y"]
+        step_center_x = context["step_center_x"]
+        step_center_y = context["step_center_y"]
+        main_crop_w = context["main_crop_w"]
+        main_crop_h = context["main_crop_h"]
 
-        return \
-            int(from_resize_w + (index * step_resize_w)), \
-            int(from_resize_h + (index * step_resize_h)), \
-            int(from_crop_offset_x + (index * step_crop_offset_x)), \
-            int(from_crop_offset_y + (index * step_crop_offset_y))
+        resize_w = from_resize_w + (index * step_resize_w)
+        resize_h = from_resize_h + (index * step_resize_h)
+        center_x = from_center_x + (index * step_center_x)
+        center_y = from_center_y + (index * step_center_y)
+        crop_offset_x = center_x - (main_crop_w / 2.0)
+        crop_offset_y = center_y - (main_crop_h / 2.0)
+
+        return int(resize_w), int(resize_h), int(crop_offset_x), int(crop_offset_y)
 
     def resize_scenes(self, log_fn, kept_scenes, remixer_settings):
         scenes_base_path = self.scenes_source_path(self.RESIZE_STEP)
@@ -1889,7 +2003,7 @@ class VideoRemixerState():
                                         from_type, from_param1, from_param2, from_param3,
                                         to_type, to_param1, to_param2, to_param3,
                                         main_resize_w, main_resize_h, main_offset_x, main_offset_y,
-                                        main_crop_w, main_crop_h)
+                                        main_crop_w, main_crop_h, log_fn)
 
                                 scale_type = remixer_settings["scale_type_up"]
                                 self.resize_scene(log_fn,
@@ -1910,11 +2024,14 @@ class VideoRemixerState():
                         elif self.COMBINED_ZOOM_HINT in resize_hint:
                             quadrant, quadrants, zoom_percent = self.get_combined_zoom(resize_hint)
                             if quadrant and quadrants and zoom_percent:
-                                resize_w, resize_h, crop_offset_x, crop_offset_y = \
+                                resize_w, resize_h, center_x, center_y = \
                                     self.compute_combined_zoom(quadrant, quadrants, zoom_percent,
                                                                main_resize_w, main_resize_h,
                                                                main_offset_x, main_offset_y,
-                                                               main_crop_w, main_crop_h)
+                                                               main_crop_w, main_crop_h, log_fn)
+
+                                crop_offset_x = center_x - (main_crop_w / 2.0)
+                                crop_offset_y = center_y - (main_crop_h / 2.0)
 
                                 scale_type = remixer_settings["scale_type_up"]
                                 self.resize_scene(log_fn,
@@ -1936,13 +2053,15 @@ class VideoRemixerState():
                             #   zoomed in at 300% and 500%
                             quadrant, quadrants = self.get_quadrant_zoom(resize_hint)
                             if quadrant and quadrants:
-                                resize_w, resize_h, crop_offset_x, crop_offset_y = \
+                                resize_w, resize_h, center_x, center_y = \
                                     self.compute_quadrant_zoom(quadrant, quadrants,
                                                                main_resize_w, main_resize_h,
                                                                main_offset_x, main_offset_y,
-                                                               main_crop_w, main_crop_h)
+                                                               main_crop_w, main_crop_h, log_fn)
 
                                 scale_type = remixer_settings["scale_type_up"]
+                                crop_offset_x = center_x - (main_crop_w / 2.0)
+                                crop_offset_y = center_y - (main_crop_h / 2.0)
                                 self.resize_scene(log_fn,
                                                 scene_input_path,
                                                 scene_output_path,
@@ -1960,12 +2079,14 @@ class VideoRemixerState():
                                 # interpret z% as zoom percent to zoom into center
                                 zoom_percent = self.get_percent_zoom(resize_hint)
                                 if zoom_percent:
-                                    resize_w, resize_h, crop_offset_x, crop_offset_y = \
+                                    resize_w, resize_h, center_x, center_y = \
                                         self.compute_percent_zoom(zoom_percent,
                                                                     main_resize_w, main_resize_h,
                                                                     main_offset_x, main_offset_y,
-                                                                    main_crop_w, main_crop_h)
+                                                                    main_crop_w, main_crop_h, log_fn)
                                     scale_type = remixer_settings["scale_type_up"]
+                                    crop_offset_x = center_x - (main_crop_w / 2.0)
+                                    crop_offset_y = center_y - (main_crop_h / 2.0)
                                     self.resize_scene(log_fn,
                                                     scene_input_path,
                                                     scene_output_path,
@@ -1979,6 +2100,9 @@ class VideoRemixerState():
                                                     crop_type="crop")
                                     resize_handled = True
                     except Exception as error:
+                        # TODO
+                        print(error)
+                        raise
                         log_fn(
 f"Error in resize_scenes() handling processing hint {resize_hint} - skipping processing: {error}")
                         resize_handled = False
