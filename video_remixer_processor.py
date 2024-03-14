@@ -22,6 +22,24 @@ class VideoRemixerProcessor():
         self.state = state
         self.log_fn = log_fn
 
+    QUADRANT_ZOOM_HINT = "/"
+    QUADRANT_GRID_CHAR = "X"
+    PERCENT_ZOOM_HINT = "%"
+    COMBINED_ZOOM_HINT = "@"
+    ANIMATED_ZOOM_HINT = "-"
+    QUADRANT_ZOOM_MIN_LEN = 3 # 1/3
+    PERCENT_ZOOM_MIN_LEN = 4  # 123%
+    COMBINED_ZOOM_MIN_LEN = 8 # 1/1@100%
+    ANIMATED_ZOOM_MIN_LEN = 7 # 1/3-5/7
+    MAX_SELF_FIT_ZOOM = 1000
+    FIXED_UPSCALE_FACTOR = 4.0
+    TEMP_UPSCALE_PATH = "upscaled_frames"
+    DEFAULT_DOWNSCALE_TYPE = "area"
+    AUDIO_CLIPS_PATH = "AUDIO"
+    VIDEO_CLIPS_PATH = "VIDEO"
+
+    ### Exports
+
     def prepare_process_remix(self, redo_resynth, redo_inflate, redo_upscale):
         self.state.setup_processing_paths()
 
@@ -61,32 +79,6 @@ class VideoRemixerProcessor():
                                 realesrgan_settings,
                                 remixer_settings)
 
-    def resize_needed(self):
-        return (self.state.resize \
-                and not self.processed_content_complete(self.state.RESIZE_STEP)) \
-                or self.state.resize_chosen()
-
-    def resynthesize_needed(self):
-        return self.state.resynthesize_chosen() \
-            and not self.processed_content_complete(self.state.RESYNTH_STEP)
-
-    def inflate_needed(self):
-        return self.state.inflate_chosen() \
-            and not self.processed_content_complete(self.state.INFLATE_STEP)
-
-    def upscale_needed(self):
-        return self.state.upscale_chosen() \
-            and not self.processed_content_complete(self.state.UPSCALE_STEP)
-
-    def _processed_content_complete(self, path, expected_dirs = 0, expected_files = 0):
-        if not path or not os.path.exists(path):
-            return False
-        if expected_dirs:
-            return len(get_directories(path)) == expected_dirs
-        if expected_files:
-            return len(get_files(path)) == expected_files
-        return True
-
     def processed_content_complete(self, processing_step):
         expected_items = len(self.state.kept_scenes())
         if processing_step == self.state.RESIZE_STEP:
@@ -103,6 +95,119 @@ class VideoRemixerProcessor():
             return self._processed_content_complete(self.state.video_clips_path, expected_files=expected_items)
         else:
             raise RuntimeError(f"'processing_step' {processing_step} is unrecognized")
+
+    def _processed_content_complete(self, path, expected_dirs = 0, expected_files = 0):
+        if not path or not os.path.exists(path):
+            return False
+        if expected_dirs:
+            return len(get_directories(path)) == expected_dirs
+        if expected_files:
+            return len(get_files(path)) == expected_files
+        return True
+
+    def prepare_save_remix(self, log_fn, global_options, remixer_settings, output_filepath : str,
+                           invalidate_video_clips=True):
+        if not output_filepath:
+            raise ValueError("Enter a path for the remixed video to proceed")
+
+        self.state.recompile_scenes()
+
+        kept_scenes = self.state.kept_scenes()
+        if not kept_scenes:
+            raise ValueError("No kept scenes were found")
+
+        self.drop_empty_processed_scenes(kept_scenes)
+        self.state.save()
+
+        # get this again in case scenes have been auto-dropped
+        kept_scenes = self.state.kept_scenes()
+        if not kept_scenes:
+            raise ValueError("No kept scenes after removing empties")
+
+        # create audio clips only if they do not already exist
+        # this depends on the audio clips being purged at the time the scene selection are compiled
+        if self.state.video_details["has_audio"] and not self.processed_content_complete(
+                self.state.AUDIO_STEP):
+            audio_format = remixer_settings["audio_format"]
+            self.create_audio_clips(log_fn, global_options, audio_format=audio_format)
+            self.state.save()
+
+        # leave video clips if they are complete since we may be only making audio changes
+        if invalidate_video_clips or not self.processed_content_complete(self.state.VIDEO_STEP):
+            self.state.clean_remix_content(purge_from="video_clips")
+        else:
+            # always recreate remix clips
+            self.state.clean_remix_content(purge_from="remix_clips")
+
+        return kept_scenes
+
+    def save_remix(self, log_fn, global_options, kept_scenes):
+        # leave video clips if they are complete since we may be only making audio changes
+        if not self.processed_content_complete(self.state.VIDEO_STEP):
+            self.create_video_clips(log_fn, kept_scenes, global_options)
+            self.state.save()
+
+        self.create_scene_clips(log_fn, kept_scenes, global_options)
+        self.state.save()
+
+        if not self.clips:
+            raise ValueError("No processed video clips were found")
+
+        ffcmd = self.create_remix_video(log_fn, global_options, self.state.output_filepath)
+        log_fn(f"FFmpeg command: {ffcmd}")
+        self.state.save()
+
+    def save_custom_remix(self,
+                          log_fn,
+                          output_filepath,
+                          global_options,
+                          kept_scenes,
+                          custom_video_options,
+                          custom_audio_options,
+                          draw_text_options=None,
+                          use_scene_sorting=True):
+        _, _, output_ext = split_filepath(output_filepath)
+        output_ext = output_ext[1:]
+
+        # leave video clips if they are complete since we may be only making audio changes
+        if not self.processed_content_complete(self.state.VIDEO_STEP):
+            self.create_custom_video_clips(log_fn, kept_scenes, global_options,
+                                                custom_video_options=custom_video_options,
+                                                custom_ext=output_ext,
+                                                draw_text_options=draw_text_options)
+            self.state.save()
+
+        self.create_custom_scene_clips(kept_scenes, global_options,
+                                             custom_audio_options=custom_audio_options,
+                                             custom_ext=output_ext)
+        self.state.save()
+
+        if not self.clips:
+            raise ValueError("No processed video clips were found")
+
+        ffcmd = self.create_remix_video(log_fn, global_options, output_filepath,
+                                        use_scene_sorting=use_scene_sorting)
+        log_fn(f"FFmpeg command: {ffcmd}")
+        self.state.save()
+
+    ### Internal
+
+    def resize_needed(self):
+        return (self.state.resize \
+                and not self.processed_content_complete(self.state.RESIZE_STEP)) \
+                or self.state.resize_chosen()
+
+    def resynthesize_needed(self):
+        return self.state.resynthesize_chosen() \
+            and not self.processed_content_complete(self.state.RESYNTH_STEP)
+
+    def inflate_needed(self):
+        return self.state.inflate_chosen() \
+            and not self.processed_content_complete(self.state.INFLATE_STEP)
+
+    def upscale_needed(self):
+        return self.state.upscale_chosen() \
+            and not self.processed_content_complete(self.state.UPSCALE_STEP)
 
     # processed content is stale if it is not selected and exists
     def processed_content_stale(self, selected : bool, path : str):
@@ -204,91 +309,6 @@ class VideoRemixerProcessor():
             crop_type = "crop"
         return scale_type, crop_type
 
-    def prepare_save_remix(self, log_fn, global_options, remixer_settings, output_filepath : str,
-                           invalidate_video_clips=True):
-        if not output_filepath:
-            raise ValueError("Enter a path for the remixed video to proceed")
-
-        self.state.recompile_scenes()
-
-        kept_scenes = self.state.kept_scenes()
-        if not kept_scenes:
-            raise ValueError("No kept scenes were found")
-
-        self.drop_empty_processed_scenes(kept_scenes)
-        self.state.save()
-
-        # get this again in case scenes have been auto-dropped
-        kept_scenes = self.state.kept_scenes()
-        if not kept_scenes:
-            raise ValueError("No kept scenes after removing empties")
-
-        # create audio clips only if they do not already exist
-        # this depends on the audio clips being purged at the time the scene selection are compiled
-        if self.state.video_details["has_audio"] and not self.processed_content_complete(
-                self.state.AUDIO_STEP):
-            audio_format = remixer_settings["audio_format"]
-            self.create_audio_clips(log_fn, global_options, audio_format=audio_format)
-            self.state.save()
-
-        # leave video clips if they are complete since we may be only making audio changes
-        if invalidate_video_clips or not self.processed_content_complete(self.state.VIDEO_STEP):
-            self.state.clean_remix_content(purge_from="video_clips")
-        else:
-            # always recreate remix clips
-            self.state.clean_remix_content(purge_from="remix_clips")
-
-        return kept_scenes
-
-    def save_remix(self, log_fn, global_options, kept_scenes):
-        # leave video clips if they are complete since we may be only making audio changes
-        if not self.processed_content_complete(self.state.VIDEO_STEP):
-            self.create_video_clips(log_fn, kept_scenes, global_options)
-            self.state.save()
-
-        self.create_scene_clips(log_fn, kept_scenes, global_options)
-        self.state.save()
-
-        if not self.clips:
-            raise ValueError("No processed video clips were found")
-
-        ffcmd = self.create_remix_video(log_fn, global_options, self.state.output_filepath)
-        log_fn(f"FFmpeg command: {ffcmd}")
-        self.state.save()
-
-    def save_custom_remix(self,
-                          log_fn,
-                          output_filepath,
-                          global_options,
-                          kept_scenes,
-                          custom_video_options,
-                          custom_audio_options,
-                          draw_text_options=None,
-                          use_scene_sorting=True):
-        _, _, output_ext = split_filepath(output_filepath)
-        output_ext = output_ext[1:]
-
-        # leave video clips if they are complete since we may be only making audio changes
-        if not self.processed_content_complete(self.state.VIDEO_STEP):
-            self.create_custom_video_clips(log_fn, kept_scenes, global_options,
-                                                custom_video_options=custom_video_options,
-                                                custom_ext=output_ext,
-                                                draw_text_options=draw_text_options)
-            self.state.save()
-
-        self.create_custom_scene_clips(kept_scenes, global_options,
-                                             custom_audio_options=custom_audio_options,
-                                             custom_ext=output_ext)
-        self.state.save()
-
-        if not self.clips:
-            raise ValueError("No processed video clips were found")
-
-        ffcmd = self.create_remix_video(log_fn, global_options, output_filepath,
-                                        use_scene_sorting=use_scene_sorting)
-        log_fn(f"FFmpeg command: {ffcmd}")
-        self.state.save()
-
     def resize_scene(self,
                      log_fn,
                      scene_input_path,
@@ -341,16 +361,6 @@ class VideoRemixerProcessor():
             main_offset_x = 0
             main_offset_y = 0
         return main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y
-
-    QUADRANT_ZOOM_HINT = "/"
-    QUADRANT_GRID_CHAR = "X"
-    PERCENT_ZOOM_HINT = "%"
-    COMBINED_ZOOM_HINT = "@"
-    ANIMATED_ZOOM_HINT = "-"
-    QUADRANT_ZOOM_MIN_LEN = 3 # 1/3
-    PERCENT_ZOOM_MIN_LEN = 4  # 123%
-    COMBINED_ZOOM_MIN_LEN = 8 # 1/1@100%
-    ANIMATED_ZOOM_MIN_LEN = 7 # 1/3-5/7
 
     def get_quadrant_zoom(self, hint):
         if self.QUADRANT_ZOOM_HINT in hint:
@@ -545,8 +555,6 @@ class VideoRemixerProcessor():
         center_y = (crop_h / 2.0) + offset_y
 
         return resize_w, resize_h, center_x, center_y
-
-    MAX_SELF_FIT_ZOOM = 1000
 
     def compute_combined_zoom(self, quadrant, quadrants, zoom_percent, main_resize_w, main_resize_h,
             main_offset_x, main_offset_y, main_crop_w, main_crop_h, log_fn):
@@ -1033,10 +1041,6 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
             tile_pad = 0
         return UpscaleSeries(model_name, gpu_ids, fp32, tiling, tile_pad, log_fn)
 
-    FIXED_UPSCALE_FACTOR = 4.0
-    TEMP_UPSCALE_PATH = "upscaled_frames"
-    DEFAULT_DOWNSCALE_TYPE = "area"
-
     def upscale_scene(self,
                       log_fn,
                       upscaler,
@@ -1172,6 +1176,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         else:
             path = self.state.scenes_path
         return path
+
     # drop a kept scene after scene compiling has already been done
     # used for dropping empty processed scenes, and force dropping processed scenes
     def drop_kept_scene(self, scene_name):
@@ -1246,8 +1251,6 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
 
         return removed
 
-    AUDIO_CLIPS_PATH = "AUDIO"
-
     def create_audio_clips(self, log_fn, global_options, audio_format):
         self.state.audio_clips_path = os.path.join(self.state.clips_path, self.state.audio_clips_path)
         create_directory(self.state.audio_clips_path)
@@ -1271,8 +1274,6 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                     log_fn,
                     global_options=global_options).slice()
         self.audio_clips = sorted(get_files(self.state.audio_clips_path))
-
-    VIDEO_CLIPS_PATH = "VIDEO"
 
     def compute_inflated_fps(self, force_inflation, force_audio, force_inflate_by, force_silent):
         _, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflated_rate = \
@@ -1455,6 +1456,36 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         else:
             self.clips = sorted(get_files(self.state.video_clips_path))
 
+    def create_custom_scene_clips(self,
+                                  kept_scenes,
+                                  global_options,
+                                  custom_audio_options,
+                                  custom_ext):
+        if self.state.video_details["has_audio"]:
+            with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
+                for index, scene_name in enumerate(kept_scenes):
+                    scene_video_path = self.video_clips[index]
+                    scene_audio_path = self.audio_clips[index]
+                    scene_output_filepath = os.path.join(self.state.clips_path,
+                                                         f"{scene_name}.{custom_ext}")
+
+                    force_inflation, force_audio, force_inflate_by, force_silent =\
+                        self.compute_forced_inflation(scene_name)
+
+                    output_options = self.compute_inflated_audio_options(custom_audio_options,
+                                                                         force_inflation,
+                                                                         force_audio=force_audio,
+                                                                         force_inflate_by=force_inflate_by,
+                                                                         force_silent=force_silent)
+
+                    combine_video_audio(scene_video_path, scene_audio_path,
+                                        scene_output_filepath, global_options=global_options,
+                                        output_options=output_options)
+                    Mtqdm().update_bar(bar)
+            self.clips = sorted(get_files(self.state.clips_path))
+        else:
+            self.clips = sorted(get_files(self.state.video_clips_path))
+
     def create_custom_video_clips(self,
                                   log_fn,
                                   kept_scenes,
@@ -1571,36 +1602,6 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                             type=self.state.frame_format)
                 Mtqdm().update_bar(bar)
         self.video_clips = sorted(get_files(self.state.video_clips_path))
-
-    def create_custom_scene_clips(self,
-                                  kept_scenes,
-                                  global_options,
-                                  custom_audio_options,
-                                  custom_ext):
-        if self.state.video_details["has_audio"]:
-            with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
-                for index, scene_name in enumerate(kept_scenes):
-                    scene_video_path = self.video_clips[index]
-                    scene_audio_path = self.audio_clips[index]
-                    scene_output_filepath = os.path.join(self.state.clips_path,
-                                                         f"{scene_name}.{custom_ext}")
-
-                    force_inflation, force_audio, force_inflate_by, force_silent =\
-                        self.compute_forced_inflation(scene_name)
-
-                    output_options = self.compute_inflated_audio_options(custom_audio_options,
-                                                                         force_inflation,
-                                                                         force_audio=force_audio,
-                                                                         force_inflate_by=force_inflate_by,
-                                                                         force_silent=force_silent)
-
-                    combine_video_audio(scene_video_path, scene_audio_path,
-                                        scene_output_filepath, global_options=global_options,
-                                        output_options=output_options)
-                    Mtqdm().update_bar(bar)
-            self.clips = sorted(get_files(self.state.clips_path))
-        else:
-            self.clips = sorted(get_files(self.state.video_clips_path))
 
     def assembly_list(self, log_fn, clip_filepaths : list, rename_clips=True) -> list:
         """Get list clips to assemble in order.
