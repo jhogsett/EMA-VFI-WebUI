@@ -1327,7 +1327,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                                          force_silent)
 
     def create_video_clips(self, log_fn, kept_scenes, global_options):
-        self.state.video_clips_path = os.path.join(self.state.clips_path, self.state.video_clips_path)
+        self.state.video_clips_path = os.path.join(self.state.clips_path, self.state.VIDEO_CLIPS_PATH)
         create_directory(self.state.video_clips_path)
         # save the project now to preserve the newly established path
         self.state.save()
@@ -1491,7 +1491,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                                   custom_video_options,
                                   custom_ext,
                                   draw_text_options=None):
-        self.state.video_clips_path = os.path.join(self.state.clips_path, self.state.video_clips_path)
+        self.state.video_clips_path = os.path.join(self.state.clips_path, self.state.VIDEO_CLIPS_PATH)
         create_directory(self.state.video_clips_path)
         # save the project now to preserve the newly established path
         self.state.save()
