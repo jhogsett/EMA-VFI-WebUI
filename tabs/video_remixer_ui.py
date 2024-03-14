@@ -35,16 +35,7 @@ class VideoRemixer(TabBase):
         self.state = None
         self.processor = None
         self.marked_scene = None
-        self.new_project()
-        self.unmark_scene()
-
-    def new_project(self):
-        self.state = VideoRemixerState()
-        self.processor = VideoRemixerProcessor(self.state, self.log)
-        self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"],
-                                           self.state.SAFETY_DEFAULTS)
-        self.state.invalidate_split_scene_cache()
-        self.unmark_scene()
+        self._new_project()
 
     TAB_REMIX_HOME = 0
     TAB_REMIX_SETTINGS = 1
@@ -78,6 +69,22 @@ class VideoRemixer(TabBase):
     TAB62_DEFAULT_MESSAGE = "Click Save Marked Remix to: Apply Marking Options and save Marked Remix Video"
     TAB63_DEFAULT_MESSAGE = "Click Save Labeled Remix to: Add Label and save Remix Video"
 
+    APP_TAB_VIDEO_BLENDER=4
+    APP_TAB_VIDEO_REMIXER=5
+
+    # how far progressed into project and the tab ID to return to on re-opening
+    PROGRESS_STEPS = {
+        "home" : TAB_REMIX_SETTINGS,
+        "settings" : TAB_REMIX_SETTINGS,
+        "setup" : TAB_SET_UP_PROJECT,
+        "choose" : TAB_CHOOSE_SCENES,
+        "compile" : TAB_COMPILE_SCENES,
+        "process" : TAB_PROC_REMIX,
+        "save" : TAB_SAVE_REMIX
+    }
+
+    CLEANSE_SCENES_PATH = "cleansed_scenes"
+    CLEANSE_SCENES_FACTOR = 4.0
 
     def render_tab(self):
         """Render tab into UI"""
@@ -104,9 +111,9 @@ class VideoRemixer(TabBase):
         custom_ffmpeg_video = self.config.remixer_settings["custom_ffmpeg_video"]
         custom_ffmpeg_audio = self.config.remixer_settings["custom_ffmpeg_audio"]
         _, default_label_font_file, _ = split_filepath(default_label_font_file)
-        default_label_font_color, default_label_font_alpha = self.split_color_alpha(default_label_font_color)
-        default_label_shadow_color, default_label_shadow_alpha = self.split_color_alpha(default_label_shadow_color)
-        default_label_box_color, default_label_box_alpha = self.split_color_alpha(default_label_box_color)
+        default_label_font_color, default_label_font_alpha = self._split_color_alpha(default_label_font_color)
+        default_label_shadow_color, default_label_shadow_alpha = self._split_color_alpha(default_label_shadow_color)
+        default_label_box_color, default_label_box_alpha = self._split_color_alpha(default_label_box_color)
 
         gr.Markdown(
             SimpleIcons.MOVIE + "Restore & Remix Videos with Audio")
@@ -492,7 +499,7 @@ class VideoRemixer(TabBase):
                             label_position_v = gr.Radio(choices=["Top", "Middle", "Bottom"], value=default_label_position_v, label="Label Position", info="Vertical location for the label")
                             label_position_h = gr.Radio(choices=["Left", "Center", "Right"], value=default_label_position_h, label="Label Position", info="Horizontal location for the label")
                         with gr.Row():
-                            label_font_file = gr.Dropdown(choices=self.gather_fonts(), value=default_label_font_file, label="Font File", info="Font file within the /fonts directory")
+                            label_font_file = gr.Dropdown(choices=self._gather_fonts(), value=default_label_font_file, label="Font File", info="Font file within the /fonts directory")
                             label_font_size = gr.Slider(value=default_label_font_size, label="Font Factor", minimum=2, maximum=100, step=1, info="Size as a factor of frame width, smaller values produce larger text")
                             label_font_color = gr.ColorPicker(value=default_label_font_color, label="Font Color", info="Color for the label text")
                             label_font_alpha = gr.Slider(value=default_label_font_alpha, minimum=0.0, maximum=1.0, step=0.1, label="Font Alpha", info="Opacity for the label text")
@@ -1277,55 +1284,6 @@ class VideoRemixer(TabBase):
 
         purge_button715.click(self.purge_button715, outputs=[tabs_video_remixer, message_box715])
 
-    def gather_fonts(self):
-        fonts = get_files(self.state.FONTS_ROOT, "ttf")
-        result = []
-        for font in fonts:
-            _, filename, _ = split_filepath(font)
-            result.append(filename)
-        return sorted(result)
-
-    def split_color_alpha(self, color_alpha : str, default_color="#000000", default_alpha="1.0",
-                          ignore_errors=False):
-        """Split a string like `#FFFFFF@0.9` into `#FFFFFF` and `0.9` """
-        if len(color_alpha):
-            if color_alpha.index("@") >= 0:
-                parts = color_alpha.split("@")
-                if len(parts) >= 2:
-                    return parts[0], parts[1]
-            else:
-                return color_alpha, default_alpha
-
-        if ignore_errors:
-            return default_color, default_alpha
-        else:
-            raise ValueError(f"split_color_alpha(): unable to parse {color_alpha}")
-
-    def join_color_alpha(self, color : str, alpha : str="1.0"):
-        return f"{color}@{alpha}"
-
-    # how far progressed into project and the tab ID to return to on re-opening
-    PROGRESS_STEPS = {
-        "home" : TAB_REMIX_SETTINGS,
-        "settings" : TAB_REMIX_SETTINGS,
-        "setup" : TAB_SET_UP_PROJECT,
-        "choose" : TAB_CHOOSE_SCENES,
-        "compile" : TAB_COMPILE_SCENES,
-        "process" : TAB_PROC_REMIX,
-        "save" : TAB_SAVE_REMIX
-    }
-
-    def save_progress(self, progress : str, save_project : bool=True):
-        self.state.progress = progress
-        if save_project:
-            self.state.save()
-
-    def get_progress_tab(self) -> int:
-        try:
-            return self.PROGRESS_STEPS[self.state.progress]
-        except:
-            return self.PROGRESS_STEPS["home"]
-
     ### REMIX HOME EVENT HANDLERS
 
     # User has clicked New Project > from Remix Home
@@ -1341,7 +1299,7 @@ class VideoRemixer(TabBase):
                    format_markdown(f"File '{video_path}' was not found", "error"), \
                    *empty_args
 
-        self.new_project()
+        self._new_project()
         try:
             self.state.ingest_video(video_path)
             self.state.video_info1 = self.state.ingested_video_report()
@@ -1351,7 +1309,7 @@ class VideoRemixer(TabBase):
                    *empty_args
 
         # don't save yet, user may change project path next
-        self.save_progress("settings", save_project=False)
+        self._save_progress("settings", save_project=False)
 
         return gr.update(selected=self.TAB_REMIX_SETTINGS), \
             format_markdown(self.TAB00_DEFAULT_MESSAGE), \
@@ -1409,7 +1367,7 @@ class VideoRemixer(TabBase):
             message_text = format_markdown(messages, "warning")
         else:
             message_text = format_markdown(self.TAB01_DEFAULT_MESSAGE)
-        return_to_tab = self.get_progress_tab()
+        return_to_tab = self._get_progress_tab()
         scene_details = self.scene_chooser_details(self.state.tryattr("current_scene"))
 
         Session().set("last-video-remixer-project", project_path)
@@ -1535,7 +1493,7 @@ class VideoRemixer(TabBase):
             # this is the first time project progress advances
             # user will expect to return to the setup tab on reopening
             self.log(f"saving new project at {self.state.project_filepath()}")
-            self.save_progress("setup")
+            self._save_progress("setup")
 
             Session().set("last-video-remixer-project", project_path)
 
@@ -1555,6 +1513,8 @@ class VideoRemixer(TabBase):
 
     def back_button1(self):
         return gr.update(selected=self.TAB_REMIX_HOME)
+
+    # SAVED SETTINGS
 
     def save_named_settings(self, name, state : VideoRemixerState):
         settings = {}
@@ -1769,7 +1729,7 @@ class VideoRemixer(TabBase):
 
         # user will expect to return to scene chooser on reopening
         self.log("saving project after setting up scene selection states")
-        self.save_progress("choose")
+        self._save_progress("choose")
 
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                format_markdown(self.TAB2_DEFAULT_MESSAGE), \
@@ -1864,10 +1824,12 @@ class VideoRemixer(TabBase):
             scene_info
 
     def choose_range_shortcut(self, scene_index):
-        scene_index, alt_scene = self.get_marked_pair(scene_index)
+        scene_index, alt_scene = self._get_marked_pair(scene_index)
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
             gr.update(selected=self.TAB_EXTRA_CHOOSE_RANGE), \
             scene_index, alt_scene
+
+    # SCENE LABELS
 
     def save_scene_label(self, scene_index, scene_label):
         if scene_label:
@@ -1918,7 +1880,7 @@ class VideoRemixer(TabBase):
             sort_mark = str(scene_index).zfill(num_width)
             formatted_label = self.state.compose_label(sort_mark, hint_mark, title)
             self.state.set_scene_label(scene_index, formatted_label)
-        self.clean_scene_labels()
+        self._clean_scene_labels()
         return self.scene_chooser_details(self.state.current_scene)
 
     # TODO more inspired default title, move
@@ -1926,17 +1888,17 @@ class VideoRemixer(TabBase):
     def auto_title_scenes(self):
         for scene_index in range(len(self.state.scene_names)):
             scene_name = self.state.scene_names[scene_index]
-            title = self.scene_title(scene_name)
+            title = self._scene_title(scene_name)
             scene_label = self.state.scene_labels.get(scene_name)
             sort_mark, hint_mark, existing_title = self.state.split_label(scene_label)
             if not existing_title:
                 formatted_label = self.state.compose_label(sort_mark, hint_mark, title)
                 self.state.set_scene_label(scene_index, formatted_label)
-        self.clean_scene_labels()
+        self._clean_scene_labels()
         return self.scene_chooser_details(self.state.current_scene)
 
     # remove scene labels that do not have a corresponding scene name
-    def clean_scene_labels(self):
+    def _clean_scene_labels(self):
         for scene_name, scene_label in self.state.scene_labels.copy().items():
             if not scene_name in self.state.scene_names:
                 self.log(f"deleting unused scene label {scene_label}")
@@ -1947,7 +1909,7 @@ class VideoRemixer(TabBase):
         self.state.clear_all_scene_labels()
         return self.scene_chooser_details(self.state.current_scene)
 
-    def add_slomo(self, scene_index, slomo_hint):
+    def _add_slomo(self, scene_index, slomo_hint):
         scene_name = self.state.scene_names[scene_index]
         scene_label = self.state.scene_labels.get(scene_name) or ""
         # TODO later if adding other hint types, might want to overwrite only what changed here
@@ -1958,16 +1920,18 @@ class VideoRemixer(TabBase):
         self.state.save()
 
     def add_2x_slomo(self, scene_index):
-        self.add_slomo(scene_index, "I:2A")
+        self._add_slomo(scene_index, "I:2A")
         return self.scene_chooser_details(self.state.current_scene)
 
     def add_4x_slomo(self, scene_index):
-        self.add_slomo(scene_index, "I:4A")
+        self._add_slomo(scene_index, "I:4A")
         return self.scene_chooser_details(self.state.current_scene)
 
     def add_8x_slomo(self, scene_index):
-        self.add_slomo(scene_index, "I:8A")
+        self._add_slomo(scene_index, "I:8A")
         return self.scene_chooser_details(self.state.current_scene)
+
+    # DANGER ZONE
 
     def keep_all_scenes(self, scene_index, scene_name):
         self.state.keep_all_scenes()
@@ -1987,7 +1951,7 @@ class VideoRemixer(TabBase):
             scene_index
 
     def merge_scenes_shortcut(self, scene_index):
-        scene_index, alt_scene = self.get_marked_pair(scene_index)
+        scene_index, alt_scene = self._get_marked_pair(scene_index)
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
             gr.update(selected=self.TAB_EXTRA_MERGE_SCENES), \
             gr.update(selected=self.TAB_EXTRA_MERGE_RANGE), \
@@ -1999,7 +1963,7 @@ class VideoRemixer(TabBase):
     def unmark_scene(self):
         self.marked_scene = None
 
-    def get_marked_pair(self, scene_index):
+    def _get_marked_pair(self, scene_index):
         if self.marked_scene != None:
             alt_scene = self.marked_scene
         else:
@@ -2031,7 +1995,7 @@ class VideoRemixer(TabBase):
 
         # user will expect to return to the compilation tab on reopening
         self.log("saving project after displaying scene choices")
-        self.save_progress("compile")
+        self._save_progress("compile")
 
         return gr.update(selected=self.TAB_COMPILE_SCENES), self.state.project_info4
 
@@ -2062,7 +2026,7 @@ class VideoRemixer(TabBase):
 
         # user will expect to return to the processing tab on reopening
         self.log("saving project after compiling scenes")
-        self.save_progress("process")
+        self._save_progress("process")
 
         return gr.update(selected=self.TAB_PROC_REMIX),  \
                format_markdown(self.TAB4_DEFAULT_MESSAGE), \
@@ -2152,12 +2116,12 @@ class VideoRemixer(TabBase):
 
         # user will expect to return to the save remix tab on reopening
         self.log("saving project after completing processing steps")
-        self.save_progress("save")
+        self._save_progress("save")
 
         if auto_save_remix:
             messages = []
             try:
-                self.save_mp4_video(self.state.output_filepath)
+                self._save_mp4_video(self.state.output_filepath)
                 messages.append(f"Remixed video {self.state.output_filepath} is complete.")
             except ValueError as error:
                 return gr.update(selected=self.TAB_PROC_REMIX), \
@@ -2200,7 +2164,7 @@ class VideoRemixer(TabBase):
 
     ### SAVE REMIX EVENT HANDLERS
 
-    def save_mp4_video(self, output_filepath, quality=None):
+    def _save_mp4_video(self, output_filepath, quality=None):
         self.state.output_filepath = output_filepath
         self.state.output_quality = quality or self.config.remixer_settings["default_crf"]
 
@@ -2219,7 +2183,7 @@ class VideoRemixer(TabBase):
                 "The project has not yet been set up from the Set Up Project tab.", "error")
 
         try:
-            self.save_mp4_video(output_filepath, quality)
+            self._save_mp4_video(output_filepath, quality)
             return format_markdown(f"Remixed video {output_filepath} is complete.", "highlight")
         except ValueError as error:
             return format_markdown(str(error), "error")
@@ -2242,13 +2206,13 @@ class VideoRemixer(TabBase):
         except ValueError as error:
             return format_markdown(str(error), "error")
 
-    def scene_marker(self, scene_name):
+    def _scene_marker(self, scene_name):
         scene_index = self.state.scene_names.index(scene_name)
         _, _, _, _, scene_start, scene_duration, _, _ = self.state.scene_chooser_data(scene_index)
         marker = f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]"
         return marker
 
-    def scene_title(self, scene_name):
+    def _scene_title(self, scene_name):
         scene_index = self.state.scene_names.index(scene_name)
         _, _, _, scene_position, _, _, _, _ = self.state.scene_chooser_data(scene_index)
         return scene_position
@@ -2285,7 +2249,7 @@ class VideoRemixer(TabBase):
             labels = []
             kept_scenes = self.state.kept_scenes()
             for scene_name in kept_scenes:
-                labels.append(self.scene_marker(scene_name))
+                labels.append(self._scene_marker(scene_name))
             draw_text_options["labels"] = labels
 
             self.processor.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
@@ -2325,9 +2289,9 @@ class VideoRemixer(TabBase):
         # FFmpeg requires forward slashes in font file path
         label_font_file = font_path.replace(r"\\", "/").replace("\\", "/")
 
-        label_font_color = self.join_color_alpha(label_font_color, label_font_alpha)
-        label_shadow_color = self.join_color_alpha(label_shadow_color, label_shadow_alpha)
-        label_box_color = self.join_color_alpha(label_box_color, label_box_alpha)
+        label_font_color = self._join_color_alpha(label_font_color, label_font_alpha)
+        label_shadow_color = self._join_color_alpha(label_shadow_color, label_shadow_alpha)
+        label_box_color = self._join_color_alpha(label_box_color, label_box_alpha)
 
         try:
             global_options = self.config.ffmpeg_settings["global_options"]
@@ -2392,6 +2356,8 @@ class VideoRemixer(TabBase):
 
     def back_button63(self):
         return gr.update(selected=self.TAB_PROC_REMIX)
+
+    ### REMIX EXTRA HANDLERS
 
     def drop_button700(self, scene_index):
         num_scenes = len(self.state.scene_names)
@@ -2458,7 +2424,7 @@ class VideoRemixer(TabBase):
             format_markdown(message), \
             *self.scene_chooser_details(self.state.current_scene)
 
-    def split_scene(self, scene_index, split_percent, keep_before, keep_after):
+    def _split_scene(self, scene_index, split_percent, keep_before, keep_after):
         global_options = self.config.ffmpeg_settings["global_options"]
         backup_split_scenes = self.config.remixer_settings["backup_split_scenes"]
         try:
@@ -2477,18 +2443,18 @@ class VideoRemixer(TabBase):
                 *dummy_args(6)
 
     def split_button702(self, scene_index, split_percent):
-        return self.split_scene(scene_index, split_percent, False, False)
+        return self._split_scene(scene_index, split_percent, False, False)
 
     def split_keep_before_702(self, scene_index, split_percent):
-        return self.split_scene(scene_index, split_percent, True, False)
+        return self._split_scene(scene_index, split_percent, True, False)
 
     def split_keep_after_702(self, scene_index, split_percent):
-        return self.split_scene(scene_index, split_percent, False, True)
+        return self._split_scene(scene_index, split_percent, False, True)
 
     def back_button702(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
 
-    def update_preview(self, scene_index, split_percent):
+    def _update_preview(self, scene_index, split_percent):
         if not isinstance(scene_index, (int, float)):
             return dummy_args(2)
         scene_index = int(scene_index)
@@ -2500,10 +2466,10 @@ class VideoRemixer(TabBase):
         return display_frame, scene_info
 
     def update_preview_scene_id(self, scene_index, split_percent):
-        return self.update_preview(scene_index, split_percent)
+        return self._update_preview(scene_index, split_percent)
 
     def update_preview_split_percent(self, scene_index, split_percent):
-        return self.update_preview(scene_index, split_percent)
+        return self._update_preview(scene_index, split_percent)
 
     def goto_0_702(self):
         return 0
@@ -2602,9 +2568,6 @@ class VideoRemixer(TabBase):
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                     message, \
                     *self.scene_chooser_details(self.state.current_scene)
-
-    CLEANSE_SCENES_PATH = "cleansed_scenes"
-    CLEANSE_SCENES_FACTOR = 4.0
 
     # TODO move
     def cleanse_button704(self):
@@ -2921,9 +2884,6 @@ class VideoRemixer(TabBase):
         else:
             return gr.update(selected=self.TAB_REMIX_EXTRA), format_markdown(report), *empty_args
 
-    APP_TAB_VIDEO_BLENDER=4
-    APP_TAB_VIDEO_REMIXER=5
-
     def export_button707(self, scene_index):
         empty_args = dummy_args(10)
         num_scenes = len(self.state.scene_names)
@@ -3087,7 +3047,7 @@ class VideoRemixer(TabBase):
                                     log_fn=self.log)
 
             # user will expect to return to scene chooser on reopening
-            self.save_progress("choose")
+            self._save_progress("choose")
 
             message = f"Project recovered"
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
@@ -3103,7 +3063,7 @@ class VideoRemixer(TabBase):
             purge_root = self.state.purge_processed_content()
 
             # user will expect to return to the processing tab on reopening
-            self.save_progress("process")
+            self._save_progress("process")
             self.state.processed_content_invalid = True
             self.log("saving project after compiling scenes")
 
@@ -3120,3 +3080,50 @@ class VideoRemixer(TabBase):
             message = format_markdown("There is no loaded project.", "error")
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 message
+
+    def _new_project(self):
+        self.state = VideoRemixerState()
+        self.processor = VideoRemixerProcessor(self.state, self.log)
+        self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"],
+                                           self.state.SAFETY_DEFAULTS)
+        self.state.invalidate_split_scene_cache()
+        self.marked_scene = None
+
+    def _gather_fonts(self):
+        fonts = get_files(self.state.FONTS_ROOT, "ttf")
+        result = []
+        for font in fonts:
+            _, filename, _ = split_filepath(font)
+            result.append(filename)
+        return sorted(result)
+
+    def _split_color_alpha(self, color_alpha : str, default_color="#000000", default_alpha="1.0",
+                          ignore_errors=False):
+        """Split a string like `#FFFFFF@0.9` into `#FFFFFF` and `0.9` """
+        if len(color_alpha):
+            if color_alpha.index("@") >= 0:
+                parts = color_alpha.split("@")
+                if len(parts) >= 2:
+                    return parts[0], parts[1]
+            else:
+                return color_alpha, default_alpha
+
+        if ignore_errors:
+            return default_color, default_alpha
+        else:
+            raise ValueError(f"split_color_alpha(): unable to parse {color_alpha}")
+
+    def _join_color_alpha(self, color : str, alpha : str="1.0"):
+        return f"{color}@{alpha}"
+
+    def _save_progress(self, progress : str, save_project : bool=True):
+        self.state.progress = progress
+        if save_project:
+            self.state.save()
+
+    def _get_progress_tab(self) -> int:
+        try:
+            return self.PROGRESS_STEPS[self.state.progress]
+        except:
+            return self.PROGRESS_STEPS["home"]
+
