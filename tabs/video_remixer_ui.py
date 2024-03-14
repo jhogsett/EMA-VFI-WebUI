@@ -1791,7 +1791,7 @@ class VideoRemixer(TabBase):
         # clear cache to avoid display problems with cached thumbnails
         self.state.invalidate_split_scene_cache()
 
-        self.state.clips_path = os.path.join(self.state.project_path, "CLIPS")
+        self.state.clips_path = os.path.join(self.state.project_path, self.state.CLIPS_PATH)
         self.log(f"creating clips directory {self.state.clips_path}")
         create_directory(self.state.clips_path)
 

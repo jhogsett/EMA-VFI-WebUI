@@ -1318,6 +1318,7 @@ class VideoRemixerState():
     INFLATE_PATH = "SCENES-IN"
     UPSCALE_PATH = "SCENES-UP"
 
+    CLIPS_PATH = "CLIPS"
     AUDIO_CLIPS_PATH = "AUDIO"
     VIDEO_CLIPS_PATH = "VIDEO"
 
@@ -1574,7 +1575,7 @@ class VideoRemixerState():
         self.create_thumbnails(log_fn, global_options, remixer_settings)
         self.thumbnails = sorted(get_files(self.thumbnail_path))
 
-        self.clips_path = os.path.join(self.project_path, "CLIPS")
+        self.clips_path = os.path.join(self.project_path, self.CLIPS_PATH)
         log_fn(f"creating clips directory {self.clips_path}")
         create_directory(self.clips_path)
 
