@@ -2641,13 +2641,13 @@ class VideoRemixer(TabBase):
         content_height = self.state.video_details["source_height"]
         scale_type = self.config.remixer_settings["scale_type_down"]
 
-        upscaler = self.state.get_upscaler(self.log, self.config.realesrgan_settings, self.config.remixer_settings)
+        upscaler = self.processor.get_upscaler(self.log, self.config.realesrgan_settings, self.config.remixer_settings)
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Cleansing") as bar:
             for scene_name in kept_scenes:
                 scene_path = os.path.join(self.state.scenes_path, scene_name)
                 upscale_scene_path = os.path.join(upscale_path, scene_name)
                 create_directory(upscale_scene_path)
-                self.state.upscale_scene(self.log, upscaler, scene_path, upscale_scene_path,
+                self.processor.upscale_scene(self.log, upscaler, scene_path, upscale_scene_path,
                                          self.CLEANSE_SCENES_FACTOR, downscale_type=scale_type)
 
                 downsample_scene_path = os.path.join(downsample_path, scene_name)
