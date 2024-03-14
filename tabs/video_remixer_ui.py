@@ -5,7 +5,7 @@ from typing import Callable
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import format_markdown, style_report, dummy_args, ranges_overlap
+from webui_utils.simple_utils import format_markdown, style_report, dummy_args
 from webui_utils.file_utils import get_files, create_directory, get_directories, split_filepath, \
     is_safe_path, duplicate_directory, move_files
 from webui_utils.video_utils import details_from_group_name
@@ -19,6 +19,7 @@ from webui_utils.session import Session
 from ffmpy import FFRuntimeError
 from resequence_files import ResequenceFiles
 from .video_blender_ui import VideoBlender
+from video_remixer_processor import VideoRemixerProcessor
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -31,12 +32,15 @@ class VideoRemixer(TabBase):
         TabBase.__init__(self, config, engine, log_fn)
         self.main_tabs = main_tabs
         self.video_blender = video_blender
+        self.state = None
+        self.processor = None
         self.marked_scene = None
         self.new_project()
         self.unmark_scene()
 
     def new_project(self):
         self.state = VideoRemixerState()
+        self.processor = VideoRemixerProcessor(self.state, self.log)
         self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"],
                                            self.UI_SAFETY_DEFAULTS)
         self.state.invalidate_split_scene_cache()
@@ -1426,6 +1430,8 @@ class VideoRemixer(TabBase):
                     format_markdown(str(error), "error"), \
                    *empty_args
 
+        self.processor = VideoRemixerProcessor(self.state, self.log)
+
         messages = self.state.post_load_integrity_check()
         if messages:
             message_text = format_markdown(messages, "warning")
@@ -2146,21 +2152,22 @@ class VideoRemixer(TabBase):
             upscale_option_changed = True
         self.state.upscale_option = upscale_option
 
-        self.state.prepare_process_remix(resynth_option_changed,
-                                            inflate_option_changed,
-                                            upscale_option_changed)
+        self.processor.prepare_process_remix(resynth_option_changed,
+                                             inflate_option_changed,
+                                             upscale_option_changed)
 
-        self.state.process_remix(self.log,
+        self.processor.process_remix(self.log,
                                  kept_scenes,
                                  self.config.remixer_settings,
                                  self.engine,
                                  self.config.engine_settings,
                                  self.config.realesrgan_settings)
 
-        remix_report = self.generate_remix_report(self.processed_content_complete(self.RESIZE_STEP),
-                                          self.processed_content_complete(self.RESYNTH_STEP),
-                                          self.processed_content_complete(self.INFLATE_STEP),
-                                          self.processed_content_complete(self.UPSCALE_STEP))
+        remix_report = self.state.generate_remix_report(
+            self.processor.processed_content_complete(self.state.RESIZE_STEP),
+            self.processor.processed_content_complete(self.state.RESYNTH_STEP),
+            self.processor.processed_content_complete(self.state.INFLATE_STEP),
+            self.processor.processed_content_complete(self.state.UPSCALE_STEP))
 
         styled_report = style_report("Content Ready for Remix Video:", remix_report, color="info")
         self.state.summary_info6 = styled_report
@@ -2230,9 +2237,9 @@ class VideoRemixer(TabBase):
 
         global_options = self.config.ffmpeg_settings["global_options"]
         remixer_settings = self.config.remixer_settings
-        kept_scenes = self.state.prepare_save_remix(self.log, global_options, remixer_settings,
+        kept_scenes = self.processor.prepare_save_remix(self.log, global_options, remixer_settings,
                                                     output_filepath)
-        self.state.save_remix(self.log, global_options, kept_scenes)
+        self.processor.save_remix(self.log, global_options, kept_scenes)
 
     def next_button60(self, output_filepath, quality):
         if not self.state.project_path:
@@ -2253,10 +2260,10 @@ class VideoRemixer(TabBase):
         try:
             global_options = self.config.ffmpeg_settings["global_options"]
             remixer_settings = self.config.remixer_settings
-            kept_scenes = self.state.prepare_save_remix(self.log, global_options,
+            kept_scenes = self.processor.prepare_save_remix(self.log, global_options,
                                                         remixer_settings, output_filepath,
                                                         invalidate_video_clips=False)
-            self.state.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
+            self.processor.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
                                          custom_video_options, custom_audio_options)
             return format_markdown(f"Remixed custom video {output_filepath} is complete.",
                                    "highlight")
@@ -2282,7 +2289,7 @@ class VideoRemixer(TabBase):
         try:
             global_options = self.config.ffmpeg_settings["global_options"]
             remixer_settings = self.config.remixer_settings
-            kept_scenes = self.state.prepare_save_remix(self.log, global_options,
+            kept_scenes = self.processor.prepare_save_remix(self.log, global_options,
                                                         remixer_settings, output_filepath)
             draw_text_options = {}
             draw_text_options["font_size"] = self.config.remixer_settings["marked_font_size"]
@@ -2309,7 +2316,7 @@ class VideoRemixer(TabBase):
                 labels.append(self.scene_marker(scene_name))
             draw_text_options["labels"] = labels
 
-            self.state.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
+            self.processor.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
                                          marked_video_options, marked_audio_options,
                                          draw_text_options)
             return format_markdown(f"Remixed marked video {output_filepath} is complete.",
@@ -2353,7 +2360,7 @@ class VideoRemixer(TabBase):
         try:
             global_options = self.config.ffmpeg_settings["global_options"]
             remixer_settings = self.config.remixer_settings
-            kept_scenes = self.state.prepare_save_remix(self.log, global_options,
+            kept_scenes = self.processor.prepare_save_remix(self.log, global_options,
                                                         remixer_settings, output_filepath)
             draw_text_options = {}
             draw_text_options["font_size"] = label_font_size
@@ -2391,7 +2398,7 @@ class VideoRemixer(TabBase):
             self.log(f"using labeled audeo options: {labeled_audio_options}")
 
             try:
-                self.state.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
+                self.processor.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
                                              labeled_video_options, labeled_audio_options,
                                              draw_text_options, use_scene_sorting=True)
                 return format_markdown(
@@ -2624,7 +2631,6 @@ class VideoRemixer(TabBase):
                     message, \
                     *self.scene_chooser_details(self.state.current_scene)
 
-
     CLEANSE_SCENES_PATH = "cleansed_scenes"
     CLEANSE_SCENES_FACTOR = 4.0
 
@@ -2674,7 +2680,7 @@ class VideoRemixer(TabBase):
 
                 downsample_scene_path = os.path.join(downsample_path, scene_name)
                 create_directory(downsample_scene_path)
-                self.state.resize_scene(self.log,
+                self.processor.resize_scene(self.log,
                                         upscale_scene_path,
                                         downsample_scene_path,
                                         content_width,
