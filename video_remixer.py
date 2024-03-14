@@ -115,32 +115,6 @@ class VideoRemixerState():
             del state["split_scene_cached_index"]
         return state
 
-    def reset(self):
-        self.__init__()
-
-    # set project settings UI defaults in case the project is reopened
-    # otherwise some UI elements get set to None on reopened new projects
-    def set_project_ui_defaults(self, default_fps, defaults):
-        self.project_fps = default_fps
-        self.deinterlace = defaults["deinterlace"]
-        self.split_type = defaults["split_type"]
-        self.scene_threshold = defaults["scene_threshold"]
-        self.break_duration = defaults["break_duration"]
-        self.break_ratio = defaults["break_ratio"]
-        self.thumbnail_type = defaults["thumbnail_type"]
-        self.resize = defaults["resize"]
-        self.resynthesize = defaults["resynthesize"]
-        self.inflate = defaults["inflate"]
-        self.upscale = defaults["upscale"]
-        self.upscale_option = defaults["upscale_option"]
-        self.min_frames_per_scene = defaults["min_frames_per_scene"]
-        self.split_time = defaults["split_time"]
-        self.inflate_by_option = defaults["inflate_by_option"]
-        self.inflate_slow_option = defaults["inflate_slow_option"]
-        self.resynth_option = defaults["resynth_option"]
-        self.frame_format = defaults["frame_format"]
-        self.audio_format = defaults["sound_format"]
-
     DEF_FILENAME = "project.yaml"
     PROJECT_PATH_PREFIX = "REMIX-"
     FILENAME_FILTER = [" ", "'", "[", "]"]
@@ -174,6 +148,59 @@ class VideoRemixerState():
 
     # TODO this is a UI concern
     GAP = " " * 5
+
+    SAFETY_DEFAULTS = {
+        "project_fps" : 29.97,
+        "deinterlace" : False,
+        "split_type" : "Scene",
+        "scene_threshold" : 0.6,
+        "break_duration" : 2.0,
+        "break_ratio" : 0.98,
+        "thumbnail_type" : "JPG",
+        "resize" : True,
+        "resynthesize" : True,
+        "inflate" : True,
+        "upscale" : True,
+        "upscale_option" : "2X",
+        "min_frames_per_scene" : 10,
+        "split_time" : 60,
+        "crop_offsets" : -1,
+        "inflate_by_option" : "2X",
+        "inflate_slow_option" : "No",
+        "resynth_option" : "Scrub",
+        "resize_w" : 1920,
+        "resize_h" : 1080,
+        "crop_w" : 1920,
+        "crop_h" : 1080,
+        "frame_format" : "png",
+        "sound_format" : "wav"
+    }
+
+    def reset(self):
+        self.__init__()
+
+    # set project settings UI defaults in case the project is reopened
+    # otherwise some UI elements get set to None on reopened new projects
+    def set_project_ui_defaults(self, default_fps, defaults):
+        self.project_fps = default_fps
+        self.deinterlace = defaults["deinterlace"]
+        self.split_type = defaults["split_type"]
+        self.scene_threshold = defaults["scene_threshold"]
+        self.break_duration = defaults["break_duration"]
+        self.break_ratio = defaults["break_ratio"]
+        self.thumbnail_type = defaults["thumbnail_type"]
+        self.resize = defaults["resize"]
+        self.resynthesize = defaults["resynthesize"]
+        self.inflate = defaults["inflate"]
+        self.upscale = defaults["upscale"]
+        self.upscale_option = defaults["upscale_option"]
+        self.min_frames_per_scene = defaults["min_frames_per_scene"]
+        self.split_time = defaults["split_time"]
+        self.inflate_by_option = defaults["inflate_by_option"]
+        self.inflate_slow_option = defaults["inflate_slow_option"]
+        self.resynth_option = defaults["resynth_option"]
+        self.frame_format = defaults["frame_format"]
+        self.audio_format = defaults["sound_format"]
 
     def save(self, filepath : str=None):
         filepath = filepath or self.project_filepath()
@@ -1707,7 +1734,6 @@ class VideoRemixerState():
             highest_frame = last if last > highest_frame else highest_frame
         return lowest_frame, highest_frame
 
-
     def setup_processing_paths(self):
         self.resize_path = os.path.join(self.project_path, self.RESIZE_PATH)
         self.resynthesis_path = os.path.join(self.project_path, self.RESYNTH_PATH)
@@ -1869,4 +1895,3 @@ class VideoRemixerState():
         if not os.path.exists(project_file):
             raise ValueError(f"Project file {project_file} was not found")
         return project_file
-

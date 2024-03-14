@@ -42,36 +42,9 @@ class VideoRemixer(TabBase):
         self.state = VideoRemixerState()
         self.processor = VideoRemixerProcessor(self.state, self.log)
         self.state.set_project_ui_defaults(self.config.remixer_settings["def_project_fps"],
-                                           self.UI_SAFETY_DEFAULTS)
+                                           self.state.SAFETY_DEFAULTS)
         self.state.invalidate_split_scene_cache()
         self.unmark_scene()
-
-    UI_SAFETY_DEFAULTS = {
-        "project_fps" : 29.97,
-        "deinterlace" : False,
-        "split_type" : "Scene",
-        "scene_threshold" : 0.6,
-        "break_duration" : 2.0,
-        "break_ratio" : 0.98,
-        "thumbnail_type" : "JPG",
-        "resize" : True,
-        "resynthesize" : True,
-        "inflate" : True,
-        "upscale" : True,
-        "upscale_option" : "2X",
-        "min_frames_per_scene" : 10,
-        "split_time" : 60,
-        "crop_offsets" : -1,
-        "inflate_by_option" : "2X",
-        "inflate_slow_option" : "No",
-        "resynth_option" : "Scrub",
-        "resize_w" : 1920,
-        "resize_h" : 1080,
-        "crop_w" : 1920,
-        "crop_h" : 1080,
-        "frame_format" : "png",
-        "sound_format" : "wav"
-    }
 
     TAB_REMIX_HOME = 0
     TAB_REMIX_SETTINGS = 1
@@ -1447,32 +1420,32 @@ class VideoRemixer(TabBase):
             self.state.tryattr("video_info1"), \
             self.state.tryattr("project_path"), \
             self.state.tryattr("project_fps", self.config.remixer_settings["def_project_fps"]), \
-            self.state.tryattr("deinterlace", self.UI_SAFETY_DEFAULTS["deinterlace"]), \
-            self.state.tryattr("split_type", self.UI_SAFETY_DEFAULTS["split_type"]), \
-            self.state.tryattr("split_time", self.UI_SAFETY_DEFAULTS["split_time"]), \
-            self.state.tryattr("scene_threshold", self.UI_SAFETY_DEFAULTS["scene_threshold"]), \
-            self.state.tryattr("break_duration", self.UI_SAFETY_DEFAULTS["break_duration"]), \
-            self.state.tryattr("break_ratio", self.UI_SAFETY_DEFAULTS["break_ratio"]), \
+            self.state.tryattr("deinterlace", self.state.SAFETY_DEFAULTS["deinterlace"]), \
+            self.state.tryattr("split_type", self.state.SAFETY_DEFAULTS["split_type"]), \
+            self.state.tryattr("split_time", self.state.SAFETY_DEFAULTS["split_time"]), \
+            self.state.tryattr("scene_threshold", self.state.SAFETY_DEFAULTS["scene_threshold"]), \
+            self.state.tryattr("break_duration", self.state.SAFETY_DEFAULTS["break_duration"]), \
+            self.state.tryattr("break_ratio", self.state.SAFETY_DEFAULTS["break_ratio"]), \
             self.state.tryattr("resize_w"), \
             self.state.tryattr("resize_h"), \
             self.state.tryattr("crop_w"), \
             self.state.tryattr("crop_h"), \
-            self.state.tryattr("crop_offset_x", self.UI_SAFETY_DEFAULTS["crop_offsets"]), \
-            self.state.tryattr("crop_offset_y", self.UI_SAFETY_DEFAULTS["crop_offsets"]), \
-            self.state.tryattr("frame_format", self.UI_SAFETY_DEFAULTS["frame_format"]), \
+            self.state.tryattr("crop_offset_x", self.state.SAFETY_DEFAULTS["crop_offsets"]), \
+            self.state.tryattr("crop_offset_y", self.state.SAFETY_DEFAULTS["crop_offsets"]), \
+            self.state.tryattr("frame_format", self.state.SAFETY_DEFAULTS["frame_format"]), \
             self.state.tryattr("project_info2"), \
-            self.state.tryattr("thumbnail_type", self.UI_SAFETY_DEFAULTS["thumbnail_type"]), \
-            self.state.tryattr("min_frames_per_scene", self.UI_SAFETY_DEFAULTS["min_frames_per_scene"]), \
+            self.state.tryattr("thumbnail_type", self.state.SAFETY_DEFAULTS["thumbnail_type"]), \
+            self.state.tryattr("min_frames_per_scene", self.state.SAFETY_DEFAULTS["min_frames_per_scene"]), \
             *scene_details, \
             self.state.tryattr("project_info4"), \
-            self.state.tryattr("resize", self.UI_SAFETY_DEFAULTS["resize"]), \
-            self.state.tryattr("resynthesize", self.UI_SAFETY_DEFAULTS["resynthesize"]), \
-            self.state.tryattr("resynth_option", self.UI_SAFETY_DEFAULTS["resynth_option"]), \
-            self.state.tryattr("inflate", self.UI_SAFETY_DEFAULTS["inflate"]), \
-            self.state.tryattr("inflate_by_option", self.UI_SAFETY_DEFAULTS["inflate_by_option"]), \
-            self.state.tryattr("inflate_slow_option", self.UI_SAFETY_DEFAULTS["inflate_slow_option"]), \
-            self.state.tryattr("upscale", self.UI_SAFETY_DEFAULTS["upscale"]), \
-            self.state.tryattr("upscale_option", self.UI_SAFETY_DEFAULTS["upscale_option"]), \
+            self.state.tryattr("resize", self.state.SAFETY_DEFAULTS["resize"]), \
+            self.state.tryattr("resynthesize", self.state.SAFETY_DEFAULTS["resynthesize"]), \
+            self.state.tryattr("resynth_option", self.state.SAFETY_DEFAULTS["resynth_option"]), \
+            self.state.tryattr("inflate", self.state.SAFETY_DEFAULTS["inflate"]), \
+            self.state.tryattr("inflate_by_option", self.state.SAFETY_DEFAULTS["inflate_by_option"]), \
+            self.state.tryattr("inflate_slow_option", self.state.SAFETY_DEFAULTS["inflate_slow_option"]), \
+            self.state.tryattr("upscale", self.state.SAFETY_DEFAULTS["upscale"]), \
+            self.state.tryattr("upscale_option", self.state.SAFETY_DEFAULTS["upscale_option"]), \
             self.state.tryattr("summary_info6"), \
             self.state.tryattr("output_filepath")
 
@@ -1627,19 +1600,19 @@ class VideoRemixer(TabBase):
     def use_default_settings(self):
         return \
             self.config.remixer_settings["def_project_fps"], \
-            self.UI_SAFETY_DEFAULTS["split_type"], \
-            self.UI_SAFETY_DEFAULTS["scene_threshold"], \
-            self.UI_SAFETY_DEFAULTS["break_duration"], \
-            self.UI_SAFETY_DEFAULTS["break_ratio"], \
-            self.UI_SAFETY_DEFAULTS["resize_w"], \
-            self.UI_SAFETY_DEFAULTS["resize_h"], \
-            self.UI_SAFETY_DEFAULTS["crop_w"], \
-            self.UI_SAFETY_DEFAULTS["crop_h"], \
-            self.UI_SAFETY_DEFAULTS["crop_offsets"], \
-            self.UI_SAFETY_DEFAULTS["crop_offsets"], \
-            self.UI_SAFETY_DEFAULTS["frame_format"], \
-            self.UI_SAFETY_DEFAULTS["deinterlace"], \
-            self.UI_SAFETY_DEFAULTS["split_time"]
+            self.state.SAFETY_DEFAULTS["split_type"], \
+            self.state.SAFETY_DEFAULTS["scene_threshold"], \
+            self.state.SAFETY_DEFAULTS["break_duration"], \
+            self.state.SAFETY_DEFAULTS["break_ratio"], \
+            self.state.SAFETY_DEFAULTS["resize_w"], \
+            self.state.SAFETY_DEFAULTS["resize_h"], \
+            self.state.SAFETY_DEFAULTS["crop_w"], \
+            self.state.SAFETY_DEFAULTS["crop_h"], \
+            self.state.SAFETY_DEFAULTS["crop_offsets"], \
+            self.state.SAFETY_DEFAULTS["crop_offsets"], \
+            self.state.SAFETY_DEFAULTS["frame_format"], \
+            self.state.SAFETY_DEFAULTS["deinterlace"], \
+            self.state.SAFETY_DEFAULTS["split_time"]
 
     def reuse_prev_settings(self):
         return self.use_named_settings("last-video-remixer-settings")
