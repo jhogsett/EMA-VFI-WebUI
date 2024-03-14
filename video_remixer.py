@@ -1408,9 +1408,6 @@ class VideoRemixerState():
         self.split_scene_cache = []
         self.split_scene_cached_index = -1
 
-
-
-
     # returns validated version of path and files, and an optional messages str
     def ensure_valid_populated_path(self, description : str, path : str, files : list | None=None):
         if not path:

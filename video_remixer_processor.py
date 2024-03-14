@@ -78,12 +78,6 @@ class VideoRemixerProcessor():
         return self.state.upscale_chosen() \
             and not self.processed_content_complete(self.state.UPSCALE_STEP)
 
-    # def setup_processing_paths(self):
-    #     self.state.resize_path = os.path.join(self.state.project_path, self.state.RESIZE_PATH)
-    #     self.state.resynthesis_path = os.path.join(self.state.project_path, self.state.RESYNTH_PATH)
-    #     self.state.inflation_path = os.path.join(self.state.project_path, self.state.INFLATE_PATH)
-    #     self.state.upscale_path = os.path.join(self.state.project_path, self.state.UPSCALE_PATH)
-
     def _processed_content_complete(self, path, expected_dirs = 0, expected_files = 0):
         if not path or not os.path.exists(path):
             return False
