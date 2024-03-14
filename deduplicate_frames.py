@@ -60,6 +60,7 @@ def main():
                       args.max_dupes,
                       args.depth,
                       log.log,
+                      type=args.type,
                       tune_min=args.tune_min,
                       tune_max=args.tune_max,
                       tune_step=args.tune_step).invoke(args.disposition)
