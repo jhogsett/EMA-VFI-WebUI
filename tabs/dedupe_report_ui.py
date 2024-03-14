@@ -9,6 +9,7 @@ from webui_utils.auto_increment import AutoIncrementDirectory
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
 from deduplicate_frames import DeduplicateFrames
+from webui_utils.video_utils import determine_input_format
 
 class DuplicateFramesReport(TabBase):
     """Encapsulates UI elements and events for the Duplicate Frames Report feature"""
@@ -56,13 +57,15 @@ class DuplicateFramesReport(TabBase):
         """Create Report button handler"""
         if input_path:
             try:
+                type = determine_input_format(input_path)
                 report = DeduplicateFrames(None,
                                             input_path,
                                             None,
                                             threshold,
                                             max_dupes,
                                             None,
-                                            self.log).invoke_report(suppress_output=True)
+                                            self.log,
+                                            type=type).invoke_report(suppress_output=True)
 
                 base_output_path = self.config.directories["output_deduplication"]
                 output_path, run_index = AutoIncrementDirectory(base_output_path).next_directory(
