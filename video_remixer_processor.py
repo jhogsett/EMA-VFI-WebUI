@@ -45,7 +45,7 @@ class VideoRemixerProcessor():
 
         if self.state.processed_content_invalid:
             self.state.purge_processed_content(purge_from=self.state.RESIZE_STEP)
-            self.processed_content_invalid = False
+            self.state.processed_content_invalid = False
         else:
             self.purge_stale_processed_content(redo_resynth, redo_inflate, redo_upscale)
             self.purge_incomplete_processed_content()
@@ -148,7 +148,7 @@ class VideoRemixerProcessor():
         self.create_scene_clips(log_fn, kept_scenes, global_options)
         self.state.save()
 
-        if not self.clips:
+        if not self.state.clips:
             raise ValueError("No processed video clips were found")
 
         ffcmd = self.create_remix_video(log_fn, global_options, self.state.output_filepath)
@@ -180,7 +180,7 @@ class VideoRemixerProcessor():
                                              custom_ext=output_ext)
         self.state.save()
 
-        if not self.clips:
+        if not self.state.clips:
             raise ValueError("No processed video clips were found")
 
         ffcmd = self.create_remix_video(log_fn, global_options, output_filepath,
@@ -191,9 +191,8 @@ class VideoRemixerProcessor():
     ### Internal
 
     def resize_needed(self):
-        return (self.state.resize \
-                and not self.processed_content_complete(self.state.RESIZE_STEP)) \
-                or self.state.resize_chosen()
+        return self.state.resize_chosen() \
+            and not self.processed_content_complete(self.state.RESIZE_STEP)
 
     def resynthesize_needed(self):
         return self.state.resynthesize_chosen() \
@@ -1432,8 +1431,8 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         if self.state.video_details["has_audio"]:
             with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
                 for index, scene_name in enumerate(kept_scenes):
-                    scene_video_path = self.video_clips[index]
-                    scene_audio_path = self.audio_clips[index]
+                    scene_video_path = self.state.video_clips[index]
+                    scene_audio_path = self.state.audio_clips[index]
                     scene_output_filepath = os.path.join(self.state.clips_path, f"{scene_name}.mp4")
 
                     force_inflation, force_audio, force_inflate_by, force_silent =\
@@ -1450,9 +1449,9 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                                         global_options=global_options,
                                         output_options=output_options)
                     Mtqdm().update_bar(bar)
-            self.clips = sorted(get_files(self.state.clips_path))
+            self.state.clips = sorted(get_files(self.state.clips_path))
         else:
-            self.clips = sorted(get_files(self.state.video_clips_path))
+            self.state.clips = sorted(get_files(self.state.video_clips_path))
 
     def create_custom_scene_clips(self,
                                   kept_scenes,
@@ -1462,8 +1461,8 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         if self.state.video_details["has_audio"]:
             with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
                 for index, scene_name in enumerate(kept_scenes):
-                    scene_video_path = self.video_clips[index]
-                    scene_audio_path = self.audio_clips[index]
+                    scene_video_path = self.state.video_clips[index]
+                    scene_audio_path = self.state.audio_clips[index]
                     scene_output_filepath = os.path.join(self.state.clips_path,
                                                          f"{scene_name}.{custom_ext}")
 
@@ -1480,9 +1479,9 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                                         scene_output_filepath, global_options=global_options,
                                         output_options=output_options)
                     Mtqdm().update_bar(bar)
-            self.clips = sorted(get_files(self.state.clips_path))
+            self.state.clips = sorted(get_files(self.state.clips_path))
         else:
-            self.clips = sorted(get_files(self.state.video_clips_path))
+            self.state.clips = sorted(get_files(self.state.video_clips_path))
 
     def create_custom_video_clips(self,
                                   log_fn,
@@ -1599,7 +1598,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                             custom_options=use_custom_video_options,
                             type=self.state.frame_format)
                 Mtqdm().update_bar(bar)
-        self.video_clips = sorted(get_files(self.state.video_clips_path))
+        self.state.video_clips = sorted(get_files(self.state.video_clips_path))
 
     def assembly_list(self, log_fn, clip_filepaths : list, rename_clips=True) -> list:
         """Get list clips to assemble in order.
@@ -1648,8 +1647,8 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
     def create_remix_video(self, log_fn, global_options, output_filepath, use_scene_sorting=True):
         with Mtqdm().open_bar(total=1, desc="Saving Remix") as bar:
             Mtqdm().message(bar, "Using FFmpeg to concatenate scene clips - no ETA")
-            assembly_list = self.assembly_list(log_fn, self.clips) \
-                if use_scene_sorting else self.clips
+            assembly_list = self.assembly_list(log_fn, self.state.clips) \
+                if use_scene_sorting else self.state.clips
             ffcmd = combine_videos(assembly_list,
                                    output_filepath,
                                    global_options=global_options)
