@@ -117,9 +117,9 @@ class VideoRemixerState():
         internal_state = [
             "remixer_settings",
             "global_options",
-           "log_fn",
-           "split_scene_cache",
-           "split_scene_cached_index"
+            "log_fn",
+            "split_scene_cache",
+            "split_scene_cached_index"
         ]
         for attribute in internal_state:
             if attribute in state:
@@ -750,12 +750,11 @@ class VideoRemixerState():
             raise ValueError(f"Project file {project_file} was not found")
         return project_file
 
-    def new_project(self, remixer_settings : dict):
-        self.remixer_settings = remixer_settings
-        self.processor = VideoRemixerProcessor(self, self.log)
-        self.set_project_ui_defaults(remixer_settings["def_project_fps"], self.SAFETY_DEFAULTS)
-        self.invalidate_split_scene_cache()
-        self.marked_scene = None
+    @staticmethod
+    def new_project(remixer_settings : dict, global_options : dict, log_fn : Callable):
+        state = VideoRemixerState(remixer_settings, global_options, log_fn)
+        state.set_project_defaults(remixer_settings, VideoRemixerState.SAFETY_DEFAULTS)
+        return state
 
 
     ## Ingestion Concern
@@ -1475,8 +1474,8 @@ class VideoRemixerState():
 
     # set project settings UI defaults in case the project is reopened
     # otherwise some UI elements get set to None on reopened new projects
-    def set_project_ui_defaults(self, default_fps, defaults):
-        self.project_fps = default_fps
+    def set_project_defaults(self, remixer_settings, defaults):
+        self.project_fps = remixer_settings["def_project_fps"]
         self.deinterlace = defaults["deinterlace"]
         self.split_type = defaults["split_type"]
         self.scene_threshold = defaults["scene_threshold"]

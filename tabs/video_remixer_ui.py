@@ -1311,8 +1311,11 @@ class VideoRemixer(TabBase):
                    format_markdown(f"File '{video_path}' was not found", "error"), \
                    *empty_args
 
-        self.state.new_project(self.config.remixer_settings)
         try:
+            self.state = VideoRemixerState.new_project(self.config.remixer_settings,
+                                                       self.config.ffmpeg_settings["global_options"],
+                                                       self.log)
+            self.processor = VideoRemixerProcessor(self.state, self.log)
             self.state.ingest_video(video_path)
             self.state.video_info1 = self.state.ingested_video_report()
         except ValueError as error:
