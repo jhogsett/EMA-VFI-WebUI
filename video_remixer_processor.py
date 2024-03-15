@@ -1248,7 +1248,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         removed += purge_dirs
 
         if purge_root:
-            self.state.copy_project_file(purge_root)
+            self.state.project.copy_project_file(purge_root)
 
         # audio clips aren't cleaned each time a remix is saved
         # clean now to ensure the dropped scene audio clip is removed

@@ -20,6 +20,7 @@ from ffmpy import FFRuntimeError
 from resequence_files import ResequenceFiles
 from .video_blender_ui import VideoBlender
 from video_remixer_processor import VideoRemixerProcessor
+from video_remixer_project import VideoRemixerProject
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -1312,7 +1313,7 @@ class VideoRemixer(TabBase):
                    *empty_args
 
         try:
-            self.state = VideoRemixerState.new_project(self.config.remixer_settings,
+            self.state = VideoRemixerProject.new_project(self.config.remixer_settings,
                                                        self.config.ffmpeg_settings["global_options"],
                                                        self.log)
             self.processor = VideoRemixerProcessor(self.state,
@@ -1357,7 +1358,7 @@ class VideoRemixer(TabBase):
                    *empty_args
 
         try:
-            project_file = VideoRemixerState.determine_project_filepath(project_path)
+            project_file = VideoRemixerProject.determine_project_filepath(project_path)
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    format_markdown(str(error), "error"), \
@@ -1366,7 +1367,8 @@ class VideoRemixer(TabBase):
         try:
             remixer_settings = self.config.remixer_settings
             global_options = self.config.ffmpeg_settings["global_options"]
-            self.state = VideoRemixerState.load(project_file, remixer_settings, global_options, self.log)
+            self.state = VideoRemixerProject.load(project_file, remixer_settings, global_options,
+                                                  self.log)
         except ValueError as error:
             self.log(f"error opening project: {error}")
             return gr.update(selected=self.TAB_REMIX_HOME), \
@@ -1375,7 +1377,9 @@ class VideoRemixer(TabBase):
 
         if self.state.project_ported(project_file):
             try:
-                self.state = VideoRemixerState.load_ported(self.state.project_path, project_file, remixer_settings, global_options, self.log)
+                self.state = VideoRemixerProject.load_ported(self.state.project_path, project_file,
+                                                             remixer_settings, global_options,
+                                                             self.log)
             except ValueError as error:
                 self.log(f"error opening ported project at {project_file}: {error}")
                 return gr.update(selected=self.TAB_REMIX_HOME), \
@@ -1389,7 +1393,7 @@ class VideoRemixer(TabBase):
                                                self.config.ffmpeg_settings["global_options"],
                                                self.log)
 
-        messages = self.state.post_load_integrity_check()
+        messages = self.state.project.post_load_integrity_check()
         if messages:
             message_text = format_markdown(messages, "warning")
         else:
@@ -1525,7 +1529,7 @@ class VideoRemixer(TabBase):
 
             # this is the first time project progress advances
             # user will expect to return to the setup tab on reopening
-            self.log(f"saving new project at {self.state.project_filepath()}")
+            self.log(f"saving new project at {self.state.project.project_filepath()}")
             self.state.save_progress("setup")
 
             Session().set("last-video-remixer-project", project_path)
@@ -1675,7 +1679,7 @@ class VideoRemixer(TabBase):
             # user may be redoing project set up
             # settings changes could affect already-processed content
             self.log("resetting project on rendering for project settings")
-            self.state.reset_at_project_settings()
+            self.state.project.reset_at_project_settings()
 
             # split video into frames, avoid doing again if redoing setup
             # unless the source frames were flagged invalid in the previous step
@@ -2497,7 +2501,7 @@ class VideoRemixer(TabBase):
         new_project_name = new_project_name.strip()
         full_new_project_path = os.path.join(new_project_path, new_project_name)
         try:
-            self.state.export_project(new_project_path, new_project_name, kept_scenes)
+            self.state.project.export_project(new_project_path, new_project_name, kept_scenes)
             Session().set("last-video-remixer-export-dir", new_project_path)
             return format_markdown(f"Kept scenes saved as new project: {full_new_project_path} "), \
                 gr.update(visible=True, value=full_new_project_path), \
@@ -2536,7 +2540,7 @@ class VideoRemixer(TabBase):
                     format_markdown(f"Directory '{import_path}' was not found", "error"), \
                     *empty_args
         try:
-            self.state.import_project(import_path)
+            self.state.project.import_project(import_path)
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                     format_markdown(str(error), "error"), \
@@ -2567,7 +2571,7 @@ class VideoRemixer(TabBase):
             self.log(f"purging previous working directory {working_path}")
             purge_path = self.state.purge_paths([working_path])
             if purge_path:
-                self.state.copy_project_file(purge_path)
+                self.state.project.copy_project_file(purge_path)
         self.log(f"creating working directory {working_path}")
         create_directory(working_path)
 
@@ -3017,7 +3021,7 @@ class VideoRemixer(TabBase):
 
     def restore_button714(self):
         if self.state.project_path:
-            self.state.recover_project()
+            self.state.project.recover_project()
 
             # user will expect to return to scene chooser on reopening
             self.state.save_progress("choose")
