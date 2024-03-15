@@ -895,3 +895,23 @@ def image_size(path : str):
         return image.width, image.height
     except OSError as error:
         raise ValueError(f"error with path '{path}': {error}")
+
+def split_color_alpha(color_alpha : str, default_color="#000000", default_alpha="1.0",
+                        ignore_errors=False):
+    """Split a FFmpeg color string like `#FFFFFF@0.9` into `#FFFFFF` and `0.9` """
+    if len(color_alpha):
+        if color_alpha.index("@") >= 0:
+            parts = color_alpha.split("@")
+            if len(parts) >= 2:
+                return parts[0], parts[1]
+        else:
+            return color_alpha, default_alpha
+
+    if ignore_errors:
+        return default_color, default_alpha
+    else:
+        raise ValueError(f"split_color_alpha(): unable to parse {color_alpha}")
+
+def join_color_alpha(color : str, alpha : str="1.0"):
+    """Join a color value and alpha like `#FFFFFF` and `0.9` into an FFmpeg color string like `#FFFFFF@0.9`"""
+    return f"{color}@{alpha}"

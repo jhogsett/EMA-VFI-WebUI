@@ -2,7 +2,7 @@
 import os
 import math
 import shutil
-from typing import Callable
+from typing import Callable, TYPE_CHECKING
 from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
     remove_directories, copy_files, simple_sanitize_filename
 from webui_utils.video_utils import details_from_group_name, PNGtoMP4, combine_video_audio,\
@@ -15,10 +15,12 @@ from deep_interpolate import DeepInterpolate
 from interpolate_series import InterpolateSeries
 from resequence_files import ResequenceFiles
 from upscale_series import UpscaleSeries
-from video_remixer import VideoRemixerState
+
+if TYPE_CHECKING:
+    from video_remixer import VideoRemixerState
 
 class VideoRemixerProcessor():
-    def __init__(self, state : VideoRemixerState, log_fn : Callable):
+    def __init__(self, state : "VideoRemixerState", log_fn : Callable):
         self.state = state
         self.log_fn = log_fn
 

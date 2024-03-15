@@ -4,6 +4,7 @@ import math
 import re
 import shutil
 import sys
+from typing import Callable
 import yaml
 from yaml import Loader, YAMLError
 from webui_utils.auto_increment import AutoIncrementBackupFilename, AutoIncrementDirectory
@@ -19,9 +20,17 @@ from split_scenes import SplitScenes
 from split_frames import SplitFrames
 from slice_video import SliceVideo
 from resequence_files import ResequenceFiles
+from video_remixer_processor import VideoRemixerProcessor
 
 class VideoRemixerState():
-    def __init__(self):
+    def __init__(self, remixer_settings : dict, global_options : dict, log_fn : Callable):
+        # used internally only
+        self.remixer_settings = remixer_settings
+        self.global_options = global_options
+        self.log_fn = log_fn
+        self.split_scene_cache = []
+        self.split_scene_cached_index = -1
+
         # set at various stages
         self.progress = "home"
 
@@ -102,17 +111,19 @@ class VideoRemixerState():
         self.video_clips = []
         self.clips = []
 
-        # used internally only
-        self.split_scene_cache = []
-        self.split_scene_cached_index = -1
-
     # remove transient state
     def __getstate__(self):
         state = self.__dict__.copy()
-        if "split_scene_cache" in state:
-            del state["split_scene_cache"]
-        if "split_scene_cached_index" in state:
-            del state["split_scene_cached_index"]
+        internal_state = [
+            "remixer_settings",
+            "global_options",
+           "log_fn",
+           "split_scene_cache",
+           "split_scene_cached_index"
+        ]
+        for attribute in internal_state:
+            if attribute in state:
+                del state[attribute]
         return state
 
     DEF_FILENAME = "project.yaml"
@@ -144,10 +155,6 @@ class VideoRemixerState():
     CLIPS_PATH = "CLIPS"
     AUDIO_CLIPS_PATH = "AUDIO"
     VIDEO_CLIPS_PATH = "VIDEO"
-    FONTS_ROOT = "fonts"
-
-    # TODO this is a UI concern
-    GAP = " " * 5
 
     SAFETY_DEFAULTS = {
         "project_fps" : 29.97,
@@ -176,31 +183,17 @@ class VideoRemixerState():
         "sound_format" : "wav"
     }
 
+
+    ## Global Concern
+
+    def log(self, message):
+        self.log_fn(message)
+
+
+    ## Project Concern
+
     def reset(self):
         self.__init__()
-
-    # set project settings UI defaults in case the project is reopened
-    # otherwise some UI elements get set to None on reopened new projects
-    def set_project_ui_defaults(self, default_fps, defaults):
-        self.project_fps = default_fps
-        self.deinterlace = defaults["deinterlace"]
-        self.split_type = defaults["split_type"]
-        self.scene_threshold = defaults["scene_threshold"]
-        self.break_duration = defaults["break_duration"]
-        self.break_ratio = defaults["break_ratio"]
-        self.thumbnail_type = defaults["thumbnail_type"]
-        self.resize = defaults["resize"]
-        self.resynthesize = defaults["resynthesize"]
-        self.inflate = defaults["inflate"]
-        self.upscale = defaults["upscale"]
-        self.upscale_option = defaults["upscale_option"]
-        self.min_frames_per_scene = defaults["min_frames_per_scene"]
-        self.split_time = defaults["split_time"]
-        self.inflate_by_option = defaults["inflate_by_option"]
-        self.inflate_slow_option = defaults["inflate_slow_option"]
-        self.resynth_option = defaults["resynth_option"]
-        self.frame_format = defaults["frame_format"]
-        self.audio_format = defaults["sound_format"]
 
     def save(self, filepath : str=None):
         filepath = filepath or self.project_filepath()
@@ -209,6 +202,563 @@ class VideoRemixerState():
 
     def project_filepath(self, filename : str=DEF_FILENAME):
         return os.path.join(self.project_path, filename)
+
+    def backup_project_file(self, purged_path=None):
+        if not purged_path:
+            purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
+            create_directory(purged_root_path)
+            purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory(self.PURGED_DIR)
+        return self.copy_project_file(purged_path)
+
+    # when advancing forward from the Set Up Project step
+    # the user may be redoing the project from this step
+    # need to purge anything created based on old settings
+    def reset_at_project_settings(self):
+        purge_path = self.purge_paths([
+            self.scenes_path,
+            self.dropped_scenes_path,
+            self.thumbnail_path,
+            self.clips_path,
+            self.resize_path,
+            self.resynthesis_path,
+            self.inflation_path,
+            self.upscale_path])
+
+        if purge_path:
+            self.copy_project_file(purge_path)
+        self.scene_names = []
+        self.current_scene = 0
+        self.thumbnails = []
+
+    # keep project's own copy of original video
+    # it will be needed later if restarting the project
+    def save_original_video(self, prevent_overwrite=True):
+        _, filename, ext = split_filepath(self.source_video)
+        video_filename = filename + ext
+
+        # clean various problematic chars from filenames
+        filtered_filename = clean_filename(video_filename, self.FILENAME_FILTER)
+        project_video_path = os.path.join(self.project_path, filtered_filename)
+
+        if os.path.exists(project_video_path) and prevent_overwrite:
+            raise ValueError(
+            f"The local project video file already exists, copying skipped: {project_video_path}")
+
+        with Mtqdm().open_bar(total=1, desc="Copying") as bar:
+            Mtqdm().message(bar, "Copying source video locally - no ETA")
+            shutil.copy(self.source_video, project_video_path)
+            self.source_video = project_video_path
+            Mtqdm().update_bar(bar)
+
+    def copy_project_file(self, copy_path):
+        project_file = VideoRemixerState.determine_project_filepath(self.project_path)
+        saved_project_file = os.path.join(copy_path, self.DEF_FILENAME)
+        shutil.copy(project_file, saved_project_file)
+        return saved_project_file
+
+    def sort_marked_scenes(self) -> dict:
+        """Returns dict mapping scene sort mark to scene name."""
+        result = {}
+        for scene_name in self.scene_names:
+            scene_label = self.scene_labels.get(scene_name)
+            sort, _, _ = self.split_label(scene_label)
+            if sort:
+                result[sort] = scene_name
+        return result
+
+    def kept_scenes(self) -> list:
+        """Returns kept scene names sorted"""
+        return sorted([scene for scene in self.scene_states if self.scene_states[scene] == self.KEEP_MARK])
+
+    def dropped_scenes(self) -> list:
+        """Returns dropped scene names sorted"""
+        return sorted([scene for scene in self.scene_states if self.scene_states[scene] == self.DROP_MARK])
+
+    # returns validated version of path and files, and an optional messages str
+    def ensure_valid_populated_path(self, description : str, path : str, files : list | None=None):
+        if not path:
+            return None, None, None
+
+        messages = Jot()
+        if not os.path.exists(path):
+            messages.add(f"{description} path '{path}' not found - recreating")
+            create_directory(path)
+
+        path_files = get_files(path)
+        file_count = len(files) if files else 0
+        path_file_count = len(path_files)
+
+        if not files and not path_files:
+            return path, [], messages.report()
+
+        if not files and path_files:
+            messages.add(f"{description} path '{path}' has {path_file_count} files unknown " +
+                         " to the project. The files are being ignored (safe to delete).")
+            return path, [], messages.report()
+
+        if path_file_count != file_count:
+            messages.add(f"{description} path '{path}' should have {file_count} files" +
+                    f" but has {path_file_count}. The files are being ignored (safe to delete).")
+            return path, [], messages.report()
+
+        # IDEA further possible checks: files have bytes,
+        # files are found to be the right binary type, etc
+
+        return path, files, messages.report()
+
+    # returns validated version of path, and an optional messages str
+    def ensure_valid_path(self, description : str, path : str, files : list | None=None):
+        if not path:
+            return None, None
+
+        messages = Jot()
+        if not os.path.exists(path):
+            messages.add(f"{description} path '{path}' not found - recreating")
+            create_directory(path)
+
+        return path, messages.report()
+
+    def post_load_integrity_check(self):
+        messages = Jot()
+
+        self.thumbnail_path, self.thumbnails, message = self.ensure_valid_populated_path(
+            "Thumbnails", self.thumbnail_path, self.thumbnails)
+        if message:
+            messages.add(message)
+
+        self.clips_path, self.clips, message = self.ensure_valid_populated_path(
+            "Clips", self.clips_path, self.clips)
+        if message:
+            messages.add(message)
+
+        self.audio_clips_path, self.audio_clips, message = self.ensure_valid_populated_path(
+            "Audio Clips", self.audio_clips_path, self.audio_clips)
+        if message:
+            messages.add(message)
+
+        self.video_clips_path, self.video_clips, message = self.ensure_valid_populated_path(
+            "Video Clips", self.video_clips_path, self.video_clips)
+        if message:
+            messages.add(message)
+
+        self.dropped_scenes_path, message = self.ensure_valid_path(
+            "Dropped Scenes", self.dropped_scenes_path)
+        if message:
+            messages.add(message)
+
+        self.frames_path, message = self.ensure_valid_path("Frames Path", self.frames_path)
+        if message:
+            messages.add(message)
+
+        self.inflation_path, message = self.ensure_valid_path("Inflation Path", self.inflation_path)
+        if message:
+            messages.add(message)
+
+        self.inflation_path, message = self.ensure_valid_path("Inflation Path", self.inflation_path)
+        if message:
+            messages.add(message)
+
+        self.resize_path, message = self.ensure_valid_path("Resize Path", self.resize_path)
+        if message:
+            messages.add(message)
+
+        self.resynthesis_path, message = self.ensure_valid_path(
+            "Resynthesis Path", self.resynthesis_path)
+        if message:
+            messages.add(message)
+
+        self.scenes_path, message = self.ensure_valid_path("Scenes Path", self.scenes_path)
+        if message:
+            messages.add(message)
+
+        self.upscale_path, message = self.ensure_valid_path("Upscale Path", self.upscale_path)
+        if message:
+            messages.add(message)
+
+        return messages.report()
+
+    def recover_project(self, global_options, remixer_settings, log_fn):
+        log_fn("beginning project recovery")
+
+        # purge project paths ahead of recreating
+        purged_path = self.purge_paths([
+            self.scenes_path,
+            self.dropped_scenes_path,
+            self.thumbnail_path,
+            self.audio_clips_path,
+            self.video_clips_path,
+            self.clips_path,
+            self.resize_path,
+            self.resynthesis_path,
+            self.inflation_path,
+            self.upscale_path
+        ])
+        log_fn(f"generated content directories purged to {purged_path}")
+
+        self.render_source_frames(global_options=global_options, prevent_overwrite=True)
+        log_fn(f"source frames rendered to {self.frames_path}")
+
+        source_audio_crf = remixer_settings["source_audio_crf"]
+        try:
+            self.create_source_audio(source_audio_crf, global_options, prevent_overwrite=True)
+            log_fn(f"created source audio {self.source_audio} from {self.source_video}")
+        except ValueError as error:
+            # ignore, don't create the file if present or same as video
+            log_fn(f"ignoring: {error}")
+
+        create_directory(self.scenes_path)
+        log_fn(f"created scenes directory {self.scenes_path}")
+        create_directory(self.dropped_scenes_path)
+        log_fn(f"created dropped scenes directory {self.dropped_scenes_path}")
+
+        log_fn("beginning recreating of scenes from source frames")
+        source_frames = sorted(get_files(self.frames_path))
+        with Mtqdm().open_bar(total=len(self.scene_names), desc="Recreating Scenes") as bar:
+            for scene_name in self.scene_names:
+                scene_path = os.path.join(self.scenes_path, scene_name)
+                create_directory(scene_path)
+                log_fn(f"created scene directory {scene_path}")
+
+                first_index, last_index, _ = details_from_group_name(scene_name)
+                num_frames = (last_index - first_index) + 1
+                with Mtqdm().open_bar(total=num_frames, desc="Copying") as inner_bar:
+                    for index in range(first_index, last_index + 1):
+                        source_path = source_frames[index]
+                        _, filename, ext = split_filepath(source_path)
+                        frame_path = os.path.join(scene_path, filename + ext)
+                        shutil.copy(source_path, frame_path)
+                        Mtqdm().update_bar(inner_bar)
+
+                log_fn(f"scene frames copied to {scene_path}")
+                Mtqdm().update_bar(bar)
+        log_fn(f"recreated scenes")
+
+        log_fn(f"about to create thumbnails of type {self.thumbnail_type}")
+        self.create_thumbnails(log_fn, global_options, remixer_settings)
+        self.thumbnails = sorted(get_files(self.thumbnail_path))
+
+        self.clips_path = os.path.join(self.project_path, self.CLIPS_PATH)
+        log_fn(f"creating clips directory {self.clips_path}")
+        create_directory(self.clips_path)
+
+    def export_project(self, log_fn, new_project_path, new_project_name, kept_scenes):
+        new_project_name = new_project_name.strip()
+        full_new_project_path = os.path.join(new_project_path, new_project_name)
+
+        create_directory(full_new_project_path)
+        new_profile_filepath = self.copy_project_file(full_new_project_path)
+
+        # load the copied project file
+        new_state = VideoRemixerState.load(new_profile_filepath, self.remixer_settings,
+                                           self.global_options, self.log_fn)
+
+        # update project paths to the new one
+        new_state = VideoRemixerState.load_ported(new_state.project_path, new_profile_filepath,
+                            self.remixer_settings, self.global_options, log_fn, save_original=False)
+
+        # ensure the project directories exist
+        new_state.post_load_integrity_check()
+
+        # copy the source video
+        with Mtqdm().open_bar(total=1, desc="Copying") as bar:
+            Mtqdm().message(bar, "Copying source video - no ETA")
+            shutil.copy(self.source_video, new_state.source_video)
+            Mtqdm().update_bar(bar)
+
+        # copy the source audio (if not using the source video as audio source)
+        if self.source_audio != self.source_video:
+            with Mtqdm().open_bar(total=1, desc="Copying") as bar:
+                Mtqdm().message(bar, "Copying source audio - no ETA")
+                shutil.copy(self.source_audio, new_state.source_audio)
+                Mtqdm().update_bar(bar)
+
+        # ensure scenes path contains all / only kept scenes
+        self.recompile_scenes()
+
+        # prepare to rebuild scene_states dict, and scene_names, thumbnails lists
+        # in the new project
+        new_state.scene_states = {}
+        new_state.scene_names = []
+        new_state.thumbnails = []
+
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Exporting") as bar:
+            for index, scene_name in enumerate(self.scene_names):
+                state = self.scene_states[scene_name]
+                if state == self.KEEP_MARK:
+                    scene_name = self.scene_names[index]
+                    new_state.scene_states[scene_name] = self.KEEP_MARK
+
+                    new_state.scene_names.append(scene_name)
+                    scene_dir = os.path.join(self.scenes_path, scene_name)
+                    new_scene_dir = os.path.join(new_state.scenes_path, scene_name)
+                    duplicate_directory(scene_dir, new_scene_dir)
+
+                    scene_thumbnail = self.thumbnails[index]
+                    _, filename, ext = split_filepath(scene_thumbnail)
+                    new_thumbnail = os.path.join(new_state.thumbnail_path, filename + ext)
+                    new_state.thumbnails.append(new_thumbnail)
+                    shutil.copy(scene_thumbnail, new_thumbnail)
+                    Mtqdm().update_bar(bar)
+
+        # reset some things
+        new_state.current_scene = 0
+        new_state.audio_clips = []
+        new_state.clips = []
+        new_state.processed_content_invalid = False
+        new_state.progress = "choose"
+
+        new_state.save()
+
+    def import_project(self, log_fn, import_path):
+        try:
+            import_file = VideoRemixerState.determine_project_filepath(import_path)
+        except ValueError as error:
+            message = f"import_project(): error determining project filepath: {error}"
+            log_fn(message)
+            raise ValueError(message)
+
+        try:
+            imported = VideoRemixerState.load(import_file, None, None, self.log_fn)
+        except ValueError as error:
+            message = f"import_project(): error loading import project: {error}"
+            log_fn(message)
+            raise ValueError(message)
+
+        if imported.project_ported(import_file):
+            try:
+                imported = VideoRemixerState.load_ported(imported.project_path, import_file, None, None, self.log_fn)
+            except ValueError as error:
+                message = f"import_project(): error loading ported import project: {error}"
+                log_fn(message)
+                raise ValueError(message)
+
+        messages = imported.post_load_integrity_check()
+        log_fn(f"import_project(): port_load_integrity_check():\r\n{messages}")
+
+        _, source_video, source_ext = split_filepath(self.source_video)
+        _, import_video, import_ext = split_filepath(imported.source_video)
+        source_video += source_ext
+        import_video += import_ext
+
+        if source_video != import_video:
+            message = "Unable to import from a project created from a different source video"
+            log_fn(message)
+            raise ValueError(message)
+
+        current_lowest, current_highest = self.scene_frame_limits(self)
+        import_lowest, import_highest = self.scene_frame_limits(imported)
+        current_range = range(current_lowest, current_highest + 1)
+        import_range = range(import_lowest, import_highest + 1)
+
+        if ranges_overlap(current_range, import_range):
+            message = "Unable to import from a project with overlapping scene ranges"
+            log_fn(message)
+            raise ValueError(message)
+
+        self.uncompile_scenes()
+        imported.uncompile_scenes()
+
+        self.backup_project_file()
+
+        self.scene_names = sorted(self.scene_names + imported.scene_names)
+
+        for scene_name, state in imported.scene_states.items():
+            self.scene_states[scene_name] = state
+
+        for scene_name, label in imported.scene_labels.items():
+            self.scene_labels[scene_name] = label
+
+        duplicate_directory(imported.scenes_path, self.scenes_path)
+        duplicate_directory(imported.thumbnail_path, self.thumbnail_path)
+
+        self.thumbnails = sorted(get_files(self.thumbnail_path))
+
+        self.current_scene = self.scene_names.index(imported.scene_names[0])
+
+        # save the imported project state since its been altered
+        imported.save()
+
+        self.save()
+
+    def scene_frame_limits(self, state):
+        highest_frame = -1
+        lowest_frame = sys.maxsize
+        for scene_name in sorted(state.scene_names):
+            first, last, _ = details_from_group_name(scene_name)
+            lowest_frame = first if first < lowest_frame else lowest_frame
+            highest_frame = last if last > highest_frame else highest_frame
+        return lowest_frame, highest_frame
+
+    @staticmethod
+    def load(filepath : str, remixer_settings : dict, global_options : dict, log_fn : Callable):
+        with open(filepath, "r") as file:
+            try:
+                state : VideoRemixerState = yaml.load(file, Loader=Loader)
+
+                # establish some internal state
+                state.remixer_settings = remixer_settings
+                state.global_options = global_options
+                state.log_fn = log_fn
+
+                # reload some things
+                # TODO maybe reload from what's found on disk
+                state.scene_names = sorted(state.scene_names) if state.scene_names else []
+                state.thumbnails = sorted(state.thumbnails) if state.thumbnails else []
+                state.audio_clips = sorted(state.audio_clips) if state.audio_clips else []
+                state.video_clips = sorted(state.video_clips) if state.video_clips else []
+                state.setup_processing_paths()
+
+                ## Compatibility
+                # state.current_scene was originally a string
+                if isinstance(state.current_scene, str):
+                    try:
+                        state.current_scene = state.scene_names.index(state.current_scene)
+                    except IndexError:
+                        state.current_scene = 0
+                # originally implied only a 60 second split
+                if state.split_type == "Minute":
+                    state.split_type = "Time"
+                    state.split_time = 60
+                    state.split_frames = state._calc_split_frames(state.project_fps, state.split_time)
+                # new attribute
+                state.processed_content_invalid = False
+                # new separate audio source
+                try:
+                    if not state.source_audio:
+                        state.source_audio = state.source_video
+                except AttributeError:
+                    state.source_audio = state.source_video
+                # new crop offsets
+                try:
+                    if state.crop_offset_x == None or state.crop_offset_y == None:
+                        state.crop_offset_x = -1
+                        state.crop_offset_y = -1
+                except AttributeError:
+                    state.crop_offset_x = -1
+                    state.crop_offset_y = -1
+                # new scene labels
+                try:
+                    if state.scene_labels == None:
+                        state.scene_labels = {}
+                except AttributeError:
+                    state.scene_labels = {}
+                # new inflation options
+                try:
+                    if state.inflate_by_option == None:
+                        state.inflate_by_option = "2X"
+                except AttributeError:
+                    state.inflate_by_option = "2X"
+                # new inflation slow options
+                try:
+                    if isinstance(state.inflate_slow_option, bool):
+                        if state.inflate_slow_option:
+                            state.inflate_slow_option = "Audio"
+                        else:
+                            state.inflate_slow_option = "No"
+                except AttributeError:
+                    state.inflate_slow_option = "No"
+                # new attribute
+                state.source_frames_invalid = False
+                # new resynthesis option
+                try:
+                    if not state.resynth_option:
+                        state.resynth_option = "Scrub"
+                except AttributeError:
+                        state.resynth_option = "Scrub"
+                # new frame and found format options
+                try:
+                    if not state.frame_format:
+                        state.frame_format = "png"
+                except AttributeError:
+                        state.frame_format = "png"
+                try:
+                    if not state.sound_format:
+                        state.sound_format = "wav"
+                except AttributeError:
+                        state.sound_format = "wav"
+
+                return state
+
+            except YAMLError as error:
+                if hasattr(error, 'problem_mark'):
+                    mark = error.problem_mark
+                    message = \
+                f"Error loading project file on line {mark.line+1} column {mark.column+1}: {error}"
+                else:
+                    message = error
+                raise ValueError(message)
+
+    @staticmethod
+    def load_ported(original_project_path, ported_project_file : str, remixer_settings, global_options, log_fn, save_original = True):
+        new_path, _, _ = split_filepath(ported_project_file)
+
+        if save_original:
+            backup_path = os.path.join(new_path, "ported_project_files")
+            create_directory(backup_path)
+            backup_filepath = \
+                AutoIncrementBackupFilename(ported_project_file, backup_path).next_filepath()
+            shutil.copy(ported_project_file, backup_filepath)
+
+        if new_path[-1] != "\\":
+            new_path += "\\"
+        if original_project_path[-1] != "\\":
+            original_project_path += "\\"
+
+        lines = []
+        with open(ported_project_file, "r", encoding="UTF-8") as file:
+            lines = file.readlines()
+        new_lines = []
+
+        original_project_path_escaped = original_project_path.replace("\\", "\\\\")
+        new_path_escaped = new_path.replace("\\", "\\\\")
+        original_project_path_trimmed = original_project_path[:-1]
+        new_path_trimmed = new_path[:-1]
+        for line in lines:
+            if line.find(original_project_path_escaped) != -1:
+                new_line = line.replace(original_project_path_escaped, new_path_escaped)
+            if line.find(original_project_path_trimmed) != -1:
+                new_line = line.replace(original_project_path_trimmed, new_path_trimmed)
+            elif line.find(original_project_path) != -1:
+                new_line = line.replace(original_project_path, new_path)
+            else:
+                new_line = line
+            new_lines.append(new_line)
+
+        with open(ported_project_file, "w", encoding="UTF-8") as file:
+            file.writelines(new_lines)
+
+        state = VideoRemixerState.load(ported_project_file, remixer_settings, global_options, log_fn)
+        state.save(ported_project_file)
+
+        return state
+
+    def tryattr(self, attribute : str, default=None):
+        return getattr(self, attribute) if hasattr(self, attribute) else default
+
+    def project_ported(self, opened_project_file):
+        opened_path, _, _ = split_filepath(opened_project_file)
+        return self.project_path != opened_path
+
+    @staticmethod
+    def determine_project_filepath(project_path):
+        if os.path.isdir(project_path):
+            project_file = os.path.join(project_path, VideoRemixerState.DEF_FILENAME)
+        else:
+            project_file = project_path
+            project_path, _, _ = split_filepath(project_path)
+        if not os.path.exists(project_file):
+            raise ValueError(f"Project file {project_file} was not found")
+        return project_file
+
+    def new_project(self, remixer_settings : dict):
+        self.remixer_settings = remixer_settings
+        self.processor = VideoRemixerProcessor(self, self.log)
+        self.set_project_ui_defaults(remixer_settings["def_project_fps"], self.SAFETY_DEFAULTS)
+        self.invalidate_split_scene_cache()
+        self.marked_scene = None
+
+
+    ## Ingestion Concern
 
     def ingested_video_report(self):
         title = f"Ingested Video Report: {self.source_video}"
@@ -262,177 +812,6 @@ class VideoRemixerState():
         self.crop_offset_y = -1
         self.project_fps = float(video_details['frame_rate'])
 
-    def _project_settings_report_scene(self):
-        header_row = [
-            "Frame Rate",
-            "Deinterlace",
-            "Resize To",
-            "Crop To",
-            "Crop Offset",
-            "Split Type",
-            "Scene Detection Threshold"]
-        data_rows = [[
-            f"{float(self.project_fps):.2f}",
-            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
-            f"{self.resize_w} x {self.resize_h}",
-            f"{self.crop_w} x {self.crop_h}",
-            f"{self.crop_offset_x} x {self.crop_offset_y}",
-            self.split_type,
-            self.scene_threshold]]
-        return header_row, data_rows
-
-    def _project_settings_report_break(self):
-        header_row = [
-            "Frame Rate",
-            "Deinterlace",
-            "Resize To",
-            "Crop To",
-            "Crop Offset",
-            "Split Type",
-            "Minimum Duration",
-            "Black Ratio"]
-        data_rows = [[
-            f"{float(self.project_fps):.2f}",
-            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
-            f"{self.resize_w} x {self.resize_h}",
-            f"{self.crop_w} x {self.crop_h}",
-            f"{self.crop_offset_x} x {self.crop_offset_y}",
-            self.split_type,
-            f"{self.break_duration}s",
-            self.break_ratio]]
-        return header_row, data_rows
-
-    def _project_settings_report_time(self):
-        header_row = [
-            "Frame Rate",
-            "Deinterlace",
-            "Resize To",
-            "Crop To",
-            "Crop Offset",
-            "Split Type",
-            "Split Time",
-            "Split Frames"]
-        self.split_frames = self._calc_split_frames(self.project_fps, self.split_time)
-        data_rows = [[
-            f"{float(self.project_fps):.2f}",
-            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
-            f"{self.resize_w} x {self.resize_h}",
-            f"{self.crop_w} x {self.crop_h}",
-            f"{self.crop_offset_x} x {self.crop_offset_y}",
-            self.split_type,
-            f"{self.split_time}s",
-            self.split_frames]]
-        return header_row, data_rows
-
-    def _project_settings_report_none(self):
-        header_row = [
-            "Frame Rate",
-            "Deinterlace",
-            "Resize To",
-            "Crop To",
-            "Crop Offset",
-            "Split Type"]
-        data_rows = [[
-            f"{float(self.project_fps):.2f}",
-            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
-            f"{self.resize_w} x {self.resize_h}",
-            f"{self.crop_w} x {self.crop_h}",
-            f"{self.crop_offset_x} x {self.crop_offset_y}",
-            self.split_type]]
-        return header_row, data_rows
-
-    def project_settings_report(self):
-        title = f"Project Path: {self.project_path}"
-        if self.split_type == "Scene":
-            header_row, data_rows = self._project_settings_report_scene()
-        elif self.split_type == "Break":
-            header_row, data_rows = self._project_settings_report_break()
-        elif self.split_type == "Time":
-            header_row, data_rows = self._project_settings_report_time()
-        else: # "None"
-            header_row, data_rows = self._project_settings_report_none()
-        return format_table(header_row, data_rows, color="more", title=title)
-
-    def _calc_split_frames(self, fps, seconds):
-        return round(float(fps) * float(seconds))
-
-    # keep project's own copy of original video
-    # it will be needed later if restarting the project
-    def save_original_video(self, prevent_overwrite=True):
-        _, filename, ext = split_filepath(self.source_video)
-        video_filename = filename + ext
-
-        # clean various problematic chars from filenames
-        filtered_filename = clean_filename(video_filename, self.FILENAME_FILTER)
-        project_video_path = os.path.join(self.project_path, filtered_filename)
-
-        if os.path.exists(project_video_path) and prevent_overwrite:
-            raise ValueError(
-            f"The local project video file already exists, copying skipped: {project_video_path}")
-
-        with Mtqdm().open_bar(total=1, desc="Copying") as bar:
-            Mtqdm().message(bar, "Copying source video locally - no ETA")
-            shutil.copy(self.source_video, project_video_path)
-            self.source_video = project_video_path
-            Mtqdm().update_bar(bar)
-
-    # make a .mp4 container copy of original video if it's not already .mp4
-    # this will be needed later to cut audio wav files
-    # this is expected to be called after save_original_video()
-    def create_source_audio(self, crf, global_options, prevent_overwrite=True, skip_mp4=True):
-        _, filename, ext = split_filepath(self.source_video)
-        if skip_mp4 and ext.lower() == ".mp4":
-            self.source_audio = self.source_video
-            return
-
-        audio_filename = filename  + "-audio" + ".mp4"
-
-        # clean various problematic chars from filenames
-        filtered_filename = clean_filename(audio_filename, self.FILENAME_FILTER)
-        self.source_audio = os.path.join(self.project_path, filtered_filename)
-
-        if os.path.exists(self.source_audio) and prevent_overwrite:
-            raise ValueError(
-            f"The local project audio file already exists, copying skipped: {self.source_audio}")
-
-        with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
-            Mtqdm().message(bar, "Creating source audio locally - no ETA")
-            SourceToMP4(self.source_video, self.source_audio, crf, global_options=global_options)
-            Mtqdm().update_bar(bar)
-
-    def copy_project_file(self, copy_path):
-        project_file = VideoRemixerState.determine_project_filepath(self.project_path)
-        saved_project_file = os.path.join(copy_path, self.DEF_FILENAME)
-        shutil.copy(project_file, saved_project_file)
-        return saved_project_file
-
-    def backup_project_file(self, purged_path=None):
-        if not purged_path:
-            purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
-            create_directory(purged_root_path)
-            purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory(self.PURGED_DIR)
-        return self.copy_project_file(purged_path)
-
-    # when advancing forward from the Set Up Project step
-    # the user may be redoing the project from this step
-    # need to purge anything created based on old settings
-    def reset_at_project_settings(self):
-        purge_path = self.purge_paths([
-            self.scenes_path,
-            self.dropped_scenes_path,
-            self.thumbnail_path,
-            self.clips_path,
-            self.resize_path,
-            self.resynthesis_path,
-            self.inflation_path,
-            self.upscale_path])
-
-        if purge_path:
-            self.copy_project_file(purge_path)
-        self.scene_names = []
-        self.current_scene = 0
-        self.thumbnails = []
-
     # split video into frames
     def render_source_frames(self, global_options, prevent_overwrite=False):
         self.frames_path = os.path.join(self.project_path, self.FRAMES_PATH)
@@ -485,6 +864,30 @@ class VideoRemixerState():
                 log_fn(message)
             else:
                 raise ValueError(message)
+
+    # make a .mp4 container copy of original video if it's not already .mp4
+    # this will be needed later to cut audio wav files
+    # this is expected to be called after save_original_video()
+    def create_source_audio(self, crf, global_options, prevent_overwrite=True, skip_mp4=True):
+        _, filename, ext = split_filepath(self.source_video)
+        if skip_mp4 and ext.lower() == ".mp4":
+            self.source_audio = self.source_video
+            return
+
+        audio_filename = filename  + "-audio" + ".mp4"
+
+        # clean various problematic chars from filenames
+        filtered_filename = clean_filename(audio_filename, self.FILENAME_FILTER)
+        self.source_audio = os.path.join(self.project_path, filtered_filename)
+
+        if os.path.exists(self.source_audio) and prevent_overwrite:
+            raise ValueError(
+            f"The local project audio file already exists, copying skipped: {self.source_audio}")
+
+        with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
+            Mtqdm().message(bar, "Creating source audio locally - no ETA")
+            SourceToMP4(self.source_video, self.source_audio, crf, global_options=global_options)
+            Mtqdm().update_bar(bar)
 
     def scenes_present(self):
         self.uncompile_scenes()
@@ -550,88 +953,6 @@ class VideoRemixerState():
             return error
         except RuntimeError as error:
             return error
-
-    # shrink low-frame count scenes related code
-
-    @staticmethod
-    def decode_scene_name(scene_name):
-        """Returns the first frame, last frame and count of frames"""
-        if not scene_name:
-            raise ValueError("'scene_name' is required")
-
-        splits = scene_name.split("-")
-        if len(splits) != 2:
-            raise ValueError(f"scene_name ''{scene_name} is not parsable")
-
-        first, last = int(splits[0]), int(splits[1])
-        count = (last - first) + 1
-        return first, last, count
-
-    @staticmethod
-    def encode_scene_name(num_width, first, last, first_diff, last_diff):
-        first = int(first) + int(first_diff)
-        last = int(last) + int(last_diff)
-        return f"{str(first).zfill(num_width)}-{str(last).zfill(num_width)}"
-
-    @staticmethod
-    def move_frames(state, scene_name, scene_name_from):
-        log_fn = state["log_fn"]
-        path = state["path"]
-        from_path = os.path.join(path, scene_name_from)
-        to_path = os.path.join(path, scene_name)
-        files = get_files(from_path)
-        for file in files:
-            path, filename, ext = split_filepath(file)
-            new_file = os.path.join(to_path, filename + ext)
-            log_fn(f"moving {file} to {new_file}")
-            shutil.move(file, new_file)
-
-    @staticmethod
-    def remove_scene(state, scene_name):
-        log_fn = state["log_fn"]
-        path = state["path"]
-        scene_name_path = os.path.join(path, scene_name)
-        log_fn(f"removing {scene_name_path}")
-        shutil.rmtree(scene_name_path)
-
-    @staticmethod
-    def rename_scene(state, scene_name, new_contents):
-        log_fn = state["log_fn"]
-        path = state["path"]
-        num_width = state["num_width"]
-        first, last, _ = VideoRemixerState.decode_scene_name(scene_name)
-        new_scene_name = VideoRemixerState.encode_scene_name(num_width, first, last, 0,
-                                                               new_contents)
-        scene_name_path = os.path.join(path, scene_name)
-        new_scene_name_path = os.path.join(path, new_scene_name)
-        log_fn(f"renaming {scene_name_path} to {new_scene_name_path}")
-        os.rename(scene_name_path, new_scene_name_path)
-        return new_scene_name
-
-    @staticmethod
-    def get_container_data(path):
-        scene_names = get_directories(path)
-        result = {}
-        for scene_name in scene_names:
-            dir_path = os.path.join(path, scene_name)
-            count = len(get_files(dir_path))
-            result[scene_name] = count
-        num_width = len(scene_names[0].split("-")[0])
-        return result, num_width
-
-    def consolidate_scenes(self, log_fn):
-        container_data, num_width = VideoRemixerState.get_container_data(self.scenes_path)
-        state = {"path" : self.scenes_path,
-                 "num_width" : num_width,
-                 "log_fn" : log_fn}
-        with Mtqdm().open_bar(total=1, desc="Shrink") as bar:
-            Mtqdm().message(bar, "Shrinking small scenes - no ETA")
-            shrunk_container_data = shrink(container_data, self.min_frames_per_scene,
-                                           VideoRemixerState.move_frames,
-                                           VideoRemixerState.remove_scene,
-                                           VideoRemixerState.rename_scene, state)
-            Mtqdm().update_bar(bar)
-        log_fn(f"shrunk container data: {shrunk_container_data}")
 
     # create a scene thumbnail, assumes:
     # - scenes uncompiled
@@ -722,6 +1043,91 @@ class VideoRemixerState():
                 self.create_thumbnail(scene_name, log_fn, global_options, remixer_settings)
                 Mtqdm().update_bar(bar)
 
+    # shrink low-frame count scenes related code
+
+    @staticmethod
+    def decode_scene_name(scene_name):
+        """Returns the first frame, last frame and count of frames"""
+        if not scene_name:
+            raise ValueError("'scene_name' is required")
+
+        splits = scene_name.split("-")
+        if len(splits) != 2:
+            raise ValueError(f"scene_name ''{scene_name} is not parsable")
+
+        first, last = int(splits[0]), int(splits[1])
+        count = (last - first) + 1
+        return first, last, count
+
+    @staticmethod
+    def encode_scene_name(num_width, first, last, first_diff, last_diff):
+        first = int(first) + int(first_diff)
+        last = int(last) + int(last_diff)
+        return f"{str(first).zfill(num_width)}-{str(last).zfill(num_width)}"
+
+    @staticmethod
+    def move_frames(state, scene_name, scene_name_from):
+        log_fn = state["log_fn"]
+        path = state["path"]
+        from_path = os.path.join(path, scene_name_from)
+        to_path = os.path.join(path, scene_name)
+        files = get_files(from_path)
+        for file in files:
+            path, filename, ext = split_filepath(file)
+            new_file = os.path.join(to_path, filename + ext)
+            log_fn(f"moving {file} to {new_file}")
+            shutil.move(file, new_file)
+
+    @staticmethod
+    def remove_scene(state, scene_name):
+        log_fn = state["log_fn"]
+        path = state["path"]
+        scene_name_path = os.path.join(path, scene_name)
+        log_fn(f"removing {scene_name_path}")
+        shutil.rmtree(scene_name_path)
+
+    @staticmethod
+    def rename_scene(state, scene_name, new_contents):
+        log_fn = state["log_fn"]
+        path = state["path"]
+        num_width = state["num_width"]
+        first, last, _ = VideoRemixerState.decode_scene_name(scene_name)
+        new_scene_name = VideoRemixerState.encode_scene_name(num_width, first, last, 0,
+                                                               new_contents)
+        scene_name_path = os.path.join(path, scene_name)
+        new_scene_name_path = os.path.join(path, new_scene_name)
+        log_fn(f"renaming {scene_name_path} to {new_scene_name_path}")
+        os.rename(scene_name_path, new_scene_name_path)
+        return new_scene_name
+
+    @staticmethod
+    def get_container_data(path):
+        scene_names = get_directories(path)
+        result = {}
+        for scene_name in scene_names:
+            dir_path = os.path.join(path, scene_name)
+            count = len(get_files(dir_path))
+            result[scene_name] = count
+        num_width = len(scene_names[0].split("-")[0])
+        return result, num_width
+
+    def consolidate_scenes(self, log_fn):
+        container_data, num_width = VideoRemixerState.get_container_data(self.scenes_path)
+        state = {"path" : self.scenes_path,
+                 "num_width" : num_width,
+                 "log_fn" : log_fn}
+        with Mtqdm().open_bar(total=1, desc="Shrink") as bar:
+            Mtqdm().message(bar, "Shrinking small scenes - no ETA")
+            shrunk_container_data = shrink(container_data, self.min_frames_per_scene,
+                                           VideoRemixerState.move_frames,
+                                           VideoRemixerState.remove_scene,
+                                           VideoRemixerState.rename_scene, state)
+            Mtqdm().update_bar(bar)
+        log_fn(f"shrunk container data: {shrunk_container_data}")
+
+
+    ## Scene Labels, Sort Marks, Processing Hints, Titles Concern
+
     def split_label(self, label):
         """Splits a label such as '(01){I:2S} My Title (part1){b}' into
         sort: '01', hint: 'I:2S' label: 'My Title (part1){b}' parts """
@@ -778,17 +1184,23 @@ class VideoRemixerState():
                 return True
         return False
 
-    def resize_chosen(self):
-        return self.resize or self.hint_present(self.RESIZE_HINT)
+    # remove scene labels that do not have a corresponding scene name
+    def clean_scene_labels(self):
+        for scene_name, scene_label in self.scene_labels.copy().items():
+            if not scene_name in self.scene_names:
+                self.log(f"deleting unused scene label {scene_label}")
+                del self.scene_labels[scene_name]
+        self.save()
 
-    def resynthesize_chosen(self):
-        return self.resynthesize or self.hint_present(self.RESYNTHESIS_HINT)
+    def add_slomo(self, scene_index, slomo_hint):
+        scene_name = self.scene_names[scene_index]
+        scene_label = self.scene_labels.get(scene_name) or ""
 
-    def inflate_chosen(self):
-        return self.inflate or self.hint_present(self.INFLATION_HINT)
-
-    def upscale_chosen(self):
-        return self.upscale or self.hint_present(self.UPSCALE_HINT)
+        # TODO need to add/modify instead of replace all existing hints
+        sort_mark, _, title = self.split_label(scene_label)
+        new_label = self.compose_label(sort_mark, slomo_hint, title)
+        self.set_scene_label(scene_index, new_label)
+        self.save()
 
     def set_scene_label(self, scene_index, scene_label):
         if scene_label:
@@ -857,88 +1269,26 @@ class VideoRemixerState():
             raise ValueError(
                 f"IndexError encountered while computing scene chooser details: {error}")
 
-    def scene_chooser_details(self, scene_index):
-        try:
-            scene_name, thumbnail_path, scene_state, scene_position, scene_start, scene_duration, \
-                keep_state, scene_label = self.scene_chooser_data(scene_index)
+    def scene_marker(self, scene_name):
+        scene_index = self.scene_names.index(scene_name)
+        _, _, _, _, scene_start, scene_duration, _, _ = self.scene_chooser_data(scene_index)
+        marker = f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]"
+        return marker
 
-            scene_time = f"{scene_start}{self.GAP}+{scene_duration}"
-            keep_symbol = SimpleIcons.HEART if keep_state == True else ""
-            scene_info = f"{scene_position}{self.GAP}{scene_time}{self.GAP}{keep_symbol}"
-            return scene_index, scene_name, thumbnail_path, scene_state, scene_info, scene_label
-        except ValueError as error:
-            raise ValueError(
-                f"ValueError encountered while getting scene chooser data: {error}")
+    def scene_title(self, scene_name):
+        scene_index = self.scene_names.index(scene_name)
+        _, _, _, scene_position, _, _, _, _ = self.scene_chooser_data(scene_index)
+        return scene_position
 
-    def kept_scenes(self) -> list:
-        """Returns kept scene names sorted"""
-        return sorted([scene for scene in self.scene_states if self.scene_states[scene] == self.KEEP_MARK])
 
-    def dropped_scenes(self) -> list:
-        """Returns dropped scene names sorted"""
-        return sorted([scene for scene in self.scene_states if self.scene_states[scene] == self.DROP_MARK])
+    ## Processing Concern
 
-    def sort_marked_scenes(self) -> dict:
-        """Returns dict mapping scene sort mark to scene name."""
-        result = {}
-        for scene_name in self.scene_names:
-            scene_label = self.scene_labels.get(scene_name)
-            sort, _, _ = self.split_label(scene_label)
-            if sort:
-                result[sort] = scene_name
-        return result
+    def setup_processing_paths(self):
+        self.resize_path = os.path.join(self.project_path, self.RESIZE_PATH)
+        self.resynthesis_path = os.path.join(self.project_path, self.RESYNTH_PATH)
+        self.inflation_path = os.path.join(self.project_path, self.INFLATE_PATH)
+        self.upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
 
-    def scene_frames(self, type : str="all") -> int:
-        if type.lower() == "keep":
-            scenes = self.kept_scenes()
-        elif type.lower() == "drop":
-            scenes = self.dropped_scenes()
-        else:
-            scenes = self.scene_names
-        accum = 0
-        for scene in scenes:
-            first, last, _ = details_from_group_name(scene)
-            accum += (last - first) + 1
-        return accum
-
-    def scene_frames_time(self, frames : int) -> str:
-        return seconds_to_hmsf(frames / self.project_fps, self.project_fps)
-
-    # TODO consolidate reports
-    def chosen_scenes_report(self):
-        header_row = [
-            "Scene Choices",
-            "Scenes",
-            "Frames",
-            "Time"]
-        all_scenes = len(self.scene_names)
-        all_frames = self.scene_frames("all")
-        all_time = self.scene_frames_time(all_frames)
-        keep_scenes = len(self.kept_scenes())
-        keep_frames = self.scene_frames("keep")
-        keep_time = self.scene_frames_time(keep_frames)
-        drop_scenes = len(self.dropped_scenes())
-        drop_frames = self.scene_frames("drop")
-        drop_time = self.scene_frames_time(drop_frames)
-        data_rows = [
-            [
-                "Keep " + SimpleIcons.HEART,
-                f"{keep_scenes:,d}",
-                f"{keep_frames:,d}",
-                f"+{keep_time}"],
-            [
-                "Drop",
-                f"{drop_scenes:,d}",
-                f"{drop_frames:,d}",
-                f"+{drop_time}"],
-            [
-                "Total",
-                f"{all_scenes:,d}",
-                f"{all_frames:,d}",
-                f"+{all_time}"]]
-        return format_table(header_row, data_rows, color="more")
-
-    # TODO should these be moved?
     def uncompile_scenes(self):
         if self.dropped_scenes_path and os.path.exists(self.dropped_scenes_path):
             dropped_dirs = get_directories(self.dropped_scenes_path)
@@ -958,7 +1308,206 @@ class VideoRemixerState():
         self.uncompile_scenes()
         self.compile_scenes()
 
-    ## Scene Splitter Functions ##
+    def resize_chosen(self):
+        return self.resize or self.hint_present(self.RESIZE_HINT)
+
+    def resynthesize_chosen(self):
+        return self.resynthesize or self.hint_present(self.RESYNTHESIS_HINT)
+
+    def inflate_chosen(self):
+        return self.inflate or self.hint_present(self.INFLATION_HINT)
+
+    def upscale_chosen(self):
+        return self.upscale or self.hint_present(self.UPSCALE_HINT)
+
+    def purge_paths(self, path_list : list, keep_original=False, purged_path=None, skip_empty_paths=False, additional_path=""):
+        """Purge a list of paths to the purged content directory
+        keep_original: True=don't remove original content when purging
+        purged_path: Used if calling multiple times to store purged content in the same purge directory
+        skip_empty_paths: True=don't purge directories that have no files inside
+        additional_path: If set, adds an additional segment onto the storage path (not returned)
+        Returns: Path to the purged content directory (not incl. additional_path)
+        """
+        paths_to_purge = []
+        for path in path_list:
+            if path and os.path.exists(path):
+                if not skip_empty_paths or directory_populated(path, files_only=True):
+                    paths_to_purge.append(path)
+        if not paths_to_purge:
+            return None
+
+        purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
+        create_directory(purged_root_path)
+
+        if not purged_path:
+            purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory(self.PURGED_DIR)
+
+        for path in paths_to_purge:
+            use_purged_path = os.path.join(purged_path, additional_path)
+            if keep_original:
+                _, last_path, _ = split_filepath(path)
+                copy_path = os.path.join(use_purged_path, last_path)
+                copy_files(path, copy_path)
+            else:
+                shutil.move(path, use_purged_path)
+        return purged_path
+
+    def delete_purged_content(self):
+        purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
+        if os.path.exists(purged_root_path):
+            with Mtqdm().open_bar(total=1, desc="Deleting") as bar:
+                Mtqdm().message(bar, "Removing purged content - No ETA")
+                shutil.rmtree(purged_root_path)
+                Mtqdm().update_bar(bar)
+            return purged_root_path
+        else:
+            return None
+
+    def delete_path(self, path):
+        if path and os.path.exists(path):
+            with Mtqdm().open_bar(total=1, desc="Deleting") as bar:
+                Mtqdm().message(bar, "Removing project content - No ETA")
+                shutil.rmtree(path)
+                Mtqdm().update_bar(bar)
+            return path
+        else:
+            return None
+
+    def purge_processed_content(self, purge_from=RESIZE_STEP):
+        purge_paths = [self.resize_path,
+                       self.resynthesis_path,
+                       self.inflation_path,
+                       self.upscale_path]
+
+        if purge_from == self.RESIZE_STEP:
+            purge_paths = purge_paths[0:]
+        elif purge_from == self.RESYNTH_STEP:
+            purge_paths = purge_paths[1:]
+        elif purge_from == self.INFLATE_STEP:
+            purge_paths = purge_paths[2:]
+        elif purge_from == self.UPSCALE_STEP:
+            purge_paths = purge_paths[3:]
+        else:
+            raise RuntimeError(f"Unrecognized value {purge_from} passed to purge_processed_content()")
+
+        purge_root = self.purge_paths(purge_paths)
+        self.clean_remix_content(purge_from="audio_clips", purge_root=purge_root)
+        return purge_root
+
+    def clean_remix_content(self, purge_from, purge_root=None):
+        clean_paths = [self.audio_clips_path,
+                       self.video_clips_path,
+                       self.clips_path]
+
+        # purge all of the paths, keeping the originals, for safekeeping ahead of reprocessing
+        purge_root = self.purge_paths(clean_paths, keep_original=True, purged_path=purge_root,
+                                      skip_empty_paths=True)
+        if purge_root:
+            self.copy_project_file(purge_root)
+
+        if purge_from == "audio_clips":
+            clean_paths = clean_paths[0:]
+            self.audio_clips = []
+            self.video_clips = []
+            self.clips = []
+        elif purge_from == "video_clips":
+            clean_paths = clean_paths[1:]
+            self.video_clips = []
+            self.clips = []
+        elif purge_from == "remix_clips":
+            clean_paths = clean_paths[2:]
+            self.clips = []
+
+        # clean directories as needed by purge_from
+        # audio wav files can be slow to extract, so they are carefully not cleaned unless needed
+        clean_directories(clean_paths)
+        return purge_root
+
+    def clean_remix_audio(self):
+        clean_directories([self.audio_clips_path])
+
+    def default_remix_filepath(self, extra_suffix=""):
+        _, filename, _ = split_filepath(self.source_video)
+        suffix = self.remix_filename_suffix(extra_suffix)
+        return os.path.join(self.project_path, f"{filename}-{suffix}.mp4")
+
+    def remix_filename_suffix(self, extra_suffix):
+        label = "remix"
+
+        if self.resize_chosen():
+            label += "-rc" if self.resize else "-rcH"
+        else:
+            label += "-or"
+
+        if self.resynthesize_chosen():
+            if self.resynthesize:
+                label += "-re"
+                if self.resynth_option == "Clean":
+                    label += "C"
+                elif self.resynth_option == "Scrub":
+                    label += "S"
+                elif self.resynth_option == "Replace":
+                    label += "R"
+            else:
+                label += "-reH"
+
+        if self.inflate_chosen():
+            if self.inflate:
+                label += "-in" + self.inflate_by_option[0]
+                if self.inflate_slow_option == "Audio":
+                    label += "SA"
+                elif self.inflate_slow_option == "Silent":
+                    label += "SM"
+            else:
+                label += "-inH"
+
+        if self.upscale_chosen():
+            if self.upscale:
+                label += "-up" + self.upscale_option[0]
+            else:
+                label += "-upH"
+
+        label += "-" + extra_suffix if extra_suffix else ""
+        return label
+
+
+    ## UI Concern
+
+    # set project settings UI defaults in case the project is reopened
+    # otherwise some UI elements get set to None on reopened new projects
+    def set_project_ui_defaults(self, default_fps, defaults):
+        self.project_fps = default_fps
+        self.deinterlace = defaults["deinterlace"]
+        self.split_type = defaults["split_type"]
+        self.scene_threshold = defaults["scene_threshold"]
+        self.break_duration = defaults["break_duration"]
+        self.break_ratio = defaults["break_ratio"]
+        self.thumbnail_type = defaults["thumbnail_type"]
+        self.resize = defaults["resize"]
+        self.resynthesize = defaults["resynthesize"]
+        self.inflate = defaults["inflate"]
+        self.upscale = defaults["upscale"]
+        self.upscale_option = defaults["upscale_option"]
+        self.min_frames_per_scene = defaults["min_frames_per_scene"]
+        self.split_time = defaults["split_time"]
+        self.inflate_by_option = defaults["inflate_by_option"]
+        self.inflate_slow_option = defaults["inflate_slow_option"]
+        self.resynth_option = defaults["resynth_option"]
+        self.frame_format = defaults["frame_format"]
+        self.audio_format = defaults["sound_format"]
+
+    def scene_chooser_details(self, scene_index, display_gap):
+        try:
+            scene_name, thumbnail_path, scene_state, scene_position, scene_start, scene_duration, \
+                keep_state, scene_label = self.scene_chooser_data(scene_index)
+
+            scene_time = f"{scene_start}{display_gap}+{scene_duration}"
+            keep_symbol = SimpleIcons.HEART if keep_state == True else ""
+            scene_info = f"{scene_position}{display_gap}{scene_time}{display_gap}{keep_symbol}"
+            return scene_index, scene_name, thumbnail_path, scene_state, scene_info, scene_label
+        except ValueError as error:
+            raise ValueError(
+                f"ValueError encountered while getting scene chooser data: {error}")
 
     def compute_preview_frame(self, log_fn, scene_index, split_percent):
         scene_index = int(scene_index)
@@ -1222,159 +1771,157 @@ class VideoRemixerState():
 
         return f"Scene split into new scenes {new_lower_scene_name} and {new_upper_scene_name}"
 
-#     ## Purging ##
+    def save_progress(self, progress : str, save_project : bool=True):
+        self.progress = progress
+        if save_project:
+            self.save()
 
-    def purge_paths(self, path_list : list, keep_original=False, purged_path=None, skip_empty_paths=False, additional_path=""):
-        """Purge a list of paths to the purged content directory
-        keep_original: True=don't remove original content when purging
-        purged_path: Used if calling multiple times to store purged content in the same purge directory
-        skip_empty_paths: True=don't purge directories that have no files inside
-        additional_path: If set, adds an additional segment onto the storage path (not returned)
-        Returns: Path to the purged content directory (not incl. additional_path)
-        """
-        paths_to_purge = []
-        for path in path_list:
-            if path and os.path.exists(path):
-                if not skip_empty_paths or directory_populated(path, files_only=True):
-                    paths_to_purge.append(path)
-        if not paths_to_purge:
-            return None
 
-        purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
-        create_directory(purged_root_path)
+    ## Reporting Concern
 
-        if not purged_path:
-            purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory(self.PURGED_DIR)
+    def _project_settings_report_scene(self):
+        header_row = [
+            "Frame Rate",
+            "Deinterlace",
+            "Resize To",
+            "Crop To",
+            "Crop Offset",
+            "Split Type",
+            "Scene Detection Threshold"]
+        data_rows = [[
+            f"{float(self.project_fps):.2f}",
+            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
+            f"{self.resize_w} x {self.resize_h}",
+            f"{self.crop_w} x {self.crop_h}",
+            f"{self.crop_offset_x} x {self.crop_offset_y}",
+            self.split_type,
+            self.scene_threshold]]
+        return header_row, data_rows
 
-        for path in paths_to_purge:
-            use_purged_path = os.path.join(purged_path, additional_path)
-            if keep_original:
-                _, last_path, _ = split_filepath(path)
-                copy_path = os.path.join(use_purged_path, last_path)
-                copy_files(path, copy_path)
-            else:
-                shutil.move(path, use_purged_path)
-        return purged_path
+    def _project_settings_report_break(self):
+        header_row = [
+            "Frame Rate",
+            "Deinterlace",
+            "Resize To",
+            "Crop To",
+            "Crop Offset",
+            "Split Type",
+            "Minimum Duration",
+            "Black Ratio"]
+        data_rows = [[
+            f"{float(self.project_fps):.2f}",
+            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
+            f"{self.resize_w} x {self.resize_h}",
+            f"{self.crop_w} x {self.crop_h}",
+            f"{self.crop_offset_x} x {self.crop_offset_y}",
+            self.split_type,
+            f"{self.break_duration}s",
+            self.break_ratio]]
+        return header_row, data_rows
 
-    def delete_purged_content(self):
-        purged_root_path = os.path.join(self.project_path, self.PURGED_CONTENT)
-        if os.path.exists(purged_root_path):
-            with Mtqdm().open_bar(total=1, desc="Deleting") as bar:
-                Mtqdm().message(bar, "Removing purged content - No ETA")
-                shutil.rmtree(purged_root_path)
-                Mtqdm().update_bar(bar)
-            return purged_root_path
+    def _project_settings_report_time(self):
+        header_row = [
+            "Frame Rate",
+            "Deinterlace",
+            "Resize To",
+            "Crop To",
+            "Crop Offset",
+            "Split Type",
+            "Split Time",
+            "Split Frames"]
+        self.split_frames = self._calc_split_frames(self.project_fps, self.split_time)
+        data_rows = [[
+            f"{float(self.project_fps):.2f}",
+            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
+            f"{self.resize_w} x {self.resize_h}",
+            f"{self.crop_w} x {self.crop_h}",
+            f"{self.crop_offset_x} x {self.crop_offset_y}",
+            self.split_type,
+            f"{self.split_time}s",
+            self.split_frames]]
+        return header_row, data_rows
+
+    def _project_settings_report_none(self):
+        header_row = [
+            "Frame Rate",
+            "Deinterlace",
+            "Resize To",
+            "Crop To",
+            "Crop Offset",
+            "Split Type"]
+        data_rows = [[
+            f"{float(self.project_fps):.2f}",
+            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
+            f"{self.resize_w} x {self.resize_h}",
+            f"{self.crop_w} x {self.crop_h}",
+            f"{self.crop_offset_x} x {self.crop_offset_y}",
+            self.split_type]]
+        return header_row, data_rows
+
+    def project_settings_report(self):
+        title = f"Project Path: {self.project_path}"
+        if self.split_type == "Scene":
+            header_row, data_rows = self._project_settings_report_scene()
+        elif self.split_type == "Break":
+            header_row, data_rows = self._project_settings_report_break()
+        elif self.split_type == "Time":
+            header_row, data_rows = self._project_settings_report_time()
+        else: # "None"
+            header_row, data_rows = self._project_settings_report_none()
+        return format_table(header_row, data_rows, color="more", title=title)
+
+    def _calc_split_frames(self, fps, seconds):
+        return round(float(fps) * float(seconds))
+
+    def scene_frames(self, type : str="all") -> int:
+        if type.lower() == "keep":
+            scenes = self.kept_scenes()
+        elif type.lower() == "drop":
+            scenes = self.dropped_scenes()
         else:
-            return None
+            scenes = self.scene_names
+        accum = 0
+        for scene in scenes:
+            first, last, _ = details_from_group_name(scene)
+            accum += (last - first) + 1
+        return accum
 
-    def delete_path(self, path):
-        if path and os.path.exists(path):
-            with Mtqdm().open_bar(total=1, desc="Deleting") as bar:
-                Mtqdm().message(bar, "Removing project content - No ETA")
-                shutil.rmtree(path)
-                Mtqdm().update_bar(bar)
-            return path
-        else:
-            return None
+    def scene_frames_time(self, frames : int) -> str:
+        return seconds_to_hmsf(frames / self.project_fps, self.project_fps)
 
-    def purge_processed_content(self, purge_from=RESIZE_STEP):
-        purge_paths = [self.resize_path,
-                       self.resynthesis_path,
-                       self.inflation_path,
-                       self.upscale_path]
-
-        if purge_from == self.RESIZE_STEP:
-            purge_paths = purge_paths[0:]
-        elif purge_from == self.RESYNTH_STEP:
-            purge_paths = purge_paths[1:]
-        elif purge_from == self.INFLATE_STEP:
-            purge_paths = purge_paths[2:]
-        elif purge_from == self.UPSCALE_STEP:
-            purge_paths = purge_paths[3:]
-        else:
-            raise RuntimeError(f"Unrecognized value {purge_from} passed to purge_processed_content()")
-
-        purge_root = self.purge_paths(purge_paths)
-        self.clean_remix_content(purge_from="audio_clips", purge_root=purge_root)
-        return purge_root
-
-    def clean_remix_content(self, purge_from, purge_root=None):
-        clean_paths = [self.audio_clips_path,
-                       self.video_clips_path,
-                       self.clips_path]
-
-        # purge all of the paths, keeping the originals, for safekeeping ahead of reprocessing
-        purge_root = self.purge_paths(clean_paths, keep_original=True, purged_path=purge_root,
-                                      skip_empty_paths=True)
-        if purge_root:
-            self.copy_project_file(purge_root)
-
-        if purge_from == "audio_clips":
-            clean_paths = clean_paths[0:]
-            self.audio_clips = []
-            self.video_clips = []
-            self.clips = []
-        elif purge_from == "video_clips":
-            clean_paths = clean_paths[1:]
-            self.video_clips = []
-            self.clips = []
-        elif purge_from == "remix_clips":
-            clean_paths = clean_paths[2:]
-            self.clips = []
-
-        # clean directories as needed by purge_from
-        # audio wav files can be slow to extract, so they are carefully not cleaned unless needed
-        clean_directories(clean_paths)
-        return purge_root
-
-    def clean_remix_audio(self):
-        clean_directories([self.audio_clips_path])
-
-    def default_remix_filepath(self, extra_suffix=""):
-        _, filename, _ = split_filepath(self.source_video)
-        suffix = self.remix_filename_suffix(extra_suffix)
-        return os.path.join(self.project_path, f"{filename}-{suffix}.mp4")
-
-    def remix_filename_suffix(self, extra_suffix):
-        label = "remix"
-
-        if self.resize_chosen():
-            label += "-rc" if self.resize else "-rcH"
-        else:
-            label += "-or"
-
-        if self.resynthesize_chosen():
-            if self.resynthesize:
-                label += "-re"
-                if self.resynth_option == "Clean":
-                    label += "C"
-                elif self.resynth_option == "Scrub":
-                    label += "S"
-                elif self.resynth_option == "Replace":
-                    label += "R"
-            else:
-                label += "-reH"
-
-        if self.inflate_chosen():
-            if self.inflate:
-                label += "-in" + self.inflate_by_option[0]
-                if self.inflate_slow_option == "Audio":
-                    label += "SA"
-                elif self.inflate_slow_option == "Silent":
-                    label += "SM"
-            else:
-                label += "-inH"
-
-        if self.upscale_chosen():
-            if self.upscale:
-                label += "-up" + self.upscale_option[0]
-            else:
-                label += "-upH"
-
-        label += "-" + extra_suffix if extra_suffix else ""
-        return label
-
-    ## Report ##
+    # TODO consolidate reports
+    def chosen_scenes_report(self):
+        header_row = [
+            "Scene Choices",
+            "Scenes",
+            "Frames",
+            "Time"]
+        all_scenes = len(self.scene_names)
+        all_frames = self.scene_frames("all")
+        all_time = self.scene_frames_time(all_frames)
+        keep_scenes = len(self.kept_scenes())
+        keep_frames = self.scene_frames("keep")
+        keep_time = self.scene_frames_time(keep_frames)
+        drop_scenes = len(self.dropped_scenes())
+        drop_frames = self.scene_frames("drop")
+        drop_time = self.scene_frames_time(drop_frames)
+        data_rows = [
+            [
+                "Keep " + SimpleIcons.HEART,
+                f"{keep_scenes:,d}",
+                f"{keep_frames:,d}",
+                f"+{keep_time}"],
+            [
+                "Drop",
+                f"{drop_scenes:,d}",
+                f"{drop_frames:,d}",
+                f"+{drop_time}"],
+            [
+                "Total",
+                f"{all_scenes:,d}",
+                f"{all_frames:,d}",
+                f"+{all_time}"]]
+        return format_table(header_row, data_rows, color="more")
 
     def generate_remix_report(self, resize, resynthesize, inflate, upscale):
         report = Jot()
@@ -1399,8 +1946,6 @@ class VideoRemixerState():
 
         return report.lines
 
-    ## UI Support ##
-
     def choose_scene_range(self, first_scene_index, last_scene_index, scene_state):
         for scene_index in range(first_scene_index, last_scene_index + 1):
             scene_name = self.scene_names[scene_index]
@@ -1419,479 +1964,3 @@ class VideoRemixerState():
     def invalidate_split_scene_cache(self):
         self.split_scene_cache = []
         self.split_scene_cached_index = -1
-
-    # returns validated version of path and files, and an optional messages str
-    def ensure_valid_populated_path(self, description : str, path : str, files : list | None=None):
-        if not path:
-            return None, None, None
-
-        messages = Jot()
-        if not os.path.exists(path):
-            messages.add(f"{description} path '{path}' not found - recreating")
-            create_directory(path)
-
-        path_files = get_files(path)
-        file_count = len(files) if files else 0
-        path_file_count = len(path_files)
-
-        if not files and not path_files:
-            return path, [], messages.report()
-
-        if not files and path_files:
-            messages.add(f"{description} path '{path}' has {path_file_count} files unknown " +
-                         " to the project. The files are being ignored (safe to delete).")
-            return path, [], messages.report()
-
-        if path_file_count != file_count:
-            messages.add(f"{description} path '{path}' should have {file_count} files" +
-                    f" but has {path_file_count}. The files are being ignored (safe to delete).")
-            return path, [], messages.report()
-
-        # IDEA further possible checks: files have bytes,
-        # files are found to be the right binary type, etc
-
-        return path, files, messages.report()
-
-    # returns validated version of path, and an optional messages str
-    def ensure_valid_path(self, description : str, path : str, files : list | None=None):
-        if not path:
-            return None, None
-
-        messages = Jot()
-        if not os.path.exists(path):
-            messages.add(f"{description} path '{path}' not found - recreating")
-            create_directory(path)
-
-        return path, messages.report()
-
-    def post_load_integrity_check(self):
-        messages = Jot()
-
-        self.thumbnail_path, self.thumbnails, message = self.ensure_valid_populated_path(
-            "Thumbnails", self.thumbnail_path, self.thumbnails)
-        if message:
-            messages.add(message)
-
-        self.clips_path, self.clips, message = self.ensure_valid_populated_path(
-            "Clips", self.clips_path, self.clips)
-        if message:
-            messages.add(message)
-
-        self.audio_clips_path, self.audio_clips, message = self.ensure_valid_populated_path(
-            "Audio Clips", self.audio_clips_path, self.audio_clips)
-        if message:
-            messages.add(message)
-
-        self.video_clips_path, self.video_clips, message = self.ensure_valid_populated_path(
-            "Video Clips", self.video_clips_path, self.video_clips)
-        if message:
-            messages.add(message)
-
-        self.dropped_scenes_path, message = self.ensure_valid_path(
-            "Dropped Scenes", self.dropped_scenes_path)
-        if message:
-            messages.add(message)
-
-        self.frames_path, message = self.ensure_valid_path("Frames Path", self.frames_path)
-        if message:
-            messages.add(message)
-
-        self.inflation_path, message = self.ensure_valid_path("Inflation Path", self.inflation_path)
-        if message:
-            messages.add(message)
-
-        self.inflation_path, message = self.ensure_valid_path("Inflation Path", self.inflation_path)
-        if message:
-            messages.add(message)
-
-        self.resize_path, message = self.ensure_valid_path("Resize Path", self.resize_path)
-        if message:
-            messages.add(message)
-
-        self.resynthesis_path, message = self.ensure_valid_path(
-            "Resynthesis Path", self.resynthesis_path)
-        if message:
-            messages.add(message)
-
-        self.scenes_path, message = self.ensure_valid_path("Scenes Path", self.scenes_path)
-        if message:
-            messages.add(message)
-
-        self.upscale_path, message = self.ensure_valid_path("Upscale Path", self.upscale_path)
-        if message:
-            messages.add(message)
-
-        return messages.report()
-
-    def recover_project(self, global_options, remixer_settings, log_fn):
-        log_fn("beginning project recovery")
-
-        # purge project paths ahead of recreating
-        purged_path = self.purge_paths([
-            self.scenes_path,
-            self.dropped_scenes_path,
-            self.thumbnail_path,
-            self.audio_clips_path,
-            self.video_clips_path,
-            self.clips_path,
-            self.resize_path,
-            self.resynthesis_path,
-            self.inflation_path,
-            self.upscale_path
-        ])
-        log_fn(f"generated content directories purged to {purged_path}")
-
-        self.render_source_frames(global_options=global_options, prevent_overwrite=True)
-        log_fn(f"source frames rendered to {self.frames_path}")
-
-        source_audio_crf = remixer_settings["source_audio_crf"]
-        try:
-            self.create_source_audio(source_audio_crf, global_options, prevent_overwrite=True)
-            log_fn(f"created source audio {self.source_audio} from {self.source_video}")
-        except ValueError as error:
-            # ignore, don't create the file if present or same as video
-            log_fn(f"ignoring: {error}")
-
-        create_directory(self.scenes_path)
-        log_fn(f"created scenes directory {self.scenes_path}")
-        create_directory(self.dropped_scenes_path)
-        log_fn(f"created dropped scenes directory {self.dropped_scenes_path}")
-
-        log_fn("beginning recreating of scenes from source frames")
-        source_frames = sorted(get_files(self.frames_path))
-        with Mtqdm().open_bar(total=len(self.scene_names), desc="Recreating Scenes") as bar:
-            for scene_name in self.scene_names:
-                scene_path = os.path.join(self.scenes_path, scene_name)
-                create_directory(scene_path)
-                log_fn(f"created scene directory {scene_path}")
-
-                first_index, last_index, _ = details_from_group_name(scene_name)
-                num_frames = (last_index - first_index) + 1
-                with Mtqdm().open_bar(total=num_frames, desc="Copying") as inner_bar:
-                    for index in range(first_index, last_index + 1):
-                        source_path = source_frames[index]
-                        _, filename, ext = split_filepath(source_path)
-                        frame_path = os.path.join(scene_path, filename + ext)
-                        shutil.copy(source_path, frame_path)
-                        Mtqdm().update_bar(inner_bar)
-
-                log_fn(f"scene frames copied to {scene_path}")
-                Mtqdm().update_bar(bar)
-        log_fn(f"recreated scenes")
-
-        log_fn(f"about to create thumbnails of type {self.thumbnail_type}")
-        self.create_thumbnails(log_fn, global_options, remixer_settings)
-        self.thumbnails = sorted(get_files(self.thumbnail_path))
-
-        self.clips_path = os.path.join(self.project_path, self.CLIPS_PATH)
-        log_fn(f"creating clips directory {self.clips_path}")
-        create_directory(self.clips_path)
-
-    def export_project(self, log_fn, new_project_path, new_project_name, kept_scenes):
-        new_project_name = new_project_name.strip()
-        full_new_project_path = os.path.join(new_project_path, new_project_name)
-
-        create_directory(full_new_project_path)
-        new_profile_filepath = self.copy_project_file(full_new_project_path)
-
-        # load the copied project file
-        new_state = VideoRemixerState.load(new_profile_filepath, log_fn)
-
-        # update project paths to the new one
-        new_state = VideoRemixerState.load_ported(new_state.project_path, new_profile_filepath,
-                                                  log_fn, save_original=False)
-
-        # ensure the project directories exist
-        new_state.post_load_integrity_check()
-
-        # copy the source video
-        with Mtqdm().open_bar(total=1, desc="Copying") as bar:
-            Mtqdm().message(bar, "Copying source video - no ETA")
-            shutil.copy(self.source_video, new_state.source_video)
-            Mtqdm().update_bar(bar)
-
-        # copy the source audio (if not using the source video as audio source)
-        if self.source_audio != self.source_video:
-            with Mtqdm().open_bar(total=1, desc="Copying") as bar:
-                Mtqdm().message(bar, "Copying source audio - no ETA")
-                shutil.copy(self.source_audio, new_state.source_audio)
-                Mtqdm().update_bar(bar)
-
-        # ensure scenes path contains all / only kept scenes
-        self.recompile_scenes()
-
-        # prepare to rebuild scene_states dict, and scene_names, thumbnails lists
-        # in the new project
-        new_state.scene_states = {}
-        new_state.scene_names = []
-        new_state.thumbnails = []
-
-        with Mtqdm().open_bar(total=len(kept_scenes), desc="Exporting") as bar:
-            for index, scene_name in enumerate(self.scene_names):
-                state = self.scene_states[scene_name]
-                if state == self.KEEP_MARK:
-                    scene_name = self.scene_names[index]
-                    new_state.scene_states[scene_name] = self.KEEP_MARK
-
-                    new_state.scene_names.append(scene_name)
-                    scene_dir = os.path.join(self.scenes_path, scene_name)
-                    new_scene_dir = os.path.join(new_state.scenes_path, scene_name)
-                    duplicate_directory(scene_dir, new_scene_dir)
-
-                    scene_thumbnail = self.thumbnails[index]
-                    _, filename, ext = split_filepath(scene_thumbnail)
-                    new_thumbnail = os.path.join(new_state.thumbnail_path, filename + ext)
-                    new_state.thumbnails.append(new_thumbnail)
-                    shutil.copy(scene_thumbnail, new_thumbnail)
-                    Mtqdm().update_bar(bar)
-
-        # reset some things
-        new_state.current_scene = 0
-        new_state.audio_clips = []
-        new_state.clips = []
-        new_state.processed_content_invalid = False
-        new_state.progress = "choose"
-
-        new_state.save()
-
-    def import_project(self, log_fn, import_path):
-        try:
-            import_file = VideoRemixerState.determine_project_filepath(import_path)
-        except ValueError as error:
-            message = f"import_project(): error determining project filepath: {error}"
-            log_fn(message)
-            raise ValueError(message)
-
-        try:
-            imported = VideoRemixerState.load(import_file, log_fn)
-        except ValueError as error:
-            message = f"import_project(): error loading import project: {error}"
-            log_fn(message)
-            raise ValueError(message)
-
-        if imported.project_ported(import_file):
-            try:
-                imported = VideoRemixerState.load_ported(imported.project_path, import_file, log_fn)
-            except ValueError as error:
-                message = f"import_project(): error loading ported import project: {error}"
-                log_fn(message)
-                raise ValueError(message)
-
-        messages = imported.post_load_integrity_check()
-        log_fn(f"import_project(): port_load_integrity_check():\r\n{messages}")
-
-        _, source_video, source_ext = split_filepath(self.source_video)
-        _, import_video, import_ext = split_filepath(imported.source_video)
-        source_video += source_ext
-        import_video += import_ext
-
-        if source_video != import_video:
-            message = "Unable to import from a project created from a different source video"
-            log_fn(message)
-            raise ValueError(message)
-
-        current_lowest, current_highest = self.scene_frame_limits(self)
-        import_lowest, import_highest = self.scene_frame_limits(imported)
-        current_range = range(current_lowest, current_highest + 1)
-        import_range = range(import_lowest, import_highest + 1)
-
-        if ranges_overlap(current_range, import_range):
-            message = "Unable to import from a project with overlapping scene ranges"
-            log_fn(message)
-            raise ValueError(message)
-
-        self.uncompile_scenes()
-        imported.uncompile_scenes()
-
-        self.backup_project_file()
-
-        self.scene_names = sorted(self.scene_names + imported.scene_names)
-
-        for scene_name, state in imported.scene_states.items():
-            self.scene_states[scene_name] = state
-
-        for scene_name, label in imported.scene_labels.items():
-            self.scene_labels[scene_name] = label
-
-        duplicate_directory(imported.scenes_path, self.scenes_path)
-        duplicate_directory(imported.thumbnail_path, self.thumbnail_path)
-
-        self.thumbnails = sorted(get_files(self.thumbnail_path))
-
-        self.current_scene = self.scene_names.index(imported.scene_names[0])
-
-        # save the imported project state since its been altered
-        imported.save()
-
-        self.save()
-
-    def scene_frame_limits(self, state):
-        highest_frame = -1
-        lowest_frame = sys.maxsize
-        for scene_name in sorted(state.scene_names):
-            first, last, _ = details_from_group_name(scene_name)
-            lowest_frame = first if first < lowest_frame else lowest_frame
-            highest_frame = last if last > highest_frame else highest_frame
-        return lowest_frame, highest_frame
-
-    def setup_processing_paths(self):
-        self.resize_path = os.path.join(self.project_path, self.RESIZE_PATH)
-        self.resynthesis_path = os.path.join(self.project_path, self.RESYNTH_PATH)
-        self.inflation_path = os.path.join(self.project_path, self.INFLATE_PATH)
-        self.upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
-
-    @staticmethod
-    def load(filepath : str, log_fn):
-        with open(filepath, "r") as file:
-            try:
-                state : VideoRemixerState = yaml.load(file, Loader=Loader)
-
-                # reload some things
-                # TODO maybe reload from what's found on disk
-                state.scene_names = sorted(state.scene_names) if state.scene_names else []
-                state.thumbnails = sorted(state.thumbnails) if state.thumbnails else []
-                state.audio_clips = sorted(state.audio_clips) if state.audio_clips else []
-                state.video_clips = sorted(state.video_clips) if state.video_clips else []
-                state.setup_processing_paths()
-
-                ## Compatibility
-                # state.current_scene was originally a string
-                if isinstance(state.current_scene, str):
-                    try:
-                        state.current_scene = state.scene_names.index(state.current_scene)
-                    except IndexError:
-                        state.current_scene = 0
-                # originally implied only a 60 second split
-                if state.split_type == "Minute":
-                    state.split_type = "Time"
-                    state.split_time = 60
-                    state.split_frames = state._calc_split_frames(state.project_fps, state.split_time)
-                # new attribute
-                state.processed_content_invalid = False
-                # new separate audio source
-                try:
-                    if not state.source_audio:
-                        state.source_audio = state.source_video
-                except AttributeError:
-                    state.source_audio = state.source_video
-                # new crop offsets
-                try:
-                    if state.crop_offset_x == None or state.crop_offset_y == None:
-                        state.crop_offset_x = -1
-                        state.crop_offset_y = -1
-                except AttributeError:
-                    state.crop_offset_x = -1
-                    state.crop_offset_y = -1
-                # new scene labels
-                try:
-                    if state.scene_labels == None:
-                        state.scene_labels = {}
-                except AttributeError:
-                    state.scene_labels = {}
-                # new inflation options
-                try:
-                    if state.inflate_by_option == None:
-                        state.inflate_by_option = "2X"
-                except AttributeError:
-                    state.inflate_by_option = "2X"
-                # new inflation slow options
-                try:
-                    if isinstance(state.inflate_slow_option, bool):
-                        if state.inflate_slow_option:
-                            state.inflate_slow_option = "Audio"
-                        else:
-                            state.inflate_slow_option = "No"
-                except AttributeError:
-                    state.inflate_slow_option = "No"
-                # new attribute
-                state.source_frames_invalid = False
-                # new resynthesis option
-                try:
-                    if not state.resynth_option:
-                        state.resynth_option = "Scrub"
-                except AttributeError:
-                        state.resynth_option = "Scrub"
-                # new frame and found format options
-                try:
-                    if not state.frame_format:
-                        state.frame_format = "png"
-                except AttributeError:
-                        state.frame_format = "png"
-                try:
-                    if not state.sound_format:
-                        state.sound_format = "wav"
-                except AttributeError:
-                        state.sound_format = "wav"
-
-                return state
-
-            except YAMLError as error:
-                if hasattr(error, 'problem_mark'):
-                    mark = error.problem_mark
-                    message = \
-                f"Error loading project file on line {mark.line+1} column {mark.column+1}: {error}"
-                else:
-                    message = error
-                raise ValueError(message)
-
-    @staticmethod
-    def load_ported(original_project_path, ported_project_file : str, log_fn, save_original = True):
-        new_path, _, _ = split_filepath(ported_project_file)
-
-        if save_original:
-            backup_path = os.path.join(new_path, "ported_project_files")
-            create_directory(backup_path)
-            backup_filepath = \
-                AutoIncrementBackupFilename(ported_project_file, backup_path).next_filepath()
-            shutil.copy(ported_project_file, backup_filepath)
-
-        if new_path[-1] != "\\":
-            new_path += "\\"
-        if original_project_path[-1] != "\\":
-            original_project_path += "\\"
-
-        lines = []
-        with open(ported_project_file, "r", encoding="UTF-8") as file:
-            lines = file.readlines()
-        new_lines = []
-
-        original_project_path_escaped = original_project_path.replace("\\", "\\\\")
-        new_path_escaped = new_path.replace("\\", "\\\\")
-        original_project_path_trimmed = original_project_path[:-1]
-        new_path_trimmed = new_path[:-1]
-        for line in lines:
-            if line.find(original_project_path_escaped) != -1:
-                new_line = line.replace(original_project_path_escaped, new_path_escaped)
-            if line.find(original_project_path_trimmed) != -1:
-                new_line = line.replace(original_project_path_trimmed, new_path_trimmed)
-            elif line.find(original_project_path) != -1:
-                new_line = line.replace(original_project_path, new_path)
-            else:
-                new_line = line
-            new_lines.append(new_line)
-
-        with open(ported_project_file, "w", encoding="UTF-8") as file:
-            file.writelines(new_lines)
-
-        state = VideoRemixerState.load(ported_project_file, log_fn)
-        state.save(ported_project_file)
-
-        return state
-
-    def tryattr(self, attribute : str, default=None):
-        return getattr(self, attribute) if hasattr(self, attribute) else default
-
-    def project_ported(self, opened_project_file):
-        opened_path, _, _ = split_filepath(opened_project_file)
-        return self.project_path != opened_path
-
-    @staticmethod
-    def determine_project_filepath(project_path):
-        if os.path.isdir(project_path):
-            project_file = os.path.join(project_path, VideoRemixerState.DEF_FILENAME)
-        else:
-            project_file = project_path
-            project_path, _, _ = split_filepath(project_path)
-        if not os.path.exists(project_file):
-            raise ValueError(f"Project file {project_file} was not found")
-        return project_file
