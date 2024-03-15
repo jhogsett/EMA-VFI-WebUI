@@ -602,11 +602,18 @@ class VideoRemixerState():
                 state.log_fn = log_fn
 
                 # reload some things
-                # TODO maybe reload from what's found on disk
-                state.scene_names = sorted(state.scene_names) if state.scene_names else []
-                state.thumbnails = sorted(state.thumbnails) if state.thumbnails else []
-                state.audio_clips = sorted(state.audio_clips) if state.audio_clips else []
-                state.video_clips = sorted(state.video_clips) if state.video_clips else []
+                if not state.scene_names:
+                    state.scene_names = sorted(get_directories(state.scenes_path,
+                                                               ignore_empty_path=True))
+                if not state.thumbnails:
+                    state.thumbnails = sorted(get_files(state.thumbnail_path,
+                                                        ignore_empty_path=True))
+                if not state.audio_clips:
+                    state.audio_clips = sorted(get_files(state.audio_clips_path,
+                                                        ignore_empty_path=True))
+                if not state.video_clips:
+                    state.video_clips = sorted(get_files(state.video_clips_path,
+                                                        ignore_empty_path=True))
                 state.setup_processing_paths()
 
                 ## Compatibility
