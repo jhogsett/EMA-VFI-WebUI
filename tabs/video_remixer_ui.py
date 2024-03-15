@@ -469,6 +469,7 @@ class VideoRemixer(TabBase):
                             next_button61 = gr.Button(
                                 value="Save Custom Remix " + SimpleIcons.SLOW_SYMBOL,
                                 variant="primary", elem_id="highlightbutton")
+                        gr.Markdown(format_markdown(SimpleIcons.WARNING + "Custom Video Options are applied one time only. To delete existing clips, go to `Remix Extra`, `Manage Storage`, `Remove Selected Project Content`."))
 
                     ### CREATE MARKED REMIX
                     with gr.Tab(label="Create Marked Remix"):

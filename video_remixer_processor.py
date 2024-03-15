@@ -38,7 +38,7 @@ class VideoRemixerProcessor():
     TEMP_UPSCALE_PATH = "upscaled_frames"
     DEFAULT_DOWNSCALE_TYPE = "area"
 
-    ### Exports
+    ### Exports --------------------
 
     def prepare_process_remix(self, redo_resynth, redo_inflate, redo_upscale):
         self.state.setup_processing_paths()
@@ -190,23 +190,9 @@ class VideoRemixerProcessor():
         log_fn(f"FFmpeg command: {ffcmd}")
         self.state.save()
 
-    ### Internal
+    ### Internal --------------------
 
-    def resize_needed(self):
-        return self.state.resize_chosen() \
-            and not self.processed_content_complete(self.state.RESIZE_STEP)
-
-    def resynthesize_needed(self):
-        return self.state.resynthesize_chosen() \
-            and not self.processed_content_complete(self.state.RESYNTH_STEP)
-
-    def inflate_needed(self):
-        return self.state.inflate_chosen() \
-            and not self.processed_content_complete(self.state.INFLATE_STEP)
-
-    def upscale_needed(self):
-        return self.state.upscale_chosen() \
-            and not self.processed_content_complete(self.state.UPSCALE_STEP)
+    # Preprocessing
 
     # processed content is stale if it is not selected and exists
     def processed_content_stale(self, selected : bool, path : str):
@@ -248,6 +234,25 @@ class VideoRemixerProcessor():
         if self.state.upscale_chosen() and not self.processed_content_complete(self.state.UPSCALE_STEP):
             self.state.purge_processed_content(purge_from=self.state.UPSCALE_STEP)
 
+
+    # General Processing
+
+    def resize_needed(self):
+        return self.state.resize_chosen() \
+            and not self.processed_content_complete(self.state.RESIZE_STEP)
+
+    def resynthesize_needed(self):
+        return self.state.resynthesize_chosen() \
+            and not self.processed_content_complete(self.state.RESYNTH_STEP)
+
+    def inflate_needed(self):
+        return self.state.inflate_chosen() \
+            and not self.processed_content_complete(self.state.INFLATE_STEP)
+
+    def upscale_needed(self):
+        return self.state.upscale_chosen() \
+            and not self.processed_content_complete(self.state.UPSCALE_STEP)
+
     def scenes_source_path(self, processing_step):
         processing_path = self.state.scenes_path
 
@@ -283,6 +288,23 @@ class VideoRemixerProcessor():
                 processing_path = self.state.resize_path
 
         return processing_path
+
+    # get path to the furthest processed content
+    def furthest_processed_path(self):
+        if self.state.upscale_chosen():
+            path = self.state.upscale_path
+        elif self.state.inflate_chosen():
+            path = self.state.inflation_path
+        elif self.state.resynthesize_chosen():
+            path = self.state.resynthesis_path
+        elif self.state.resize_chosen():
+            path = self.state.resize_path
+        else:
+            path = self.state.scenes_path
+        return path
+
+
+    # Resize Processing
 
     def get_resize_params(self, resize_w, resize_h, crop_w, crop_h, content_width, content_height, remixer_settings):
         if resize_w == content_width and resize_h == content_height:
@@ -335,6 +357,161 @@ class VideoRemixerProcessor():
                     crop_offset_x=crop_offset_x,
                     crop_offset_y=crop_offset_y).resize(type=self.state.frame_format, params_fn=params_fn,
                                                         params_context=params_context)
+
+    def resize_scenes(self, log_fn, kept_scenes, remixer_settings):
+        scenes_base_path = self.scenes_source_path(self.state.RESIZE_STEP)
+        create_directory(self.state.resize_path)
+
+        content_width = self.state.video_details["content_width"]
+        content_height = self.state.video_details["content_height"]
+        scale_type, crop_type= self.get_resize_params(self.state.resize_w, self.state.resize_h, self.state.crop_w,
+                                                      self.state.crop_h, content_width, content_height,
+                                                      remixer_settings)
+
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Resize") as bar:
+            for scene_name in kept_scenes:
+                scene_input_path = os.path.join(scenes_base_path, scene_name)
+                scene_output_path = os.path.join(self.state.resize_path, scene_name)
+                create_directory(scene_output_path)
+
+                resize_handled = False
+                resize_hint = self.state.get_hint(self.state.scene_labels.get(scene_name), self.state.RESIZE_HINT)
+                if resize_hint:
+                    main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, \
+                        main_offset_y = self.setup_resize_hint(content_width, content_height)
+
+                    try:
+                        if self.ANIMATED_ZOOM_HINT in resize_hint:
+                            # interprent 'any-any' as animating from one to the other zoom factor
+                            from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3 = \
+                                self.get_animated_zoom(resize_hint)
+                            if from_type and to_type:
+                                first_frame, last_frame, _ = details_from_group_name(scene_name)
+                                num_frames = (last_frame - first_frame) + 1
+                                context = self.compute_animated_zoom(num_frames,
+                                        from_type, from_param1, from_param2, from_param3,
+                                        to_type, to_param1, to_param2, to_param3,
+                                        main_resize_w, main_resize_h, main_offset_x, main_offset_y,
+                                        main_crop_w, main_crop_h, log_fn)
+
+                                scale_type = remixer_settings["scale_type_up"]
+                                self.resize_scene(log_fn,
+                                                scene_input_path,
+                                                scene_output_path,
+                                                None,
+                                                None,
+                                                main_crop_w,
+                                                main_crop_h,
+                                                None,
+                                                None,
+                                                scale_type,
+                                                crop_type="crop",
+                                                params_fn=self._resize_frame_param,
+                                                params_context=context)
+                                resize_handled = True
+
+                        elif self.COMBINED_ZOOM_HINT in resize_hint:
+                            quadrant, quadrants, zoom_percent = self.get_combined_zoom(resize_hint)
+                            if quadrant and quadrants and zoom_percent:
+                                resize_w, resize_h, center_x, center_y = \
+                                    self.compute_combined_zoom(quadrant, quadrants, zoom_percent,
+                                                               main_resize_w, main_resize_h,
+                                                               main_offset_x, main_offset_y,
+                                                               main_crop_w, main_crop_h, log_fn)
+
+                                crop_offset_x = center_x - (main_crop_w / 2.0)
+                                crop_offset_y = center_y - (main_crop_h / 2.0)
+
+                                scale_type = remixer_settings["scale_type_up"]
+                                self.resize_scene(log_fn,
+                                                scene_input_path,
+                                                scene_output_path,
+                                                int(resize_w),
+                                                int(resize_h),
+                                                int(main_crop_w),
+                                                int(main_crop_h),
+                                                int(crop_offset_x),
+                                                int(crop_offset_y),
+                                                scale_type,
+                                                crop_type="crop")
+                                resize_handled = True
+
+                        elif self.QUADRANT_ZOOM_HINT in resize_hint:
+                            # interpret 'x/y' as x: quadrant, y: square-based number of quadrants
+                            # '5/9' and '13/25' would be the center squares of 3x3 and 5x5 grids
+                            #   zoomed in at 300% and 500%
+                            quadrant, quadrants = self.get_quadrant_zoom(resize_hint)
+                            if quadrant and quadrants:
+                                resize_w, resize_h, center_x, center_y = \
+                                    self.compute_quadrant_zoom(quadrant, quadrants,
+                                                               main_resize_w, main_resize_h,
+                                                               main_offset_x, main_offset_y,
+                                                               main_crop_w, main_crop_h, log_fn)
+
+                                scale_type = remixer_settings["scale_type_up"]
+                                crop_offset_x = center_x - (main_crop_w / 2.0)
+                                crop_offset_y = center_y - (main_crop_h / 2.0)
+                                self.resize_scene(log_fn,
+                                                scene_input_path,
+                                                scene_output_path,
+                                                int(resize_w),
+                                                int(resize_h),
+                                                int(main_crop_w),
+                                                int(main_crop_h),
+                                                int(crop_offset_x),
+                                                int(crop_offset_y),
+                                                scale_type,
+                                                crop_type="crop")
+                                resize_handled = True
+
+                        elif self.PERCENT_ZOOM_HINT in resize_hint:
+                                # interpret z% as zoom percent to zoom into center
+                                zoom_percent = self.get_percent_zoom(resize_hint)
+                                if zoom_percent:
+                                    resize_w, resize_h, center_x, center_y = \
+                                        self.compute_percent_zoom(zoom_percent,
+                                                                    main_resize_w, main_resize_h,
+                                                                    main_offset_x, main_offset_y,
+                                                                    main_crop_w, main_crop_h, log_fn)
+                                    scale_type = remixer_settings["scale_type_up"]
+                                    crop_offset_x = center_x - (main_crop_w / 2.0)
+                                    crop_offset_y = center_y - (main_crop_h / 2.0)
+                                    self.resize_scene(log_fn,
+                                                    scene_input_path,
+                                                    scene_output_path,
+                                                    int(resize_w),
+                                                    int(resize_h),
+                                                    int(main_crop_w),
+                                                    int(main_crop_h),
+                                                    int(crop_offset_x),
+                                                    int(crop_offset_y),
+                                                    scale_type,
+                                                    crop_type="crop")
+                                    resize_handled = True
+                    except Exception as error:
+                        # TODO
+                        print(error)
+                        raise
+                        log_fn(
+f"Error in resize_scenes() handling processing hint {resize_hint} - skipping processing: {error}")
+                        resize_handled = False
+
+                if not resize_handled:
+                    self.resize_scene(log_fn,
+                                    scene_input_path,
+                                    scene_output_path,
+                                    int(self.state.resize_w),
+                                    int(self.state.resize_h),
+                                    int(self.state.crop_w),
+                                    int(self.state.crop_h),
+                                    int(self.state.crop_offset_x),
+                                    int(self.state.crop_offset_y),
+                                    scale_type,
+                                    crop_type)
+
+                Mtqdm().update_bar(bar)
+
+    # Resize Processing Hints
 
     def setup_resize_hint(self, content_width, content_height):
         # use the main resize/crop settings if resizing, or the content native
@@ -675,158 +852,8 @@ class VideoRemixerProcessor():
 
         return int(resize_w), int(resize_h), int(crop_offset_x), int(crop_offset_y)
 
-    def resize_scenes(self, log_fn, kept_scenes, remixer_settings):
-        scenes_base_path = self.scenes_source_path(self.state.RESIZE_STEP)
-        create_directory(self.state.resize_path)
 
-        content_width = self.state.video_details["content_width"]
-        content_height = self.state.video_details["content_height"]
-        scale_type, crop_type= self.get_resize_params(self.state.resize_w, self.state.resize_h, self.state.crop_w,
-                                                      self.state.crop_h, content_width, content_height,
-                                                      remixer_settings)
-
-        with Mtqdm().open_bar(total=len(kept_scenes), desc="Resize") as bar:
-            for scene_name in kept_scenes:
-                scene_input_path = os.path.join(scenes_base_path, scene_name)
-                scene_output_path = os.path.join(self.state.resize_path, scene_name)
-                create_directory(scene_output_path)
-
-                resize_handled = False
-                resize_hint = self.state.get_hint(self.state.scene_labels.get(scene_name), self.state.RESIZE_HINT)
-                if resize_hint:
-                    main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, \
-                        main_offset_y = self.setup_resize_hint(content_width, content_height)
-
-                    try:
-                        if self.ANIMATED_ZOOM_HINT in resize_hint:
-                            # interprent 'any-any' as animating from one to the other zoom factor
-                            from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3 = \
-                                self.get_animated_zoom(resize_hint)
-                            if from_type and to_type:
-                                first_frame, last_frame, _ = details_from_group_name(scene_name)
-                                num_frames = (last_frame - first_frame) + 1
-                                context = self.compute_animated_zoom(num_frames,
-                                        from_type, from_param1, from_param2, from_param3,
-                                        to_type, to_param1, to_param2, to_param3,
-                                        main_resize_w, main_resize_h, main_offset_x, main_offset_y,
-                                        main_crop_w, main_crop_h, log_fn)
-
-                                scale_type = remixer_settings["scale_type_up"]
-                                self.resize_scene(log_fn,
-                                                scene_input_path,
-                                                scene_output_path,
-                                                None,
-                                                None,
-                                                main_crop_w,
-                                                main_crop_h,
-                                                None,
-                                                None,
-                                                scale_type,
-                                                crop_type="crop",
-                                                params_fn=self._resize_frame_param,
-                                                params_context=context)
-                                resize_handled = True
-
-                        elif self.COMBINED_ZOOM_HINT in resize_hint:
-                            quadrant, quadrants, zoom_percent = self.get_combined_zoom(resize_hint)
-                            if quadrant and quadrants and zoom_percent:
-                                resize_w, resize_h, center_x, center_y = \
-                                    self.compute_combined_zoom(quadrant, quadrants, zoom_percent,
-                                                               main_resize_w, main_resize_h,
-                                                               main_offset_x, main_offset_y,
-                                                               main_crop_w, main_crop_h, log_fn)
-
-                                crop_offset_x = center_x - (main_crop_w / 2.0)
-                                crop_offset_y = center_y - (main_crop_h / 2.0)
-
-                                scale_type = remixer_settings["scale_type_up"]
-                                self.resize_scene(log_fn,
-                                                scene_input_path,
-                                                scene_output_path,
-                                                int(resize_w),
-                                                int(resize_h),
-                                                int(main_crop_w),
-                                                int(main_crop_h),
-                                                int(crop_offset_x),
-                                                int(crop_offset_y),
-                                                scale_type,
-                                                crop_type="crop")
-                                resize_handled = True
-
-                        elif self.QUADRANT_ZOOM_HINT in resize_hint:
-                            # interpret 'x/y' as x: quadrant, y: square-based number of quadrants
-                            # '5/9' and '13/25' would be the center squares of 3x3 and 5x5 grids
-                            #   zoomed in at 300% and 500%
-                            quadrant, quadrants = self.get_quadrant_zoom(resize_hint)
-                            if quadrant and quadrants:
-                                resize_w, resize_h, center_x, center_y = \
-                                    self.compute_quadrant_zoom(quadrant, quadrants,
-                                                               main_resize_w, main_resize_h,
-                                                               main_offset_x, main_offset_y,
-                                                               main_crop_w, main_crop_h, log_fn)
-
-                                scale_type = remixer_settings["scale_type_up"]
-                                crop_offset_x = center_x - (main_crop_w / 2.0)
-                                crop_offset_y = center_y - (main_crop_h / 2.0)
-                                self.resize_scene(log_fn,
-                                                scene_input_path,
-                                                scene_output_path,
-                                                int(resize_w),
-                                                int(resize_h),
-                                                int(main_crop_w),
-                                                int(main_crop_h),
-                                                int(crop_offset_x),
-                                                int(crop_offset_y),
-                                                scale_type,
-                                                crop_type="crop")
-                                resize_handled = True
-
-                        elif self.PERCENT_ZOOM_HINT in resize_hint:
-                                # interpret z% as zoom percent to zoom into center
-                                zoom_percent = self.get_percent_zoom(resize_hint)
-                                if zoom_percent:
-                                    resize_w, resize_h, center_x, center_y = \
-                                        self.compute_percent_zoom(zoom_percent,
-                                                                    main_resize_w, main_resize_h,
-                                                                    main_offset_x, main_offset_y,
-                                                                    main_crop_w, main_crop_h, log_fn)
-                                    scale_type = remixer_settings["scale_type_up"]
-                                    crop_offset_x = center_x - (main_crop_w / 2.0)
-                                    crop_offset_y = center_y - (main_crop_h / 2.0)
-                                    self.resize_scene(log_fn,
-                                                    scene_input_path,
-                                                    scene_output_path,
-                                                    int(resize_w),
-                                                    int(resize_h),
-                                                    int(main_crop_w),
-                                                    int(main_crop_h),
-                                                    int(crop_offset_x),
-                                                    int(crop_offset_y),
-                                                    scale_type,
-                                                    crop_type="crop")
-                                    resize_handled = True
-                    except Exception as error:
-                        # TODO
-                        print(error)
-                        raise
-                        log_fn(
-f"Error in resize_scenes() handling processing hint {resize_hint} - skipping processing: {error}")
-                        resize_handled = False
-
-                if not resize_handled:
-                    self.resize_scene(log_fn,
-                                    scene_input_path,
-                                    scene_output_path,
-                                    int(self.state.resize_w),
-                                    int(self.state.resize_h),
-                                    int(self.state.crop_w),
-                                    int(self.state.crop_h),
-                                    int(self.state.crop_offset_x),
-                                    int(self.state.crop_offset_y),
-                                    scale_type,
-                                    crop_type)
-
-                Mtqdm().update_bar(bar)
+    # Resynthesis Processing
 
     # TODO dry up this code with same in resynthesize_video_ui - maybe a specific resynth script
     def one_pass_resynthesis(self, log_fn, input_path, output_path, output_basename,
@@ -932,6 +959,9 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
 
                 Mtqdm().update_bar(bar)
 
+
+    # Inflation Processing
+
     def inflate_scenes(self, log_fn, kept_scenes, engine, engine_settings):
         interpolater = Interpolate(engine.model, log_fn)
         use_time_step = engine_settings["use_time_step"]
@@ -1022,6 +1052,9 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                                     output_path=scene_output_path).resequence()
 
                 Mtqdm().update_bar(bar)
+
+
+    # Upscaling Processing
 
     def get_upscaler(self, log_fn, realesrgan_settings, remixer_settings):
         model_name = realesrgan_settings["model_name"]
@@ -1162,19 +1195,8 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                                         output_path=scene_output_path).resequence()
                 Mtqdm().update_bar(bar)
 
-    # get path to the furthest processed content
-    def furthest_processed_path(self):
-        if self.state.upscale_chosen():
-            path = self.state.upscale_path
-        elif self.state.inflate_chosen():
-            path = self.state.inflation_path
-        elif self.state.resynthesize_chosen():
-            path = self.state.resynthesis_path
-        elif self.state.resize_chosen():
-            path = self.state.resize_path
-        else:
-            path = self.state.scenes_path
-        return path
+
+    # Post Processing
 
     # drop a kept scene after scene compiling has already been done
     # used for dropping empty processed scenes, and force dropping processed scenes
@@ -1201,18 +1223,18 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                     self.drop_kept_scene(scene_name)
                 Mtqdm().update_bar(bar)
 
-    def delete_processed_clip(self, path, scene_name):
-        removed = []
-        if path and os.path.exists(path):
-            files = get_files(path)
-            # some clips are formatted like "original_namee[000-999].ext",
-            # and some like "000-000.ext"
-            # TODO resequence audio clips and thumbnails to make the naming consistent
-            for file in files:
-                if file.find(scene_name) != -1:
-                    os.remove(file)
-                    removed.append(file)
-        return removed
+    # def delete_processed_clip(self, path, scene_name):
+    #     removed = []
+    #     if path and os.path.exists(path):
+    #         files = get_files(path)
+    #         # some clips are formatted like "original_namee[000-999].ext",
+    #         # and some like "000-000.ext"
+    #         # TODO resequence audio clips and thumbnails to make the naming consistent
+    #         for file in files:
+    #             if file.find(scene_name) != -1:
+    #                 os.remove(file)
+    #                 removed.append(file)
+    #     return removed
 
     # TODO the last three paths in the list won't have scene name directories but instead files
     #      also it should delete the audio wav file if found since that isn't deleted each save
@@ -1244,11 +1266,36 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         # clean now to ensure the dropped scene audio clip is removed
         self.state.clean_remix_content(purge_from="audio_clips")
 
-        # TODO this didn't ever work
-        # if self.state.audio_clips_path:
-        #     self.audio_clips = sorted(get_files(self.state.audio_clips_path))
-
         return removed
+
+    # General Remix Video Processing
+
+    def compute_effective_slow_motion(self, force_inflation, force_audio, force_inflate_by,
+                                      force_silent):
+
+        audio_slow_motion = force_audio or (self.state.inflate and self.state.inflate_slow_option == "Audio")
+        silent_slow_motion = force_silent or (self.state.inflate and self.state.inflate_slow_option == "Silent")
+
+        project_inflation_rate = self.inflation_rate(self.state.inflate_by_option) if self.state.inflate else 1
+        forced_inflation_rate = self.inflation_rate(force_inflate_by) if force_inflation else 1
+
+        # For slow motion hints, interpret the 'force_inflate_by' as relative to the project rate
+        # If the forced inflation rate is 1 it means no inflation, not even at the projecr fate
+        if audio_slow_motion or silent_slow_motion:
+            if forced_inflation_rate != 1:
+                forced_inflation_rate *= project_inflation_rate
+
+        motion_factor = forced_inflation_rate / project_inflation_rate
+        return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, \
+            forced_inflation_rate
+
+    def inflation_rate(self, inflate_by : str):
+        if not inflate_by:
+            return 1
+        return int(inflate_by[:-1])
+
+
+    # Audio Clip Processing
 
     def create_audio_clips(self, log_fn, global_options, audio_format):
         self.state.audio_clips_path = os.path.join(self.state.clips_path, self.state.AUDIO_CLIPS_PATH)
@@ -1272,120 +1319,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                     0.0,
                     log_fn,
                     global_options=global_options).slice()
-        self.audio_clips = sorted(get_files(self.state.audio_clips_path))
-
-    def compute_inflated_fps(self, force_inflation, force_audio, force_inflate_by, force_silent):
-        _, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflated_rate = \
-            self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
-                                               force_silent)
-        if audio_slow_motion or silent_slow_motion:
-            fps_factor = project_inflation_rate
-        else:
-            if force_inflation:
-                fps_factor = forced_inflated_rate
-            else:
-                fps_factor = project_inflation_rate
-        return self.state.project_fps * fps_factor
-
-    def compute_forced_inflation(self, scene_name):
-        force_inflation = False
-        force_audio = False
-        force_inflate_by = None
-        force_silent = False
-
-        inflation_hint = self.state.get_hint(self.state.scene_labels.get(scene_name), self.state.INFLATION_HINT)
-        if inflation_hint:
-            if "16" in inflation_hint:
-                force_inflation = True
-                force_inflate_by = "16X"
-            elif "1" in inflation_hint:
-                force_inflation = True
-                force_inflate_by = "1X"
-            elif "2" in inflation_hint:
-                force_inflation = True
-                force_inflate_by = "2X"
-            elif "4" in inflation_hint:
-                force_inflation = True
-                force_inflate_by = "4X"
-            elif "8" in inflation_hint:
-                force_inflation = True
-                force_inflate_by = "8X"
-
-            if "A" in inflation_hint:
-                force_audio = True
-            elif "S" in inflation_hint:
-                force_silent = True
-            # else implied "N" for no slow motion
-        return force_inflation, force_audio, force_inflate_by, force_silent
-
-    def compute_scene_fps(self, scene_name):
-        force_inflation, force_audio, force_inflate_by, force_silent =\
-            self.compute_forced_inflation(scene_name)
-
-        return self.compute_inflated_fps(force_inflation,
-                                         force_audio,
-                                         force_inflate_by,
-                                         force_silent)
-
-    def create_video_clips(self, log_fn, kept_scenes, global_options):
-        self.state.video_clips_path = os.path.join(self.state.clips_path, self.state.VIDEO_CLIPS_PATH)
-        create_directory(self.state.video_clips_path)
-        # save the project now to preserve the newly established path
-        self.state.save()
-
-        scenes_base_path = self.furthest_processed_path()
-        with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
-            for scene_name in kept_scenes:
-                scene_input_path = os.path.join(scenes_base_path, scene_name)
-                scene_output_filepath = os.path.join(self.state.video_clips_path, f"{scene_name}.mp4")
-
-                video_clip_fps = self.compute_scene_fps(scene_name)
-
-                ResequenceFiles(scene_input_path,
-                                self.state.frame_format,
-                                "processed_frame",
-                                1,
-                                1,
-                                1,
-                                0,
-                                -1,
-                                True,
-                                log_fn).resequence()
-
-                PNGtoMP4(scene_input_path,
-                                None,
-                                video_clip_fps,
-                                scene_output_filepath,
-                                crf=self.state.output_quality,
-                                global_options=global_options,
-                                type=self.state.frame_format)
-                Mtqdm().update_bar(bar)
-
-        self.video_clips = sorted(get_files(self.state.video_clips_path))
-
-    def inflation_rate(self, inflate_by : str):
-        if not inflate_by:
-            return 1
-        return int(inflate_by[:-1])
-
-    def compute_effective_slow_motion(self, force_inflation, force_audio, force_inflate_by,
-                                      force_silent):
-
-        audio_slow_motion = force_audio or (self.state.inflate and self.state.inflate_slow_option == "Audio")
-        silent_slow_motion = force_silent or (self.state.inflate and self.state.inflate_slow_option == "Silent")
-
-        project_inflation_rate = self.inflation_rate(self.state.inflate_by_option) if self.state.inflate else 1
-        forced_inflation_rate = self.inflation_rate(force_inflate_by) if force_inflation else 1
-
-        # For slow motion hints, interpret the 'force_inflate_by' as relative to the project rate
-        # If the forced inflation rate is 1 it means no inflation, not even at the projecr fate
-        if audio_slow_motion or silent_slow_motion:
-            if forced_inflation_rate != 1:
-                forced_inflation_rate *= project_inflation_rate
-
-        motion_factor = forced_inflation_rate / project_inflation_rate
-        return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, \
-            forced_inflation_rate
+        self.state.audio_clips = sorted(get_files(self.state.audio_clips_path))
 
     def compute_inflated_audio_options(self, custom_audio_options, force_inflation, force_audio,
                                        force_inflate_by, force_silent):
@@ -1429,61 +1363,44 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
 
         return output_options
 
-    def create_scene_clips(self, log_fn, kept_scenes, global_options):
-        if self.state.video_details["has_audio"]:
-            with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
-                for index, scene_name in enumerate(kept_scenes):
-                    scene_video_path = self.state.video_clips[index]
-                    scene_audio_path = self.state.audio_clips[index]
-                    scene_output_filepath = os.path.join(self.state.clips_path, f"{scene_name}.mp4")
 
-                    force_inflation, force_audio, force_inflate_by, force_silent =\
-                        self.compute_forced_inflation(scene_name)
+    # Video Clip Processing
 
-                    output_options = self.compute_inflated_audio_options("-c:a aac -shortest ",
-                                                                         force_inflation,
-                                                                         force_audio,
-                                                                         force_inflate_by,
-                                                                         force_silent)
-                    combine_video_audio(scene_video_path,
-                                        scene_audio_path,
-                                        scene_output_filepath,
-                                        global_options=global_options,
-                                        output_options=output_options)
-                    Mtqdm().update_bar(bar)
-            self.state.clips = sorted(get_files(self.state.clips_path))
-        else:
-            self.state.clips = sorted(get_files(self.state.video_clips_path))
+    def create_video_clips(self, log_fn, kept_scenes, global_options):
+        self.state.video_clips_path = os.path.join(self.state.clips_path, self.state.VIDEO_CLIPS_PATH)
+        create_directory(self.state.video_clips_path)
+        # save the project now to preserve the newly established path
+        self.state.save()
 
-    def create_custom_scene_clips(self,
-                                  kept_scenes,
-                                  global_options,
-                                  custom_audio_options,
-                                  custom_ext):
-        if self.state.video_details["has_audio"]:
-            with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
-                for index, scene_name in enumerate(kept_scenes):
-                    scene_video_path = self.state.video_clips[index]
-                    scene_audio_path = self.state.audio_clips[index]
-                    scene_output_filepath = os.path.join(self.state.clips_path,
-                                                         f"{scene_name}.{custom_ext}")
+        scenes_base_path = self.furthest_processed_path()
+        with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
+            for scene_name in kept_scenes:
+                scene_input_path = os.path.join(scenes_base_path, scene_name)
+                scene_output_filepath = os.path.join(self.state.video_clips_path, f"{scene_name}.mp4")
 
-                    force_inflation, force_audio, force_inflate_by, force_silent =\
-                        self.compute_forced_inflation(scene_name)
+                video_clip_fps = self.compute_scene_fps(scene_name)
 
-                    output_options = self.compute_inflated_audio_options(custom_audio_options,
-                                                                         force_inflation,
-                                                                         force_audio=force_audio,
-                                                                         force_inflate_by=force_inflate_by,
-                                                                         force_silent=force_silent)
+                ResequenceFiles(scene_input_path,
+                                self.state.frame_format,
+                                "processed_frame",
+                                1,
+                                1,
+                                1,
+                                0,
+                                -1,
+                                True,
+                                log_fn).resequence()
 
-                    combine_video_audio(scene_video_path, scene_audio_path,
-                                        scene_output_filepath, global_options=global_options,
-                                        output_options=output_options)
-                    Mtqdm().update_bar(bar)
-            self.state.clips = sorted(get_files(self.state.clips_path))
-        else:
-            self.state.clips = sorted(get_files(self.state.video_clips_path))
+                PNGtoMP4(scene_input_path,
+                                None,
+                                video_clip_fps,
+                                scene_output_filepath,
+                                crf=self.state.output_quality,
+                                global_options=global_options,
+                                type=self.state.frame_format)
+                Mtqdm().update_bar(bar)
+
+        self.state.video_clips = sorted(get_files(self.state.video_clips_path))
 
     def create_custom_video_clips(self,
                                   log_fn,
@@ -1602,6 +1519,132 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                 Mtqdm().update_bar(bar)
         self.state.video_clips = sorted(get_files(self.state.video_clips_path))
 
+    def compute_inflated_fps(self, force_inflation, force_audio, force_inflate_by, force_silent):
+        _, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflated_rate = \
+            self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
+                                               force_silent)
+        if audio_slow_motion or silent_slow_motion:
+            fps_factor = project_inflation_rate
+        else:
+            if force_inflation:
+                fps_factor = forced_inflated_rate
+            else:
+                fps_factor = project_inflation_rate
+        return self.state.project_fps * fps_factor
+
+    def compute_forced_inflation(self, scene_name):
+        force_inflation = False
+        force_audio = False
+        force_inflate_by = None
+        force_silent = False
+
+        inflation_hint = self.state.get_hint(self.state.scene_labels.get(scene_name), self.state.INFLATION_HINT)
+        if inflation_hint:
+            if "16" in inflation_hint:
+                force_inflation = True
+                force_inflate_by = "16X"
+            elif "1" in inflation_hint:
+                force_inflation = True
+                force_inflate_by = "1X"
+            elif "2" in inflation_hint:
+                force_inflation = True
+                force_inflate_by = "2X"
+            elif "4" in inflation_hint:
+                force_inflation = True
+                force_inflate_by = "4X"
+            elif "8" in inflation_hint:
+                force_inflation = True
+                force_inflate_by = "8X"
+
+            if "A" in inflation_hint:
+                force_audio = True
+            elif "S" in inflation_hint:
+                force_silent = True
+            # else implied "N" for no slow motion
+        return force_inflation, force_audio, force_inflate_by, force_silent
+
+    def compute_scene_fps(self, scene_name):
+        force_inflation, force_audio, force_inflate_by, force_silent =\
+            self.compute_forced_inflation(scene_name)
+
+        return self.compute_inflated_fps(force_inflation,
+                                         force_audio,
+                                         force_inflate_by,
+                                         force_silent)
+
+
+    # Scene Clip Processing
+
+    def create_scene_clips(self, log_fn, kept_scenes, global_options):
+        if self.state.video_details["has_audio"]:
+            with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
+                for index, scene_name in enumerate(kept_scenes):
+                    scene_video_path = self.state.video_clips[index]
+                    scene_audio_path = self.state.audio_clips[index]
+                    scene_output_filepath = os.path.join(self.state.clips_path, f"{scene_name}.mp4")
+
+                    force_inflation, force_audio, force_inflate_by, force_silent =\
+                        self.compute_forced_inflation(scene_name)
+
+                    output_options = self.compute_inflated_audio_options("-c:a aac -shortest ",
+                                                                         force_inflation,
+                                                                         force_audio,
+                                                                         force_inflate_by,
+                                                                         force_silent)
+                    combine_video_audio(scene_video_path,
+                                        scene_audio_path,
+                                        scene_output_filepath,
+                                        global_options=global_options,
+                                        output_options=output_options)
+                    Mtqdm().update_bar(bar)
+            self.state.clips = sorted(get_files(self.state.clips_path))
+        else:
+            self.state.clips = sorted(get_files(self.state.video_clips_path))
+
+    def create_custom_scene_clips(self,
+                                  kept_scenes,
+                                  global_options,
+                                  custom_audio_options,
+                                  custom_ext):
+        if self.state.video_details["has_audio"]:
+            with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
+                for index, scene_name in enumerate(kept_scenes):
+                    scene_video_path = self.state.video_clips[index]
+                    scene_audio_path = self.state.audio_clips[index]
+                    scene_output_filepath = os.path.join(self.state.clips_path,
+                                                         f"{scene_name}.{custom_ext}")
+
+                    force_inflation, force_audio, force_inflate_by, force_silent =\
+                        self.compute_forced_inflation(scene_name)
+
+                    output_options = self.compute_inflated_audio_options(custom_audio_options,
+                                                                         force_inflation,
+                                                                         force_audio=force_audio,
+                                                                         force_inflate_by=force_inflate_by,
+                                                                         force_silent=force_silent)
+
+                    combine_video_audio(scene_video_path, scene_audio_path,
+                                        scene_output_filepath, global_options=global_options,
+                                        output_options=output_options)
+                    Mtqdm().update_bar(bar)
+            self.state.clips = sorted(get_files(self.state.clips_path))
+        else:
+            self.state.clips = sorted(get_files(self.state.video_clips_path))
+
+
+    # Remix Video Processing
+
+    def create_remix_video(self, log_fn, global_options, output_filepath, use_scene_sorting=True):
+        with Mtqdm().open_bar(total=1, desc="Saving Remix") as bar:
+            Mtqdm().message(bar, "Using FFmpeg to concatenate scene clips - no ETA")
+            assembly_list = self.assembly_list(log_fn, self.state.clips) \
+                if use_scene_sorting else self.state.clips
+            ffcmd = combine_videos(assembly_list,
+                                   output_filepath,
+                                   global_options=global_options)
+            Mtqdm().update_bar(bar)
+        return ffcmd
+
     def assembly_list(self, log_fn, clip_filepaths : list, rename_clips=True) -> list:
         """Get list clips to assemble in order.
         'clip_filepaths' is expected to be full path and filename to the remix clips, corresponding to the list of kept scenes.
@@ -1646,13 +1689,3 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
 
         return assembly
 
-    def create_remix_video(self, log_fn, global_options, output_filepath, use_scene_sorting=True):
-        with Mtqdm().open_bar(total=1, desc="Saving Remix") as bar:
-            Mtqdm().message(bar, "Using FFmpeg to concatenate scene clips - no ETA")
-            assembly_list = self.assembly_list(log_fn, self.state.clips) \
-                if use_scene_sorting else self.state.clips
-            ffcmd = combine_videos(assembly_list,
-                                   output_filepath,
-                                   global_options=global_options)
-            Mtqdm().update_bar(bar)
-        return ffcmd
