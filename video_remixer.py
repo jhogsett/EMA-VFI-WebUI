@@ -377,8 +377,8 @@ class VideoRemixerState():
 
         return messages.report()
 
-    def recover_project(self, global_options, remixer_settings, log_fn):
-        log_fn("beginning project recovery")
+    def recover_project(self):
+        self.log("beginning project recovery")
 
         # purge project paths ahead of recreating
         purged_path = self.purge_paths([
@@ -393,31 +393,31 @@ class VideoRemixerState():
             self.inflation_path,
             self.upscale_path
         ])
-        log_fn(f"generated content directories purged to {purged_path}")
+        self.log(f"generated content directories purged to {purged_path}")
 
-        self.render_source_frames(global_options=global_options, prevent_overwrite=True)
-        log_fn(f"source frames rendered to {self.frames_path}")
+        self.render_source_frames(prevent_overwrite=True)
+        self.log(f"source frames rendered to {self.frames_path}")
 
-        source_audio_crf = remixer_settings["source_audio_crf"]
+        source_audio_crf = self.remixer_settings["source_audio_crf"]
         try:
-            self.create_source_audio(source_audio_crf, global_options, prevent_overwrite=True)
-            log_fn(f"created source audio {self.source_audio} from {self.source_video}")
+            self.create_source_audio(source_audio_crf, prevent_overwrite=True)
+            self.log(f"created source audio {self.source_audio} from {self.source_video}")
         except ValueError as error:
             # ignore, don't create the file if present or same as video
-            log_fn(f"ignoring: {error}")
+            self.log(f"ignoring: {error}")
 
         create_directory(self.scenes_path)
-        log_fn(f"created scenes directory {self.scenes_path}")
+        self.log(f"created scenes directory {self.scenes_path}")
         create_directory(self.dropped_scenes_path)
-        log_fn(f"created dropped scenes directory {self.dropped_scenes_path}")
+        self.log(f"created dropped scenes directory {self.dropped_scenes_path}")
 
-        log_fn("beginning recreating of scenes from source frames")
+        self.log("beginning recreating of scenes from source frames")
         source_frames = sorted(get_files(self.frames_path))
         with Mtqdm().open_bar(total=len(self.scene_names), desc="Recreating Scenes") as bar:
             for scene_name in self.scene_names:
                 scene_path = os.path.join(self.scenes_path, scene_name)
                 create_directory(scene_path)
-                log_fn(f"created scene directory {scene_path}")
+                self.log(f"created scene directory {scene_path}")
 
                 first_index, last_index, _ = details_from_group_name(scene_name)
                 num_frames = (last_index - first_index) + 1
@@ -429,19 +429,19 @@ class VideoRemixerState():
                         shutil.copy(source_path, frame_path)
                         Mtqdm().update_bar(inner_bar)
 
-                log_fn(f"scene frames copied to {scene_path}")
+                self.log(f"scene frames copied to {scene_path}")
                 Mtqdm().update_bar(bar)
-        log_fn(f"recreated scenes")
+        self.log(f"recreated scenes")
 
-        log_fn(f"about to create thumbnails of type {self.thumbnail_type}")
-        self.create_thumbnails(log_fn, global_options, remixer_settings)
+        self.log(f"about to create thumbnails of type {self.thumbnail_type}")
+        self.create_thumbnails()
         self.thumbnails = sorted(get_files(self.thumbnail_path))
 
         self.clips_path = os.path.join(self.project_path, self.CLIPS_PATH)
-        log_fn(f"creating clips directory {self.clips_path}")
+        self.log(f"creating clips directory {self.clips_path}")
         create_directory(self.clips_path)
 
-    def export_project(self, log_fn, new_project_path, new_project_name, kept_scenes):
+    def export_project(self, new_project_path, new_project_name, kept_scenes):
         new_project_name = new_project_name.strip()
         full_new_project_path = os.path.join(new_project_path, new_project_name)
 
@@ -454,7 +454,7 @@ class VideoRemixerState():
 
         # update project paths to the new one
         new_state = VideoRemixerState.load_ported(new_state.project_path, new_profile_filepath,
-                            self.remixer_settings, self.global_options, log_fn, save_original=False)
+                    self.remixer_settings, self.global_options, self.log_fn, save_original=False)
 
         # ensure the project directories exist
         new_state.post_load_integrity_check()
@@ -509,31 +509,32 @@ class VideoRemixerState():
 
         new_state.save()
 
-    def import_project(self, log_fn, import_path):
+    def import_project(self, import_path):
         try:
             import_file = VideoRemixerState.determine_project_filepath(import_path)
         except ValueError as error:
             message = f"import_project(): error determining project filepath: {error}"
-            log_fn(message)
+            self.log(message)
             raise ValueError(message)
 
         try:
             imported = VideoRemixerState.load(import_file, None, None, self.log_fn)
         except ValueError as error:
             message = f"import_project(): error loading import project: {error}"
-            log_fn(message)
+            self.log(message)
             raise ValueError(message)
 
         if imported.project_ported(import_file):
             try:
-                imported = VideoRemixerState.load_ported(imported.project_path, import_file, None, None, self.log_fn)
+                imported = VideoRemixerState.load_ported(imported.project_path, import_file, None,
+                                                         None, self.log_fn)
             except ValueError as error:
                 message = f"import_project(): error loading ported import project: {error}"
-                log_fn(message)
+                self.log(message)
                 raise ValueError(message)
 
         messages = imported.post_load_integrity_check()
-        log_fn(f"import_project(): port_load_integrity_check():\r\n{messages}")
+        self.log(f"import_project(): port_load_integrity_check():\r\n{messages}")
 
         _, source_video, source_ext = split_filepath(self.source_video)
         _, import_video, import_ext = split_filepath(imported.source_video)
@@ -542,7 +543,7 @@ class VideoRemixerState():
 
         if source_video != import_video:
             message = "Unable to import from a project created from a different source video"
-            log_fn(message)
+            self.log(message)
             raise ValueError(message)
 
         current_lowest, current_highest = self.scene_frame_limits(self)
@@ -552,7 +553,7 @@ class VideoRemixerState():
 
         if ranges_overlap(current_range, import_range):
             message = "Unable to import from a project with overlapping scene ranges"
-            log_fn(message)
+            self.log(message)
             raise ValueError(message)
 
         self.uncompile_scenes()
@@ -689,7 +690,8 @@ class VideoRemixerState():
                 raise ValueError(message)
 
     @staticmethod
-    def load_ported(original_project_path, ported_project_file : str, remixer_settings, global_options, log_fn, save_original = True):
+    def load_ported(original_project_path, ported_project_file : str, remixer_settings,
+                    global_options, log_fn, save_original = True):
         new_path, _, _ = split_filepath(ported_project_file)
 
         if save_original:
@@ -753,7 +755,7 @@ class VideoRemixerState():
     @staticmethod
     def new_project(remixer_settings : dict, global_options : dict, log_fn : Callable):
         state = VideoRemixerState(remixer_settings, global_options, log_fn)
-        state.set_project_defaults(remixer_settings, VideoRemixerState.SAFETY_DEFAULTS)
+        state.set_project_defaults()
         return state
 
 
@@ -812,7 +814,7 @@ class VideoRemixerState():
         self.project_fps = float(video_details['frame_rate'])
 
     # split video into frames
-    def render_source_frames(self, global_options, prevent_overwrite=False):
+    def render_source_frames(self, prevent_overwrite=False):
         self.frames_path = os.path.join(self.project_path, self.FRAMES_PATH)
         if prevent_overwrite:
             if os.path.exists(self.frames_path) and get_files(self.frames_path, self.frame_format):
@@ -835,13 +837,13 @@ class VideoRemixerState():
                                   frame_rate,
                                   self.frames_path,
                                   deinterlace=self.deinterlace,
-                                  global_options=global_options,
+                                  global_options=self.global_options,
                                   type=self.frame_format)
             Mtqdm().update_bar(bar)
         return ffmpeg_cmd
 
     # this is intended to be called after source frames have been rendered
-    def enhance_video_info(self, log_fn, ignore_errors=True):
+    def enhance_video_info(self, ignore_errors=True):
         """Get the actual dimensions of the frame files"""
         if self.scene_names and not self.video_details.get("source_width", None):
             self.uncompile_scenes()
@@ -854,20 +856,20 @@ class VideoRemixerState():
                     self.video_details["source_width"] = width
                     self.video_details["source_height"] = height
                 except ValueError as error:
-                    log_fn(f"Error: {error}")
+                    self.log(f"Error: {error}")
                     if not ignore_errors:
                         raise error
                 return
             message = f"no frame files found in {first_scene_path}"
             if ignore_errors:
-                log_fn(message)
+                self.log(message)
             else:
                 raise ValueError(message)
 
     # make a .mp4 container copy of original video if it's not already .mp4
     # this will be needed later to cut audio wav files
     # this is expected to be called after save_original_video()
-    def create_source_audio(self, crf, global_options, prevent_overwrite=True, skip_mp4=True):
+    def create_source_audio(self, crf, prevent_overwrite=True, skip_mp4=True):
         _, filename, ext = split_filepath(self.source_video)
         if skip_mp4 and ext.lower() == ".mp4":
             self.source_audio = self.source_video
@@ -885,7 +887,8 @@ class VideoRemixerState():
 
         with Mtqdm().open_bar(total=1, desc="FFmpeg") as bar:
             Mtqdm().message(bar, "Creating source audio locally - no ETA")
-            SourceToMP4(self.source_video, self.source_audio, crf, global_options=global_options)
+            SourceToMP4(self.source_video, self.source_audio, crf,
+                        global_options=self.global_options)
             Mtqdm().update_bar(bar)
 
     def scenes_present(self):
@@ -894,7 +897,7 @@ class VideoRemixerState():
             os.path.exists(self.scenes_path) and \
             get_directories(self.scenes_path)
 
-    def split_scenes(self, log_fn, prevent_overwrite=False):
+    def split_scenes(self, prevent_overwrite=False):
         if prevent_overwrite and self.scenes_present():
                 return None
         try:
@@ -908,7 +911,7 @@ class VideoRemixerState():
                                 self.scene_threshold,
                                 0.0,
                                 0.0,
-                                log_fn).split(type=self.frame_format)
+                                self.log_fn).split(type=self.frame_format)
                     Mtqdm().update_bar(bar)
 
             elif self.split_type == "Break":
@@ -921,7 +924,7 @@ class VideoRemixerState():
                                 0.0,
                                 float(self.break_duration),
                                 float(self.break_ratio),
-                                log_fn).split(type=self.frame_format)
+                                self.log_fn).split(type=self.frame_format)
                     Mtqdm().update_bar(bar)
             elif self.split_type == "Time":
                 # split by seconds
@@ -934,7 +937,7 @@ class VideoRemixerState():
                     self.split_frames,
                     "copy",
                     False,
-                    log_fn).split()
+                    self.log_fn).split()
             else:
                 # single split
                 SplitFrames(
@@ -946,7 +949,7 @@ class VideoRemixerState():
                     0,
                     "copy",
                     False,
-                    log_fn).split()
+                    self.log_fn).split()
             return None
         except ValueError as error:
             return error
@@ -956,7 +959,7 @@ class VideoRemixerState():
     # create a scene thumbnail, assumes:
     # - scenes uncompiled
     # - thumbnail path already exists
-    def create_thumbnail(self, scene_name, log_fn, global_options, remixer_settings):
+    def create_thumbnail(self, scene_name):
         self.thumbnail_path = os.path.join(self.project_path, self.THUMBNAILS_PATH)
         frames_source = os.path.join(self.scenes_path, scene_name)
 
@@ -964,15 +967,15 @@ class VideoRemixerState():
         source_frame_count = int(self.video_details["frame_count"])
         _, index_width = rate_adjusted_count(source_frame_count, source_frame_rate, self.project_fps)
 
-        log_fn(f"auto-resequencing source frames at {frames_source}")
-        ResequenceFiles(frames_source, self.frame_format, "scene_frame", 0, 1, 1, 0, index_width, True,
-            log_fn).resequence()
+        self.log(f"auto-resequencing source frames at {frames_source}")
+        ResequenceFiles(frames_source, self.frame_format, "scene_frame", 0, 1, 1, 0, index_width,
+                        True, self.log_fn).resequence()
 
         thumbnail_filename = f"thumbnail[{scene_name}]"
 
         if self.thumbnail_type == "JPG":
-            thumb_scale = remixer_settings["thumb_scale"]
-            max_thumb_size = remixer_settings["max_thumb_size"]
+            thumb_scale = self.remixer_settings["thumb_scale"]
+            max_thumb_size = self.remixer_settings["max_thumb_size"]
             video_w = self.video_details['display_width']
             video_h = self.video_details['display_height']
             max_frame_dimension = video_w if video_w > video_h else video_h
@@ -992,16 +995,16 @@ class VideoRemixerState():
                         False,
                         0.0,
                         0.0,
-                        log_fn,
-                        global_options=global_options).slice_frame_group(scene_name,
-                            slice_name=thumbnail_filename, type=self.frame_format)
-
+                        self.log,
+                        global_options=self.global_options).slice_frame_group(scene_name,
+                                                                    slice_name=thumbnail_filename,
+                                                                    type=self.frame_format)
         elif self.thumbnail_type == "GIF":
-            gif_fps = remixer_settings["default_gif_fps"]
-            gif_factor = remixer_settings["gif_factor"]
-            gif_end_delay = remixer_settings["gif_end_delay"]
-            thumb_scale = remixer_settings["thumb_scale"]
-            max_thumb_size = remixer_settings["max_thumb_size"]
+            gif_fps = self.remixer_settings["default_gif_fps"]
+            gif_factor = self.remixer_settings["gif_factor"]
+            gif_end_delay = self.remixer_settings["gif_end_delay"]
+            thumb_scale = self.remixer_settings["thumb_scale"]
+            max_thumb_size = self.remixer_settings["max_thumb_size"]
             video_w = self.video_details['display_width']
             video_h = self.video_details['display_height']
 
@@ -1023,15 +1026,15 @@ class VideoRemixerState():
                         False,
                         gif_fps,
                         gif_end_delay,
-                        log_fn,
-                        global_options=global_options).slice_frame_group(scene_name,
+                        self.log,
+                        global_options=self.global_options).slice_frame_group(scene_name,
                                                                     ignore_errors=True,
                                                                     slice_name=thumbnail_filename,
                                                                     type=self.frame_format)
         else:
             raise ValueError(f"thumbnail type '{self.thumbnail_type}' is not implemented")
 
-    def create_thumbnails(self, log_fn, global_options, remixer_settings):
+    def create_thumbnails(self):
         self.thumbnail_path = os.path.join(self.project_path, self.THUMBNAILS_PATH)
         create_directory(self.thumbnail_path)
         clean_directories([self.thumbnail_path])
@@ -1039,7 +1042,7 @@ class VideoRemixerState():
 
         with Mtqdm().open_bar(total=len(self.scene_names), desc="Create Thumbnails") as bar:
             for scene_name in self.scene_names:
-                self.create_thumbnail(scene_name, log_fn, global_options, remixer_settings)
+                self.create_thumbnail(scene_name)
                 Mtqdm().update_bar(bar)
 
     # shrink low-frame count scenes related code
@@ -1110,11 +1113,11 @@ class VideoRemixerState():
         num_width = len(scene_names[0].split("-")[0])
         return result, num_width
 
-    def consolidate_scenes(self, log_fn):
+    def consolidate_scenes(self):
         container_data, num_width = VideoRemixerState.get_container_data(self.scenes_path)
         state = {"path" : self.scenes_path,
                  "num_width" : num_width,
-                 "log_fn" : log_fn}
+                 "log_fn" : self.log_fn}
         with Mtqdm().open_bar(total=1, desc="Shrink") as bar:
             Mtqdm().message(bar, "Shrinking small scenes - no ETA")
             shrunk_container_data = shrink(container_data, self.min_frames_per_scene,
@@ -1122,7 +1125,7 @@ class VideoRemixerState():
                                            VideoRemixerState.remove_scene,
                                            VideoRemixerState.rename_scene, state)
             Mtqdm().update_bar(bar)
-        log_fn(f"shrunk container data: {shrunk_container_data}")
+        self.log(f"shrunk container data: {shrunk_container_data}")
 
 
     ## Scene Labels, Sort Marks, Processing Hints, Titles Concern
@@ -1319,7 +1322,8 @@ class VideoRemixerState():
     def upscale_chosen(self):
         return self.upscale or self.hint_present(self.UPSCALE_HINT)
 
-    def purge_paths(self, path_list : list, keep_original=False, purged_path=None, skip_empty_paths=False, additional_path=""):
+    def purge_paths(self, path_list : list, keep_original=False, purged_path=None,
+                    skip_empty_paths=False, additional_path=""):
         """Purge a list of paths to the purged content directory
         keep_original: True=don't remove original content when purging
         purged_path: Used if calling multiple times to store purged content in the same purge directory
@@ -1474,8 +1478,9 @@ class VideoRemixerState():
 
     # set project settings UI defaults in case the project is reopened
     # otherwise some UI elements get set to None on reopened new projects
-    def set_project_defaults(self, remixer_settings, defaults):
-        self.project_fps = remixer_settings["def_project_fps"]
+    def set_project_defaults(self, defaults=None):
+        defaults = defaults or self.SAFETY_DEFAULTS
+        self.project_fps = self.remixer_settings["def_project_fps"]
         self.deinterlace = defaults["deinterlace"]
         self.split_type = defaults["split_type"]
         self.scene_threshold = defaults["scene_threshold"]
@@ -1508,7 +1513,7 @@ class VideoRemixerState():
             raise ValueError(
                 f"ValueError encountered while getting scene chooser data: {error}")
 
-    def compute_preview_frame(self, log_fn, scene_index, split_percent):
+    def compute_preview_frame(self, scene_index, split_percent):
         scene_index = int(scene_index)
         num_scenes = len(self.scene_names)
         last_scene = num_scenes - 1
@@ -1528,7 +1533,7 @@ class VideoRemixerState():
 
         num_frame_files = len(frame_files)
         if num_frame_files != num_frames:
-            log_fn(f"compute_preview_frame(): expected {num_frame_files} frame files but found {num_frames} for scene index {scene_index} - returning None")
+            self.log(f"compute_preview_frame(): expected {num_frame_files} frame files but found {num_frames} for scene index {scene_index} - returning None")
             return None
         return frame_files[split_frame]
 
@@ -1648,8 +1653,8 @@ class VideoRemixerState():
             shutil.move(frame_path, new_frame_path)
         os.replace(original_scene_path, new_lower_scene_path)
 
-    def split_scene(self, log_fn, scene_index, split_percent, remixer_settings, global_options,
-                    keep_before=False, keep_after=False, backup_scene=True):
+    def split_scene(self, scene_index, split_percent, keep_before=False, keep_after=False,
+                    backup_scene=True):
         if not isinstance(scene_index, (int, float)):
             raise ValueError("Scene index must be an int or float")
 
@@ -1681,7 +1686,8 @@ class VideoRemixerState():
 
         if backup_scene:
             scene_path = os.path.join(self.scenes_path, scene_name)
-            purge_root = self.purge_paths([scene_path], keep_original=True, additional_path=self.SCENES_PATH)
+            purge_root = self.purge_paths([scene_path], keep_original=True,
+                                          additional_path=self.SCENES_PATH)
             if purge_root:
                 self.copy_project_file(purge_root)
 
@@ -1718,13 +1724,11 @@ class VideoRemixerState():
             self.current_scene = scene_index
 
         thumbnail_file = self.thumbnails[scene_index]
-        log_fn(f"about to delete original thumbnail file '{thumbnail_file}'")
+        self.log(f"about to delete original thumbnail file '{thumbnail_file}'")
         os.remove(thumbnail_file)
-        self.create_thumbnail(new_lower_scene_name, log_fn, global_options,
-                                    remixer_settings)
-        log_fn(f"about to create thumbnail for new upper scene {new_upper_scene_name}")
-        self.create_thumbnail(new_upper_scene_name, log_fn, global_options,
-                                    remixer_settings)
+        self.create_thumbnail(new_lower_scene_name)
+        self.log(f"about to create thumbnail for new upper scene {new_upper_scene_name}")
+        self.create_thumbnail(new_upper_scene_name)
         self.thumbnails = sorted(get_files(self.thumbnail_path))
 
         paths = [
@@ -1754,16 +1758,16 @@ class VideoRemixerState():
                                                     new_upper_scene_name,
                                                     split_percent)
                     except ValueError as error:
-                        log_fn(
+                        self.log(
                             f"Error splitting processed content path {path}: {error} - ignored")
                         continue
                 else:
-                    log_fn(f"Planned skip of splitting processed content path {path}: scene {scene_name} not found")
+                    self.log(f"Planned skip of splitting processed content path {path}: scene {scene_name} not found")
             else:
-                log_fn(f"Planned skip of splitting processed content path {path}: path not found")
+                self.log(f"Planned skip of splitting processed content path {path}: path not found")
 
         if processed_content_split:
-            log_fn("invalidating processed audio content after splitting")
+            self.log("invalidating processed audio content after splitting")
             self.clean_remix_audio()
 
         self.invalidate_split_scene_cache()

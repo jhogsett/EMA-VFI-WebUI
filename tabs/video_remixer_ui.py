@@ -1655,8 +1655,7 @@ class VideoRemixer(TabBase):
 
             try:
                 self.log(f"creating source audio from {self.state.source_video}")
-                self.state.create_source_audio(
-                    source_audio_crf, global_options, prevent_overwrite=True)
+                self.state.create_source_audio(source_audio_crf, prevent_overwrite=True)
             except ValueError as error:
                 self.log(f"ignoring: {error}")
 
@@ -1672,8 +1671,7 @@ class VideoRemixer(TabBase):
             # unless the source frames were flagged invalid in the previous step
             self.log("splitting source video into frames")
             prevent_overwrite = not self.state.source_frames_invalid
-            ffcmd = self.state.render_source_frames(global_options=global_options,
-                                                    prevent_overwrite=prevent_overwrite)
+            ffcmd = self.state.render_source_frames(prevent_overwrite=prevent_overwrite)
             if not ffcmd:
                 self.log("rendering source frames skipped")
             else:
@@ -1695,7 +1693,7 @@ class VideoRemixer(TabBase):
 
             # split frames into scenes
             self.log(f"about to split scenes by {self.state.split_type}")
-            error = self.state.split_scenes(self.log, prevent_overwrite=False)
+            error = self.state.split_scenes(prevent_overwrite=False)
             if error:
                 return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                     format_markdown(f"There was an error splitting the source video: {error}", "error"), \
@@ -1705,7 +1703,7 @@ class VideoRemixer(TabBase):
 
             if self.state.min_frames_per_scene > 0:
                 self.log(f"about to consolidate scenes with too few frames")
-                self.state.consolidate_scenes(self.log)
+                self.state.consolidate_scenes()
                 self.log("saving project after consolidating scenes")
                 self.state.save()
 
@@ -1713,7 +1711,7 @@ class VideoRemixer(TabBase):
 
             try:
                 self.log("enhance source video info with extra data including frame dimensions")
-                self.state.enhance_video_info(self.log, ignore_errors=False)
+                self.state.enhance_video_info(ignore_errors=False)
                 self.state.save()
             except ValueError as error:
                 return gr.update(selected=self.TAB_SET_UP_PROJECT), \
@@ -1732,7 +1730,7 @@ class VideoRemixer(TabBase):
 
         self.log(f"about to create thumbnails of type {self.state.thumbnail_type}")
         try:
-            self.state.create_thumbnails(self.log, global_options, self.config.remixer_settings)
+            self.state.create_thumbnails()
         except ValueError as error:
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                    format_markdown(f"There was an error creating thumbnails from the source video: {error}", "error"), \
@@ -1837,7 +1835,7 @@ class VideoRemixer(TabBase):
     def split_scene_shortcut(self, scene_index):
         default_percent = 50.0
         scene_index = int(scene_index)
-        display_frame = self.state.compute_preview_frame(self.log, scene_index, default_percent)
+        display_frame = self.state.compute_preview_frame(scene_index, default_percent)
         _, _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index, self.GAP)
         return gr.update(selected=self.TAB_REMIX_EXTRA), \
             gr.update(selected=self.TAB_EXTRA_SPLIT_SCENE), \
@@ -2477,7 +2475,7 @@ class VideoRemixer(TabBase):
         if scene_index < 0 or scene_index >= len(self.state.scene_names):
             return dummy_args(2)
 
-        display_frame = self.state.compute_preview_frame(self.log, scene_index, split_percent)
+        display_frame = self.state.compute_preview_frame(scene_index, split_percent)
         _, _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index, self.GAP)
         return display_frame, scene_info
 
@@ -2499,7 +2497,7 @@ class VideoRemixer(TabBase):
         new_project_name = new_project_name.strip()
         full_new_project_path = os.path.join(new_project_path, new_project_name)
         try:
-            self.state.export_project(self.log, new_project_path, new_project_name, kept_scenes)
+            self.state.export_project(new_project_path, new_project_name, kept_scenes)
             Session().set("last-video-remixer-export-dir", new_project_path)
             return format_markdown(f"Kept scenes saved as new project: {full_new_project_path} "), \
                 gr.update(visible=True, value=full_new_project_path), \
@@ -2512,9 +2510,8 @@ class VideoRemixer(TabBase):
         global_options = self.config.ffmpeg_settings["global_options"]
         backup_split_scenes = self.config.remixer_settings["backup_split_scenes"]
         try:
-            message = self.state.split_scene(self.log, scene_index, split_percent,
-                                             self.config.remixer_settings, global_options,
-                                             keep_before, keep_after, backup_split_scenes)
+            message = self.state.split_scene(scene_index, split_percent, keep_before, keep_after,
+                                             backup_split_scenes)
             self.state.save()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
@@ -2539,7 +2536,7 @@ class VideoRemixer(TabBase):
                     format_markdown(f"Directory '{import_path}' was not found", "error"), \
                     *empty_args
         try:
-            self.state.import_project(self.log, import_path)
+            self.state.import_project(import_path)
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                     format_markdown(str(error), "error"), \
@@ -2561,7 +2558,7 @@ class VideoRemixer(TabBase):
         # the native dimensions of the on-disk frame files are needed
         # older project.yaml files won't have this data
         try:
-            self.state.enhance_video_info(self.log, ignore_errors=False)
+            self.state.enhance_video_info(ignore_errors=False)
         except ValueError as error:
             return format_markdown(f"Error: {error}", "error")
 
@@ -2742,8 +2739,7 @@ class VideoRemixer(TabBase):
 
         # create a new thumbnail for the consolidated scene
         self.log("about to create a thumbnail for the consolidated scene")
-        self.state.create_thumbnail(new_scene_name, self.log, global_options,
-                                    self.config.remixer_settings)
+        self.state.create_thumbnail(new_scene_name)
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
 
         self.log("saving project after merging scenes")
@@ -3022,10 +3018,7 @@ class VideoRemixer(TabBase):
 
     def restore_button714(self):
         if self.state.project_path:
-            global_options = self.config.ffmpeg_settings["global_options"]
-            self.state.recover_project(global_options=global_options,
-                                    remixer_settings=self.config.remixer_settings,
-                                    log_fn=self.log)
+            self.state.recover_project()
 
             # user will expect to return to scene chooser on reopening
             self.state.save_progress("choose")
