@@ -879,7 +879,7 @@ class VideoRemixerState():
 
         if self.inflate_chosen():
             if self.inflate:
-                label += "-in" + self.state.inflate_by_option[0]
+                label += "-in" + self.inflate_by_option[0]
                 if self.inflate_slow_option == "Audio":
                     label += "SA"
                 elif self.inflate_slow_option == "Silent":
@@ -889,7 +889,7 @@ class VideoRemixerState():
 
         if self.upscale_chosen():
             if self.upscale:
-                label += "-up" + self.state.upscale_option[0]
+                label += "-up" + self.upscale_option[0]
             else:
                 label += "-upH"
 

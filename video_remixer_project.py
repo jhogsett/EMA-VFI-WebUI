@@ -12,7 +12,6 @@ from webui_utils.simple_utils import ranges_overlap
 from webui_utils.video_utils import details_from_group_name
 from webui_utils.jot import Jot
 from webui_utils.mtqdm import Mtqdm
-from video_remixer import VideoRemixerState
 
 if TYPE_CHECKING:
     from video_remixer import VideoRemixerState
@@ -203,7 +202,8 @@ class VideoRemixerProject():
         with open(ported_project_file, "w", encoding="UTF-8") as file:
             file.writelines(new_lines)
 
-        state = VideoRemixerState.load(ported_project_file, remixer_settings, global_options, log_fn)
+        state = VideoRemixerProject.load(ported_project_file, remixer_settings, global_options,
+                                         log_fn)
         state.save(ported_project_file)
 
         return state
@@ -443,7 +443,7 @@ class VideoRemixerProject():
     @staticmethod
     def determine_project_filepath(project_path):
         if os.path.isdir(project_path):
-            project_file = os.path.join(project_path, VideoRemixerState.DEF_FILENAME)
+            project_file = os.path.join(project_path, VideoRemixerProject.DEF_FILENAME)
         else:
             project_file = project_path
             project_path, _, _ = split_filepath(project_path)
@@ -608,7 +608,7 @@ class VideoRemixerProject():
 
         self.state.save()
 
-    def scene_frame_limits(self, state : VideoRemixerState):
+    def scene_frame_limits(self, state : "VideoRemixerState"):
         highest_frame = -1
         lowest_frame = sys.maxsize
         for scene_name in sorted(state.scene_names):
