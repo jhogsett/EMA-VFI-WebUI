@@ -1315,7 +1315,12 @@ class VideoRemixer(TabBase):
             self.state = VideoRemixerState.new_project(self.config.remixer_settings,
                                                        self.config.ffmpeg_settings["global_options"],
                                                        self.log)
-            self.processor = VideoRemixerProcessor(self.state, self.log)
+            self.processor = VideoRemixerProcessor(self.state,
+                                                   self.engine,
+                                                   self.config.engine_settings,
+                                                   self.config.realesrgan_settings,
+                                                   self.config.ffmpeg_settings["global_options"],
+                                                   self.log)
             self.state.ingest_video(video_path)
             self.state.video_info1 = self.state.ingested_video_report()
         except ValueError as error:
@@ -1377,7 +1382,12 @@ class VideoRemixer(TabBase):
                     format_markdown(str(error), "error"), \
                    *empty_args
 
-        self.processor = VideoRemixerProcessor(self.state, self.log)
+        self.processor = VideoRemixerProcessor(self.state,
+                                               self.engine,
+                                               self.config.engine_settings,
+                                               self.config.realesrgan_settings,
+                                               self.config.ffmpeg_settings["global_options"],
+                                               self.log)
 
         messages = self.state.post_load_integrity_check()
         if messages:
@@ -2095,12 +2105,7 @@ class VideoRemixer(TabBase):
                                              inflate_option_changed,
                                              upscale_option_changed)
 
-        self.processor.process_remix(self.log,
-                                 kept_scenes,
-                                 self.config.remixer_settings,
-                                 self.engine,
-                                 self.config.engine_settings,
-                                 self.config.realesrgan_settings)
+        self.processor.process_remix(kept_scenes)
 
         remix_report = self.state.generate_remix_report(
             self.processor.processed_content_complete(self.state.RESIZE_STEP),
@@ -2184,13 +2189,10 @@ class VideoRemixer(TabBase):
                 "The project has not yet been set up from the Set Up Project tab.", "error")
 
         try:
-            global_options = self.config.ffmpeg_settings["global_options"]
-            remixer_settings = self.config.remixer_settings
-            kept_scenes = self.processor.prepare_save_remix(self.log, global_options,
-                                                        remixer_settings, output_filepath,
-                                                        invalidate_video_clips=False)
-            self.processor.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
-                                         custom_video_options, custom_audio_options)
+            kept_scenes = self.processor.prepare_save_remix(output_filepath,
+                                                            invalidate_video_clips=False)
+            self.processor.save_custom_remix(output_filepath, kept_scenes, custom_video_options,
+                                             custom_audio_options)
             return format_markdown(f"Remixed custom video {output_filepath} is complete.",
                                    "highlight")
         except ValueError as error:
@@ -2204,8 +2206,7 @@ class VideoRemixer(TabBase):
         try:
             global_options = self.config.ffmpeg_settings["global_options"]
             remixer_settings = self.config.remixer_settings
-            kept_scenes = self.processor.prepare_save_remix(self.log, global_options,
-                                                        remixer_settings, output_filepath)
+            kept_scenes = self.processor.prepare_save_remix(output_filepath)
             draw_text_options = {}
             draw_text_options["font_size"] = self.config.remixer_settings["marked_font_size"]
             draw_text_options["font_color"] = self.config.remixer_settings["marked_font_color"]
@@ -2231,9 +2232,9 @@ class VideoRemixer(TabBase):
                 labels.append(self.state.scene_marker(scene_name))
             draw_text_options["labels"] = labels
 
-            self.processor.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
-                                         marked_video_options, marked_audio_options,
-                                         draw_text_options)
+            self.processor.save_custom_remix(output_filepath, global_options, kept_scenes,
+                                             marked_video_options, marked_audio_options,
+                                             draw_text_options)
             return format_markdown(f"Remixed marked video {output_filepath} is complete.",
                                    "highlight")
         except ValueError as error:
@@ -2275,8 +2276,7 @@ class VideoRemixer(TabBase):
         try:
             global_options = self.config.ffmpeg_settings["global_options"]
             remixer_settings = self.config.remixer_settings
-            kept_scenes = self.processor.prepare_save_remix(self.log, global_options,
-                                                        remixer_settings, output_filepath)
+            kept_scenes = self.processor.prepare_save_remix(output_filepath)
             draw_text_options = {}
             draw_text_options["font_size"] = label_font_size
             draw_text_options["font_color"] = label_font_color
@@ -2313,9 +2313,9 @@ class VideoRemixer(TabBase):
             self.log(f"using labeled audeo options: {labeled_audio_options}")
 
             try:
-                self.processor.save_custom_remix(self.log, output_filepath, global_options, kept_scenes,
-                                             labeled_video_options, labeled_audio_options,
-                                             draw_text_options, use_scene_sorting=True)
+                self.processor.save_custom_remix(output_filepath, kept_scenes,
+                                                 labeled_video_options, labeled_audio_options,
+                                                 draw_text_options, use_scene_sorting=True)
                 return format_markdown(
                     f"Remixed labeled video {output_filepath} is complete.", "highlight")
             except FFRuntimeError as error:
@@ -2582,28 +2582,27 @@ class VideoRemixer(TabBase):
         content_height = self.state.video_details["source_height"]
         scale_type = self.config.remixer_settings["scale_type_down"]
 
-        upscaler = self.processor.get_upscaler(self.log, self.config.realesrgan_settings, self.config.remixer_settings)
+        upscaler = self.processor.get_upscaler()
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Cleansing") as bar:
             for scene_name in kept_scenes:
                 scene_path = os.path.join(self.state.scenes_path, scene_name)
                 upscale_scene_path = os.path.join(upscale_path, scene_name)
                 create_directory(upscale_scene_path)
-                self.processor.upscale_scene(self.log, upscaler, scene_path, upscale_scene_path,
+                self.processor.upscale_scene(upscaler, scene_path, upscale_scene_path,
                                          self.CLEANSE_SCENES_FACTOR, downscale_type=scale_type)
 
                 downsample_scene_path = os.path.join(downsample_path, scene_name)
                 create_directory(downsample_scene_path)
-                self.processor.resize_scene(self.log,
-                                        upscale_scene_path,
-                                        downsample_scene_path,
-                                        content_width,
-                                        content_height,
-                                        int(self.state.crop_w),
-                                        int(self.state.crop_h),
-                                        -1,
-                                        -1,
-                                        scale_type,
-                                        crop_type="none")
+                self.processor.resize_scene(upscale_scene_path,
+                                            downsample_scene_path,
+                                            content_width,
+                                            content_height,
+                                            int(self.state.crop_w),
+                                            int(self.state.crop_h),
+                                            -1,
+                                            -1,
+                                            scale_type,
+                                            crop_type="none")
                 Mtqdm().update_bar(bar)
 
         self.log("purging scenes before replacing with cleansed scenes")
@@ -3064,6 +3063,5 @@ class VideoRemixer(TabBase):
 
         global_options = self.config.ffmpeg_settings["global_options"]
         remixer_settings = self.config.remixer_settings
-        kept_scenes = self.processor.prepare_save_remix(self.log, global_options, remixer_settings,
-                                                    output_filepath)
-        self.processor.save_remix(self.log, global_options, kept_scenes)
+        kept_scenes = self.processor.prepare_save_remix(output_filepath)
+        self.processor.save_remix(kept_scenes)
