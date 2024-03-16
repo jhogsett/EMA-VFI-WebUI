@@ -21,7 +21,6 @@ from resequence_files import ResequenceFiles
 from .video_blender_ui import VideoBlender
 from video_remixer_processor import VideoRemixerProcessor
 from video_remixer_project import VideoRemixerProject
-from video_remixer_ingest import VideoRemixerIngest
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -1661,7 +1660,7 @@ class VideoRemixer(TabBase):
         if not skip_detection or not self.state.scenes_present():
             try:
                 self.log(f"copying video from {self.state.source_video} to project path")
-                self.state.save_original_video(prevent_overwrite=True)
+                self.state.ingest.save_original_video(prevent_overwrite=True)
             except ValueError as error:
                 # ignore, don't copy the file a second time if the user is restarting here
                 self.log(f"ignoring: {error}")

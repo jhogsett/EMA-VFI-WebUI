@@ -45,7 +45,7 @@ class VideoRemixerIngest():
         video_filename = filename + ext
 
         # clean various problematic chars from filenames
-        filtered_filename = clean_filename(video_filename, self.state.FILENAME_FILTER)
+        filtered_filename = clean_filename(video_filename, self.FILENAME_FILTER)
         project_video_path = os.path.join(self.state.project_path, filtered_filename)
 
         if os.path.exists(project_video_path) and prevent_overwrite:
@@ -73,8 +73,8 @@ class VideoRemixerIngest():
             finally:
                 Mtqdm().update_bar(bar)
 
-        filtered_filename = clean_filename(filename, self.state.FILENAME_FILTER)
-        project_path = os.path.join(path, f"{self.state.PROJECT_PATH_PREFIX}{filtered_filename}")
+        filtered_filename = clean_filename(filename, self.FILENAME_FILTER)
+        project_path = os.path.join(path, f"{self.PROJECT_PATH_PREFIX}{filtered_filename}")
         resize_w = int(video_details['display_width'])
         resize_h = int(video_details['display_height'])
         crop_w, crop_h = resize_w, resize_h
@@ -211,7 +211,7 @@ class VideoRemixerIngest():
 
     # split video into frames
     def render_source_frames(self, prevent_overwrite=False):
-        self.state.frames_path = os.path.join(self.state.project_path, self.state.FRAMES_PATH)
+        self.state.frames_path = os.path.join(self.state.project_path, self.FRAMES_PATH)
         if prevent_overwrite:
             if os.path.exists(self.state.frames_path) and get_files(self.state.frames_path, self.state.frame_format):
                 return None
@@ -274,7 +274,7 @@ class VideoRemixerIngest():
         audio_filename = filename  + "-audio" + ".mp4"
 
         # clean various problematic chars from filenames
-        filtered_filename = clean_filename(audio_filename, self.state.FILENAME_FILTER)
+        filtered_filename = clean_filename(audio_filename, self.FILENAME_FILTER)
         self.state.source_audio = os.path.join(self.state.project_path, filtered_filename)
 
         if os.path.exists(self.state.source_audio) and prevent_overwrite:
@@ -354,7 +354,7 @@ class VideoRemixerIngest():
 
         with Mtqdm().open_bar(total=len(self.state.scene_names), desc="Create Thumbnails") as bar:
             for scene_name in self.state.scene_names:
-                self.state.create_thumbnail(scene_name)
+                self.create_thumbnail(scene_name)
                 Mtqdm().update_bar(bar)
 
     # shrink low-frame count scenes related code
