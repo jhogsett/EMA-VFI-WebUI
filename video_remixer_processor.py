@@ -180,6 +180,17 @@ class VideoRemixerProcessor():
         self.log(f"FFmpeg command: {ffcmd}")
         self.state.save()
 
+    def sort_marked_scenes(self) -> dict:
+        """Returns dict mapping scene sort mark to scene name."""
+        result = {}
+        for scene_name in self.state.scene_names:
+            scene_label = self.state.scene_labels.get(scene_name)
+            sort, _, _ = self.state.split_label(scene_label)
+            if sort:
+                result[sort] = scene_name
+        return result
+
+
     ### Internal --------------------
 
     # Preprocessing
@@ -1155,14 +1166,15 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                                         output_path=scene_output_path).resequence()
                 Mtqdm().update_bar(bar)
 
-    def get_upscaler(self):
+    def get_upscaler(self, size : int | None=None):
+        """Get Real-ESRGAN upscaler. 'size' is pixels W x H and used for auto-tiling"""
         model_name = self.realesrgan_settings["model_name"]
         gpu_ids = self.realesrgan_settings["gpu_ids"]
         fp32 = self.realesrgan_settings["fp32"]
 
         # determine if cropped image size is above memory threshold requiring tiling
         use_tiling_over = self.state.remixer_settings["use_tiling_over"]
-        size = self.state.crop_w * self.state.crop_h
+        size = size or self.state.crop_w * self.state.crop_h
 
         if size > use_tiling_over:
             tiling = self.realesrgan_settings["tiling"]
@@ -1653,7 +1665,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         assembly = []
         unlabeled_scenes = kept_scenes
 
-        sort_marked_scenes = self.state.sort_marked_scenes()
+        sort_marked_scenes = self.sort_marked_scenes()
         sort_marks = sorted(list(sort_marked_scenes.keys()))
         for sort_mark in sort_marks:
             scene_name = sort_marked_scenes[sort_mark]
@@ -1679,4 +1691,3 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
             assembly.append(map_scene_name_to_clip[scene_name])
 
         return assembly
-
