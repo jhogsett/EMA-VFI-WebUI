@@ -12,6 +12,7 @@ from webui_utils.simple_utils import ranges_overlap
 from webui_utils.video_utils import details_from_group_name
 from webui_utils.jot import Jot
 from webui_utils.mtqdm import Mtqdm
+from video_remixer_ingest import VideoRemixerIngest
 
 if TYPE_CHECKING:
     from video_remixer import VideoRemixerState
@@ -67,6 +68,7 @@ class VideoRemixerProject():
                 state.global_options = global_options
                 state.log_fn = log_fn
                 state.project = VideoRemixerProject(state, log_fn)
+                state.ingest = VideoRemixerIngest(state, log_fn)
 
                 # reload some things
                 if not state.scene_names:
@@ -322,7 +324,7 @@ class VideoRemixerProject():
         ])
         self.log(f"generated content directories purged to {purged_path}")
 
-        self.state.render_source_frames(prevent_overwrite=True)
+        self.state.ingest.render_source_frames(prevent_overwrite=True)
         self.log(f"source frames rendered to {self.state.frames_path}")
 
         source_audio_crf = self.state.remixer_settings["source_audio_crf"]

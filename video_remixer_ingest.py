@@ -1,24 +1,17 @@
 """Video Remixer UI state management"""
 import os
-import math
-import re
 import shutil
 from typing import Callable, TYPE_CHECKING
-from webui_utils.auto_increment import AutoIncrementDirectory
 from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
-    clean_directories, clean_filename, copy_files, directory_populated
-from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import seconds_to_hmsf, shrink, format_table
-from webui_utils.video_utils import details_from_group_name, get_essential_video_details, \
-    MP4toPNG, SourceToMP4, rate_adjusted_count, image_size
-from webui_utils.jot import Jot
+    clean_directories, clean_filename
+from webui_utils.simple_utils import shrink
+from webui_utils.video_utils import get_essential_video_details, MP4toPNG, SourceToMP4, \
+    rate_adjusted_count, image_size
 from webui_utils.mtqdm import Mtqdm
 from split_scenes import SplitScenes
 from split_frames import SplitFrames
 from slice_video import SliceVideo
 from resequence_files import ResequenceFiles
-from video_remixer_project import VideoRemixerProject
-
 
 if TYPE_CHECKING:
     from video_remixer import VideoRemixerState
