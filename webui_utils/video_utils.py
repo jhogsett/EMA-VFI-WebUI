@@ -712,7 +712,7 @@ f"{default_filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(
         start_time = seconds_to_hms(start_second)
         ffcmd = FFmpeg(inputs= {input_path : f"-ss {start_time}"},
                                 outputs={output_filepath :
-                f"-vf scale=iw*{scale_factor}:-2 -qscale:v 2 -vframes 1"},
+                f"-vf scale=iw*{scale_factor}:-2 -qmin 1 -qscale:v 1 -vframes 1"},
             global_options="-y " + global_options)
 
     cmd = ffcmd.cmd
