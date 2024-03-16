@@ -884,7 +884,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                              one_pass_only=False):
         if one_pass_only:
             passes = 1
-            desc = "Two-Pass Resynthesys (1 Pass)"
+            desc = "Two-Pass Resynthesis (1 Pass)"
         else:
             passes = 2
             desc = "Two-Pass Resynthesis"
@@ -1299,7 +1299,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                     self.state.scenes_path,
                     self.state.audio_clips_path,
                     0.0,
-                    self.state.audio_format,
+                    self.state.sound_format,
                     0,
                     1,
                     edge_trim,
