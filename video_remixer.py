@@ -159,6 +159,12 @@ class VideoRemixerState():
     def log(self, message):
         self.log_fn(message)
 
+    @staticmethod
+    def new_project(remixer_settings : dict, global_options : dict, log_fn : Callable):
+        state = VideoRemixerState(remixer_settings, global_options, log_fn)
+        state.project.set_project_defaults()
+        return state
+
     def save(self, filepath : str=None):
         self.project.save(filepath)
 

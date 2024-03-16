@@ -1313,7 +1313,7 @@ class VideoRemixer(TabBase):
                    *empty_args
 
         try:
-            self.state = VideoRemixerProject.new_project(self.config.remixer_settings,
+            self.state = VideoRemixerState.new_project(self.config.remixer_settings,
                                                        self.config.ffmpeg_settings["global_options"],
                                                        self.log)
             self.processor = VideoRemixerProcessor(self.state,

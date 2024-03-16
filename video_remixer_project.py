@@ -60,7 +60,7 @@ class VideoRemixerProject():
     def load(filepath : str, remixer_settings : dict, global_options : dict, log_fn : Callable):
         with open(filepath, "r") as file:
             try:
-                state : VideoRemixerState = yaml.load(file, Loader=Loader)
+                state : "VideoRemixerState" = yaml.load(file, Loader=Loader)
 
                 # establish some internal state
                 state.remixer_settings = remixer_settings
@@ -451,13 +451,6 @@ class VideoRemixerProject():
             raise ValueError(f"Project file {project_file} was not found")
         return project_file
 
-    @staticmethod
-    def new_project(remixer_settings : dict, global_options : dict, log_fn : Callable):
-        state = VideoRemixerState(remixer_settings, global_options, log_fn)
-        project = VideoRemixerProject(state, log_fn)
-        project.set_project_defaults()
-        return state
-
     ## Internal -------------------------
 
     def set_project_defaults(self, defaults=None):
@@ -487,9 +480,9 @@ class VideoRemixerProject():
 
     def backup_project_file(self, purged_path=None):
         if not purged_path:
-            purged_root_path = os.path.join(self.state.project_path, VideoRemixerState.PURGED_CONTENT)
+            purged_root_path = os.path.join(self.state.project_path, self.state.PURGED_CONTENT)
             create_directory(purged_root_path)
-            purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory(VideoRemixerState.PURGED_DIR)
+            purged_path, _ = AutoIncrementDirectory(purged_root_path).next_directory(self.state.PURGED_DIR)
         return self.copy_project_file(purged_path)
 
     # returns validated version of path and files, and an optional messages str
