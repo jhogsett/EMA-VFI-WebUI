@@ -1390,7 +1390,7 @@ class VideoRemixer(TabBase):
                                                self.engine,
                                                self.config.engine_settings,
                                                self.config.realesrgan_settings,
-                                               self.config.ffmpeg_settings["global_options"],
+                                               global_options,
                                                self.log)
 
         messages = self.state.project.post_load_integrity_check()
@@ -1642,7 +1642,6 @@ class VideoRemixer(TabBase):
     # User has clicked Set Up Project from Set Up Project
     def next_button2(self, thumbnail_type, min_frames_per_scene, skip_detection):
         empty_args = dummy_args(6)
-        global_options = self.config.ffmpeg_settings["global_options"]
         source_audio_crf = self.config.remixer_settings["source_audio_crf"]
 
         if not self.state.project_path:
@@ -2209,8 +2208,6 @@ class VideoRemixer(TabBase):
                 "The project has not yet been set up from the Set Up Project tab.", "error")
 
         try:
-            global_options = self.config.ffmpeg_settings["global_options"]
-            remixer_settings = self.config.remixer_settings
             kept_scenes = self.processor.prepare_save_remix(output_filepath)
             draw_text_options = {}
             draw_text_options["font_size"] = self.config.remixer_settings["marked_font_size"]
@@ -2237,9 +2234,8 @@ class VideoRemixer(TabBase):
                 labels.append(self.state.scene_marker(scene_name))
             draw_text_options["labels"] = labels
 
-            self.processor.save_custom_remix(output_filepath, global_options, kept_scenes,
-                                             marked_video_options, marked_audio_options,
-                                             draw_text_options)
+            self.processor.save_custom_remix(output_filepath, kept_scenes, marked_video_options,
+                                             marked_audio_options, draw_text_options)
             return format_markdown(f"Remixed marked video {output_filepath} is complete.",
                                    "highlight")
         except ValueError as error:
@@ -2279,8 +2275,6 @@ class VideoRemixer(TabBase):
         label_box_color = join_color_alpha(label_box_color, label_box_alpha)
 
         try:
-            global_options = self.config.ffmpeg_settings["global_options"]
-            remixer_settings = self.config.remixer_settings
             kept_scenes = self.processor.prepare_save_remix(output_filepath)
             draw_text_options = {}
             draw_text_options["font_size"] = label_font_size
@@ -2512,7 +2506,6 @@ class VideoRemixer(TabBase):
             return format_markdown(str(error), "error"), *empty_args
 
     def _split_scene(self, scene_index, split_percent, keep_before, keep_after):
-        global_options = self.config.ffmpeg_settings["global_options"]
         backup_split_scenes = self.config.remixer_settings["backup_split_scenes"]
         try:
             message = self.state.split_scene(scene_index, split_percent, keep_before, keep_after,
@@ -2634,7 +2627,6 @@ class VideoRemixer(TabBase):
     # TODO move
     def merge_scenes(self, first_scene_index, last_scene_index):
         """Merge the specified scenes. Returns the new scene name. Raises ValueError and RuntimeError."""
-        global_options = self.config.ffmpeg_settings["global_options"]
         num_scenes = len(self.state.scene_names)
         last_scene = num_scenes - 1
 
@@ -3066,7 +3058,5 @@ class VideoRemixer(TabBase):
         self.log("saving after storing remix output choices")
         self.state.save()
 
-        global_options = self.config.ffmpeg_settings["global_options"]
-        remixer_settings = self.config.remixer_settings
         kept_scenes = self.processor.prepare_save_remix(output_filepath)
         self.processor.save_remix(kept_scenes)

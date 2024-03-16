@@ -565,7 +565,7 @@ class VideoRemixerProject():
             self.log(message)
             raise ValueError(message)
 
-        current_lowest, current_highest = self.scene_frame_limits(self)
+        current_lowest, current_highest = self.scene_frame_limits(self.state)
         import_lowest, import_highest = self.scene_frame_limits(imported)
         current_range = range(current_lowest, current_highest + 1)
         import_range = range(import_lowest, import_highest + 1)
