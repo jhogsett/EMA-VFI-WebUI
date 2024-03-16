@@ -21,6 +21,7 @@ from resequence_files import ResequenceFiles
 from .video_blender_ui import VideoBlender
 from video_remixer_processor import VideoRemixerProcessor
 from video_remixer_project import VideoRemixerProject
+from video_remixer_ingest import VideoRemixerIngest
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -1322,7 +1323,7 @@ class VideoRemixer(TabBase):
                                                    self.config.realesrgan_settings,
                                                    self.config.ffmpeg_settings["global_options"],
                                                    self.log)
-            self.state.ingest_video(video_path)
+            self.state.ingest.ingest_video(video_path)
             self.state.video_info1 = self.state.ingested_video_report()
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_HOME), \
@@ -1399,7 +1400,7 @@ class VideoRemixer(TabBase):
         else:
             message_text = format_markdown(self.TAB01_DEFAULT_MESSAGE)
         return_to_tab = self._get_progress_tab()
-        scene_details = self.scene_chooser_details(self.state.tryattr("current_scene"))
+        scene_details = self.scene_chooser_details(self.state.tryattr("current_scene", 0))
 
         Session().set("last-video-remixer-project", project_path)
         self.state.invalidate_split_scene_cache()
@@ -1409,32 +1410,32 @@ class VideoRemixer(TabBase):
             self.state.tryattr("video_info1"), \
             self.state.tryattr("project_path"), \
             self.state.tryattr("project_fps", self.config.remixer_settings["def_project_fps"]), \
-            self.state.tryattr("deinterlace", self.state.SAFETY_DEFAULTS["deinterlace"]), \
-            self.state.tryattr("split_type", self.state.SAFETY_DEFAULTS["split_type"]), \
-            self.state.tryattr("split_time", self.state.SAFETY_DEFAULTS["split_time"]), \
-            self.state.tryattr("scene_threshold", self.state.SAFETY_DEFAULTS["scene_threshold"]), \
-            self.state.tryattr("break_duration", self.state.SAFETY_DEFAULTS["break_duration"]), \
-            self.state.tryattr("break_ratio", self.state.SAFETY_DEFAULTS["break_ratio"]), \
+            self.state.tryattr("deinterlace", self.state.project.SAFETY_DEFAULTS["deinterlace"]), \
+            self.state.tryattr("split_type", self.state.project.SAFETY_DEFAULTS["split_type"]), \
+            self.state.tryattr("split_time", self.state.project.SAFETY_DEFAULTS["split_time"]), \
+            self.state.tryattr("scene_threshold", self.state.project.SAFETY_DEFAULTS["scene_threshold"]), \
+            self.state.tryattr("break_duration", self.state.project.SAFETY_DEFAULTS["break_duration"]), \
+            self.state.tryattr("break_ratio", self.state.project.SAFETY_DEFAULTS["break_ratio"]), \
             self.state.tryattr("resize_w"), \
             self.state.tryattr("resize_h"), \
             self.state.tryattr("crop_w"), \
             self.state.tryattr("crop_h"), \
-            self.state.tryattr("crop_offset_x", self.state.SAFETY_DEFAULTS["crop_offsets"]), \
-            self.state.tryattr("crop_offset_y", self.state.SAFETY_DEFAULTS["crop_offsets"]), \
-            self.state.tryattr("frame_format", self.state.SAFETY_DEFAULTS["frame_format"]), \
+            self.state.tryattr("crop_offset_x", self.state.project.SAFETY_DEFAULTS["crop_offsets"]), \
+            self.state.tryattr("crop_offset_y", self.state.project.SAFETY_DEFAULTS["crop_offsets"]), \
+            self.state.tryattr("frame_format", self.state.project.SAFETY_DEFAULTS["frame_format"]), \
             self.state.tryattr("project_info2"), \
-            self.state.tryattr("thumbnail_type", self.state.SAFETY_DEFAULTS["thumbnail_type"]), \
-            self.state.tryattr("min_frames_per_scene", self.state.SAFETY_DEFAULTS["min_frames_per_scene"]), \
+            self.state.tryattr("thumbnail_type", self.state.project.SAFETY_DEFAULTS["thumbnail_type"]), \
+            self.state.tryattr("min_frames_per_scene", self.state.project.SAFETY_DEFAULTS["min_frames_per_scene"]), \
             *scene_details, \
             self.state.tryattr("project_info4"), \
-            self.state.tryattr("resize", self.state.SAFETY_DEFAULTS["resize"]), \
-            self.state.tryattr("resynthesize", self.state.SAFETY_DEFAULTS["resynthesize"]), \
-            self.state.tryattr("resynth_option", self.state.SAFETY_DEFAULTS["resynth_option"]), \
-            self.state.tryattr("inflate", self.state.SAFETY_DEFAULTS["inflate"]), \
-            self.state.tryattr("inflate_by_option", self.state.SAFETY_DEFAULTS["inflate_by_option"]), \
-            self.state.tryattr("inflate_slow_option", self.state.SAFETY_DEFAULTS["inflate_slow_option"]), \
-            self.state.tryattr("upscale", self.state.SAFETY_DEFAULTS["upscale"]), \
-            self.state.tryattr("upscale_option", self.state.SAFETY_DEFAULTS["upscale_option"]), \
+            self.state.tryattr("resize", self.state.project.SAFETY_DEFAULTS["resize"]), \
+            self.state.tryattr("resynthesize", self.state.project.SAFETY_DEFAULTS["resynthesize"]), \
+            self.state.tryattr("resynth_option", self.state.project.SAFETY_DEFAULTS["resynth_option"]), \
+            self.state.tryattr("inflate", self.state.project.SAFETY_DEFAULTS["inflate"]), \
+            self.state.tryattr("inflate_by_option", self.state.project.SAFETY_DEFAULTS["inflate_by_option"]), \
+            self.state.tryattr("inflate_slow_option", self.state.project.SAFETY_DEFAULTS["inflate_slow_option"]), \
+            self.state.tryattr("upscale", self.state.project.SAFETY_DEFAULTS["upscale"]), \
+            self.state.tryattr("upscale_option", self.state.project.SAFETY_DEFAULTS["upscale_option"]), \
             self.state.tryattr("summary_info6"), \
             self.state.tryattr("output_filepath")
 
@@ -1656,6 +1657,7 @@ class VideoRemixer(TabBase):
         self.state.save()
 
         # TODO this enormous conditional is messy
+        # TODO some logic should be moved to ingest class
         if not skip_detection or not self.state.scenes_present():
             try:
                 self.log(f"copying video from {self.state.source_video} to project path")
@@ -1669,7 +1671,7 @@ class VideoRemixer(TabBase):
 
             try:
                 self.log(f"creating source audio from {self.state.source_video}")
-                self.state.create_source_audio(source_audio_crf, prevent_overwrite=True)
+                self.state.ingest.create_source_audio(source_audio_crf, prevent_overwrite=True)
             except ValueError as error:
                 self.log(f"ignoring: {error}")
 
@@ -1685,7 +1687,7 @@ class VideoRemixer(TabBase):
             # unless the source frames were flagged invalid in the previous step
             self.log("splitting source video into frames")
             prevent_overwrite = not self.state.source_frames_invalid
-            ffcmd = self.state.render_source_frames(prevent_overwrite=prevent_overwrite)
+            ffcmd = self.state.ingest.render_source_frames(prevent_overwrite=prevent_overwrite)
             if not ffcmd:
                 self.log("rendering source frames skipped")
             else:
@@ -1707,7 +1709,7 @@ class VideoRemixer(TabBase):
 
             # split frames into scenes
             self.log(f"about to split scenes by {self.state.split_type}")
-            error = self.state.split_scenes(prevent_overwrite=False)
+            error = self.state.ingest.split_scenes(prevent_overwrite=False)
             if error:
                 return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                     format_markdown(f"There was an error splitting the source video: {error}", "error"), \
@@ -1717,7 +1719,7 @@ class VideoRemixer(TabBase):
 
             if self.state.min_frames_per_scene > 0:
                 self.log(f"about to consolidate scenes with too few frames")
-                self.state.consolidate_scenes()
+                self.state.ingest.consolidate_scenes()
                 self.log("saving project after consolidating scenes")
                 self.state.save()
 
@@ -1725,7 +1727,7 @@ class VideoRemixer(TabBase):
 
             try:
                 self.log("enhance source video info with extra data including frame dimensions")
-                self.state.enhance_video_info(ignore_errors=False)
+                self.state.ingest.enhance_video_info(ignore_errors=False)
                 self.state.save()
             except ValueError as error:
                 return gr.update(selected=self.TAB_SET_UP_PROJECT), \
@@ -1744,7 +1746,7 @@ class VideoRemixer(TabBase):
 
         self.log(f"about to create thumbnails of type {self.state.thumbnail_type}")
         try:
-            self.state.create_thumbnails()
+            self.state.ingest.create_thumbnails()
         except ValueError as error:
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                    format_markdown(f"There was an error creating thumbnails from the source video: {error}", "error"), \
@@ -2562,7 +2564,7 @@ class VideoRemixer(TabBase):
         # the native dimensions of the on-disk frame files are needed
         # older project.yaml files won't have this data
         try:
-            self.state.enhance_video_info(ignore_errors=False)
+            self.state.ingest.enhance_video_info(ignore_errors=False)
         except ValueError as error:
             return format_markdown(f"Error: {error}", "error")
 
@@ -2742,7 +2744,7 @@ class VideoRemixer(TabBase):
 
         # create a new thumbnail for the consolidated scene
         self.log("about to create a thumbnail for the consolidated scene")
-        self.state.create_thumbnail(new_scene_name)
+        self.state.ingest.create_thumbnail(new_scene_name)
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
 
         self.log("saving project after merging scenes")

@@ -66,6 +66,7 @@ class VideoRemixerProject():
                 state.remixer_settings = remixer_settings
                 state.global_options = global_options
                 state.log_fn = log_fn
+                state.project = VideoRemixerProject(state, log_fn)
 
                 # reload some things
                 if not state.scene_names:
@@ -208,10 +209,6 @@ class VideoRemixerProject():
 
         return state
 
-    def project_ported(self, opened_project_file):
-        opened_path, _, _ = split_filepath(opened_project_file)
-        return self.state.project_path != opened_path
-
     def save(self, filepath : str=None):
         filepath = filepath or self.project_filepath()
         with open(filepath, "w", encoding="UTF-8") as file:
@@ -330,7 +327,7 @@ class VideoRemixerProject():
 
         source_audio_crf = self.state.remixer_settings["source_audio_crf"]
         try:
-            self.state.create_source_audio(source_audio_crf, prevent_overwrite=True)
+            self.state.ingest.create_source_audio(source_audio_crf, prevent_overwrite=True)
             self.log(f"created source audio {self.state.source_audio} from {self.state.source_video}")
         except ValueError as error:
             # ignore, don't create the file if present or same as video
@@ -364,7 +361,7 @@ class VideoRemixerProject():
         self.log(f"recreated scenes")
 
         self.log(f"about to create thumbnails of type {self.state.thumbnail_type}")
-        self.state.create_thumbnails()
+        self.state.ingest.create_thumbnails()
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
 
         self.state.clips_path = os.path.join(self.state.project_path, self.state.CLIPS_PATH)
@@ -610,5 +607,3 @@ class VideoRemixerProject():
             highest_frame = last if last > highest_frame else highest_frame
         return lowest_frame, highest_frame
 
-    def tryattr(self, attribute : str, default=None):
-        return getattr(self, attribute) if hasattr(self, attribute) else default
