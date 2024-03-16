@@ -215,7 +215,7 @@ class VideoRemixerProject():
     def save(self, filepath : str=None):
         filepath = filepath or self.project_filepath()
         with open(filepath, "w", encoding="UTF-8") as file:
-            yaml.dump(self, file, width=1024)
+            yaml.dump(self.state, file, width=1024)
 
     # when advancing forward from the Set Up Project step
     # the user may be redoing the project from this step
