@@ -1657,7 +1657,7 @@ class VideoRemixer(TabBase):
 
         # TODO this enormous conditional is messy
         # TODO some logic should be moved to ingest class
-        if not skip_detection or not self.state.scenes_present():
+        if not skip_detection or not self.state.ingest.scenes_present():
             try:
                 self.log(f"copying video from {self.state.source_video} to project path")
                 self.state.ingest.save_original_video(prevent_overwrite=True)

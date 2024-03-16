@@ -281,7 +281,7 @@ class VideoRemixerIngest():
             Mtqdm().update_bar(bar)
 
     def split_scenes(self, prevent_overwrite=False):
-        if prevent_overwrite and self.state.scenes_present():
+        if prevent_overwrite and self.scenes_present():
                 return None
         try:
             if self.state.split_type == "Scene":
