@@ -151,7 +151,6 @@ class VideoRemixerState():
     def log(self, message):
         self.log_fn(message)
 
-
     @staticmethod
     def new_project(remixer_settings : dict, global_options : dict, log_fn : Callable):
         state = VideoRemixerState(remixer_settings, global_options, log_fn)
@@ -179,7 +178,7 @@ class VideoRemixerState():
         if save_project:
             self.save()
 
-    def _calc_split_frames(self, fps, seconds):
+    def calc_split_frames(self, fps, seconds):
         return round(float(fps) * float(seconds))
 
     def kept_scenes(self) -> list:
@@ -222,8 +221,6 @@ class VideoRemixerState():
         _, _, _, scene_position, _, _, _, _ = self.scene_chooser_data(scene_index)
         return scene_position
 
-
-
     def keep_all_scenes(self):
         self.scene_states = {scene_name : self.KEEP_MARK for scene_name in self.scene_names}
 
@@ -235,7 +232,6 @@ class VideoRemixerState():
         for k, v in self.scene_states.items():
             new_states[k] = self.KEEP_MARK if v == self.DROP_MARK else self.DROP_MARK
         self.scene_states = new_states
-
 
     def scene_chooser_data(self, scene_index):
         # prevent an error if the thumbnails have been purged
@@ -266,8 +262,6 @@ class VideoRemixerState():
         except IndexError as error:
             raise ValueError(
                 f"IndexError encountered while computing scene chooser details: {error}")
-
-
 
     def default_remix_filepath(self, extra_suffix=""):
         _, filename, _ = split_filepath(self.source_video)
@@ -325,6 +319,94 @@ class VideoRemixerState():
     def upscale_chosen(self):
         return self.upscale or self.hint_present(self.UPSCALE_HINT)
 
+    def split_label(self, label):
+        """Splits a label such as '(01){I:2S} My Title (part1){b}' into
+        sort: '01', hint: 'I:2S' label: 'My Title (part1){b}' parts """
+        if not label:
+            return None, None, None
+        try:
+            matches = re.search(self.SPLIT_LABELS, label)
+            groups = matches.groups()
+            sort = groups[0][1:-1] if groups[0] else None
+            hint = groups[1][1:-1] if groups[1] else None
+            title = groups[2].strip() if groups[2] else None
+            return sort, hint, title
+        except Exception:
+            return None, None, None
+
+    def compose_label(self, sort_mark, hint_mark, title):
+        composed = []
+        if sort_mark:
+            composed.append(f"({sort_mark})")
+        if hint_mark:
+            composed.append(f"{{{hint_mark}}}")
+        if title:
+            if(len(composed)):
+                composed.append(" ")
+            composed.append(title)
+        return "".join(composed)
+
+    def hint_present(self, hint_type):
+        """return True if any kept scene has the passed hint type"""
+        kept_scenes = self.kept_scenes()
+        for scene_name in kept_scenes:
+            label = self.scene_labels.get(scene_name)
+            if self.get_hint(label, hint_type):
+                return True
+        return False
+
+    def clean_scene_labels(self):
+        # remove scene labels that do not have a corresponding scene name
+        for scene_name, scene_label in self.scene_labels.copy().items():
+            if not scene_name in self.scene_names:
+                self.log(f"deleting unused scene label {scene_label}")
+                del self.scene_labels[scene_name]
+        self.save()
+
+    def split_hint(self, hint : str):
+        """Splits a processing hint string such as 'a:1,B:22,C:3c3' into a dict"""
+        hints = hint.split(",")
+        results = {}
+        hint : str
+        for hint in hints:
+            parts = hint.split(":")
+            if len(parts) == 2:
+                results[parts[0].upper()] = parts[1].upper()
+        return results
+
+    def get_hint(self, scene_label, hint_type):
+        """return a found hint of the passed type if the label exists and it is found"""
+        if scene_label:
+            _, hint, _ = self.split_label(scene_label)
+            if hint:
+                hints = self.split_hint(hint)
+                return hints.get(hint_type)
+        return None
+
+    def set_scene_label(self, scene_index, scene_label):
+        if scene_label:
+            this_scene_name = self.scene_names[scene_index]
+
+            # ensure label is not in use for another scene
+            for scene_name in self.scene_names:
+                if scene_name != this_scene_name:
+                    if self.scene_labels.get(scene_name) == scene_label:
+                        # add scene name to make the label unique
+                        scene_label = f"{scene_label} {this_scene_name}"
+                        break
+
+            self.scene_labels[this_scene_name] = scene_label
+
+        return scene_label
+
+    def clear_scene_label(self, scene_index):
+        scene_name = self.scene_names[scene_index]
+        if scene_name in self.scene_labels:
+            del self.scene_labels[scene_name]
+
+    def clear_all_scene_labels(self):
+        for scene_index in range(len(self.scene_names)):
+            self.clear_scene_label(scene_index)
 
     def delete_path(self, path):
         if path and os.path.exists(path):
@@ -433,118 +515,6 @@ class VideoRemixerState():
     def clean_remix_audio(self):
         clean_directories([self.audio_clips_path])
 
-
-
-
-    ## Scene Labels, Sort Marks, Processing Hints, Titles Concern
-
-    def split_label(self, label):
-        """Splits a label such as '(01){I:2S} My Title (part1){b}' into
-        sort: '01', hint: 'I:2S' label: 'My Title (part1){b}' parts """
-        if not label:
-            return None, None, None
-        try:
-            matches = re.search(self.SPLIT_LABELS, label)
-            groups = matches.groups()
-            sort = groups[0][1:-1] if groups[0] else None
-            hint = groups[1][1:-1] if groups[1] else None
-            title = groups[2].strip() if groups[2] else None
-            return sort, hint, title
-        except Exception:
-            return None, None, None
-
-    def compose_label(self, sort_mark, hint_mark, title):
-        composed = []
-        if sort_mark:
-            composed.append(f"({sort_mark})")
-        if hint_mark:
-            composed.append(f"{{{hint_mark}}}")
-        if title:
-            if(len(composed)):
-                composed.append(" ")
-            composed.append(title)
-        return "".join(composed)
-
-    def split_hint(self, hint : str):
-        """Splits a processing hint string such as 'a:1,B:22,C:3c3' into a dict"""
-        hints = hint.split(",")
-        results = {}
-        hint : str
-        for hint in hints:
-            parts = hint.split(":")
-            if len(parts) == 2:
-                results[parts[0].upper()] = parts[1].upper()
-        return results
-
-    def get_hint(self, scene_label, hint_type):
-        """return a found hint of the passed type if the label exists and it is found"""
-        if scene_label:
-            _, hint, _ = self.split_label(scene_label)
-            if hint:
-                hints = self.split_hint(hint)
-                return hints.get(hint_type)
-        return None
-
-    def hint_present(self, hint_type):
-        """return True if any kept scene has the passed hint type"""
-        kept_scenes = self.kept_scenes()
-        for scene_name in kept_scenes:
-            label = self.scene_labels.get(scene_name)
-            if self.get_hint(label, hint_type):
-                return True
-        return False
-
-    # remove scene labels that do not have a corresponding scene name
-    def clean_scene_labels(self):
-        for scene_name, scene_label in self.scene_labels.copy().items():
-            if not scene_name in self.scene_names:
-                self.log(f"deleting unused scene label {scene_label}")
-                del self.scene_labels[scene_name]
-        self.save()
-
-    def add_slomo(self, scene_index, slomo_hint):
-        scene_name = self.scene_names[scene_index]
-        scene_label = self.scene_labels.get(scene_name) or ""
-
-        # TODO need to add/modify instead of replace all existing hints
-        sort_mark, _, title = self.split_label(scene_label)
-        new_label = self.compose_label(sort_mark, slomo_hint, title)
-        self.set_scene_label(scene_index, new_label)
-        self.save()
-
-    def set_scene_label(self, scene_index, scene_label):
-        if scene_label:
-            this_scene_name = self.scene_names[scene_index]
-
-            # ensure label is not in use for another scene
-            for scene_name in self.scene_names:
-                if scene_name != this_scene_name:
-                    if self.scene_labels.get(scene_name) == scene_label:
-                        # add scene name to make the label unique
-                        scene_label = f"{scene_label} {this_scene_name}"
-                        break
-
-            self.scene_labels[this_scene_name] = scene_label
-
-        return scene_label
-
-    def clear_scene_label(self, scene_index):
-        scene_name = self.scene_names[scene_index]
-        if scene_name in self.scene_labels:
-            del self.scene_labels[scene_name]
-
-    def clear_all_scene_labels(self):
-        for scene_index in range(len(self.scene_names)):
-            self.clear_scene_label(scene_index)
-
-
-
-
-    ## UI Concern
-
-    # set project settings UI defaults in case the project is reopened
-    # otherwise some UI elements get set to None on reopened new projects
-
     def scene_chooser_details(self, scene_index, display_gap):
         try:
             scene_name, thumbnail_path, scene_state, scene_position, scene_start, scene_duration, \
@@ -557,6 +527,16 @@ class VideoRemixerState():
         except ValueError as error:
             raise ValueError(
                 f"ValueError encountered while getting scene chooser data: {error}")
+
+    def add_slomo(self, scene_index, slomo_hint):
+        scene_name = self.scene_names[scene_index]
+        scene_label = self.scene_labels.get(scene_name) or ""
+
+        # TODO need to add/modify instead of replace all existing hints
+        sort_mark, _, title = self.split_label(scene_label)
+        new_label = self.compose_label(sort_mark, slomo_hint, title)
+        self.set_scene_label(scene_index, new_label)
+        self.save()
 
     def compute_preview_frame(self, scene_index, split_percent):
         scene_index = int(scene_index)

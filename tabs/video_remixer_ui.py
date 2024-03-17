@@ -2135,7 +2135,7 @@ class VideoRemixer(TabBase):
         if auto_save_remix:
             messages = []
             try:
-                self._save_mp4_video(self.state.output_filepath)
+                self.save_mp4_video(self.state.output_filepath)
                 messages.append(f"Remixed video {self.state.output_filepath} is complete.")
             except ValueError as error:
                 return gr.update(selected=self.TAB_PROC_REMIX), \
@@ -2184,7 +2184,7 @@ class VideoRemixer(TabBase):
                 "The project has not yet been set up from the Set Up Project tab.", "error")
 
         try:
-            self._save_mp4_video(output_filepath, quality)
+            self.save_mp4_video(output_filepath, quality)
             return format_markdown(f"Remixed video {output_filepath} is complete.", "highlight")
         except ValueError as error:
             return format_markdown(str(error), "error")
@@ -3053,7 +3053,7 @@ class VideoRemixer(TabBase):
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 message
 
-    def _save_mp4_video(self, output_filepath, quality=None):
+    def save_mp4_video(self, output_filepath, quality=None):
         self.state.output_filepath = output_filepath
         self.state.output_quality = quality or self.config.remixer_settings["default_crf"]
 
