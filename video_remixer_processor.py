@@ -346,6 +346,7 @@ class VideoRemixerProcessor():
                                                       self.state.crop_w, self.state.crop_h,
                                                       content_width, content_height)
 
+        self.saved_zoom = self.DEFAULT_ZOOM
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Resize") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
@@ -361,17 +362,11 @@ class VideoRemixerProcessor():
                     try:
                         if self.ANIMATED_ZOOM_HINT in resize_hint:
                             # interprent 'any-any' as animating from one to the other zoom factor
-                            if not from_type and not to_type:
-                                # single dash means return to default zoom
-                                from_type = self.saved_zoom
-                                to_type = self.DEFAULT_ZOOM
-                            elif from_type and not to_type:
-                                # missing 'to' means go to saved zoom
-                                to_type = self.saved_zoom
-                            elif not from_type and to_type:
-                                # missing 'from' means go from saved zoom
-                                from_type = self.saved_zoom
-                            self.saved_zoom = to_type
+                            resize_hint = self.get_implied_zoom(resize_hint)
+                            self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
+                            from_type, from_param1, from_param2, from_param3, \
+                                to_type, to_param1, to_param2, to_param3 = \
+                                    self.get_animated_zoom(resize_hint)
                             from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3 = \
                                 self.get_animated_zoom(resize_hint)
                             if from_type and to_type:
@@ -601,6 +596,32 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                     quadrant, quadrants = a_quadrant, a_quadrants
                 return quadrant, quadrants, zoom_percent
         return None, None, None
+
+    def get_implied_zoom(self, hint):
+        if self.ANIMATED_ZOOM_HINT in hint:
+            if len(hint) >= self.ANIMATED_ZOOM_MIN_LEN:
+                split_pos = hint.index(self.ANIMATED_ZOOM_HINT)
+                hint_from = hint[:split_pos]
+                hint_to = hint[split_pos+1:]
+                if not hint_from or not hint_to:
+                    if not hint_from and not hint_to:
+                        # single dash means return to default zoom
+                        hint_from = self.saved_zoom
+                        hint_to = self.DEFAULT_ZOOM
+                        self.log(f"get_implied_zoom(): using saved zoom for from: {hint_from} and default zoom for to: {hint_to}")
+                    elif hint_from and not hint_to:
+                        # missing 'to' means go to saved zoom
+                        hint_to = self.saved_zoom
+                        self.log(f"get_implied_zoom(): using passed zoom for from: {hint_from} and saved zoom for to: {hint_to}")
+                    elif not hint_from and hint_to:
+                        # missing 'from' means go from saved zoom
+                        hint_from = self.saved_zoom
+                        self.log(f"get_implied_zoom(): using saved zoom for from: {hint_from} and passed zoom for to: {hint_to}")
+                    else:
+                        self.log(f"get_implied_zoom(): using passed zoom for from: {hint_from} and passed zoom for to: {hint_to}")
+                self.saved_zoom = hint_to
+                return f"{hint_from}-{hint_to}"
+        return hint
 
     def get_animated_zoom(self, hint):
         if self.ANIMATED_ZOOM_HINT in hint:
