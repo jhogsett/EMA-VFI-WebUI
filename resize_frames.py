@@ -109,7 +109,6 @@ class ResizeFrames:
 
         files = sorted(glob.glob(os.path.join(self.input_path, "*." + type)))
         num_files = len(files)
-        self.log(f"Found {num_files} files")
         create_directory(self.output_path)
         scale_type = self.get_scale_type(self.scale_type)
         crop_type = self.get_crop_type(self.crop_type)
