@@ -21,6 +21,7 @@ from resequence_files import ResequenceFiles
 from .video_blender_ui import VideoBlender
 from video_remixer_processor import VideoRemixerProcessor
 from video_remixer_project import VideoRemixerProject
+from video_remixer_reports import VideoRemixerReports
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -1323,7 +1324,8 @@ class VideoRemixer(TabBase):
                                                    self.config.ffmpeg_settings["global_options"],
                                                    self.log)
             self.state.ingest.ingest_video(video_path)
-            self.state.video_info1 = self.state.ingested_video_report()
+
+            self.state.video_info1 = VideoRemixerReports(self.state, self.log).ingested_video_report()
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    format_markdown(str(error), "error"), \
@@ -1524,7 +1526,7 @@ class VideoRemixer(TabBase):
             self.state.deinterlace = deinterlace
 
             self.state.split_time = split_time
-            self.state.project_info2 = self.state.project_settings_report()
+            self.state.project_info2 =  VideoRemixerReports(self.state, self.log).project_settings_report()
             self.state.processed_content_invalid = True
 
             # this is the first time project progress advances
@@ -2008,7 +2010,7 @@ class VideoRemixer(TabBase):
         if not self.state.project_path:
             return gr.update(selected=self.TAB_CHOOSE_SCENES), self.state.project_info4
 
-        self.state.project_info4 = self.state.chosen_scenes_report()
+        self.state.project_info4 = VideoRemixerReports(self.state, self.log).chosen_scenes_report()
 
         # user will expect to return to the compilation tab on reopening
         self.log("saving project after displaying scene choices")
@@ -2111,11 +2113,11 @@ class VideoRemixer(TabBase):
 
         self.processor.process_remix(kept_scenes)
 
-        remix_report = self.state.generate_remix_report(
-            self.processor.processed_content_complete(self.state.RESIZE_STEP),
-            self.processor.processed_content_complete(self.state.RESYNTH_STEP),
-            self.processor.processed_content_complete(self.state.INFLATE_STEP),
-            self.processor.processed_content_complete(self.state.UPSCALE_STEP))
+        remix_report = VideoRemixerReports(self.state, self.log).generate_remix_report(
+                                self.processor.processed_content_complete(self.state.RESIZE_STEP),
+                                self.processor.processed_content_complete(self.state.RESYNTH_STEP),
+                                self.processor.processed_content_complete(self.state.INFLATE_STEP),
+                                self.processor.processed_content_complete(self.state.UPSCALE_STEP))
 
         styled_report = style_report("Content Ready for Remix Video:", remix_report, color="info")
         self.state.summary_info6 = styled_report

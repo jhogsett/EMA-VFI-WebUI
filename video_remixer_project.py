@@ -96,7 +96,7 @@ class VideoRemixerProject():
                 if state.split_type == "Minute":
                     state.split_type = "Time"
                     state.split_time = 60
-                    state.split_frames = state._calc_split_frames(state.project_fps, state.split_time)
+                    state.split_frames = state.calc_split_frames(state.project_fps, state.split_time)
                 # new attribute
                 state.processed_content_invalid = False
                 # new separate audio source

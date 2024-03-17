@@ -8,9 +8,8 @@ from webui_utils.auto_increment import AutoIncrementDirectory
 from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
     clean_directories, copy_files, directory_populated
 from webui_utils.simple_icons import SimpleIcons
-from webui_utils.simple_utils import seconds_to_hmsf, format_table
+from webui_utils.simple_utils import seconds_to_hmsf
 from webui_utils.video_utils import details_from_group_name
-from webui_utils.jot import Jot
 from webui_utils.mtqdm import Mtqdm
 from video_remixer_project import VideoRemixerProject
 from video_remixer_ingest import VideoRemixerIngest
@@ -180,6 +179,9 @@ class VideoRemixerState():
         if save_project:
             self.save()
 
+    def _calc_split_frames(self, fps, seconds):
+        return round(float(fps) * float(seconds))
+
     def kept_scenes(self) -> list:
         """Returns kept scene names sorted"""
         return sorted([scene for scene in self.scene_states
@@ -208,6 +210,63 @@ class VideoRemixerState():
     def recompile_scenes(self):
         self.uncompile_scenes()
         self.compile_scenes()
+
+    def scene_marker(self, scene_name):
+        scene_index = self.scene_names.index(scene_name)
+        _, _, _, _, scene_start, scene_duration, _, _ = self.scene_chooser_data(scene_index)
+        marker = f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]"
+        return marker
+
+    def scene_title(self, scene_name):
+        scene_index = self.scene_names.index(scene_name)
+        _, _, _, scene_position, _, _, _, _ = self.scene_chooser_data(scene_index)
+        return scene_position
+
+
+
+    def keep_all_scenes(self):
+        self.scene_states = {scene_name : self.KEEP_MARK for scene_name in self.scene_names}
+
+    def drop_all_scenes(self):
+        self.scene_states = {scene_name : self.DROP_MARK for scene_name in self.scene_names}
+
+    def invert_all_scenes(self):
+        new_states = {}
+        for k, v in self.scene_states.items():
+            new_states[k] = self.KEEP_MARK if v == self.DROP_MARK else self.DROP_MARK
+        self.scene_states = new_states
+
+
+    def scene_chooser_data(self, scene_index):
+        # prevent an error if the thumbnails have been purged
+        try:
+            thumbnail_path = self.thumbnails[scene_index]
+        except IndexError:
+            thumbnail_path = None
+
+        try:
+            scene_name = self.scene_names[scene_index]
+            scene_state = self.scene_states[scene_name]
+            scene_position = f"{scene_index+1}-of-{len(self.scene_names)}"
+
+            first_index, last_index, _ = details_from_group_name(scene_name)
+            scene_start = seconds_to_hmsf(
+                first_index / self.project_fps,
+                self.project_fps)
+            scene_duration = seconds_to_hmsf(
+                ((last_index + 1) - first_index) / self.project_fps,
+                self.project_fps)
+            keep_state = True if scene_state == self.KEEP_MARK else False
+            scene_label = self.scene_labels.get(scene_name)
+            return scene_name, thumbnail_path, scene_state, scene_position, scene_start, \
+                scene_duration, keep_state, scene_label
+        except ValueError as error:
+            raise ValueError(
+                f"ValueError encountered while computing scene chooser details: {error}")
+        except IndexError as error:
+            raise ValueError(
+                f"IndexError encountered while computing scene chooser details: {error}")
+
 
 
     def default_remix_filepath(self, extra_suffix=""):
@@ -477,59 +536,6 @@ class VideoRemixerState():
     def clear_all_scene_labels(self):
         for scene_index in range(len(self.scene_names)):
             self.clear_scene_label(scene_index)
-
-    def keep_all_scenes(self):
-        self.scene_states = {scene_name : self.KEEP_MARK for scene_name in self.scene_names}
-
-    def drop_all_scenes(self):
-        self.scene_states = {scene_name : self.DROP_MARK for scene_name in self.scene_names}
-
-    def invert_all_scenes(self):
-        new_states = {}
-        for k, v in self.scene_states.items():
-            new_states[k] = self.KEEP_MARK if v == self.DROP_MARK else self.DROP_MARK
-        self.scene_states = new_states
-
-    def scene_chooser_data(self, scene_index):
-        # prevent an error if the thumbnails have been purged
-        try:
-            thumbnail_path = self.thumbnails[scene_index]
-        except IndexError:
-            thumbnail_path = None
-
-        try:
-            scene_name = self.scene_names[scene_index]
-            scene_state = self.scene_states[scene_name]
-            scene_position = f"{scene_index+1}-of-{len(self.scene_names)}"
-
-            first_index, last_index, _ = details_from_group_name(scene_name)
-            scene_start = seconds_to_hmsf(
-                first_index / self.project_fps,
-                self.project_fps)
-            scene_duration = seconds_to_hmsf(
-                ((last_index + 1) - first_index) / self.project_fps,
-                self.project_fps)
-            keep_state = True if scene_state == self.KEEP_MARK else False
-            scene_label = self.scene_labels.get(scene_name)
-            return scene_name, thumbnail_path, scene_state, scene_position, scene_start, \
-                scene_duration, keep_state, scene_label
-        except ValueError as error:
-            raise ValueError(
-                f"ValueError encountered while computing scene chooser details: {error}")
-        except IndexError as error:
-            raise ValueError(
-                f"IndexError encountered while computing scene chooser details: {error}")
-
-    def scene_marker(self, scene_name):
-        scene_index = self.scene_names.index(scene_name)
-        _, _, _, _, scene_start, scene_duration, _, _ = self.scene_chooser_data(scene_index)
-        marker = f"[{scene_index} {scene_name} {scene_start} +{scene_duration}]"
-        return marker
-
-    def scene_title(self, scene_name):
-        scene_index = self.scene_names.index(scene_name)
-        _, _, _, scene_position, _, _, _, _ = self.scene_chooser_data(scene_index)
-        return scene_position
 
 
 
@@ -812,199 +818,6 @@ class VideoRemixerState():
         self.invalidate_split_scene_cache()
 
         return f"Scene split into new scenes {new_lower_scene_name} and {new_upper_scene_name}"
-
-
-
-    ## Reporting Concern
-
-    def ingested_video_report(self):
-        title = f"Ingested Video Report: {self.source_video}"
-        header_row = [
-            "Frame Rate",
-            "Duration",
-            "Display Size",
-            "Aspect Ratio",
-            "Content Size",
-            "Frame Count",
-            "File Size",
-            "Has Audio"]
-        data_rows = [[
-            self.video_details['frame_rate'],
-            self.video_details['duration'],
-            self.video_details['display_dimensions'],
-            self.video_details['display_aspect_ratio'],
-            self.video_details['content_dimensions'],
-            self.video_details['frame_count_show'],
-            self.video_details['file_size'],
-            SimpleIcons.YES_SYMBOL if self.video_details['has_audio'] else SimpleIcons.NO_SYMBOL]]
-        return format_table(header_row, data_rows, color="more", title=title)
-
-    def _project_settings_report_scene(self):
-        header_row = [
-            "Frame Rate",
-            "Deinterlace",
-            "Resize To",
-            "Crop To",
-            "Crop Offset",
-            "Split Type",
-            "Scene Detection Threshold"]
-        data_rows = [[
-            f"{float(self.project_fps):.2f}",
-            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
-            f"{self.resize_w} x {self.resize_h}",
-            f"{self.crop_w} x {self.crop_h}",
-            f"{self.crop_offset_x} x {self.crop_offset_y}",
-            self.split_type,
-            self.scene_threshold]]
-        return header_row, data_rows
-
-    def _project_settings_report_break(self):
-        header_row = [
-            "Frame Rate",
-            "Deinterlace",
-            "Resize To",
-            "Crop To",
-            "Crop Offset",
-            "Split Type",
-            "Minimum Duration",
-            "Black Ratio"]
-        data_rows = [[
-            f"{float(self.project_fps):.2f}",
-            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
-            f"{self.resize_w} x {self.resize_h}",
-            f"{self.crop_w} x {self.crop_h}",
-            f"{self.crop_offset_x} x {self.crop_offset_y}",
-            self.split_type,
-            f"{self.break_duration}s",
-            self.break_ratio]]
-        return header_row, data_rows
-
-    def _project_settings_report_time(self):
-        header_row = [
-            "Frame Rate",
-            "Deinterlace",
-            "Resize To",
-            "Crop To",
-            "Crop Offset",
-            "Split Type",
-            "Split Time",
-            "Split Frames"]
-        self.split_frames = self._calc_split_frames(self.project_fps, self.split_time)
-        data_rows = [[
-            f"{float(self.project_fps):.2f}",
-            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
-            f"{self.resize_w} x {self.resize_h}",
-            f"{self.crop_w} x {self.crop_h}",
-            f"{self.crop_offset_x} x {self.crop_offset_y}",
-            self.split_type,
-            f"{self.split_time}s",
-            self.split_frames]]
-        return header_row, data_rows
-
-    def _project_settings_report_none(self):
-        header_row = [
-            "Frame Rate",
-            "Deinterlace",
-            "Resize To",
-            "Crop To",
-            "Crop Offset",
-            "Split Type"]
-        data_rows = [[
-            f"{float(self.project_fps):.2f}",
-            SimpleIcons.YES_SYMBOL if self.deinterlace else SimpleIcons.NO_SYMBOL,
-            f"{self.resize_w} x {self.resize_h}",
-            f"{self.crop_w} x {self.crop_h}",
-            f"{self.crop_offset_x} x {self.crop_offset_y}",
-            self.split_type]]
-        return header_row, data_rows
-
-    def project_settings_report(self):
-        title = f"Project Path: {self.project_path}"
-        if self.split_type == "Scene":
-            header_row, data_rows = self._project_settings_report_scene()
-        elif self.split_type == "Break":
-            header_row, data_rows = self._project_settings_report_break()
-        elif self.split_type == "Time":
-            header_row, data_rows = self._project_settings_report_time()
-        else: # "None"
-            header_row, data_rows = self._project_settings_report_none()
-        return format_table(header_row, data_rows, color="more", title=title)
-
-    def _calc_split_frames(self, fps, seconds):
-        return round(float(fps) * float(seconds))
-
-    def scene_frames(self, type : str="all") -> int:
-        if type.lower() == "keep":
-            scenes = self.kept_scenes()
-        elif type.lower() == "drop":
-            scenes = self.dropped_scenes()
-        else:
-            scenes = self.scene_names
-        accum = 0
-        for scene in scenes:
-            first, last, _ = details_from_group_name(scene)
-            accum += (last - first) + 1
-        return accum
-
-    def scene_frames_time(self, frames : int) -> str:
-        return seconds_to_hmsf(frames / self.project_fps, self.project_fps)
-
-    # TODO consolidate reports
-    def chosen_scenes_report(self):
-        header_row = [
-            "Scene Choices",
-            "Scenes",
-            "Frames",
-            "Time"]
-        all_scenes = len(self.scene_names)
-        all_frames = self.scene_frames("all")
-        all_time = self.scene_frames_time(all_frames)
-        keep_scenes = len(self.kept_scenes())
-        keep_frames = self.scene_frames("keep")
-        keep_time = self.scene_frames_time(keep_frames)
-        drop_scenes = len(self.dropped_scenes())
-        drop_frames = self.scene_frames("drop")
-        drop_time = self.scene_frames_time(drop_frames)
-        data_rows = [
-            [
-                "Keep " + SimpleIcons.HEART,
-                f"{keep_scenes:,d}",
-                f"{keep_frames:,d}",
-                f"+{keep_time}"],
-            [
-                "Drop",
-                f"{drop_scenes:,d}",
-                f"{drop_frames:,d}",
-                f"+{drop_time}"],
-            [
-                "Total",
-                f"{all_scenes:,d}",
-                f"{all_frames:,d}",
-                f"+{all_time}"]]
-        return format_table(header_row, data_rows, color="more")
-
-    def generate_remix_report(self, resize, resynthesize, inflate, upscale):
-        report = Jot()
-
-        if not resize \
-            and not resynthesize \
-            and not inflate \
-            and not upscale:
-            report.add(f"Original source scenes in {self.scenes_path}")
-
-        if resize:
-            report.add(f"Resized/cropped scenes in {self.resize_path}")
-
-        if resynthesize:
-            report.add(f"Resynthesized scenes in {self.resynthesis_path}")
-
-        if inflate:
-            report.add(f"Inflated scenes in {self.inflation_path}")
-
-        if upscale:
-            report.add(f"Upscaled scenes in {self.upscale_path}")
-
-        return report.lines
 
     def choose_scene_range(self, first_scene_index, last_scene_index, scene_state):
         for scene_index in range(first_scene_index, last_scene_index + 1):
