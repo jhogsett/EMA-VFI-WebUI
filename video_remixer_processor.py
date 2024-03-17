@@ -606,30 +606,40 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                 split_pos = hint.index(self.ANIMATED_ZOOM_HINT)
                 hint_from = hint[:split_pos]
                 hint_to = hint[split_pos+1:]
+
+                # if the hint_to part includes time or schedule info, remove it to get only the view
+                saved_to = hint_to
+                if self.ANIMATION_SCHEDULE_HINT in saved_to:
+                    split_pos = saved_to.index(self.ANIMATION_SCHEDULE_HINT)
+                    saved_to = saved_to[:split_pos]
+                if self.ANIMATION_TIME_HINT in saved_to:
+                    split_pos = saved_to.index(self.ANIMATION_TIME_HINT)
+                    saved_to = saved_to[:split_pos]
+
                 if not hint_from or not hint_to:
                     if not hint_from and not hint_to:
-                        # single dash means return to default zoom
+                        # single dash (both missing) means return to default zoom
                         hint_from = self.saved_zoom
                         hint_to = self.DEFAULT_ZOOM
+                        saved_to = self.DEFAULT_ZOOM
                         self.log(f"get_implied_zoom(): using saved zoom for from: {hint_from} and default zoom for to: {hint_to}")
+
                     elif hint_from and not hint_to:
                         # missing 'to' means go to saved zoom
                         hint_to = self.saved_zoom
                         self.log(f"get_implied_zoom(): using passed zoom for from: {hint_from} and saved zoom for to: {hint_to}")
+
                     elif not hint_from and hint_to:
                         # missing 'from' means go from saved zoom
                         hint_from = self.saved_zoom
                         self.log(f"get_implied_zoom(): using saved zoom for from: {hint_from} and passed zoom for to: {hint_to}")
+
                     else:
                         self.log(f"get_implied_zoom(): using passed zoom for from: {hint_from} and passed zoom for to: {hint_to}")
-                self.saved_zoom = hint_to
-                # if the saved zoom includes animation or time info, strip it because we only ned the view itself
-                if self.ANIMATION_SCHEDULE_HINT in self.saved_zoom:
-                    split_pos = hint.index(self.ANIMATION_SCHEDULE_HINT)
-                    self.saved_zoom = hint[:split_pos]
-                if self.ANIMATION_TIME_HINT in self.saved_zoom:
-                    split_pos = hint.index(self.ANIMATION_TIME_HINT)
-                    self.saved_zoom = hint[:split_pos]
+
+                if saved_to:
+                    self.saved_zoom = saved_to
+
                 return f"{hint_from}-{hint_to}"
         return hint
 
@@ -843,9 +853,9 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                     main_crop_w, main_crop_h):
 
-        # time
-        # if non-zero, use this instead of passed num_frames
-        num_frames = time or num_frames
+        # animation time override
+        if time > 0 and time < num_frames:
+            num_frames = time
 
         from_resize_w, from_resize_h, from_center_x, from_center_y = \
             self.compute_zoom_type(from_type, from_param1, from_param2, from_param3,
@@ -885,6 +895,8 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         context["step_center_y"] = step_center_y
         context["main_crop_w"] = main_crop_w
         context["main_crop_h"] = main_crop_h
+        context["num_frames"] = num_frames
+        context["schedule"] = schedule
         return context
 
     def _resize_frame_param(self, index, context):
@@ -898,6 +910,11 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         step_center_y = context["step_center_y"]
         main_crop_w = context["main_crop_w"]
         main_crop_h = context["main_crop_h"]
+        num_frames = context["num_frames"]
+
+        # limit animation to maximum frames
+        if index > num_frames:
+            index = num_frames
 
         resize_w = from_resize_w + (index * step_resize_w)
         resize_h = from_resize_h + (index * step_resize_h)
