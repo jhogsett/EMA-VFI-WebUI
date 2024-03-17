@@ -174,7 +174,9 @@ class VideoRemixerState():
         self.project.save(filepath)
 
     def save_progress(self, progress : str, save_project : bool=True):
-        self.progress = progress
+        # if the saved progress ends with "!" it means to always return to this tab, so don't change
+        if self.progress[-1] != "!":
+            self.progress = progress
         if save_project:
             self.save()
 
