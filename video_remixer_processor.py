@@ -28,6 +28,7 @@ class VideoRemixerProcessor():
         self.realesrgan_settings = realesrgan_settings
         self.global_options = global_options
         self.log_fn = log_fn
+        self.saved_zoom = self.DEFAULT_ZOOM
 
     def log(self, message):
         if self.log_fn:
@@ -41,11 +42,12 @@ class VideoRemixerProcessor():
     QUADRANT_ZOOM_MIN_LEN = 3 # 1/3
     PERCENT_ZOOM_MIN_LEN = 4  # 123%
     COMBINED_ZOOM_MIN_LEN = 8 # 1/1@100%
-    ANIMATED_ZOOM_MIN_LEN = 7 # 1/3-5/7
+    ANIMATED_ZOOM_MIN_LEN = 1 # -
     MAX_SELF_FIT_ZOOM = 1000
     FIXED_UPSCALE_FACTOR = 4.0
     TEMP_UPSCALE_PATH = "upscaled_frames"
     DEFAULT_DOWNSCALE_TYPE = "area"
+    DEFAULT_ZOOM = "100%"
 
     ### Exports --------------------
 
@@ -359,6 +361,17 @@ class VideoRemixerProcessor():
                     try:
                         if self.ANIMATED_ZOOM_HINT in resize_hint:
                             # interprent 'any-any' as animating from one to the other zoom factor
+                            if not from_type and not to_type:
+                                # single dash means return to default zoom
+                                from_type = self.saved_zoom
+                                to_type = self.DEFAULT_ZOOM
+                            elif from_type and not to_type:
+                                # missing 'to' means go to saved zoom
+                                to_type = self.saved_zoom
+                            elif not from_type and to_type:
+                                # missing 'from' means go from saved zoom
+                                from_type = self.saved_zoom
+                            self.saved_zoom = to_type
                             from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3 = \
                                 self.get_animated_zoom(resize_hint)
                             if from_type and to_type:
@@ -597,8 +610,8 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                 hint_to = hint[split_pos+1:]
                 from_type, from_param1, from_param2, from_param3 = self.get_zoom_part(hint_from)
                 to_type, to_param1, to_param2, to_param3 = self.get_zoom_part(hint_to)
-                if from_type and to_type:
-                    return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3
+                # if from_type and to_type:
+                return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3
         return None, None, None, None, None, None, None, None
 
     def compute_zoom_type(self, type, param1, param2, param3, main_resize_w, main_resize_h,
