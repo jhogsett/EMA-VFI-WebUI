@@ -1655,7 +1655,6 @@ class VideoRemixer(TabBase):
 
         self.state.thumbnail_type = thumbnail_type
         self.state.min_frames_per_scene = min_frames_per_scene
-        self.log("saving after setting thumbnail type and min frames per scene")
         self.state.save()
 
         # TODO this enormous conditional is messy
@@ -1668,7 +1667,6 @@ class VideoRemixer(TabBase):
                 # ignore, don't copy the file a second time if the user is restarting here
                 self.log(f"ignoring: {error}")
 
-            self.log("saving project after ensuring video is in project path")
             self.state.save()
 
             try:
@@ -1677,7 +1675,6 @@ class VideoRemixer(TabBase):
             except ValueError as error:
                 self.log(f"ignoring: {error}")
 
-            self.log("saving project after creating audio source")
             self.state.save()
 
             # user may be redoing project set up
@@ -1693,7 +1690,6 @@ class VideoRemixer(TabBase):
             if not ffcmd:
                 self.log("rendering source frames skipped")
             else:
-                self.log("saving project after converting video to frames")
                 self.state.save()
                 self.log(f"FFmpeg command: {ffcmd}")
 
@@ -1706,7 +1702,6 @@ class VideoRemixer(TabBase):
             self.log(f"creating dropped scenes directory {self.state.dropped_scenes_path}")
             create_directory(self.state.dropped_scenes_path)
 
-            self.log("saving project after establishing scene paths")
             self.state.save()
 
             # split frames into scenes
@@ -1716,13 +1711,11 @@ class VideoRemixer(TabBase):
                 return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                     format_markdown(f"There was an error splitting the source video: {error}", "error"), \
                    *empty_args
-            self.log("saving project after splitting into scenes")
             self.state.save()
 
             if self.state.min_frames_per_scene > 0:
                 self.log(f"about to consolidate scenes with too few frames")
                 self.state.ingest.consolidate_scenes()
-                self.log("saving project after consolidating scenes")
                 self.state.save()
 
             self.state.scene_names = sorted(get_directories(self.state.scenes_path))
@@ -1743,7 +1736,6 @@ class VideoRemixer(TabBase):
                 self.state.drop_all_scenes()
 
             self.state.current_scene = 0
-            self.log("saving project after establishing scene names")
             self.state.save()
 
         self.log(f"about to create thumbnails of type {self.state.thumbnail_type}")
@@ -1755,7 +1747,6 @@ class VideoRemixer(TabBase):
                    *empty_args
 
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
-        self.log("saving project after creating scene thumbnails")
         self.state.save()
 
         # thumbnails may be being recreated
@@ -1767,7 +1758,6 @@ class VideoRemixer(TabBase):
         create_directory(self.state.clips_path)
 
         # user will expect to return to scene chooser on reopening
-        self.log("saving project after setting up scene selection states")
         self.state.save_progress("choose")
 
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
@@ -1873,10 +1863,8 @@ class VideoRemixer(TabBase):
     def save_scene_label(self, scene_index, scene_label):
         if scene_label:
             self.state.set_scene_label(scene_index, scene_label)
-            self.log("saving project after setting scene label")
         else:
             self.state.clear_scene_label(scene_index)
-            self.log("saving project after clearing scene label")
         self.state.save()
         return self.scene_chooser_details(self.state.current_scene)
 
@@ -2015,7 +2003,6 @@ class VideoRemixer(TabBase):
         self.state.project_info4 = VideoRemixerReports(self.state, self.log).chosen_scenes_report()
 
         # user will expect to return to the compilation tab on reopening
-        self.log("saving project after displaying scene choices")
         self.state.save_progress("compile")
 
         return gr.update(selected=self.TAB_COMPILE_SCENES), self.state.project_info4
@@ -2046,7 +2033,6 @@ class VideoRemixer(TabBase):
         self.state.processed_content_invalid = True
 
         # user will expect to return to the processing tab on reopening
-        self.log("saving project after compiling scenes")
         self.state.save_progress("process")
 
         return gr.update(selected=self.TAB_PROC_REMIX),  \
@@ -2131,7 +2117,6 @@ class VideoRemixer(TabBase):
         self.state.save()
 
         # user will expect to return to the save remix tab on reopening
-        self.log("saving project after completing processing steps")
         self.state.save_progress("save")
 
         if auto_save_remix:
@@ -2742,7 +2727,6 @@ class VideoRemixer(TabBase):
         self.state.ingest.create_thumbnail(new_scene_name)
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
 
-        self.log("saving project after merging scenes")
         self.state.save()
 
         return new_scene_name
@@ -2852,7 +2836,6 @@ class VideoRemixer(TabBase):
                     Mtqdm().update_bar(bar)
 
             self.state.current_scene = return_to_scene_index
-            self.log("Saving project after consolidating scenes")
             self.state.invalidate_split_scene_cache()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
@@ -3039,7 +3022,6 @@ class VideoRemixer(TabBase):
             # user will expect to return to the processing tab on reopening
             self.state.save_progress("process")
             self.state.processed_content_invalid = True
-            self.log("saving project after compiling scenes")
 
             if purge_root:
                 message = format_markdown(
@@ -3059,7 +3041,6 @@ class VideoRemixer(TabBase):
         self.state.output_filepath = output_filepath
         self.state.output_quality = quality or self.config.remixer_settings["default_crf"]
 
-        self.log("saving after storing remix output choices")
         self.state.save()
 
         kept_scenes = self.processor.prepare_save_remix(output_filepath)
