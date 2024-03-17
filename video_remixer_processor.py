@@ -612,13 +612,13 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                 remainder = None
                 if self.ANIMATION_TIME_HINT in view_to:
                     split_pos = view_to.index(self.ANIMATION_TIME_HINT)
+                    remainder = view_to[split_pos:]
                     view_to = view_to[:split_pos]
                     # may include schedule part, which can come after time part
-                    remainder = view_to[split_pos:]
                 elif self.ANIMATION_SCHEDULE_HINT in view_to:
                     split_pos = view_to.index(self.ANIMATION_SCHEDULE_HINT)
-                    view_to = view_to[:split_pos]
                     remainder = view_to[split_pos:]
+                    view_to = view_to[:split_pos]
 
                 if not hint_from or not view_to:
                     if not hint_from and not view_to:
@@ -644,7 +644,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                 if view_to:
                     self.saved_zoom = view_to
 
-                return f"{hint_from}-{hint_to}{remainder}"
+                return f"{hint_from}-{view_to}{remainder}"
         return hint
 
     def get_animated_zoom(self, hint):
