@@ -39,6 +39,8 @@ class VideoRemixerProcessor():
     PERCENT_ZOOM_HINT = "%"
     COMBINED_ZOOM_HINT = "@"
     ANIMATED_ZOOM_HINT = "-"
+    ANIMATION_TIME_HINT = "#"
+    ANIMATION_SCHEDULE_HINT = "$"
     QUADRANT_ZOOM_MIN_LEN = 3 # 1/3
     PERCENT_ZOOM_MIN_LEN = 4  # 123%
     COMBINED_ZOOM_MIN_LEN = 8 # 1/1@100%
@@ -48,6 +50,9 @@ class VideoRemixerProcessor():
     TEMP_UPSCALE_PATH = "upscaled_frames"
     DEFAULT_DOWNSCALE_TYPE = "area"
     DEFAULT_ZOOM = "100%"
+
+    DEFAULT_ANIMATION_SCHEDULE = "L" # linear
+    DEFAULT_ANIMATION_TIME = 0 # whole scene
 
     ### Exports --------------------
 
@@ -364,17 +369,15 @@ class VideoRemixerProcessor():
                             # interprent 'any-any' as animating from one to the other zoom factor
                             resize_hint = self.get_implied_zoom(resize_hint)
                             self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
-                            from_type, from_param1, from_param2, from_param3, \
-                                to_type, to_param1, to_param2, to_param3 = \
-                                    self.get_animated_zoom(resize_hint)
-                            from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3 = \
-                                self.get_animated_zoom(resize_hint)
+                            from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
+                                to_param2, to_param3, time, schedule \
+                                    = self.get_animated_zoom(resize_hint)
                             if from_type and to_type:
                                 first_frame, last_frame, _ = details_from_group_name(scene_name)
                                 num_frames = (last_frame - first_frame) + 1
                                 context = self.compute_animated_zoom(num_frames,
                                         from_type, from_param1, from_param2, from_param3,
-                                        to_type, to_param1, to_param2, to_param3,
+                                        to_type, to_param1, to_param2, to_param3, time, schedule,
                                         main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                         main_crop_w, main_crop_h)
 
@@ -620,20 +623,38 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                     else:
                         self.log(f"get_implied_zoom(): using passed zoom for from: {hint_from} and passed zoom for to: {hint_to}")
                 self.saved_zoom = hint_to
+                # if the saved zoom includes animation or time info, strip it because we only ned the view itself
+                if self.ANIMATION_SCHEDULE_HINT in self.saved_zoom:
+                    split_pos = hint.index(self.ANIMATION_SCHEDULE_HINT)
+                    self.saved_zoom = hint[:split_pos]
+                if self.ANIMATION_TIME_HINT in self.saved_zoom:
+                    split_pos = hint.index(self.ANIMATION_TIME_HINT)
+                    self.saved_zoom = hint[:split_pos]
                 return f"{hint_from}-{hint_to}"
         return hint
 
     def get_animated_zoom(self, hint):
         if self.ANIMATED_ZOOM_HINT in hint:
             if len(hint) >= self.ANIMATED_ZOOM_MIN_LEN:
+                schedule = self.DEFAULT_ANIMATION_SCHEDULE
+                time = self.DEFAULT_ANIMATION_TIME
+                if self.ANIMATION_SCHEDULE_HINT in hint:
+                    split_pos = hint.index(self.ANIMATION_SCHEDULE_HINT)
+                    remainder = hint[:split_pos]
+                    schedule = hint[split_pos+1:]
+                    hint = remainder
+                if self.ANIMATION_TIME_HINT in hint:
+                    split_pos = hint.index(self.ANIMATION_TIME_HINT)
+                    remainder = hint[:split_pos]
+                    time = int(hint[split_pos+1:])
+                    hint = remainder
                 split_pos = hint.index(self.ANIMATED_ZOOM_HINT)
                 hint_from = hint[:split_pos]
                 hint_to = hint[split_pos+1:]
                 from_type, from_param1, from_param2, from_param3 = self.get_zoom_part(hint_from)
                 to_type, to_param1, to_param2, to_param3 = self.get_zoom_part(hint_to)
-                # if from_type and to_type:
-                return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3
-        return None, None, None, None, None, None, None, None
+                return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, time, schedule
+        return None, None, None, None, None, None, None, None, None, None
 
     def compute_zoom_type(self, type, param1, param2, param3, main_resize_w, main_resize_h,
             main_offset_x, main_offset_y, main_crop_w, main_crop_h):
@@ -818,9 +839,13 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
             or crop_offset_y < 0 or crop_offset_y + main_crop_h > resize_h
 
     def compute_animated_zoom(self, num_frames, from_type, from_param1, from_param2, from_param3,
-                                    to_type, to_param1, to_param2, to_param3,
+                                    to_type, to_param1, to_param2, to_param3, time, schedule,
                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                     main_crop_w, main_crop_h):
+
+        # time
+        # if non-zero, use this instead of passed num_frames
+        num_frames = time or num_frames
 
         from_resize_w, from_resize_h, from_center_x, from_center_y = \
             self.compute_zoom_type(from_type, from_param1, from_param2, from_param3,
