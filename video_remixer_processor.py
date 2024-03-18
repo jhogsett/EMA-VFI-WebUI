@@ -613,7 +613,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
 
                 # if the hint_to part includes time or schedule info, remove it to get only the view
                 view_to = hint_to
-                remainder = None
+                remainder = ""
                 if self.ANIMATION_TIME_HINT in view_to:
                     split_pos = view_to.index(self.ANIMATION_TIME_HINT)
                     remainder = view_to[split_pos:]
