@@ -41,6 +41,11 @@ class VideoRemixerProcessor():
     ANIMATED_ZOOM_HINT = "-"
     ANIMATION_TIME_HINT = "#"
     ANIMATION_SCHEDULE_HINT = "$"
+    QUADRATRIC_SCHEDULE = "Q"
+    BEZIER_SCHEDULE = "B"
+    PARAMETRIC_SCHEDULE = "P"
+    LINEAR_SCHEDULE = "L"
+    LENS_SCHEDULE = "Z"
     QUADRANT_ZOOM_MIN_LEN = 3 # 1/3
     PERCENT_ZOOM_MIN_LEN = 4  # 123%
     COMBINED_ZOOM_MIN_LEN = 8 # 1/1@100%
@@ -50,7 +55,6 @@ class VideoRemixerProcessor():
     TEMP_UPSCALE_PATH = "upscaled_frames"
     DEFAULT_DOWNSCALE_TYPE = "area"
     DEFAULT_ZOOM = "100%"
-
     DEFAULT_ANIMATION_SCHEDULE = "L" # linear
     DEFAULT_ANIMATION_TIME = 0 # whole scene
 
@@ -858,7 +862,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                                     main_crop_w, main_crop_h):
 
         # animation time override
-        if time > 0 and time < num_frames:
+        if time > 0 and time <= num_frames:
             num_frames = time
 
         from_resize_w, from_resize_h, from_center_x, from_center_y = \
@@ -906,17 +910,20 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
     # https://stackoverflow.com/questions/13462001/ease-in-and-ease-out-animation-formula
     def _apply_animation_schedule(self, schedule, num_frames, frame):
         t = float(frame) / float(num_frames)
-        if schedule == "Q":
+        if schedule == self.QUADRATRIC_SCHEDULE:
             if t <= 0.5:
                 f = 2.0 * t * t
             else:
                 t -= 0.5
                 f = 2.0 * t * (1.0 - t) + 0.5
-        elif schedule == "B":
+        elif schedule == self.BEZIER_SCHEDULE:
             f = t * t * (3.0 - 2.0 * t)
-        elif schedule == "P":
+        elif schedule == self.PARAMETRIC_SCHEDULE:
             f = (t * t) / (2.0 * ((t * t) - t) + 1.0)
-        else:
+        elif schedule == self.LENS_SCHEDULE:
+            f = t + (1.03 ** t) # self.LENS_FACTOR
+            f = min(1.0, f)
+        else: # Linear
             f = t
         return int(f * num_frames)
 
