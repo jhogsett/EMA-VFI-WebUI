@@ -915,7 +915,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         return context
 
     # https://stackoverflow.com/questions/13462001/ease-in-and-ease-out-animation-formula
-    def _apply_animation_schedule(self, schedule, num_frames, frame):
+    def _apply_animation_schedule(self, schedule, num_frames, frame, zooming_in):
         t = float(frame) / float(num_frames)
         if schedule == self.QUADRATRIC_SCHEDULE:
             if t <= 0.5:
@@ -928,7 +928,18 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         elif schedule == self.PARAMETRIC_SCHEDULE:
             f = (t * t) / (2.0 * ((t * t) - t) + 1.0)
         elif schedule == self.LENS_SCHEDULE:
-            f = t + (1.03 ** t) # self.LENS_FACTOR
+            # experimental, not working properly, too dependent on number of frames
+            # a 10-second zoom ends half way through (but looks really nice)
+            frame_factor = 66_667
+            if zooming_in:
+                factor = (1 + (frame / frame_factor)) ** frame
+            else:
+                factor = (1 + ((num_frames - frame) / frame_factor)) ** (num_frames - frame)
+            if t <= 0.5:
+                f = t / factor
+            else:
+                f = t * factor
+            f = t * factor
             f = min(1.0, f)
         else: # Linear
             f = t
@@ -953,7 +964,8 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         if index > num_frames:
             index = num_frames
 
-        index = self._apply_animation_schedule(schedule, num_frames, index)
+        zooming_in = step_resize_w > 0.0
+        index = self._apply_animation_schedule(schedule, num_frames, index, zooming_in)
 
         resize_w = from_resize_w + (index * step_resize_w)
         resize_h = from_resize_h + (index * step_resize_h)
