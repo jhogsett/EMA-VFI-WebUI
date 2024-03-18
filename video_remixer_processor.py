@@ -28,7 +28,7 @@ class VideoRemixerProcessor():
         self.realesrgan_settings = realesrgan_settings
         self.global_options = global_options
         self.log_fn = log_fn
-        self.saved_zoom = self.DEFAULT_ZOOM
+        self.saved_view = self.DEFAULT_VIEW
 
     def log(self, message):
         if self.log_fn:
@@ -54,7 +54,7 @@ class VideoRemixerProcessor():
     FIXED_UPSCALE_FACTOR = 4.0
     TEMP_UPSCALE_PATH = "upscaled_frames"
     DEFAULT_DOWNSCALE_TYPE = "area"
-    DEFAULT_ZOOM = "100%"
+    DEFAULT_VIEW = "100%"
     DEFAULT_ANIMATION_SCHEDULE = "L" # linear
     DEFAULT_ANIMATION_TIME = 0 # whole scene
 
@@ -355,7 +355,7 @@ class VideoRemixerProcessor():
                                                       self.state.crop_w, self.state.crop_h,
                                                       content_width, content_height)
 
-        self.saved_zoom = self.DEFAULT_ZOOM
+        self.saved_view = self.DEFAULT_VIEW
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Resize") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
@@ -363,7 +363,14 @@ class VideoRemixerProcessor():
                 create_directory(scene_output_path)
 
                 resize_handled = False
-                resize_hint = self.state.get_hint(self.state.scene_labels.get(scene_name), self.state.RESIZE_HINT)
+                resize_hint = self.state.get_hint(self.state.scene_labels.get(scene_name),
+                                                  self.state.RESIZE_HINT)
+
+                # if there's no resize hint, and the saved view differs from the default,
+                # presume the saved view is what's wanted for an unhinted scene
+                if not resize_hint and self.saved_view != self.DEFAULT_VIEW:
+                    resize_hint = self.saved_view
+
                 if resize_hint:
                     main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, \
                         main_offset_y = self.setup_resize_hint(content_width, content_height)
@@ -627,26 +634,26 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                 if not hint_from or not view_to:
                     if not hint_from and not view_to:
                         # single dash (both missing) means return to default zoom
-                        hint_from = self.saved_zoom
-                        hint_to = self.DEFAULT_ZOOM
-                        view_to = self.DEFAULT_ZOOM
+                        hint_from = self.saved_view
+                        hint_to = self.DEFAULT_VIEW
+                        view_to = self.DEFAULT_VIEW
                         self.log(f"get_implied_zoom(): using saved zoom for from: {hint_from} and default zoom for to: {hint_to}")
 
                     elif hint_from and not view_to:
                         # missing 'to' means go to saved zoom
-                        hint_to = self.saved_zoom
+                        hint_to = self.saved_view
                         self.log(f"get_implied_zoom(): using passed zoom for from: {hint_from} and saved zoom for to: {hint_to}")
 
                     elif not hint_from and view_to:
                         # missing 'from' means go from saved zoom
-                        hint_from = self.saved_zoom
+                        hint_from = self.saved_view
                         self.log(f"get_implied_zoom(): using saved zoom for from: {hint_from} and passed zoom for to: {hint_to}")
 
                     else:
                         self.log(f"get_implied_zoom(): using passed zoom for from: {hint_from} and passed zoom for to: {hint_to}")
 
                 if view_to:
-                    self.saved_zoom = view_to
+                    self.saved_view = view_to
 
                 return f"{hint_from}-{view_to}{remainder}"
         return hint
