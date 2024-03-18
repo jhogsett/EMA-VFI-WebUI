@@ -2071,6 +2071,12 @@ class VideoRemixer(TabBase):
                     "warning"), \
             *empty_args
 
+        errors = self.state.ensure_project_dir_permissions()
+        if errors:
+            message = "\r\n".join(errors)
+            return gr.update(selected=self.TAB_PROC_REMIX), \
+                format_markdown(message, "error"), *empty_args
+
         self.state.resize = resize
 
         self.state.resynthesize = resynthesize
