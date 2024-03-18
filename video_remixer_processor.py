@@ -1195,7 +1195,6 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         create_directory(scene_output_path)
 
         working_path = os.path.join(scene_output_path, self.TEMP_UPSCALE_PATH)
-        self.log(f"about to create working path {working_path}")
         create_directory(working_path)
 
         # TODO make this logic general
@@ -1203,7 +1202,6 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         # upscale first at the engine's native scale
         file_list = sorted(get_files(scene_input_path))
         output_basename = "upscaled_frames"
-        self.log(f"about to upscale images to {working_path}")
         upscaler.upscale_series(file_list, working_path, self.FIXED_UPSCALE_FACTOR, output_basename,
                                 self.state.frame_format)
 
@@ -1222,7 +1220,6 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
 
         if downscaled_width != width or downscaled_height != height:
             # downsample to final size
-            self.log(f"about to downscale images in {working_path} to {scene_output_path}")
             ResizeFrames(scene_input_path,
                         scene_output_path,
                         downscaled_width,
@@ -1234,7 +1231,6 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
             copy_files(working_path, scene_output_path)
 
         try:
-            self.log(f"about to delete working path {working_path}")
             shutil.rmtree(working_path)
         except OSError as error:
             self.log(f"ignoring error deleting working path: {error}")
