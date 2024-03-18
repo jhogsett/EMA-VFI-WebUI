@@ -180,6 +180,32 @@ class VideoRemixerState():
         if save_project:
             self.save()
 
+    def ensure_project_dir_permissions(self):
+        project_dirs = [
+            self.frames_path,
+            self.dropped_scenes_path,
+            self.thumbnail_path,
+            self.scenes_path,
+            self.resize_path,
+            self.resynthesis_path,
+            self.inflation_path,
+            self.upscale_path,
+            self.audio_clips_path,
+            self.video_clips_path,
+            self.clips_path
+        ]
+        project_dirs = [dir for dir in project_dirs if dir and os.path.exists(dir)]
+        messages = []
+        for dir in project_dirs:
+            probe_name = f"{dir}~"
+            try:
+                os.rename(dir, probe_name)
+                os.rename(probe_name, dir)
+            except PermissionError as error:
+                message = f"Permission error for project directory {dir}"
+                messages.append(message)
+        return messages
+
     def calc_split_frames(self, fps, seconds):
         return round(float(fps) * float(seconds))
 
