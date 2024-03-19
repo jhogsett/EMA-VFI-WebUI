@@ -777,10 +777,8 @@ class VideoRemixerState():
             self.current_scene = scene_index
 
         thumbnail_file = self.thumbnails[scene_index]
-        self.log(f"about to delete original thumbnail file '{thumbnail_file}'")
         os.remove(thumbnail_file)
         self.ingest.create_thumbnail(new_lower_scene_name)
-        self.log(f"about to create thumbnail for new upper scene {new_upper_scene_name}")
         self.ingest.create_thumbnail(new_upper_scene_name)
         self.thumbnails = sorted(get_files(self.thumbnail_path))
 

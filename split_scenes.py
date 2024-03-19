@@ -96,7 +96,6 @@ class SplitScenes:
                 if self.dry_run:
                     self.log(f"[Dry Run] Creating directory {group_path}")
                 else:
-                    self.log(f"Creating directory {group_path}")
                     create_directory(group_path)
 
                 desc = "Copying"
@@ -110,7 +109,6 @@ class SplitScenes:
                         if self.dry_run:
                             print(f"[Dry Run] Copying {from_filepath} to {to_filepath}")
                         else:
-                            self.log(f"Copying {from_filepath} to {to_filepath}")
                             shutil.copy(from_filepath, to_filepath)
                         Mtqdm().update_bar(file_bar)
                 Mtqdm().update_bar(scene_bar)
@@ -145,7 +143,6 @@ class SplitScenes:
                 if self.dry_run:
                     self.log(f"[Dry Run] Creating directory {group_path}")
                 else:
-                    self.log(f"Creating directory {group_path}")
                     create_directory(group_path)
 
                 desc = "Copying"
@@ -159,7 +156,6 @@ class SplitScenes:
                         if self.dry_run:
                             print(f"[Dry Run] Copying {from_filepath} to {to_filepath}")
                         else:
-                            self.log(f"Copying {from_filepath} to {to_filepath}")
                             shutil.copy(from_filepath, to_filepath)
                         Mtqdm().update_bar(file_bar)
                 Mtqdm().update_bar(scene_bar)
@@ -186,7 +182,6 @@ class SplitScenes:
         if self.dry_run:
             print(f"[Dry Run] Creating base output path {self.output_path}")
         else:
-            self.log(f"Creating base output path {self.output_path}")
             create_directory(self.output_path)
 
     def log(self, message : str) -> None:

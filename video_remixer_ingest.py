@@ -92,7 +92,6 @@ class VideoRemixerIngest():
         source_frame_count = int(self.state.video_details["frame_count"])
         _, index_width = rate_adjusted_count(source_frame_count, source_frame_rate, self.state.project_fps)
 
-        self.state.log(f"auto-resequencing source frames at {frames_source}")
         ResequenceFiles(frames_source, self.state.frame_format, "scene_frame", 0, 1, 1, 0, index_width,
                         True, self.state.log_fn).resequence()
 

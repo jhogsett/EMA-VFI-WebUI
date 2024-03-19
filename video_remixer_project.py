@@ -362,7 +362,6 @@ class VideoRemixerProject():
                 Mtqdm().update_bar(bar)
         self.log(f"recreated scenes")
 
-        self.log(f"about to create thumbnails of type {self.state.thumbnail_type}")
         self.state.ingest.create_thumbnails()
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
 

@@ -1705,7 +1705,6 @@ class VideoRemixer(TabBase):
             self.state.save()
 
             # split frames into scenes
-            self.log(f"about to split scenes by {self.state.split_type}")
             error = self.state.ingest.split_scenes(prevent_overwrite=False)
             if error:
                 return gr.update(selected=self.TAB_SET_UP_PROJECT), \
@@ -1714,7 +1713,6 @@ class VideoRemixer(TabBase):
             self.state.save()
 
             if self.state.min_frames_per_scene > 0:
-                self.log(f"about to consolidate scenes with too few frames")
                 self.state.ingest.consolidate_scenes()
                 self.state.save()
 
@@ -1738,7 +1736,6 @@ class VideoRemixer(TabBase):
             self.state.current_scene = 0
             self.state.save()
 
-        self.log(f"about to create thumbnails of type {self.state.thumbnail_type}")
         try:
             self.state.ingest.create_thumbnails()
         except ValueError as error:
@@ -2657,7 +2654,6 @@ class VideoRemixer(TabBase):
         self.state.uncompile_scenes()
 
         # resequence the files within the selected scenes contiguously
-        self.log("about to call resequence_groups() with the selected scene names")
         ResequenceFiles(self.state.scenes_path,
                         self.state.frame_format,
                         "merged_frame",
@@ -2669,7 +2665,6 @@ class VideoRemixer(TabBase):
 
         # consolidate all the files into the first scene
         first_scene_name = selected_scene_names[0]
-        self.log("about to consoldate scene frames")
         with Mtqdm().open_bar(total=len(selected_scene_names)-1, desc="Consolidating Frames") as bar:
             for scene_name in selected_scene_names[1:]:
                 from_path = os.path.join(self.state.scenes_path, scene_name)
@@ -2689,11 +2684,9 @@ class VideoRemixer(TabBase):
         # rename the consolidated scene directory
         original_scene_path = os.path.join(self.state.scenes_path, first_scene_name)
         new_scene_path = os.path.join(self.state.scenes_path, new_scene_name)
-        self.log(f"about to rename '{original_scene_path}' to '{new_scene_path}'")
         os.replace(original_scene_path, new_scene_path)
 
         # delete the obsolete empty scene directories
-        self.log("about to delete obsolete scene directories")
         for scene_name in selected_scene_names[1:]:
             path = os.path.join(self.state.scenes_path, scene_name)
             files = get_files(path)
@@ -2703,14 +2696,12 @@ class VideoRemixer(TabBase):
             shutil.rmtree(path)
 
         # delete the affected thumbnails
-        self.log("about to delete the original scenes' thumbnails")
         thumbnail_files = sorted(get_files(self.state.thumbnail_path))
         for index, thumbnail_file in enumerate(thumbnail_files):
             if index < first_scene_index:
                 continue
             if index > last_scene_index:
                 break
-            self.log(f"about to delete original thumbnail file '{thumbnail_file}'")
             os.remove(thumbnail_file)
 
         # set the new scene name
@@ -2729,7 +2720,6 @@ class VideoRemixer(TabBase):
         self.state.current_scene = first_scene_index
 
         # create a new thumbnail for the consolidated scene
-        self.log("about to create a thumbnail for the consolidated scene")
         self.state.ingest.create_thumbnail(new_scene_name)
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
 
@@ -2899,7 +2889,6 @@ class VideoRemixer(TabBase):
     def delete_button710(self, delete_purged):
         if self.state.project_path:
             if delete_purged:
-                self.log("about to remove content from 'purged_content' directory")
                 removed = self.state.delete_purged_content()
                 return format_markdown(f"Removed: {removed}")
             else:
