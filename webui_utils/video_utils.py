@@ -511,11 +511,7 @@ def get_detected_scenes(input_path : str, threshold : float=0.5, type : str="png
         int(line.split()[1].split(":")[1]) for line in stdout_lines if line.startswith("frame:")]
 
 def get_detected_breaks(input_path : str, duration : float=0.5, ratio : float=0.98, type : str="png"):
-    # ffmpeg -framerate 1 -i "G:\CONTENT\HH\TEST\png%05d.png" -filter_complex "blackdetect=d=0.5,metadata=print:file=bldet.txt" -f null -
-    # frame:5106 pts:5106    pts_time:5106
-    # lavfi.black_start=5106
-    # frame:5152 pts:5152    pts_time:5152
-    # lavfi.black_end=5152
+    #ffmpeg -framerate 1 -i "C:\CONTENT\REMIX-touch_the_sky_ST_Me-TV-05062023-2005\SOURCE\source_%06d.jpg" -filter_complex "blackdetect=d=2:pic_th=0.98,metadata=print:file=bldet.txt" -f null -
     if not os.path.exists(input_path):
         raise ValueError(f"path does not exist: {input_path}")
     if not isinstance(duration, float):
@@ -553,6 +549,11 @@ def get_detected_breaks(input_path : str, duration : float=0.5, ratio : float=0.
     breaks = []
     for index, start in enumerate(start_frames):
         end = end_frames[index]
+
+        if (end - start) < 2:
+            # ignore unusable break
+            continue
+
         # break at the midpoint
         breaks.append(int((start + end) / 2))
     return breaks
