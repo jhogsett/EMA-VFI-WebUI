@@ -961,8 +961,6 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         main_crop_h = context["main_crop_h"]
         num_frames = context["num_frames"]
         schedule = context["schedule"]
-        float_carry = context.get("float_carry", 0.0)
-        print(float_carry)
 
         # TODO handle range, offset from end
         # limit animation to maximum frames
@@ -970,13 +968,10 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
             index = num_frames
 
         zooming_in = step_resize_w > 0.0
-        index, new_float_carry = self._apply_animation_schedule(schedule, num_frames, index,
+        index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
                                                                 zooming_in)
-        float_carry += new_float_carry
-        if float_carry > 1.0:
+        if float_carry >= 0.5:
             index += 1
-            float_carry -= 1.0
-        context["float_carry"] = float_carry
 
         resize_w = from_resize_w + (index * step_resize_w)
         resize_h = from_resize_h + (index * step_resize_h)
