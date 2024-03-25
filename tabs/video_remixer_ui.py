@@ -2471,7 +2471,7 @@ class VideoRemixer(TabBase):
         return display_frame, scene_info
 
     def export_project_703(self, new_project_path : str, new_project_name : str):
-        empty_args = dummy_args(2, lambda : gr.update(visible=True))
+        empty_args = dummy_args(2, gr.update(visible=False))
         if not new_project_path:
             return format_markdown("Please enter a Project Path for the new project", "warning"), \
                 *empty_args
