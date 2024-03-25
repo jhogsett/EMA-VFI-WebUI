@@ -2470,6 +2470,29 @@ class VideoRemixer(TabBase):
         _, _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index, self.GAP)
         return display_frame, scene_info
 
+    def _split_scene(self, scene_index, split_percent, keep_before, keep_after):
+        errors = self.state.ensure_project_dir_permissions()
+        if errors:
+            message = "\r\n".join(errors)
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown(message, "error"), \
+                *dummy_args(6)
+
+        backup_split_scenes = self.config.remixer_settings["backup_split_scenes"]
+        try:
+            message = self.state.split_scene(scene_index, split_percent, keep_before, keep_after,
+                                             backup_split_scenes)
+            self.state.save()
+
+            return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+                format_markdown(message), \
+                *self.scene_chooser_details(self.state.current_scene)
+
+        except ValueError as error:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown(f"Unable to split scene: {error}", "warning"), \
+                *dummy_args(6)
+
     def export_project_703(self, new_project_path : str, new_project_name : str):
         empty_args = dummy_args(2, gr.update(visible=False))
         if not new_project_path:
@@ -2496,22 +2519,6 @@ class VideoRemixer(TabBase):
 
         except ValueError as error:
             return format_markdown(str(error), "error"), *empty_args
-
-    def _split_scene(self, scene_index, split_percent, keep_before, keep_after):
-        backup_split_scenes = self.config.remixer_settings["backup_split_scenes"]
-        try:
-            message = self.state.split_scene(scene_index, split_percent, keep_before, keep_after,
-                                             backup_split_scenes)
-            self.state.save()
-
-            return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-                format_markdown(message), \
-                *self.scene_chooser_details(self.state.current_scene)
-
-        except ValueError as error:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown(f"Unable to split scene: {error}", "warning"), \
-                *dummy_args(6)
 
     def open_result703(self, new_project_path):
         return gr.update(selected=self.TAB_REMIX_HOME), \
