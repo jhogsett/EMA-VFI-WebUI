@@ -1220,7 +1220,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
 
         if downscaled_width != width or downscaled_height != height:
             # downsample to final size
-            ResizeFrames(scene_input_path,
+            ResizeFrames(working_path,
                         scene_output_path,
                         downscaled_width,
                         downscaled_height,
