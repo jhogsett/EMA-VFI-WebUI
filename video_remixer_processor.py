@@ -961,8 +961,9 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
 
         # TODO handle range, offset from end
         # limit animation to maximum frames
-        if index > num_frames:
-            index = num_frames
+
+        if index >= num_frames:
+            index = num_frames - 1
 
         zooming_in = step_resize_w > 0.0
         index = self._apply_animation_schedule(schedule, num_frames, index, zooming_in)
