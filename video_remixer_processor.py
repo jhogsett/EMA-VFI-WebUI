@@ -943,9 +943,12 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
             f = min(1.0, f)
         else: # Linear
             f = t
-        return int(f * num_frames)
+        float_frame = f * num_frames
+        int_frame = int(float_frame)
+        float_carry = float_frame - int_frame
+        return int_frame, float_carry
 
-    def _resize_frame_param(self, index, context):
+    def _resize_frame_param(self, index : int, context : dict):
         from_resize_w = context["from_resize_w"]
         from_resize_h = context["from_resize_h"]
         from_center_x = context["from_center_x"]
@@ -966,7 +969,10 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
             index = num_frames - 1
 
         zooming_in = step_resize_w > 0.0
-        index = self._apply_animation_schedule(schedule, num_frames, index, zooming_in)
+        index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
+                                                                zooming_in)
+        if float_carry >= 0.5:
+            index += 1
 
         resize_w = from_resize_w + (index * step_resize_w)
         resize_h = from_resize_h + (index * step_resize_h)
