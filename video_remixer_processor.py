@@ -891,7 +891,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
 
         # TODO why is this needed? without it, the last transition doesn't happen
         # - maybe it needs to be the number of transitions between frames not number of frames
-        # ensure the final transition occurs
+        # Ensure the final transition occurs
         num_frames -= 1
 
         step_resize_w = diff_resize_w / num_frames
@@ -965,23 +965,28 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         # TODO handle range, offset from end
         # limit animation to maximum frames
 
-        if index >= num_frames:
-            index = num_frames - 1
-
         zooming_in = step_resize_w > 0.0
         index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
-                                                                zooming_in)
+                                                            zooming_in)
         if float_carry >= 0.5:
             index += 1
 
-        resize_w = from_resize_w + (index * step_resize_w)
-        resize_h = from_resize_h + (index * step_resize_h)
+        if index > num_frames:
+            index = num_frames
+
+        resize_w = int(from_resize_w + (index * step_resize_w))
+        resize_h = int(from_resize_h + (index * step_resize_h))
         center_x = from_center_x + (index * step_center_x)
         center_y = from_center_y + (index * step_center_y)
-        crop_offset_x = center_x - (main_crop_w / 2.0)
-        crop_offset_y = center_y - (main_crop_h / 2.0)
+        crop_offset_x = int(center_x - (main_crop_w / 2.0))
+        crop_offset_y = int(center_y - (main_crop_h / 2.0))
 
-        return int(resize_w), int(resize_h), int(crop_offset_x), int(crop_offset_y)
+        if resize_w < main_crop_w:
+            resize_w = main_crop_w
+        if resize_h < main_crop_h:
+            resize_h = main_crop_h
+
+        return resize_w, resize_h, crop_offset_x, crop_offset_y
 
 
     # Resynthesis Processing
