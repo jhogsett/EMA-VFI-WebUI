@@ -912,6 +912,8 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         context["main_crop_h"] = main_crop_h
         context["num_frames"] = num_frames
         context["schedule"] = schedule
+        context["start_frame"] = 0
+        context["end_frame"] = num_frames
         return context
 
     # https://stackoverflow.com/questions/13462001/ease-in-and-ease-out-animation-formula
@@ -961,18 +963,25 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         main_crop_h = context["main_crop_h"]
         num_frames = context["num_frames"]
         schedule = context["schedule"]
+        start_frame = context["start_frame"]
+        end_frame = context["end_frame"]
 
         # TODO handle range, offset from end
-        # limit animation to maximum frames
 
-        zooming_in = step_resize_w > 0.0
-        index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
-                                                            zooming_in)
-        if float_carry >= 0.5:
-            index += 1
+        if index < start_frame:
+            index = 0
+        elif index > end_frame:
+            index = end_frame
+        else:
+            index -= start_frame
+            zooming_in = step_resize_w > 0.0
+            index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
+                                                                zooming_in)
+            if float_carry >= 0.5:
+                index += 1
 
-        if index > num_frames:
-            index = num_frames
+        if index > end_frame:
+            index = end_frame
 
         resize_w = int(from_resize_w + (index * step_resize_w))
         resize_h = int(from_resize_h + (index * step_resize_h))
