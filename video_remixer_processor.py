@@ -42,7 +42,7 @@ class VideoRemixerProcessor():
     ANIMATION_TIME_HINT = "#"
     ANIMATION_TIME_SEP = "~"
     ANIMATION_SCHEDULE_HINT = "$"
-    QUADRATRIC_SCHEDULE = "Q"
+    QUADRATIC_SCHEDULE = "Q"
     BEZIER_SCHEDULE = "B"
     PARAMETRIC_SCHEDULE = "P"
     LINEAR_SCHEDULE = "L"
@@ -944,7 +944,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
     # https://stackoverflow.com/questions/13462001/ease-in-and-ease-out-animation-formula
     def _apply_animation_schedule(self, schedule, num_frames, frame, zooming_in):
         t = float(frame) / float(num_frames)
-        if schedule == self.QUADRATRIC_SCHEDULE:
+        if schedule == self.QUADRATIC_SCHEDULE:
             if t <= 0.5:
                 f = 2.0 * t * t
             else:
