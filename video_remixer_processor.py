@@ -40,6 +40,7 @@ class VideoRemixerProcessor():
     COMBINED_ZOOM_HINT = "@"
     ANIMATED_ZOOM_HINT = "-"
     ANIMATION_TIME_HINT = "#"
+    ANIMATION_TIME_SEP = "~"
     ANIMATION_SCHEDULE_HINT = "$"
     QUADRATRIC_SCHEDULE = "Q"
     BEZIER_SCHEDULE = "B"
@@ -381,16 +382,16 @@ class VideoRemixerProcessor():
                             resize_hint = self.get_implied_zoom(resize_hint)
                             self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
                             from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
-                                to_param2, to_param3, time, schedule \
+                                to_param2, to_param3, frame_from, frame_to, schedule \
                                     = self.get_animated_zoom(resize_hint)
                             if from_type and to_type:
                                 first_frame, last_frame, _ = details_from_group_name(scene_name)
                                 num_frames = (last_frame - first_frame) + 1
                                 context = self.compute_animated_zoom(num_frames,
                                         from_type, from_param1, from_param2, from_param3,
-                                        to_type, to_param1, to_param2, to_param3, time, schedule,
-                                        main_resize_w, main_resize_h, main_offset_x, main_offset_y,
-                                        main_crop_w, main_crop_h)
+                                        to_type, to_param1, to_param2, to_param3, frame_from,
+                                        frame_to, schedule, main_resize_w, main_resize_h,
+                                        main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
                                 scale_type = self.state.remixer_settings["scale_type_up"]
                                 self.resize_scene(scene_input_path,
@@ -671,14 +672,24 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                 if self.ANIMATION_TIME_HINT in hint:
                     split_pos = hint.index(self.ANIMATION_TIME_HINT)
                     remainder = hint[:split_pos]
-                    time = int(hint[split_pos+1:])
+                    time = hint[split_pos+1:]
                     hint = remainder
+                    if self.ANIMATION_TIME_SEP in time:
+                        # a specific frame range is specified
+                        split_pos = time.index(self.ANIMATION_TIME_SEP)
+                        # one or both values may be empty strings
+                        frame_from = time[:split_pos]
+                        frame_to = time[split_pos+1:]
+                    else:
+                        # a frame count is specified with an implied range starting at zero
+                        frame_from = 0
+                        frame_to = int(time)
                 split_pos = hint.index(self.ANIMATED_ZOOM_HINT)
                 hint_from = hint[:split_pos]
                 hint_to = hint[split_pos+1:]
                 from_type, from_param1, from_param2, from_param3 = self.get_zoom_part(hint_from)
                 to_type, to_param1, to_param2, to_param3 = self.get_zoom_part(hint_to)
-                return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, time, schedule
+                return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, frame_from, frame_to, schedule
         return None, None, None, None, None, None, None, None, None, None
 
     def compute_zoom_type(self, type, param1, param2, param3, main_resize_w, main_resize_h,
@@ -864,13 +875,27 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
             or crop_offset_y < 0 or crop_offset_y + main_crop_h > resize_h
 
     def compute_animated_zoom(self, num_frames, from_type, from_param1, from_param2, from_param3,
-                                    to_type, to_param1, to_param2, to_param3, time, schedule,
-                                    main_resize_w, main_resize_h, main_offset_x, main_offset_y,
-                                    main_crop_w, main_crop_h):
+                                    to_type, to_param1, to_param2, to_param3, frame_from, frame_to,
+                                    schedule, main_resize_w, main_resize_h, main_offset_x,
+                                    main_offset_y, main_crop_w, main_crop_h):
 
         # animation time override
-        if time > 0 and time <= num_frames:
-            num_frames = time
+        if frame_from == "" and frame_to == "":
+            # unspecified range, ignore
+            frame_from = 0
+            frame_to = num_frames
+        elif frame_to == "":
+            # frame_to is the last frame
+            frame_to = num_frames
+        elif frame_from == "":
+            # frame_from is offset from the end
+            frame_from = num_frames - int(frame_to)
+            frame_to = num_frames
+        frame_from = int(frame_from)
+        frame_to = int(frame_to)
+
+        if frame_from >= 0 and frame_to <= num_frames and frame_from < frame_to:
+            num_frames = frame_to - frame_from
 
         from_resize_w, from_resize_h, from_center_x, from_center_y = \
             self.compute_zoom_type(from_type, from_param1, from_param2, from_param3,
@@ -912,8 +937,8 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         context["main_crop_h"] = main_crop_h
         context["num_frames"] = num_frames
         context["schedule"] = schedule
-        context["start_frame"] = 0
-        context["end_frame"] = num_frames
+        context["start_frame"] = frame_from
+        context["end_frame"] = frame_to
         return context
 
     # https://stackoverflow.com/questions/13462001/ease-in-and-ease-out-animation-formula
@@ -971,7 +996,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         if index < start_frame:
             index = 0
         elif index > end_frame:
-            index = end_frame
+            index = end_frame - start_frame
         else:
             index -= start_frame
             zooming_in = step_resize_w > 0.0
@@ -980,8 +1005,8 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
             if float_carry >= 0.5:
                 index += 1
 
-        if index > end_frame:
-            index = end_frame
+        if index > num_frames:
+            index = num_frames
 
         resize_w = int(from_resize_w + (index * step_resize_w))
         resize_h = int(from_resize_h + (index * step_resize_h))
