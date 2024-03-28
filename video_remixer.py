@@ -95,6 +95,7 @@ class VideoRemixerState():
         self.resize_path = None
         self.resynthesis_path = None
         self.inflation_path = None
+        self.effects_path = None
         self.upscale_path = None
         self.summary_info6 = None # re-set on re-opening project
         self.output_filepath = None
@@ -131,10 +132,12 @@ class VideoRemixerState():
     RESIZE_HINT = "R"
     RESYNTHESIS_HINT = "Y"
     INFLATION_HINT = "I"
+    EFFECTS_HINT = "V" # TODO later there will be multiple effects hints
     UPSCALE_HINT = "U"
     RESIZE_STEP = "resize"
     RESYNTH_STEP = "resynth"
     INFLATE_STEP = "inflate"
+    EFFECTS_STEP = "effects"
     UPSCALE_STEP = "upscale"
     AUDIO_STEP = "audio"
     VIDEO_STEP = "video"
@@ -143,6 +146,7 @@ class VideoRemixerState():
     RESIZE_PATH = "SCENES-RC"
     RESYNTH_PATH = "SCENES-RE"
     INFLATE_PATH = "SCENES-IN"
+    EFFECTS_PATH = "SCENES-FX"
     UPSCALE_PATH = "SCENES-UP"
     CLIPS_PATH = "CLIPS"
     AUDIO_CLIPS_PATH = "AUDIO"
@@ -161,6 +165,7 @@ class VideoRemixerState():
         self.resize_path = os.path.join(self.project_path, self.RESIZE_PATH)
         self.resynthesis_path = os.path.join(self.project_path, self.RESYNTH_PATH)
         self.inflation_path = os.path.join(self.project_path, self.INFLATE_PATH)
+        self.effects_path = os.path.join(self.project_path, self.EFFECTS_PATH)
         self.upscale_path = os.path.join(self.project_path, self.UPSCALE_PATH)
 
     def project_ported(self, opened_project_file):
@@ -189,6 +194,7 @@ class VideoRemixerState():
             self.resize_path,
             self.resynthesis_path,
             self.inflation_path,
+            self.effects_path,
             self.upscale_path,
             self.audio_clips_path,
             self.video_clips_path,
@@ -326,6 +332,9 @@ class VideoRemixerState():
             else:
                 label += "-inH"
 
+        if self.effects_chosen():
+            label += "-fx"
+
         if self.upscale_chosen():
             if self.upscale:
                 label += "-up" + str(self.upscale_option)[0]
@@ -343,6 +352,10 @@ class VideoRemixerState():
 
     def inflate_chosen(self):
         return self.inflate or self.hint_present(self.INFLATION_HINT)
+
+    def effects_chosen(self):
+        # TODO this will need to check for various effects hints later
+        return self.hint_present(self.EFFECTS_HINT)
 
     def upscale_chosen(self):
         return self.upscale or self.hint_present(self.UPSCALE_HINT)
@@ -494,6 +507,7 @@ class VideoRemixerState():
         purge_paths = [self.resize_path,
                        self.resynthesis_path,
                        self.inflation_path,
+                       self.effects_path,
                        self.upscale_path]
 
         if purge_from == self.RESIZE_STEP:
@@ -502,8 +516,10 @@ class VideoRemixerState():
             purge_paths = purge_paths[1:]
         elif purge_from == self.INFLATE_STEP:
             purge_paths = purge_paths[2:]
-        elif purge_from == self.UPSCALE_STEP:
+        elif purge_from == self.EFFECTS_STEP:
             purge_paths = purge_paths[3:]
+        elif purge_from == self.UPSCALE_STEP:
+            purge_paths = purge_paths[4:]
         else:
             raise RuntimeError(f"Unrecognized value {purge_from} passed to purge_processed_content()")
 
@@ -786,6 +802,7 @@ class VideoRemixerState():
             self.resize_path,
             self.resynthesis_path,
             self.inflation_path,
+            self.effects_path,
             self.upscale_path
         ]
         processed_content_split = False

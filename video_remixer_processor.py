@@ -84,6 +84,9 @@ class VideoRemixerProcessor():
         if self.inflate_needed():
             self.inflate_scenes(kept_scenes)
 
+        if self.effects_needed():
+            self.effect_scenes(kept_scenes)
+
         if self.upscale_needed():
             self.upscale_scenes(kept_scenes)
 
@@ -95,6 +98,8 @@ class VideoRemixerProcessor():
             return self._processed_content_complete(self.state.resynthesis_path, expected_dirs=expected_items)
         elif processing_step == self.state.INFLATE_STEP:
             return self._processed_content_complete(self.state.inflation_path, expected_dirs=expected_items)
+        elif processing_step == self.state.EFFECTS_STEP:
+            return self._processed_content_complete(self.state.effects_path, expected_dirs=expected_items)
         elif processing_step == self.state.UPSCALE_STEP:
             return self._processed_content_complete(self.state.upscale_path, expected_dirs=expected_items)
         elif processing_step == self.state.AUDIO_STEP:
@@ -229,6 +234,9 @@ class VideoRemixerProcessor():
         if self.processed_content_stale(self.state.inflate_chosen(), self.state.inflation_path) or purge_inflation:
             self.state.purge_processed_content(purge_from=self.state.INFLATE_STEP)
 
+        if self.processed_content_stale(self.state.effects_chosen(), self.state.effects_path):
+            self.state.purge_processed_content(purge_from=self.state.EFFECTS_STEP)
+
         if self.processed_content_stale(self.state.upscale_chosen(), self.state.upscale_path) or purge_upscale:
             self.state.purge_processed_content(purge_from=self.state.UPSCALE_STEP)
 
@@ -243,6 +251,9 @@ class VideoRemixerProcessor():
 
         if self.state.inflate_chosen() and not self.processed_content_complete(self.state.INFLATE_STEP):
             self.state.purge_processed_content(purge_from=self.state.INFLATE_STEP)
+
+        if self.state.effects_chosen() and not self.processed_content_complete(self.state.EFFECTS_STEP):
+            self.state.purge_processed_content(purge_from=self.state.EFFECTS_STEP)
 
         if self.state.upscale_chosen() and not self.processed_content_complete(self.state.UPSCALE_STEP):
             self.state.purge_processed_content(purge_from=self.state.UPSCALE_STEP)
@@ -261,6 +272,10 @@ class VideoRemixerProcessor():
     def inflate_needed(self):
         return self.state.inflate_chosen() \
             and not self.processed_content_complete(self.state.INFLATE_STEP)
+
+    def effects_needed(self):
+        return self.state.effects_chosen() \
+            and not self.processed_content_complete(self.state.EFFECTS_STEP)
 
     def upscale_needed(self):
         return self.state.upscale_chosen() \
@@ -288,9 +303,24 @@ class VideoRemixerProcessor():
                 # if resize is enabled, draw from the resized scenes path
                 processing_path = self.state.resize_path
 
-        elif processing_step == self.state.UPSCALE_STEP:
-            # upscaling is the fourth processing step
+        elif processing_step == self.state.EFFECTS_STEP:
+            # effects is the fourth processing step
             if self.state.inflate_chosen():
+                # if inflation is enabled, draw from the inflation path
+                processing_path = self.state.inflation_path
+            elif self.state.resynthesize_chosen():
+                # if resynthesis is enabled, draw from the resyntheized scenes path
+                processing_path = self.state.resynthesis_path
+            elif self.state.resize_chosen():
+                # if resize is enabled, draw from the resized scenes path
+                processing_path = self.state.resize_path
+
+        elif processing_step == self.state.UPSCALE_STEP:
+            # upscaling is the fifth processing step
+            if self.state.effects_chosen():
+                # if effects hints are in use, draw from the effects path
+                processing_path = self.state.effects_path
+            elif self.state.inflate_chosen():
                 # if inflation is enabled, draw from the inflation path
                 processing_path = self.state.inflation_path
             elif self.state.resynthesize_chosen():
@@ -306,6 +336,8 @@ class VideoRemixerProcessor():
     def furthest_processed_path(self):
         if self.state.upscale_chosen():
             path = self.state.upscale_path
+        elif self.state.effects_chosen():
+            path = self.state.effects_path
         elif self.state.inflate_chosen():
             path = self.state.inflation_path
         elif self.state.resynthesize_chosen():
@@ -346,26 +378,33 @@ class VideoRemixerProcessor():
                                                         params_fn=params_fn,
                                                         params_context=params_context)
 
-    def resize_scenes(self, kept_scenes):
-        scenes_base_path = self.scenes_source_path(self.state.RESIZE_STEP)
-        create_directory(self.state.resize_path)
+    def effect_scenes(self, kept_scenes):
+        self.resize_scenes(kept_scenes, for_effects=True)
+
+    def resize_scenes(self, kept_scenes, for_effects=False):
+        scenes_base_path = self.scenes_source_path(self.state.EFFECTS_STEP) \
+            if for_effects \
+            else self.scenes_source_path(self.state.RESIZE_STEP)
+        output_base_path = self.state.effects_path if for_effects else self.state.resize_path
+        create_directory(output_base_path)
 
         content_width = self.state.video_details["content_width"]
         content_height = self.state.video_details["content_height"]
         scale_type, crop_type= self.get_resize_params(self.state.resize_w, self.state.resize_h,
                                                       self.state.crop_w, self.state.crop_h,
                                                       content_width, content_height)
-
         self.saved_view = self.DEFAULT_VIEW
-        with Mtqdm().open_bar(total=len(kept_scenes), desc="Resize") as bar:
+        desc = "View" if for_effects else "Resize"
+        with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
-                scene_output_path = os.path.join(self.state.resize_path, scene_name)
+                scene_output_path = os.path.join(output_base_path, scene_name)
                 create_directory(scene_output_path)
 
+                hint_type = self.state.EFFECTS_HINT if for_effects else self.state.RESIZE_HINT
                 resize_handled = False
                 resize_hint = self.state.get_hint(self.state.scene_labels.get(scene_name),
-                                                  self.state.RESIZE_HINT)
+                                                  hint_type)
 
                 # if there's no resize hint, and the saved view differs from the default,
                 # presume the saved view is what's wanted for an unhinted scene
@@ -531,10 +570,10 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
 
     # Resize Processing Hints
 
-    def setup_resize_hint(self, content_width, content_height):
+    def setup_resize_hint(self, content_width, content_height, for_effects=False):
         # use the main resize/crop settings if resizing, or the content native
         # dimensions if not, as a foundation for handling resize hints
-        if self.state.resize:
+        if self.state.resize or for_effects:
             main_resize_w = self.state.resize_w
             main_resize_h = self.state.resize_h
             main_crop_w = self.state.crop_w
@@ -1420,6 +1459,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
             self.state.resize_path,
             self.state.resynthesis_path,
             self.state.inflation_path,
+            self.state.effects_path,
             self.state.upscale_path,
             self.state.video_clips_path,
             self.state.audio_clips_path,
