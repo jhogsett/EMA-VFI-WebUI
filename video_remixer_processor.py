@@ -395,7 +395,7 @@ class VideoRemixerProcessor():
                                                       self.state.crop_w, self.state.crop_h,
                                                       content_width, content_height)
         self.saved_view = self.DEFAULT_VIEW
-        desc = "View" if for_effects else "Resize"
+        desc = "View FX" if for_effects else "Resize"
         with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
