@@ -58,6 +58,7 @@ class VideoRemixerProcessor():
     DEFAULT_VIEW = "100%"
     DEFAULT_ANIMATION_SCHEDULE = "L" # linear
     DEFAULT_ANIMATION_TIME = 0 # whole scene
+    NO_RESIZE_HINT = "N"
 
     ### Exports --------------------
 
@@ -412,11 +413,30 @@ class VideoRemixerProcessor():
                     resize_hint = self.saved_view
 
                 if resize_hint:
+                    # TODO if for_effects is True AND there is a {R:N} ('no resizing' hint),
+                    # might want to pass False as for_effects so the necessary overall project
+                    # resizing and cropping happen
                     main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, \
-                        main_offset_y = self.setup_resize_hint(content_width, content_height)
+                        main_offset_y = self.setup_resize_hint(content_width, content_height,
+                                                               for_effects)
 
                     try:
-                        if self.ANIMATED_ZOOM_HINT in resize_hint:
+                        if resize_hint == self.NO_RESIZE_HINT:
+                            # disable resizing and instead copy source frames as-is
+                            # this allows the for_effects behavior access to the original detail
+                            # copy the files using the resequencer
+                            ResequenceFiles(scene_input_path,
+                                            self.state.frame_format,
+                                            "scene_frame",
+                                            1, 1,
+                                            1, 0,
+                                            -1,
+                                            False,
+                                            self.log_fn,
+                                            output_path=scene_output_path).resequence()
+                            resize_handled = True
+
+                        elif self.ANIMATED_ZOOM_HINT in resize_hint:
                             # interprent 'any-any' as animating from one to the other zoom factor
                             resize_hint = self.get_implied_zoom(resize_hint)
                             self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
@@ -430,7 +450,8 @@ class VideoRemixerProcessor():
                                         from_type, from_param1, from_param2, from_param3,
                                         to_type, to_param1, to_param2, to_param3, frame_from,
                                         frame_to, schedule, main_resize_w, main_resize_h,
-                                        main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                                        main_offset_x, main_offset_y, main_crop_w, main_crop_h,
+                                        for_effects)
 
                                 scale_type = self.state.remixer_settings["scale_type_up"]
                                 self.resize_scene(scene_input_path,
@@ -573,7 +594,9 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
     def setup_resize_hint(self, content_width, content_height, for_effects=False):
         # use the main resize/crop settings if resizing, or the content native
         # dimensions if not, as a foundation for handling resize hints
-        if self.state.resize or for_effects:
+
+        if for_effects or self.state.resize:
+            # Use the overall project resize and crop settings
             main_resize_w = self.state.resize_w
             main_resize_h = self.state.resize_h
             main_crop_w = self.state.crop_w
@@ -593,6 +616,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
             main_crop_h = content_height
             main_offset_x = 0
             main_offset_y = 0
+
         return main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y
 
     def get_quadrant_zoom(self, hint):
@@ -919,7 +943,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
     def compute_animated_zoom(self, num_frames, from_type, from_param1, from_param2, from_param3,
                                     to_type, to_param1, to_param2, to_param3, frame_from, frame_to,
                                     schedule, main_resize_w, main_resize_h, main_offset_x,
-                                    main_offset_y, main_crop_w, main_crop_h):
+                                    main_offset_y, main_crop_w, main_crop_h, for_effects):
 
         # animation time override
         if frame_from == "" and frame_to == "":
@@ -938,6 +962,17 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
 
         if frame_from >= 0 and frame_to <= num_frames and frame_from < frame_to:
             num_frames = frame_to - frame_from
+        else:
+            # safety catch
+            frame_from = 0
+            frame_to = num_frames
+
+        # account for inflation if being used for view handling
+        if for_effects:
+            inflation_factor = self.inflate_factor_from_options()
+            num_frames = self.compute_inflated_frame_count(num_frames, inflation_factor)
+            frame_from = self.compute_inflated_frame_count(frame_from, inflation_factor)
+            frame_to = self.compute_inflated_frame_count(frame_to, inflation_factor)
 
         from_resize_w, from_resize_h, from_center_x, from_center_y = \
             self.compute_zoom_type(from_type, from_param1, from_param2, from_param3,
@@ -1270,6 +1305,25 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
 
                 Mtqdm().update_bar(bar)
 
+    def inflate_factor_from_options(self) -> float:
+        inflate_factor = 1.0
+        if self.state.inflate:
+            if self.state.inflate_by_option == "2X":
+                inflate_factor = 2.0
+            elif self.state.inflate_by_option == "4X":
+                inflate_factor = 4.0
+            elif self.state.inflate_by_option == "8X":
+                inflate_factor = 8.0
+            elif self.state.inflate_by_option == "16X":
+                inflate_factor = 16.0
+        return inflate_factor
+
+    def compute_inflated_frame_count(self, num_frames : int, inflate_factor : float) -> int:
+        # Inflation inserts between frames among existing frames
+        # The inflated count considers:
+        #   each *before* frame gets an inflated number of new *after* neighbors
+        #   except for the last frame, which cannot be a *before* frame so it can't have afters
+        return ((num_frames - 1) * inflate_factor) + 1
 
     # Upscaling Processing
 
