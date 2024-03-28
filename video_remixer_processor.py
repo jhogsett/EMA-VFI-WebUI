@@ -684,13 +684,16 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                         # a frame count is specified with an implied range starting at zero
                         frame_from = 0
                         frame_to = int(time)
+                else:
+                    frame_from = ""
+                    frame_to = ""
                 split_pos = hint.index(self.ANIMATED_ZOOM_HINT)
                 hint_from = hint[:split_pos]
                 hint_to = hint[split_pos+1:]
                 from_type, from_param1, from_param2, from_param3 = self.get_zoom_part(hint_from)
                 to_type, to_param1, to_param2, to_param3 = self.get_zoom_part(hint_to)
                 return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, frame_from, frame_to, schedule
-        return None, None, None, None, None, None, None, None, None, None
+        return None, None, None, None, None, None, None, None, None, None, None
 
     def compute_zoom_type(self, type, param1, param2, param3, main_resize_w, main_resize_h,
             main_offset_x, main_offset_y, main_crop_w, main_crop_h):
