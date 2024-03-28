@@ -871,6 +871,12 @@ class VideoRemixer(TabBase):
                                                 gr.Markdown(
         "Delete Inflated frame files used as inputs for processing and creating remix video clips.")
                                         with gr.Row():
+                                            delete_effects_712 = gr.Checkbox(value=True,
+                                                label="Remove Effects Frames")
+                                            with gr.Column(variant="compact"):
+                                                gr.Markdown(
+        "Delete Effects frame files used as inputs for processing and creating remix video clips.")
+                                        with gr.Row():
                                             delete_upscaled_712 = gr.Checkbox(value=True,
                                                 label="Remove Upscaled Frames")
                                             with gr.Column(variant="compact"):
@@ -1268,7 +1274,7 @@ class VideoRemixer(TabBase):
 
         delete_button712.click(self.delete_button712,
                                inputs=[delete_kept_712, delete_resized_712, delete_resynth_712,
-                                       delete_inflated_712, delete_upscaled_712, delete_audio_712,
+                                       delete_inflated_712, delete_effects_712, delete_upscaled_712, delete_audio_712,
                                        delete_video_712, delete_clips_712],
                                 outputs=message_box712)
 
@@ -2108,6 +2114,7 @@ class VideoRemixer(TabBase):
                                 self.processor.processed_content_complete(self.state.RESIZE_STEP),
                                 self.processor.processed_content_complete(self.state.RESYNTH_STEP),
                                 self.processor.processed_content_complete(self.state.INFLATE_STEP),
+                                self.processor.processed_content_complete(self.state.EFFECTS_STEP),
                                 self.processor.processed_content_complete(self.state.UPSCALE_STEP))
 
         styled_report = style_report("Content Ready for Remix Video:", remix_report, color="info")
@@ -2933,6 +2940,7 @@ class VideoRemixer(TabBase):
                          delete_resized,
                          delete_resynth,
                          delete_inflated,
+                         delete_effects,
                          delete_upscaled,
                          delete_audio,
                          delete_video,
@@ -2947,6 +2955,8 @@ class VideoRemixer(TabBase):
                 removed.append(self.state.delete_path(self.state.resynthesis_path))
             if delete_inflated:
                 removed.append(self.state.delete_path(self.state.inflation_path))
+            if delete_effects:
+                removed.append(self.state.delete_path(self.state.effects_path))
             if delete_upscaled:
                 removed.append(self.state.delete_path(self.state.upscale_path))
             if delete_audio:
@@ -2981,6 +2991,7 @@ class VideoRemixer(TabBase):
         removed.append(self.state.delete_path(self.state.resize_path))
         removed.append(self.state.delete_path(self.state.resynthesis_path))
         removed.append(self.state.delete_path(self.state.inflation_path))
+        removed.append(self.state.delete_path(self.state.effects_path))
         removed.append(self.state.delete_path(self.state.upscale_path))
         removed.append(self.state.delete_path(self.state.audio_clips_path))
         removed.append(self.state.delete_path(self.state.video_clips_path))

@@ -86,7 +86,7 @@ class VideoRemixerReports():
                 f"+{all_time}"]]
         return format_table(header_row, data_rows, color="more")
 
-    def generate_remix_report(self, resize, resynthesize, inflate, upscale):
+    def generate_remix_report(self, resize, resynthesize, inflate, effects, upscale):
         report = Jot()
 
         if not resize \
@@ -103,6 +103,9 @@ class VideoRemixerReports():
 
         if inflate:
             report.add(f"Inflated scenes in {self.state.inflation_path}")
+
+        if effects:
+            report.add(f"Effects scenes in {self.state.effects_path}")
 
         if upscale:
             report.add(f"Upscaled scenes in {self.state.upscale_path}")
