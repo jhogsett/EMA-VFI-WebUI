@@ -29,6 +29,8 @@ class VideoRemixerProcessor():
         self.global_options = global_options
         self.log_fn = log_fn
         self.saved_view = self.DEFAULT_VIEW
+        self.processing_messages = []
+        self.processing_messages_context = {}
 
     def log(self, message):
         if self.log_fn:
@@ -73,6 +75,8 @@ class VideoRemixerProcessor():
         else:
             self.purge_stale_processed_content(redo_resynth, redo_inflate, redo_upscale)
             self.purge_incomplete_processed_content()
+
+        self.reset_processing_messages()
         self.state.save()
 
     def process_remix(self, kept_scenes):
@@ -208,8 +212,22 @@ class VideoRemixerProcessor():
                 result[sort] = scene_name
         return result
 
+    def get_processing_messages(self, raw=False):
+        return self.processing_messages if raw else "\r\n".join(self.processing_messages)
 
     ### Internal --------------------
+
+    # Handling feedback to user about processing
+
+    def add_processing_message(self, message):
+        operation = self.processing_messages_context.get("operation", "unknown")
+        scene_name = self.processing_messages_context.get("scene_name", "unknown")
+        self.processing_messages.append(f"Operation: {operation} Scene: {scene_name} Message: {message}")
+
+    def reset_processing_messages(self):
+        self.processing_messages = []
+        self.processing_messages_context = {}
+
 
     # Preprocessing
 
@@ -380,6 +398,7 @@ class VideoRemixerProcessor():
                                                         params_context=params_context)
 
     def resize_scenes(self, kept_scenes):
+        self.processing_messages_context["operation"] = "Resize"
 
         scenes_base_path = self.scenes_source_path(self.state.RESIZE_STEP)
         output_base_path = self.state.resize_path
@@ -397,6 +416,7 @@ class VideoRemixerProcessor():
                             adjust_for_inflation=False)
 
     def effect_scenes(self, kept_scenes):
+        self.processing_messages_context["operation"] = "View FX"
 
         scenes_base_path = self.scenes_source_path(self.state.EFFECTS_STEP)
         output_base_path = self.state.effects_path
@@ -599,6 +619,8 @@ class VideoRemixerProcessor():
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
             for scene_name in kept_scenes:
+                self.processing_messages_context["scene_name"] = scene_name
+
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_path = os.path.join(output_base_path, scene_name)
                 create_directory(scene_output_path)
@@ -945,6 +967,7 @@ class VideoRemixerProcessor():
 
     def compute_combined_zoom(self, quadrant, quadrants, zoom_percent, main_resize_w, main_resize_h,
             main_offset_x, main_offset_y, main_crop_w, main_crop_h):
+        message = None
         resize_w, resize_h, _, _ = self.compute_percent_zoom(zoom_percent,
                                                             main_resize_w, main_resize_h,
                                                             main_offset_x, main_offset_y,
@@ -982,14 +1005,18 @@ class VideoRemixerProcessor():
 
             # if still out of bounds, restore to quadrant zoom
             if self.check_crop_bounds(resize_w, resize_h, center_x, center_y, main_crop_w, main_crop_h):
-                self.log("Can't find fitting zoom percentage; ignoring percent part.")
+                message = f"Ignoring percentage {zoom_percent}% - unable to find fitting zoom"
                 resize_w, resize_h, center_x, center_y = \
                     self.compute_quadrant_zoom(quadrant, quadrants,
                                                main_resize_w, main_resize_h,
                                                main_offset_x, main_offset_y,
                                                main_crop_w, main_crop_h)
             else:
-                self.log(f"Found fitting zoom percentage: {fit_zoom_percent}%.")
+                message = f"Found fitting zoom {fit_zoom_percent}% for percentage {zoom_percent}%"
+
+        if message:
+            self.add_processing_message(message)
+            self.log(message)
 
         return resize_w, resize_h, center_x, center_y
 

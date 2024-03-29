@@ -2131,6 +2131,7 @@ class VideoRemixer(TabBase):
 
         if auto_save_remix:
             messages = []
+            messages += self.processor.get_processing_messages(raw=True)
             try:
                 self.save_mp4_video(self.state.output_filepath)
                 messages.append(f"Remixed video {self.state.output_filepath} is complete.")
@@ -2155,8 +2156,9 @@ class VideoRemixer(TabBase):
                 *empty_args
 
         else:
+            message = self.processor.get_processing_messages(raw=False) or self.TAB5_DEFAULT_MESSAGE
             return gr.update(selected=self.TAB_SAVE_REMIX), \
-                    format_markdown(self.TAB5_DEFAULT_MESSAGE), \
+                    format_markdown(message), \
                     styled_report, \
                     self.state.output_filepath, \
                     output_filepath_custom, \
