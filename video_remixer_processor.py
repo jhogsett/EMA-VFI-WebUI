@@ -379,177 +379,230 @@ class VideoRemixerProcessor():
                                                         params_fn=params_fn,
                                                         params_context=params_context)
 
-    def effect_scenes(self, kept_scenes):
-        self.resize_scenes(kept_scenes, for_effects=True)
+    def resize_scenes(self, kept_scenes):
 
-    def resize_scenes(self, kept_scenes, for_effects=False):
-        scenes_base_path = self.scenes_source_path(self.state.EFFECTS_STEP) \
-            if for_effects \
-            else self.scenes_source_path(self.state.RESIZE_STEP)
-        output_base_path = self.state.effects_path if for_effects else self.state.resize_path
+        scenes_base_path = self.scenes_source_path(self.state.RESIZE_STEP)
+        output_base_path = self.state.resize_path
         create_directory(output_base_path)
+        desc = "Resize"
+        hint_type = self.state.RESIZE_HINT
 
+        content_width = self.state.video_details["content_width"]
+        content_height = self.state.video_details["content_height"]
+        main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
+            self.setup_resize_hint(content_width, content_height, False)
+
+        self.process_resizing(scenes_base_path, output_base_path, hint_type, kept_scenes, desc,
+            main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y,
+                            adjust_for_inflation=False)
+
+    def effect_scenes(self, kept_scenes):
+
+        scenes_base_path = self.scenes_source_path(self.state.EFFECTS_STEP)
+        output_base_path = self.state.effects_path
+        create_directory(output_base_path)
+        desc = "View FX"
+        hint_type = self.state.EFFECTS_HINT
+
+        content_width = self.state.video_details["content_width"]
+        content_height = self.state.video_details["content_height"]
+        main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
+            self.setup_resize_hint(content_width, content_height, True)
+
+        self.process_resizing(scenes_base_path, output_base_path, hint_type, kept_scenes, desc,
+            main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y,
+                            adjust_for_inflation=True)
+
+    def _process_no_resize_hint(self, resize_hint, scene_input_path, scene_output_path):
+        # disable resizing and instead copy source frames as-is
+        # this allows the for_effects behavior access to the original detail
+        # copy the files using the resequencer
+        if resize_hint == self.NO_RESIZE_HINT:
+            ResequenceFiles(scene_input_path,
+                            self.state.frame_format,
+                            "scene_frame",
+                            1, 1,
+                            1, 0,
+                            -1,
+                            False,
+                            self.log_fn,
+                            output_path=scene_output_path).resequence()
+            return True
+        return False
+
+    def _process_animation_hint(self, resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation):
+        if self.ANIMATED_ZOOM_HINT in resize_hint:
+            # interprent 'any-any' as animating from one to the other zoom factor
+            resize_hint = self.get_implied_zoom(resize_hint)
+            self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
+            from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
+                to_param2, to_param3, frame_from, frame_to, schedule \
+                    = self.get_animated_zoom(resize_hint)
+            if from_type and to_type:
+                first_frame, last_frame, _ = details_from_group_name(scene_name)
+                num_frames = (last_frame - first_frame) + 1
+                context = self.compute_animated_zoom(scene_name, num_frames,
+                        from_type, from_param1, from_param2, from_param3,
+                        to_type, to_param1, to_param2, to_param3, frame_from,
+                        frame_to, schedule, main_resize_w, main_resize_h,
+                        main_offset_x, main_offset_y, main_crop_w, main_crop_h,
+                        adjust_for_inflation)
+
+                scale_type = self.state.remixer_settings["scale_type_up"]
+                self.resize_scene(scene_input_path,
+                                    scene_output_path,
+                                    None,
+                                    None,
+                                    main_crop_w,
+                                    main_crop_h,
+                                    None,
+                                    None,
+                                    scale_type,
+                                    crop_type="crop",
+                                    params_fn=self._resize_frame_param,
+                                    params_context=context)
+                return True
+        return False
+
+    def _process_combined_hint(self, resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
+        if self.COMBINED_ZOOM_HINT in resize_hint:
+            quadrant, quadrants, zoom_percent = self.get_combined_zoom(resize_hint)
+            if quadrant and quadrants and zoom_percent:
+                resize_w, resize_h, center_x, center_y = \
+                    self.compute_combined_zoom(quadrant, quadrants, zoom_percent,
+                                                main_resize_w, main_resize_h,
+                                                main_offset_x, main_offset_y,
+                                                main_crop_w, main_crop_h)
+
+                crop_offset_x = center_x - (main_crop_w / 2.0)
+                crop_offset_y = center_y - (main_crop_h / 2.0)
+
+                scale_type = self.state.remixer_settings["scale_type_up"]
+                self.resize_scene(scene_input_path,
+                                    scene_output_path,
+                                    int(resize_w),
+                                    int(resize_h),
+                                    int(main_crop_w),
+                                    int(main_crop_h),
+                                    int(crop_offset_x),
+                                    int(crop_offset_y),
+                                    scale_type,
+                                    crop_type="crop")
+                return True
+        return False
+
+    def _process_quadrant_hint(self, resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
+        if self.QUADRANT_ZOOM_HINT in resize_hint:
+            # interpret 'x/y' as x: quadrant, y: square-based number of quadrants
+            # '5/9' and '13/25' would be the center squares of 3x3 and 5x5 grids
+            #   zoomed in at 300% and 500%
+            quadrant, quadrants = self.get_quadrant_zoom(resize_hint)
+            if quadrant and quadrants:
+                resize_w, resize_h, center_x, center_y = \
+                    self.compute_quadrant_zoom(quadrant, quadrants,
+                                                main_resize_w, main_resize_h,
+                                                main_offset_x, main_offset_y,
+                                                main_crop_w, main_crop_h)
+
+                scale_type = self.state.remixer_settings["scale_type_up"]
+                crop_offset_x = center_x - (main_crop_w / 2.0)
+                crop_offset_y = center_y - (main_crop_h / 2.0)
+                self.resize_scene(scene_input_path,
+                                    scene_output_path,
+                                    int(resize_w),
+                                    int(resize_h),
+                                    int(main_crop_w),
+                                    int(main_crop_h),
+                                    int(crop_offset_x),
+                                    int(crop_offset_y),
+                                    scale_type,
+                                    crop_type="crop")
+                return True
+        return False
+
+    def _process_percent_hint(self, resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
+        if self.PERCENT_ZOOM_HINT in resize_hint:
+            # interpret z% as zoom percent to zoom into center
+            zoom_percent = self.get_percent_zoom(resize_hint)
+            if zoom_percent:
+                resize_w, resize_h, center_x, center_y = \
+                    self.compute_percent_zoom(zoom_percent,
+                                                main_resize_w, main_resize_h,
+                                                main_offset_x, main_offset_y,
+                                                main_crop_w, main_crop_h)
+                scale_type = self.state.remixer_settings["scale_type_up"]
+                crop_offset_x = center_x - (main_crop_w / 2.0)
+                crop_offset_y = center_y - (main_crop_h / 2.0)
+                self.resize_scene(scene_input_path,
+                                    scene_output_path,
+                                    int(resize_w),
+                                    int(resize_h),
+                                    int(main_crop_w),
+                                    int(main_crop_h),
+                                    int(crop_offset_x),
+                                    int(crop_offset_y),
+                                    scale_type,
+                                    crop_type="crop")
+                return True
+        return False
+
+    def process_resize_hint(self, hint_type, scene_input_path, scene_output_path, scene_name, adjust_for_inflation):
+        message = None
+        resize_hint = self.state.get_hint(self.state.scene_labels.get(scene_name), hint_type)
+
+        # if there's no resize hint, and the saved view differs from the default,
+        # presume the saved view is what's wanted for an unhinted scene
+        if not resize_hint and self.saved_view != self.DEFAULT_VIEW:
+            resize_hint = self.saved_view
+
+        resize_handled = False
+        if resize_hint:
+            content_width = self.state.video_details["content_width"]
+            content_height = self.state.video_details["content_height"]
+            main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
+                self.setup_resize_hint(content_width, content_height, True)
+
+            try:
+                resize_handled = resize_handled or \
+                    self._process_no_resize_hint(resize_hint, scene_input_path, scene_output_path)
+
+                resize_handled = resize_handled or \
+                    self._process_animation_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
+
+                resize_handled = resize_handled or \
+                    self._process_combined_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+                resize_handled = resize_handled or \
+                    self._process_quadrant_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+                resize_handled = resize_handled or \
+                    self._process_percent_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+            except Exception as error:
+                message = f"Skipping processing of hint {resize_hint} due to error: {error}"
+                resize_handled = False
+
+        if message:
+            self.add_processing_message(message)
+            self.log(message)
+
+        return resize_handled
+
+    def process_resizing(self, scenes_base_path, output_base_path, hint_type, kept_scenes, desc,
+                       main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y,
+                       adjust_for_inflation):
         content_width = self.state.video_details["content_width"]
         content_height = self.state.video_details["content_height"]
         scale_type, crop_type= self.get_resize_params(self.state.resize_w, self.state.resize_h,
                                                       self.state.crop_w, self.state.crop_h,
                                                       content_width, content_height)
         self.saved_view = self.DEFAULT_VIEW
-        desc = "View FX" if for_effects else "Resize"
+
         with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_path = os.path.join(output_base_path, scene_name)
                 create_directory(scene_output_path)
-
-                hint_type = self.state.EFFECTS_HINT if for_effects else self.state.RESIZE_HINT
-                resize_handled = False
-                resize_hint = self.state.get_hint(self.state.scene_labels.get(scene_name),
-                                                  hint_type)
-
-                # if there's no resize hint, and the saved view differs from the default,
-                # presume the saved view is what's wanted for an unhinted scene
-                if not resize_hint and self.saved_view != self.DEFAULT_VIEW:
-                    resize_hint = self.saved_view
-
-                if resize_hint:
-                    # TODO if for_effects is True AND there is a {R:N} ('no resizing' hint),
-                    # might want to pass False as for_effects so the necessary overall project
-                    # resizing and cropping happen
-                    main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, \
-                        main_offset_y = self.setup_resize_hint(content_width, content_height,
-                                                               for_effects)
-
-                    try:
-                        if resize_hint == self.NO_RESIZE_HINT:
-                            # disable resizing and instead copy source frames as-is
-                            # this allows the for_effects behavior access to the original detail
-                            # copy the files using the resequencer
-                            ResequenceFiles(scene_input_path,
-                                            self.state.frame_format,
-                                            "scene_frame",
-                                            1, 1,
-                                            1, 0,
-                                            -1,
-                                            False,
-                                            self.log_fn,
-                                            output_path=scene_output_path).resequence()
-                            resize_handled = True
-
-                        elif self.ANIMATED_ZOOM_HINT in resize_hint:
-                            # interprent 'any-any' as animating from one to the other zoom factor
-                            resize_hint = self.get_implied_zoom(resize_hint)
-                            self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
-                            from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
-                                to_param2, to_param3, frame_from, frame_to, schedule \
-                                    = self.get_animated_zoom(resize_hint)
-                            if from_type and to_type:
-                                first_frame, last_frame, _ = details_from_group_name(scene_name)
-                                num_frames = (last_frame - first_frame) + 1
-                                context = self.compute_animated_zoom(scene_name, num_frames,
-                                        from_type, from_param1, from_param2, from_param3,
-                                        to_type, to_param1, to_param2, to_param3, frame_from,
-                                        frame_to, schedule, main_resize_w, main_resize_h,
-                                        main_offset_x, main_offset_y, main_crop_w, main_crop_h,
-                                        for_effects)
-
-                                scale_type = self.state.remixer_settings["scale_type_up"]
-                                self.resize_scene(scene_input_path,
-                                                  scene_output_path,
-                                                  None,
-                                                  None,
-                                                  main_crop_w,
-                                                  main_crop_h,
-                                                  None,
-                                                  None,
-                                                  scale_type,
-                                                  crop_type="crop",
-                                                  params_fn=self._resize_frame_param,
-                                                  params_context=context)
-                                resize_handled = True
-
-                        elif self.COMBINED_ZOOM_HINT in resize_hint:
-                            quadrant, quadrants, zoom_percent = self.get_combined_zoom(resize_hint)
-                            if quadrant and quadrants and zoom_percent:
-                                resize_w, resize_h, center_x, center_y = \
-                                    self.compute_combined_zoom(quadrant, quadrants, zoom_percent,
-                                                               main_resize_w, main_resize_h,
-                                                               main_offset_x, main_offset_y,
-                                                               main_crop_w, main_crop_h)
-
-                                crop_offset_x = center_x - (main_crop_w / 2.0)
-                                crop_offset_y = center_y - (main_crop_h / 2.0)
-
-                                scale_type = self.state.remixer_settings["scale_type_up"]
-                                self.resize_scene(scene_input_path,
-                                                  scene_output_path,
-                                                  int(resize_w),
-                                                  int(resize_h),
-                                                  int(main_crop_w),
-                                                  int(main_crop_h),
-                                                  int(crop_offset_x),
-                                                  int(crop_offset_y),
-                                                  scale_type,
-                                                  crop_type="crop")
-                                resize_handled = True
-
-                        elif self.QUADRANT_ZOOM_HINT in resize_hint:
-                            # interpret 'x/y' as x: quadrant, y: square-based number of quadrants
-                            # '5/9' and '13/25' would be the center squares of 3x3 and 5x5 grids
-                            #   zoomed in at 300% and 500%
-                            quadrant, quadrants = self.get_quadrant_zoom(resize_hint)
-                            if quadrant and quadrants:
-                                resize_w, resize_h, center_x, center_y = \
-                                    self.compute_quadrant_zoom(quadrant, quadrants,
-                                                               main_resize_w, main_resize_h,
-                                                               main_offset_x, main_offset_y,
-                                                               main_crop_w, main_crop_h)
-
-                                scale_type = self.state.remixer_settings["scale_type_up"]
-                                crop_offset_x = center_x - (main_crop_w / 2.0)
-                                crop_offset_y = center_y - (main_crop_h / 2.0)
-                                self.resize_scene(scene_input_path,
-                                                  scene_output_path,
-                                                  int(resize_w),
-                                                  int(resize_h),
-                                                  int(main_crop_w),
-                                                  int(main_crop_h),
-                                                  int(crop_offset_x),
-                                                  int(crop_offset_y),
-                                                  scale_type,
-                                                  crop_type="crop")
-                                resize_handled = True
-
-                        elif self.PERCENT_ZOOM_HINT in resize_hint:
-                                # interpret z% as zoom percent to zoom into center
-                                zoom_percent = self.get_percent_zoom(resize_hint)
-                                if zoom_percent:
-                                    resize_w, resize_h, center_x, center_y = \
-                                        self.compute_percent_zoom(zoom_percent,
-                                                                  main_resize_w, main_resize_h,
-                                                                  main_offset_x, main_offset_y,
-                                                                  main_crop_w, main_crop_h)
-                                    scale_type = self.state.remixer_settings["scale_type_up"]
-                                    crop_offset_x = center_x - (main_crop_w / 2.0)
-                                    crop_offset_y = center_y - (main_crop_h / 2.0)
-                                    self.resize_scene(scene_input_path,
-                                                      scene_output_path,
-                                                      int(resize_w),
-                                                      int(resize_h),
-                                                      int(main_crop_w),
-                                                      int(main_crop_h),
-                                                      int(crop_offset_x),
-                                                      int(crop_offset_y),
-                                                      scale_type,
-                                                      crop_type="crop")
-                                    resize_handled = True
-                    except Exception as error:
-                        # TODO capture and report processing issues
-                        # print(error)
-                        self.log(
-f"Error in resize_scenes() handling processing hint {resize_hint} - skipping processing: {error}")
-                        resize_handled = False
-                        raise
+                resize_handled = self.process_resize_hint(hint_type, scene_input_path, scene_output_path, scene_name, adjust_for_inflation)
 
                 if not resize_handled:
                     self.resize_scene(scene_input_path,
@@ -591,6 +644,12 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
 
     # Resize Processing Hints
 
+    # TODO for_effects should be renamed
+    # - True means Force using project frame dimensions, if not already doing so due to overall resizing being enabled
+    # - False means Use content on-disk frame dimensions, ignoring  project settings for resize, crop and offset.
+    #   - This contains the built-in assumption that it's operating on the original content as-is, but does this ever happen?
+    #   - Yes: when being used for resize hints, the math based on project settings is handled, so it needs the native size
+    # Perhaps the new name should be use_native and the logic reversed.
     def setup_resize_hint(self, content_width, content_height, for_effects=False):
         # use the main resize/crop settings if resizing, or the content native
         # dimensions if not, as a foundation for handling resize hints
@@ -945,7 +1004,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
                               to_type, to_param1, to_param2, to_param3,
                               frame_from, frame_to, schedule,
                               main_resize_w, main_resize_h, main_offset_x, main_offset_y,
-                              main_crop_w, main_crop_h, for_effects):
+                              main_crop_w, main_crop_h, adjust_for_inflation):
 
         # animation time override
         if frame_from == "" and frame_to == "":
@@ -970,7 +1029,7 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
             frame_to = num_frames
 
         # account for inflation if being used for view handling
-        if for_effects:
+        if adjust_for_inflation:
             _video_clip_fps, motion_factor = self.compute_scene_fps(scene_name)
             num_frames = self.compute_inflated_frame_count(num_frames, motion_factor)
             frame_from = self.compute_inflated_frame_count(frame_from, motion_factor)
