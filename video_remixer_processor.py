@@ -446,7 +446,7 @@ class VideoRemixerProcessor():
                             if from_type and to_type:
                                 first_frame, last_frame, _ = details_from_group_name(scene_name)
                                 num_frames = (last_frame - first_frame) + 1
-                                context = self.compute_animated_zoom(num_frames,
+                                context = self.compute_animated_zoom(scene_name, num_frames,
                                         from_type, from_param1, from_param2, from_param3,
                                         to_type, to_param1, to_param2, to_param3, frame_from,
                                         frame_to, schedule, main_resize_w, main_resize_h,
@@ -940,10 +940,12 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
         return crop_offset_x < 0 or crop_offset_x + main_crop_w > resize_w \
             or crop_offset_y < 0 or crop_offset_y + main_crop_h > resize_h
 
-    def compute_animated_zoom(self, num_frames, from_type, from_param1, from_param2, from_param3,
-                                    to_type, to_param1, to_param2, to_param3, frame_from, frame_to,
-                                    schedule, main_resize_w, main_resize_h, main_offset_x,
-                                    main_offset_y, main_crop_w, main_crop_h, for_effects):
+    def compute_animated_zoom(self, scene_name, num_frames,
+                              from_type, from_param1, from_param2, from_param3,
+                              to_type, to_param1, to_param2, to_param3,
+                              frame_from, frame_to, schedule,
+                              main_resize_w, main_resize_h, main_offset_x, main_offset_y,
+                              main_crop_w, main_crop_h, for_effects):
 
         # animation time override
         if frame_from == "" and frame_to == "":
@@ -969,10 +971,10 @@ f"Error in resize_scenes() handling processing hint {resize_hint} - skipping pro
 
         # account for inflation if being used for view handling
         if for_effects:
-            inflation_factor = self.inflate_factor_from_options()
-            num_frames = self.compute_inflated_frame_count(num_frames, inflation_factor)
-            frame_from = self.compute_inflated_frame_count(frame_from, inflation_factor)
-            frame_to = self.compute_inflated_frame_count(frame_to, inflation_factor)
+            _video_clip_fps, motion_factor = self.compute_scene_fps(scene_name)
+            num_frames = self.compute_inflated_frame_count(num_frames, motion_factor)
+            frame_from = self.compute_inflated_frame_count(frame_from, motion_factor)
+            frame_to = self.compute_inflated_frame_count(frame_to, motion_factor)
 
         from_resize_w, from_resize_h, from_center_x, from_center_y = \
             self.compute_zoom_type(from_type, from_param1, from_param2, from_param3,
@@ -1648,7 +1650,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                 scene_output_filepath = os.path.join(self.state.video_clips_path,
                                                      f"{scene_name}.mp4")
 
-                video_clip_fps = self.compute_scene_fps(scene_name)
+                video_clip_fps, _motion_factor = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
                                 self.state.frame_format,
@@ -1768,7 +1770,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                         use_custom_video_options = use_custom_video_options\
                             .replace("<LABEL>", f"[{error}]")
 
-                video_clip_fps = self.compute_scene_fps(scene_name)
+                video_clip_fps, _motion_factor = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
                                 self.state.frame_format,
@@ -1794,7 +1796,6 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, \
             forced_inflated_rate = self.compute_effective_slow_motion(force_inflation, force_audio,
                                                                     force_inflate_by, force_silent)
-
         if audio_slow_motion or silent_slow_motion:
             if force_inflation:
                 fps_factor = project_inflation_rate
@@ -1806,7 +1807,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
             else:
                 fps_factor = project_inflation_rate
 
-        return self.state.project_fps * fps_factor
+        return self.state.project_fps * fps_factor, motion_factor
 
     def compute_forced_inflation(self, scene_name):
         force_inflation = False
