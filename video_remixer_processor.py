@@ -1498,11 +1498,9 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
     def compute_inflated_audio_options(self, custom_audio_options, force_inflation, force_audio,
                                        force_inflate_by, force_silent):
 
-        motion_factor, audio_slow_motion, silent_slow_motion, _project_inflation_rate, _forced_inflated_rate = \
-            self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
-                                               force_silent)
-
-        print("A" * 100, motion_factor, audio_slow_motion, silent_slow_motion, _project_inflation_rate, _forced_inflated_rate)
+        motion_factor, audio_slow_motion, silent_slow_motion, _project_inflation_rate, \
+            _forced_inflated_rate = self.compute_effective_slow_motion(force_inflation, force_audio,
+                                                                    force_inflate_by, force_silent)
 
         audio_motion_factor = motion_factor
 
@@ -1699,21 +1697,20 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         self.state.video_clips = sorted(get_files(self.state.video_clips_path))
 
     def compute_inflated_fps(self, force_inflation, force_audio, force_inflate_by, force_silent):
-        _motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflated_rate = \
-            self.compute_effective_slow_motion(force_inflation, force_audio, force_inflate_by,
-                                               force_silent)
-
-        print("V" * 100, _motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflated_rate)
+        motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, \
+            forced_inflated_rate = self.compute_effective_slow_motion(force_inflation, force_audio,
+                                                                    force_inflate_by, force_silent)
 
         if audio_slow_motion or silent_slow_motion:
-            fps_factor = project_inflation_rate
+            if force_inflation:
+                fps_factor = project_inflation_rate
+            else:
+                fps_factor = project_inflation_rate * motion_factor
         else:
             if force_inflation:
                 fps_factor = forced_inflated_rate
             else:
                 fps_factor = project_inflation_rate
-
-        # print("!" * 100, self.state.project_fps * fps_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflated_rate)
 
         return self.state.project_fps * fps_factor
 
