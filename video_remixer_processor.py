@@ -4,7 +4,7 @@ import math
 import shutil
 from typing import Callable, TYPE_CHECKING
 from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
-    remove_directories, copy_files, simple_sanitize_filename
+    remove_directories, copy_files, simple_sanitize_filename, move_files
 from webui_utils.video_utils import details_from_group_name, PNGtoMP4, combine_video_audio,\
     combine_videos, PNGtoCustom, image_size
 from webui_utils.mtqdm import Mtqdm
@@ -372,40 +372,52 @@ class VideoRemixerProcessor():
 
     def resize_scenes(self, kept_scenes):
         self.processing_messages_context["operation"] = "Resize"
-
         scenes_base_path = self.scenes_source_path(self.state.RESIZE_STEP)
         output_base_path = self.state.resize_path
         create_directory(output_base_path)
         desc = "Resize"
         hint_type = self.state.RESIZE_HINT
-
-        content_width = self.state.video_details["content_width"]
-        content_height = self.state.video_details["content_height"]
-        main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
-            self.setup_resize_hint(content_width, content_height, False)
-
         self.process_resizing(scenes_base_path, output_base_path, hint_type, kept_scenes, desc,
                               adjust_for_inflation=False)
 
     def effect_scenes(self, kept_scenes):
-        self.processing_messages_context["operation"] = "View FX"
-
-        scenes_base_path = self.scenes_source_path(self.state.EFFECTS_STEP)
         output_base_path = self.state.effects_path
         create_directory(output_base_path)
-        desc = "View FX"
-        hint_type = self.state.EFFECTS_HINT
+        working_input_path = self.scenes_source_path(self.state.EFFECTS_STEP)
 
-        content_width = self.state.video_details["content_width"]
-        content_height = self.state.video_details["content_height"]
-        main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
-            self.setup_resize_hint(content_width, content_height, True)
+        working_paths = []
+        if self.state.effects_hint_chosen(self.state.EFFECTS_VIEW_HINT):
+            operation = "View FX"
+            self.processing_messages_context["operation"] = operation
+            working_output_path = os.path.join(output_base_path, "view_fx")
+            working_paths.append(working_output_path)
+            create_directory(working_output_path)
 
-        self.process_resizing(scenes_base_path, output_base_path, hint_type, kept_scenes, desc,
-                              adjust_for_inflation=True)
+            self.process_resizing(working_input_path, working_output_path,
+                                  self.state.EFFECTS_VIEW_HINT, kept_scenes, operation,
+                                  adjust_for_inflation=True)
+            working_input_path = working_output_path
+
+        if self.state.effects_hint_chosen(self.state.EFFECTS_VIEW_HINT):
+            operation = "Fade FX"
+            self.processing_messages_context["operation"] = operation
+            working_output_path = os.path.join(output_base_path, "fade_fx")
+            working_paths.append(working_output_path)
+            create_directory(working_output_path)
+
+            # TODO fill with fade processing
+            shutil.copytree(working_input_path, working_output_path, dirs_exist_ok=True)
+
+            working_input_path = working_output_path
+
+        # copy from last working input path to effects path
+        shutil.copytree(working_input_path, output_base_path, dirs_exist_ok=True)
+
+        remove_directories(working_paths)
+
 
     def process_resizing(self, scenes_base_path, output_base_path, hint_type, kept_scenes, desc,
-                       adjust_for_inflation):
+                         adjust_for_inflation):
         content_width = self.state.video_details["content_width"]
         content_height = self.state.video_details["content_height"]
         scale_type, crop_type= self.get_resize_params(self.state.resize_w, self.state.resize_h,
@@ -420,8 +432,10 @@ class VideoRemixerProcessor():
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_path = os.path.join(output_base_path, scene_name)
                 create_directory(scene_output_path)
-                resize_handled = self.process_resize_hint(hint_type, scene_input_path, scene_output_path, scene_name, adjust_for_inflation)
 
+                resize_handled = self.process_resize_hint(hint_type, scene_input_path,
+                                                          scene_output_path, scene_name,
+                                                          adjust_for_inflation)
                 if not resize_handled:
                     self.resize_scene(scene_input_path,
                                       scene_output_path,
@@ -486,6 +500,47 @@ class VideoRemixerProcessor():
                     crop_offset_y=crop_offset_y).resize(type=self.state.frame_format,
                                                         params_fn=params_fn,
                                                         params_context=params_context)
+
+    def process_resize_hint(self, hint_type, scene_input_path, scene_output_path, scene_name, adjust_for_inflation):
+        message = None
+        resize_hint = self.state.get_hint(self.state.scene_labels.get(scene_name), hint_type)
+
+        # if there's no resize hint, and the saved view differs from the default,
+        # presume the saved view is what's wanted for an unhinted scene
+        if not resize_hint and self.saved_view != self.DEFAULT_VIEW:
+            resize_hint = self.saved_view
+
+        resize_handled = False
+        if resize_hint:
+            content_width = self.state.video_details["content_width"]
+            content_height = self.state.video_details["content_height"]
+            main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
+                self.setup_resize_hint(content_width, content_height, True)
+
+            try:
+                resize_handled = resize_handled or \
+                    self._process_no_resize_hint(resize_hint, scene_input_path, scene_output_path)
+
+                resize_handled = resize_handled or \
+                    self._process_animation_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
+
+                resize_handled = resize_handled or \
+                    self._process_combined_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+                resize_handled = resize_handled or \
+                    self._process_quadrant_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+                resize_handled = resize_handled or \
+                    self._process_percent_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+            except Exception as error:
+                message = f"Skipping processing of hint {resize_hint} due to error: {error}"
+                resize_handled = False
+
+        if message:
+            self.add_processing_message(message)
+            self.log(message)
+
+        return resize_handled
 
     def _process_no_resize_hint(self, resize_hint, scene_input_path, scene_output_path):
         # disable resizing and instead copy source frames as-is
@@ -619,47 +674,6 @@ class VideoRemixerProcessor():
                                     crop_type="crop")
                 return True
         return False
-
-    def process_resize_hint(self, hint_type, scene_input_path, scene_output_path, scene_name, adjust_for_inflation):
-        message = None
-        resize_hint = self.state.get_hint(self.state.scene_labels.get(scene_name), hint_type)
-
-        # if there's no resize hint, and the saved view differs from the default,
-        # presume the saved view is what's wanted for an unhinted scene
-        if not resize_hint and self.saved_view != self.DEFAULT_VIEW:
-            resize_hint = self.saved_view
-
-        resize_handled = False
-        if resize_hint:
-            content_width = self.state.video_details["content_width"]
-            content_height = self.state.video_details["content_height"]
-            main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
-                self.setup_resize_hint(content_width, content_height, True)
-
-            try:
-                resize_handled = resize_handled or \
-                    self._process_no_resize_hint(resize_hint, scene_input_path, scene_output_path)
-
-                resize_handled = resize_handled or \
-                    self._process_animation_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
-
-                resize_handled = resize_handled or \
-                    self._process_combined_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
-
-                resize_handled = resize_handled or \
-                    self._process_quadrant_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
-
-                resize_handled = resize_handled or \
-                    self._process_percent_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
-            except Exception as error:
-                message = f"Skipping processing of hint {resize_hint} due to error: {error}"
-                resize_handled = False
-
-        if message:
-            self.add_processing_message(message)
-            self.log(message)
-
-        return resize_handled
 
     # Resize Processing Hints
 

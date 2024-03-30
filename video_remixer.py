@@ -132,7 +132,9 @@ class VideoRemixerState():
     RESIZE_HINT = "R"
     RESYNTHESIS_HINT = "Y"
     INFLATION_HINT = "I"
-    EFFECTS_HINT = "V" # TODO later there will be multiple effects hints
+    EFFECTS_VIEW_HINT = "V"
+    EFFECTS_FADE_HINT = "F"
+    EFFECTS_HINTS = [EFFECTS_VIEW_HINT, EFFECTS_FADE_HINT]
     UPSCALE_HINT = "U"
     RESIZE_STEP = "resize"
     RESYNTH_STEP = "resynth"
@@ -354,8 +356,10 @@ class VideoRemixerState():
         return self.inflate or self.hint_present(self.INFLATION_HINT)
 
     def effects_chosen(self):
-        # TODO this will need to check for various effects hints later
-        return self.hint_present(self.EFFECTS_HINT)
+        return any(self.hint_present(hint) for hint in self.EFFECTS_HINTS)
+
+    def effects_hint_chosen(self, hint):
+        return self.hint_present(hint)
 
     def upscale_chosen(self):
         return self.upscale or self.hint_present(self.UPSCALE_HINT)
