@@ -370,6 +370,96 @@ class VideoRemixerProcessor():
 
     # Resize Processing
 
+    def resize_scenes(self, kept_scenes):
+        self.processing_messages_context["operation"] = "Resize"
+
+        scenes_base_path = self.scenes_source_path(self.state.RESIZE_STEP)
+        output_base_path = self.state.resize_path
+        create_directory(output_base_path)
+        desc = "Resize"
+        hint_type = self.state.RESIZE_HINT
+
+        content_width = self.state.video_details["content_width"]
+        content_height = self.state.video_details["content_height"]
+        main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
+            self.setup_resize_hint(content_width, content_height, False)
+
+        self.process_resizing(scenes_base_path, output_base_path, hint_type, kept_scenes, desc,
+                              adjust_for_inflation=False)
+
+    def effect_scenes(self, kept_scenes):
+        self.processing_messages_context["operation"] = "View FX"
+
+        scenes_base_path = self.scenes_source_path(self.state.EFFECTS_STEP)
+        output_base_path = self.state.effects_path
+        create_directory(output_base_path)
+        desc = "View FX"
+        hint_type = self.state.EFFECTS_HINT
+
+        content_width = self.state.video_details["content_width"]
+        content_height = self.state.video_details["content_height"]
+        main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
+            self.setup_resize_hint(content_width, content_height, True)
+
+        self.process_resizing(scenes_base_path, output_base_path, hint_type, kept_scenes, desc,
+                              adjust_for_inflation=True)
+
+    def process_resizing(self, scenes_base_path, output_base_path, hint_type, kept_scenes, desc,
+                       adjust_for_inflation):
+        content_width = self.state.video_details["content_width"]
+        content_height = self.state.video_details["content_height"]
+        scale_type, crop_type= self.get_resize_params(self.state.resize_w, self.state.resize_h,
+                                                      self.state.crop_w, self.state.crop_h,
+                                                      content_width, content_height)
+        self.saved_view = self.DEFAULT_VIEW
+
+        with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
+            for scene_name in kept_scenes:
+                self.processing_messages_context["scene_name"] = scene_name
+
+                scene_input_path = os.path.join(scenes_base_path, scene_name)
+                scene_output_path = os.path.join(output_base_path, scene_name)
+                create_directory(scene_output_path)
+                resize_handled = self.process_resize_hint(hint_type, scene_input_path, scene_output_path, scene_name, adjust_for_inflation)
+
+                if not resize_handled:
+                    self.resize_scene(scene_input_path,
+                                      scene_output_path,
+                                      int(self.state.resize_w),
+                                      int(self.state.resize_h),
+                                      int(self.state.crop_w),
+                                      int(self.state.crop_h),
+                                      int(self.state.crop_offset_x),
+                                      int(self.state.crop_offset_y),
+                                      scale_type,
+                                      crop_type)
+
+                Mtqdm().update_bar(bar)
+
+    def get_resize_params(self, resize_w, resize_h, crop_w, crop_h, content_width, content_height):
+        if resize_w == content_width and resize_h == content_height:
+            scale_type = "none"
+        else:
+            if resize_w <= content_width and resize_h <= content_height:
+                # use the down scaling type if there are only reductions
+                # the default "area" type preserves details better on reducing
+                scale_type = self.state.remixer_settings["scale_type_down"]
+            else:
+                # otherwise use the upscaling type
+                # the default "lanczos" type preserves details better on enlarging
+                scale_type = self.state.remixer_settings["scale_type_up"]
+
+        if crop_w == resize_w and crop_h == resize_h:
+            # disable cropping if none to do
+            crop_type = "none"
+        elif crop_w > resize_w or crop_h > resize_h:
+            # disable cropping if it will wrap/is invalid
+            # TODO put bounds on the crop parameters instead of disabling
+            crop_type = "none"
+        else:
+            crop_type = "crop"
+        return scale_type, crop_type
+
     def resize_scene(self,
                      scene_input_path,
                      scene_output_path,
@@ -396,42 +486,6 @@ class VideoRemixerProcessor():
                     crop_offset_y=crop_offset_y).resize(type=self.state.frame_format,
                                                         params_fn=params_fn,
                                                         params_context=params_context)
-
-    def resize_scenes(self, kept_scenes):
-        self.processing_messages_context["operation"] = "Resize"
-
-        scenes_base_path = self.scenes_source_path(self.state.RESIZE_STEP)
-        output_base_path = self.state.resize_path
-        create_directory(output_base_path)
-        desc = "Resize"
-        hint_type = self.state.RESIZE_HINT
-
-        content_width = self.state.video_details["content_width"]
-        content_height = self.state.video_details["content_height"]
-        main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
-            self.setup_resize_hint(content_width, content_height, False)
-
-        self.process_resizing(scenes_base_path, output_base_path, hint_type, kept_scenes, desc,
-            main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y,
-                            adjust_for_inflation=False)
-
-    def effect_scenes(self, kept_scenes):
-        self.processing_messages_context["operation"] = "View FX"
-
-        scenes_base_path = self.scenes_source_path(self.state.EFFECTS_STEP)
-        output_base_path = self.state.effects_path
-        create_directory(output_base_path)
-        desc = "View FX"
-        hint_type = self.state.EFFECTS_HINT
-
-        content_width = self.state.video_details["content_width"]
-        content_height = self.state.video_details["content_height"]
-        main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
-            self.setup_resize_hint(content_width, content_height, True)
-
-        self.process_resizing(scenes_base_path, output_base_path, hint_type, kept_scenes, desc,
-            main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y,
-                            adjust_for_inflation=True)
 
     def _process_no_resize_hint(self, resize_hint, scene_input_path, scene_output_path):
         # disable resizing and instead copy source frames as-is
@@ -606,63 +660,6 @@ class VideoRemixerProcessor():
             self.log(message)
 
         return resize_handled
-
-    def process_resizing(self, scenes_base_path, output_base_path, hint_type, kept_scenes, desc,
-                       main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y,
-                       adjust_for_inflation):
-        content_width = self.state.video_details["content_width"]
-        content_height = self.state.video_details["content_height"]
-        scale_type, crop_type= self.get_resize_params(self.state.resize_w, self.state.resize_h,
-                                                      self.state.crop_w, self.state.crop_h,
-                                                      content_width, content_height)
-        self.saved_view = self.DEFAULT_VIEW
-
-        with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
-            for scene_name in kept_scenes:
-                self.processing_messages_context["scene_name"] = scene_name
-
-                scene_input_path = os.path.join(scenes_base_path, scene_name)
-                scene_output_path = os.path.join(output_base_path, scene_name)
-                create_directory(scene_output_path)
-                resize_handled = self.process_resize_hint(hint_type, scene_input_path, scene_output_path, scene_name, adjust_for_inflation)
-
-                if not resize_handled:
-                    self.resize_scene(scene_input_path,
-                                      scene_output_path,
-                                      int(self.state.resize_w),
-                                      int(self.state.resize_h),
-                                      int(self.state.crop_w),
-                                      int(self.state.crop_h),
-                                      int(self.state.crop_offset_x),
-                                      int(self.state.crop_offset_y),
-                                      scale_type,
-                                      crop_type)
-
-                Mtqdm().update_bar(bar)
-
-    def get_resize_params(self, resize_w, resize_h, crop_w, crop_h, content_width, content_height):
-        if resize_w == content_width and resize_h == content_height:
-            scale_type = "none"
-        else:
-            if resize_w <= content_width and resize_h <= content_height:
-                # use the down scaling type if there are only reductions
-                # the default "area" type preserves details better on reducing
-                scale_type = self.state.remixer_settings["scale_type_down"]
-            else:
-                # otherwise use the upscaling type
-                # the default "lanczos" type preserves details better on enlarging
-                scale_type = self.state.remixer_settings["scale_type_up"]
-
-        if crop_w == resize_w and crop_h == resize_h:
-            # disable cropping if none to do
-            crop_type = "none"
-        elif crop_w > resize_w or crop_h > resize_h:
-            # disable cropping if it will wrap/is invalid
-            # TODO put bounds on the crop parameters instead of disabling
-            crop_type = "none"
-        else:
-            crop_type = "crop"
-        return scale_type, crop_type
 
     # Resize Processing Hints
 
@@ -1057,10 +1054,10 @@ class VideoRemixerProcessor():
 
         # account for inflation if being used for view handling
         if adjust_for_inflation:
-            _video_clip_fps, motion_factor = self.compute_scene_fps(scene_name)
-            num_frames = self.compute_inflated_frame_count(num_frames, motion_factor)
-            frame_from = self.compute_inflated_frame_count(frame_from, motion_factor)
-            frame_to = self.compute_inflated_frame_count(frame_to, motion_factor)
+            _video_clip_fps, forced_inflation_rate = self.compute_scene_fps(scene_name)
+            num_frames = self.compute_inflated_frame_count(num_frames, forced_inflation_rate)
+            frame_from = self.compute_inflated_frame_count(frame_from, forced_inflation_rate)
+            frame_to = self.compute_inflated_frame_count(frame_to, forced_inflation_rate)
 
         from_resize_w, from_resize_h, from_center_x, from_center_y = \
             self.compute_zoom_type(from_type, from_param1, from_param2, from_param3,
@@ -1681,7 +1678,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                                        force_inflate_by, force_silent):
 
         motion_factor, audio_slow_motion, silent_slow_motion, _project_inflation_rate, \
-            _forced_inflated_rate = self.compute_effective_slow_motion(force_inflation, force_audio,
+            _forced_inflation_rate = self.compute_effective_slow_motion(force_inflation, force_audio,
                                                                     force_inflate_by, force_silent)
 
         audio_motion_factor = motion_factor
@@ -1736,7 +1733,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                 scene_output_filepath = os.path.join(self.state.video_clips_path,
                                                      f"{scene_name}.mp4")
 
-                video_clip_fps, _motion_factor = self.compute_scene_fps(scene_name)
+                video_clip_fps, _forced_inflation_rate = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
                                 self.state.frame_format,
@@ -1856,7 +1853,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                         use_custom_video_options = use_custom_video_options\
                             .replace("<LABEL>", f"[{error}]")
 
-                video_clip_fps, _motion_factor = self.compute_scene_fps(scene_name)
+                video_clip_fps, _forced_inflation_rate = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
                                 self.state.frame_format,
@@ -1880,7 +1877,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
 
     def compute_inflated_fps(self, force_inflation, force_audio, force_inflate_by, force_silent):
         motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, \
-            forced_inflated_rate = self.compute_effective_slow_motion(force_inflation, force_audio,
+            forced_inflation_rate = self.compute_effective_slow_motion(force_inflation, force_audio,
                                                                     force_inflate_by, force_silent)
         if audio_slow_motion or silent_slow_motion:
             if force_inflation:
@@ -1889,11 +1886,12 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                 fps_factor = project_inflation_rate * motion_factor
         else:
             if force_inflation:
-                fps_factor = forced_inflated_rate
+                fps_factor = forced_inflation_rate
             else:
                 fps_factor = project_inflation_rate
 
-        return self.state.project_fps * fps_factor, motion_factor
+        inflation_and_slow_motion_considered_fps = self.state.project_fps * fps_factor
+        return inflation_and_slow_motion_considered_fps, forced_inflation_rate
 
     def compute_forced_inflation(self, scene_name):
         force_inflation = False
