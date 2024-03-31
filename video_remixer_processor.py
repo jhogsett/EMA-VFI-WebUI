@@ -617,6 +617,7 @@ class VideoRemixerProcessor():
                                     int(crop_offset_y),
                                     scale_type,
                                     crop_type="crop")
+                self.saved_view = resize_hint
                 return True
         return False
 
@@ -646,6 +647,7 @@ class VideoRemixerProcessor():
                                     int(crop_offset_y),
                                     scale_type,
                                     crop_type="crop")
+                self.saved_view = resize_hint
                 return True
         return False
 
@@ -672,6 +674,7 @@ class VideoRemixerProcessor():
                                     int(crop_offset_y),
                                     scale_type,
                                     crop_type="crop")
+                self.saved_view = resize_hint
                 return True
         return False
 
