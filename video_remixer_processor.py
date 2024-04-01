@@ -461,25 +461,21 @@ class VideoRemixerProcessor():
             content_width = self.state.video_details["content_width"]
             content_height = self.state.video_details["content_height"]
             main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
-                self.setup_resize_hint(content_width, content_height, True)
-
-            print("%" * 100, main_resize_w)
+                self.setup_resize_hint(content_width, content_height, False)
 
             try:
                 # blur_handled = blur_handled or \
                 #     self._process_animation_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
 
-                # blur_handled = blur_handled or \
-                #     self._process_combined_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                blur_handled = blur_handled or \
+                    self._process_combined_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
-                # blur_handled = blur_handled or \
-                #     self._process_quadrant_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                blur_handled = blur_handled or \
+                    self._process_quadrant_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
                 blur_handled = blur_handled or \
                     self._process_percent_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
-                # blur_handled = self._process_blur_hint(blur_hint, scene_input_path,
-                #                                        scene_output_path, scene_name, adjust_for_inflation)
             except Exception as error:
                 message = f"Skipping processing of hint {blur_hint} due to error: {error}"
                 blur_handled = False
@@ -533,22 +529,11 @@ class VideoRemixerProcessor():
                                                 main_resize_w, main_resize_h,
                                                 main_offset_x, main_offset_y,
                                                 main_crop_w, main_crop_h)
-
                 crop_offset_x = center_x - (main_crop_w / 2.0)
                 crop_offset_y = center_y - (main_crop_h / 2.0)
 
-                # scale_type = self.state.remixer_settings["scale_type_up"]
-                # self.resize_scene(scene_input_path,
-                #                     scene_output_path,
-                #                     int(resize_w),
-                #                     int(resize_h),
-                #                     int(main_crop_w),
-                #                     int(main_crop_h),
-                #                     int(crop_offset_x),
-                #                     int(crop_offset_y),
-                #                     scale_type,
-                #                     crop_type="crop")
-                # self.saved_view = blur_hint
+                self.static_blur_scene(scene_input_path, scene_output_path, resize_w, resize_h,
+                                       crop_offset_x, crop_offset_y, main_crop_w, main_crop_h)
                 return True
         return False
 
@@ -564,33 +549,18 @@ class VideoRemixerProcessor():
                                                 main_resize_w, main_resize_h,
                                                 main_offset_x, main_offset_y,
                                                 main_crop_w, main_crop_h)
+                crop_offset_x = center_x - (main_crop_w / 2.0)
+                crop_offset_y = center_y - (main_crop_h / 2.0)
 
-                # scale_type = self.state.remixer_settings["scale_type_up"]
-                # crop_offset_x = center_x - (main_crop_w / 2.0)
-                # crop_offset_y = center_y - (main_crop_h / 2.0)
-                # self.resize_scene(scene_input_path,
-                #                     scene_output_path,
-                #                     int(resize_w),
-                #                     int(resize_h),
-                #                     int(main_crop_w),
-                #                     int(main_crop_h),
-                #                     int(crop_offset_x),
-                #                     int(crop_offset_y),
-                #                     scale_type,
-                #                     crop_type="crop")
-                # self.saved_view = blur_hint
+                self.static_blur_scene(scene_input_path, scene_output_path, resize_w, resize_h,
+                                       crop_offset_x, crop_offset_y, main_crop_w, main_crop_h)
                 return True
         return False
 
     def _process_percent_blur_hint(self, blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
-        print("&" * 100, main_resize_w)
-
         if self.PERCENT_ZOOM_HINT in blur_hint:
             zoom_percent = self.get_percent_zoom(blur_hint)
             if zoom_percent:
-
-                print("!" * 100, main_resize_w)
-
                 resize_w, resize_h, center_x, center_y = \
                     self.compute_percent_zoom(zoom_percent,
                                               main_resize_w, main_resize_h,
@@ -610,30 +580,14 @@ class VideoRemixerProcessor():
 
     def static_blur_scene(self, scene_input_path, scene_output_path, resize_w, resize_h,
                           crop_offset_x, crop_offset_y, main_crop_w, main_crop_h):
-        print(resize_w, resize_h, crop_offset_x, crop_offset_y, main_crop_w, main_crop_h)
-
         # for now, the above figure are calculated as a zoom-in factor, yielding a resize and crop
         # that identify a proper dimension zoomed in crop rectangle
-
-
-# this works at 200% zoom
-# 2560.0 1440.0 640.0 360.0 1280 720
-# 2.0 640 360 1280 720
-# but fails at 300% zoom (down and to the right)
-# 3840.0 2160.0 1280.0 720.0 1280 720
-# 3.0 1280 720 1280 720
-
         # this needs to be inverted, to represent a blur rectangle within the original frame
-        expansion = resize_w / self.state.resize_w
-        crop_offset_x = int(crop_offset_x * 1)
-        crop_offset_y = int(crop_offset_y * 1)
-
-        # blur_width = int(main_crop_w * expansion)
-        # blur_height = int(main_crop_h * expansion)
-        blur_width = int(main_crop_w / 1)
-        blur_height = int(main_crop_h / 1)
-
-        print(expansion, crop_offset_x, crop_offset_y, blur_width, blur_height)
+        expansion = resize_w / main_crop_w
+        crop_offset_x = int(crop_offset_x / expansion)
+        crop_offset_y = int(crop_offset_y / expansion)
+        blur_width = int(main_crop_w / expansion)
+        blur_height = int(main_crop_h / expansion)
         left = crop_offset_x
         right = left + blur_width
         top = crop_offset_y
@@ -1065,7 +1019,7 @@ class VideoRemixerProcessor():
 
     def _process_no_resize_hint(self, resize_hint, scene_input_path, scene_output_path):
         # disable resizing and instead copy source frames as-is
-        # this allows the for_effects behavior access to the original detail
+        # this allows the for_resizing_effects behavior access to the original detail
         # copy the files using the resequencer
         if resize_hint == self.NO_RESIZE_HINT:
             ResequenceFiles(scene_input_path,
@@ -1201,17 +1155,11 @@ class VideoRemixerProcessor():
 
     # Resize Processing Hints
 
-    # TODO for_effects should be renamed
-    # - True means Force using project frame dimensions, if not already doing so due to overall resizing being enabled
-    # - False means Use content on-disk frame dimensions, ignoring  project settings for resize, crop and offset.
-    #   - This contains the built-in assumption that it's operating on the original content as-is, but does this ever happen?
-    #   - Yes: when being used for resize hints, the math based on project settings is handled, so it needs the native size
-    # Perhaps the new name should be use_native and the logic reversed.
-    def setup_resize_hint(self, content_width, content_height, for_effects=False):
+    def setup_resize_hint(self, content_width, content_height, for_resizing_effects=False):
         # use the main resize/crop settings if resizing, or the content native
         # dimensions if not, as a foundation for handling resize hints
 
-        if for_effects or self.state.resize:
+        if for_resizing_effects or self.state.resize:
             # Use the overall project resize and crop settings
             main_resize_w = self.state.resize_w
             main_resize_h = self.state.resize_h
