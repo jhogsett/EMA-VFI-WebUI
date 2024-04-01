@@ -4,7 +4,7 @@ gradio_client==0.7.1
 matplotlib==3.6.3
 numpy==1.23.5
 opencv_python==4.8.1.78
-Pillow==10.2.0
+Pillow==10.3.0
 PyYAML==6.0
 scikit_image==0.19.3
 scipy==1.10.1
