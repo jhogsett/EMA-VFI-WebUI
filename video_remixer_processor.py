@@ -3,6 +3,8 @@ import os
 import math
 import shutil
 from typing import Callable, TYPE_CHECKING
+import cv2
+import numpy as np
 from webui_utils.file_utils import split_filepath, create_directory, get_directories, get_files,\
     remove_directories, copy_files, simple_sanitize_filename, move_files
 from webui_utils.video_utils import details_from_group_name, PNGtoMP4, combine_video_audio,\
@@ -15,6 +17,7 @@ from deep_interpolate import DeepInterpolate
 from interpolate_series import InterpolateSeries
 from resequence_files import ResequenceFiles
 from upscale_series import UpscaleSeries
+
 
 if TYPE_CHECKING:
     from video_remixer import VideoRemixerState
@@ -53,6 +56,7 @@ class VideoRemixerProcessor():
     PERCENT_ZOOM_MIN_LEN = 4  # 123%
     COMBINED_ZOOM_MIN_LEN = 8 # 1/1@100%
     ANIMATED_ZOOM_MIN_LEN = 1 # -
+    ANIMATED_FADE_MIN_LEN = 1 # I
     MAX_SELF_FIT_ZOOM = 1000
     FIXED_UPSCALE_FACTOR = 4.0
     TEMP_UPSCALE_PATH = "upscaled_frames"
@@ -60,6 +64,9 @@ class VideoRemixerProcessor():
     DEFAULT_VIEW = "100%"
     DEFAULT_ANIMATION_SCHEDULE = "L" # linear
     DEFAULT_ANIMATION_TIME = 0 # whole scene
+    FADE_TYPE_IN = "I"
+    FADE_TYPE_OUT = "O"
+    DEFAULT_FADE_TYPE = FADE_TYPE_OUT
     NO_RESIZE_HINT = "N"
 
     ### Exports --------------------
@@ -398,16 +405,14 @@ class VideoRemixerProcessor():
                                   adjust_for_inflation=True)
             working_input_path = working_output_path
 
-        if self.state.effects_hint_chosen(self.state.EFFECTS_VIEW_HINT):
+        if self.state.effects_hint_chosen(self.state.EFFECTS_FADE_HINT):
             operation = "Fade FX"
             self.processing_messages_context["operation"] = operation
             working_output_path = os.path.join(output_base_path, "fade_fx")
             working_paths.append(working_output_path)
             create_directory(working_output_path)
 
-            # TODO fill with fade processing
-            shutil.copytree(working_input_path, working_output_path, dirs_exist_ok=True)
-
+            self.process_fade(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
             working_input_path = working_output_path
 
         # copy from last working input path to effects path
@@ -415,6 +420,194 @@ class VideoRemixerProcessor():
 
         remove_directories(working_paths)
 
+    def process_fade(self, scenes_base_path, output_base_path, kept_scenes, desc, adjust_for_inflation):
+        with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
+            for scene_name in kept_scenes:
+                self.processing_messages_context["scene_name"] = scene_name
+
+                scene_input_path = os.path.join(scenes_base_path, scene_name)
+                scene_output_path = os.path.join(output_base_path, scene_name)
+                create_directory(scene_output_path)
+
+                fade_handled = self.process_fade_hint(scene_input_path, scene_output_path, scene_name,
+                                       adjust_for_inflation)
+
+                if not fade_handled:
+                    copy_files(scene_input_path, scene_output_path)
+
+                Mtqdm().update_bar(bar)
+
+    def process_fade_hint(self, scene_input_path, scene_output_path, scene_name, adjust_for_inflation):
+        message = None
+        fade_hint = self.state.get_hint(self.state.scene_labels.get(scene_name), self.state.EFFECTS_FADE_HINT)
+
+        fade_handled = False
+        if fade_hint:
+            try:
+                fade_handled = self._process_fade_hint(fade_hint, scene_input_path, scene_output_path, scene_name, adjust_for_inflation)
+            except Exception as error:
+                message = f"Skipping processing of hint {fade_hint} due to error: {error}"
+                fade_handled = False
+
+        if message:
+            self.add_processing_message(message)
+            self.log(message)
+
+        return fade_handled
+
+    def _process_fade_hint(self, fade_hint, scene_input_path, scene_output_path, scene_name, adjust_for_inflation):
+        fade_type, frame_from, frame_to, schedule = self.get_animated_fade(fade_hint)
+
+        if fade_type:
+            first_frame, last_frame, _ = details_from_group_name(scene_name)
+            num_frames = (last_frame - first_frame) + 1
+            context = self.compute_animated_fade(scene_name, num_frames, fade_type, frame_from,
+                                                 frame_to, schedule, adjust_for_inflation)
+
+            self.fade_scene(scene_input_path,
+                            scene_output_path,
+                            context=context)
+            return True
+        return False
+
+    # TODO DRY
+    def get_animated_fade(self, hint):
+        if len(hint) >= self.ANIMATED_FADE_MIN_LEN:
+            schedule = self.DEFAULT_ANIMATION_SCHEDULE
+            time = self.DEFAULT_ANIMATION_TIME
+            if self.ANIMATION_SCHEDULE_HINT in hint:
+                split_pos = hint.index(self.ANIMATION_SCHEDULE_HINT)
+                remainder = hint[:split_pos]
+                schedule = hint[split_pos+1:]
+                hint = remainder
+            if self.ANIMATION_TIME_HINT in hint:
+                split_pos = hint.index(self.ANIMATION_TIME_HINT)
+                remainder = hint[:split_pos]
+                time = hint[split_pos+1:]
+                hint = remainder
+                if self.ANIMATION_TIME_SEP in time:
+                    # a specific frame range is specified
+                    split_pos = time.index(self.ANIMATION_TIME_SEP)
+                    # one or both values may be empty strings
+                    frame_from = time[:split_pos]
+                    frame_to = time[split_pos+1:]
+                else:
+                    # a frame count is specified with an implied range starting at zero
+                    frame_from = 0
+                    frame_to = int(time)
+            else:
+                frame_from = ""
+                frame_to = ""
+            fade_type = hint
+            return fade_type, frame_from, frame_to, schedule
+        return None, None, None, None
+
+    # TODO DRY
+    def compute_animated_fade(self, scene_name, num_frames, fade_type, frame_from, frame_to,
+                              schedule, adjust_for_inflation):
+
+        # animation time override
+        if frame_from == "" and frame_to == "":
+            # unspecified range, ignore
+            frame_from = 0
+            frame_to = num_frames
+        elif frame_to == "":
+            # frame_to is the last frame
+            frame_to = num_frames
+        elif frame_from == "":
+            # frame_from is offset from the end
+            frame_from = num_frames - int(frame_to)
+            frame_to = num_frames
+        frame_from = int(frame_from)
+        frame_to = int(frame_to)
+
+        if frame_from >= 0 and frame_to <= num_frames and frame_from < frame_to:
+            num_frames = frame_to - frame_from
+        else:
+            # safety catch
+            frame_from = 0
+            frame_to = num_frames
+
+        # account for inflation if being used for view handling
+        if adjust_for_inflation:
+            _video_clip_fps, forced_inflation_rate = self.compute_scene_fps(scene_name)
+            num_frames = self.compute_inflated_frame_count(num_frames, forced_inflation_rate)
+            frame_from = self.compute_inflated_frame_count(frame_from, forced_inflation_rate)
+            frame_to = self.compute_inflated_frame_count(frame_to, forced_inflation_rate)
+
+        if fade_type == self.FADE_TYPE_IN:
+            fade_from = 0.0
+            fade_to = 1.0
+        else:
+            fade_from = 1.0
+            fade_to = 0.0
+        diff_fade = fade_to - fade_from
+
+        # TODO why is this needed? without it, the last transition doesn't happen
+        # - maybe it needs to be the number of transitions between frames not number of frames
+        # Ensure the final transition occurs
+        num_frames -= 1
+        step_fade = diff_fade / num_frames
+
+        context = {}
+        context["fade_type"] = fade_type
+        context["fade_from"] = fade_from
+        context["step_fade"] = step_fade
+        context["num_frames"] = num_frames
+        context["schedule"] = schedule
+        context["start_frame"] = frame_from
+        context["end_frame"] = frame_to
+        return context
+
+    def fade_scene(self,
+                     scene_input_path,
+                     scene_output_path,
+                     context : any=None):
+
+        # fade_type = context["fade_type"]
+        fade_from = context["fade_from"]
+        step_fade = context["step_fade"]
+        num_frames = context["num_frames"]
+        schedule = context["schedule"]
+        start_frame = context["start_frame"]
+        end_frame = context["end_frame"]
+
+        files = sorted(get_files(scene_input_path))
+        with Mtqdm().open_bar(total=len(files), desc="Fading") as bar:
+            for index, file in enumerate(files):
+                _, filename, ext = split_filepath(file)
+                output_path = os.path.join(scene_output_path, filename + ext)
+
+                if index < start_frame:
+                    index = 0
+                elif index > end_frame:
+                    index = end_frame - start_frame
+                else:
+                    index -= start_frame
+
+                    accelerate = True # this only applies to the "Z" schedule, not clear it's useful or not with fade
+                    index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
+                                                                        accelerate)
+                    if float_carry >= 0.5:
+                        index += 1
+
+                if index > num_frames:
+                    index = num_frames
+
+                fade = fade_from + (step_fade * index)
+                if fade < 0.0:
+                    fade = 0.0
+                elif fade > 1.0:
+                    fade = 1.0
+
+                frame = cv2.imread(file)
+                data = np.array(frame, np.uint8)
+                percent = fade
+                value = data * percent
+                img = value.astype(np.uint8)
+                cv2.imwrite(output_path, img)
+
+                Mtqdm().update_bar(bar)
 
     def process_resizing(self, scenes_base_path, output_base_path, hint_type, kept_scenes, desc,
                          adjust_for_inflation):
@@ -1121,7 +1314,7 @@ class VideoRemixerProcessor():
         return context
 
     # https://stackoverflow.com/questions/13462001/ease-in-and-ease-out-animation-formula
-    def _apply_animation_schedule(self, schedule, num_frames, frame, zooming_in):
+    def _apply_animation_schedule(self, schedule, num_frames, frame, accelerate):
         t = float(frame) / float(num_frames)
         if schedule == self.QUADRATIC_SCHEDULE:
             if t <= 0.5:
@@ -1137,7 +1330,7 @@ class VideoRemixerProcessor():
             # experimental, not working properly, too dependent on number of frames
             # a 10-second zoom ends half way through (but looks really nice)
             frame_factor = 66_667
-            if zooming_in:
+            if accelerate:
                 factor = (1 + (frame / frame_factor)) ** frame
             else:
                 factor = (1 + ((num_frames - frame) / frame_factor)) ** (num_frames - frame)
@@ -1178,9 +1371,9 @@ class VideoRemixerProcessor():
             index = end_frame - start_frame
         else:
             index -= start_frame
-            zooming_in = step_resize_w > 0.0
+            accelerate = step_resize_w > 0.0
             index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
-                                                                zooming_in)
+                                                                accelerate)
             if float_carry >= 0.5:
                 index += 1
 
