@@ -57,6 +57,7 @@ class VideoRemixerProcessor():
     COMBINED_ZOOM_MIN_LEN = 8 # 1/1@100%
     ANIMATED_ZOOM_MIN_LEN = 1 # -
     ANIMATED_FADE_MIN_LEN = 1 # I
+    ANIMATED_BLUR_MIN_LEN = 1 # K
     MAX_SELF_FIT_ZOOM = 1000
     FIXED_UPSCALE_FACTOR = 4.0
     TEMP_UPSCALE_PATH = "upscaled_frames"
@@ -66,7 +67,8 @@ class VideoRemixerProcessor():
     DEFAULT_ANIMATION_TIME = 0 # whole scene
     FADE_TYPE_IN = "I"
     FADE_TYPE_OUT = "O"
-    DEFAULT_FADE_TYPE = FADE_TYPE_OUT
+    BLUR_TYPE_BLACK = "K"
+    # BLUR_TYPE_GAUSS = "B"
     NO_RESIZE_HINT = "N"
 
     ### Exports --------------------
@@ -415,10 +417,336 @@ class VideoRemixerProcessor():
             self.process_fade(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
             working_input_path = working_output_path
 
+        if self.state.effects_hint_chosen(self.state.EFFECTS_BLUR_HINT):
+            operation = "Blur FX"
+            self.processing_messages_context["operation"] = operation
+            working_output_path = os.path.join(output_base_path, "blur_fx")
+            working_paths.append(working_output_path)
+            create_directory(working_output_path)
+
+            self.process_blur(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
+            working_input_path = working_output_path
+
         # copy from last working input path to effects path
         shutil.copytree(working_input_path, output_base_path, dirs_exist_ok=True)
 
         remove_directories(working_paths)
+
+    def process_blur(self, scenes_base_path, output_base_path, kept_scenes, desc,
+                     adjust_for_inflation):
+        with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
+            for scene_name in kept_scenes:
+                self.processing_messages_context["scene_name"] = scene_name
+
+                scene_input_path = os.path.join(scenes_base_path, scene_name)
+                scene_output_path = os.path.join(output_base_path, scene_name)
+                create_directory(scene_output_path)
+
+                blur_handled = self.process_blur_hint(scene_input_path, scene_output_path,
+                                                      scene_name, adjust_for_inflation)
+
+                if not blur_handled:
+                    copy_files(scene_input_path, scene_output_path)
+
+                Mtqdm().update_bar(bar)
+
+    def process_blur_hint(self, scene_input_path, scene_output_path, scene_name,
+                          adjust_for_inflation):
+        message = None
+        blur_hint = self.state.get_hint(self.state.scene_labels.get(scene_name),
+                                        self.state.EFFECTS_BLUR_HINT)
+
+        blur_handled = False
+        if blur_hint:
+            content_width = self.state.video_details["content_width"]
+            content_height = self.state.video_details["content_height"]
+            main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
+                self.setup_resize_hint(content_width, content_height, True)
+
+            print("%" * 100, main_resize_w)
+
+            try:
+                # blur_handled = blur_handled or \
+                #     self._process_animation_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
+
+                # blur_handled = blur_handled or \
+                #     self._process_combined_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+                # blur_handled = blur_handled or \
+                #     self._process_quadrant_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+                blur_handled = blur_handled or \
+                    self._process_percent_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+                # blur_handled = self._process_blur_hint(blur_hint, scene_input_path,
+                #                                        scene_output_path, scene_name, adjust_for_inflation)
+            except Exception as error:
+                message = f"Skipping processing of hint {blur_hint} due to error: {error}"
+                blur_handled = False
+
+        return blur_handled
+
+    def _process_animation_blur_hint(self, blur_hint, scene_input_path, scene_output_path,
+                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
+                                     main_crop_w, main_crop_h, scene_name, adjust_for_inflation):
+        if self.ANIMATED_ZOOM_HINT in blur_hint:
+            # resize_hint = self.get_implied_zoom(resize_hint)
+            # self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
+            from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
+                to_param2, to_param3, frame_from, frame_to, schedule \
+                    = self.get_animated_zoom(blur_hint)
+            if from_type and to_type:
+                first_frame, last_frame, _ = details_from_group_name(scene_name)
+                num_frames = (last_frame - first_frame) + 1
+                context = self.compute_animated_zoom(scene_name, num_frames,
+                        from_type, from_param1, from_param2, from_param3,
+                        to_type, to_param1, to_param2, to_param3, frame_from,
+                        frame_to, schedule, main_resize_w, main_resize_h,
+                        main_offset_x, main_offset_y, main_crop_w, main_crop_h,
+                        adjust_for_inflation)
+                # context = self.compute_animated_blur(context)
+
+                # scale_type = self.state.remixer_settings["scale_type_up"]
+                # self.resize_scene(scene_input_path,
+                #                     scene_output_path,
+                #                     None,
+                #                     None,
+                #                     main_crop_w,
+                #                     main_crop_h,
+                #                     None,
+                #                     None,
+                #                     scale_type,
+                #                     crop_type="crop",
+                #                     params_fn=self._resize_frame_param,
+                #                     params_context=context)
+                return True
+        return False
+
+    def _process_combined_blur_hint(self, blur_hint, scene_input_path, scene_output_path,
+                                    main_resize_w, main_resize_h, main_offset_x, main_offset_y,
+                                    main_crop_w, main_crop_h):
+        if self.COMBINED_ZOOM_HINT in blur_hint:
+            quadrant, quadrants, zoom_percent = self.get_combined_zoom(blur_hint)
+            if quadrant and quadrants and zoom_percent:
+                resize_w, resize_h, center_x, center_y = \
+                    self.compute_combined_zoom(quadrant, quadrants, zoom_percent,
+                                                main_resize_w, main_resize_h,
+                                                main_offset_x, main_offset_y,
+                                                main_crop_w, main_crop_h)
+
+                crop_offset_x = center_x - (main_crop_w / 2.0)
+                crop_offset_y = center_y - (main_crop_h / 2.0)
+
+                # scale_type = self.state.remixer_settings["scale_type_up"]
+                # self.resize_scene(scene_input_path,
+                #                     scene_output_path,
+                #                     int(resize_w),
+                #                     int(resize_h),
+                #                     int(main_crop_w),
+                #                     int(main_crop_h),
+                #                     int(crop_offset_x),
+                #                     int(crop_offset_y),
+                #                     scale_type,
+                #                     crop_type="crop")
+                # self.saved_view = blur_hint
+                return True
+        return False
+
+    def _process_quadrant_blur_hint(self, blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
+        if self.QUADRANT_ZOOM_HINT in blur_hint:
+            # interpret 'x/y' as x: quadrant, y: square-based number of quadrants
+            # '5/9' and '13/25' would be the center squares of 3x3 and 5x5 grids
+            #   zoomed in at 300% and 500%
+            quadrant, quadrants = self.get_quadrant_zoom(blur_hint)
+            if quadrant and quadrants:
+                resize_w, resize_h, center_x, center_y = \
+                    self.compute_quadrant_zoom(quadrant, quadrants,
+                                                main_resize_w, main_resize_h,
+                                                main_offset_x, main_offset_y,
+                                                main_crop_w, main_crop_h)
+
+                # scale_type = self.state.remixer_settings["scale_type_up"]
+                # crop_offset_x = center_x - (main_crop_w / 2.0)
+                # crop_offset_y = center_y - (main_crop_h / 2.0)
+                # self.resize_scene(scene_input_path,
+                #                     scene_output_path,
+                #                     int(resize_w),
+                #                     int(resize_h),
+                #                     int(main_crop_w),
+                #                     int(main_crop_h),
+                #                     int(crop_offset_x),
+                #                     int(crop_offset_y),
+                #                     scale_type,
+                #                     crop_type="crop")
+                # self.saved_view = blur_hint
+                return True
+        return False
+
+    def _process_percent_blur_hint(self, blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
+        print("&" * 100, main_resize_w)
+
+        if self.PERCENT_ZOOM_HINT in blur_hint:
+            zoom_percent = self.get_percent_zoom(blur_hint)
+            if zoom_percent:
+
+                print("!" * 100, main_resize_w)
+
+                resize_w, resize_h, center_x, center_y = \
+                    self.compute_percent_zoom(zoom_percent,
+                                              main_resize_w, main_resize_h,
+                                              main_offset_x, main_offset_y,
+                                              main_crop_w, main_crop_h)
+                crop_offset_x = center_x - (main_crop_w / 2.0)
+                crop_offset_y = center_y - (main_crop_h / 2.0)
+
+                self.static_blur_scene(scene_input_path, scene_output_path, resize_w, resize_h,
+                                       crop_offset_x, crop_offset_y, main_crop_w, main_crop_h)
+                return True
+        return False
+
+    # def compute_animated_blur(self, context):
+    #     # for now the blur itself will not be animating, just the location
+    #     return context
+
+    def static_blur_scene(self, scene_input_path, scene_output_path, resize_w, resize_h,
+                          crop_offset_x, crop_offset_y, main_crop_w, main_crop_h):
+        print(resize_w, resize_h, crop_offset_x, crop_offset_y, main_crop_w, main_crop_h)
+
+        # for now, the above figure are calculated as a zoom-in factor, yielding a resize and crop
+        # that identify a proper dimension zoomed in crop rectangle
+
+
+# this works at 200% zoom
+# 2560.0 1440.0 640.0 360.0 1280 720
+# 2.0 640 360 1280 720
+# but fails at 300% zoom (down and to the right)
+# 3840.0 2160.0 1280.0 720.0 1280 720
+# 3.0 1280 720 1280 720
+
+        # this needs to be inverted, to represent a blur rectangle within the original frame
+        expansion = resize_w / self.state.resize_w
+        crop_offset_x = int(crop_offset_x * 1)
+        crop_offset_y = int(crop_offset_y * 1)
+
+        # blur_width = int(main_crop_w * expansion)
+        # blur_height = int(main_crop_h * expansion)
+        blur_width = int(main_crop_w / 1)
+        blur_height = int(main_crop_h / 1)
+
+        print(expansion, crop_offset_x, crop_offset_y, blur_width, blur_height)
+        left = crop_offset_x
+        right = left + blur_width
+        top = crop_offset_y
+        bottom = top + blur_height
+
+        files = sorted(get_files(scene_input_path))
+        with Mtqdm().open_bar(total=len(files), desc="Blurring") as bar:
+            for file in files:
+                _, filename, ext = split_filepath(file)
+                output_path = os.path.join(scene_output_path, filename + ext)
+
+                frame = cv2.imread(file)
+                _height, _width, channels = frame.shape
+                data = np.array(frame, np.uint8)
+
+                if channels == 3:
+                    data[top:bottom, left:right] = [0,0,0]
+                elif channels == 1:
+                    data[top:bottom, left:right] = 0
+
+                img = data.astype(np.uint8)
+                cv2.imwrite(output_path, img)
+
+                Mtqdm().update_bar(bar)
+
+
+    def blur_scene(self,
+                     scene_input_path,
+                     scene_output_path,
+                     context : any=None):
+
+        num_frames = context["num_frames"]
+        schedule = context["schedule"]
+        start_frame = context["start_frame"]
+        end_frame = context["end_frame"]
+
+        files = sorted(get_files(scene_input_path))
+        with Mtqdm().open_bar(total=len(files), desc="Fading") as bar:
+            for index, file in enumerate(files):
+                _, filename, ext = split_filepath(file)
+                output_path = os.path.join(scene_output_path, filename + ext)
+
+                if index < start_frame:
+                    index = 0
+                elif index > end_frame:
+                    index = end_frame - start_frame
+                else:
+                    index -= start_frame
+
+                    accelerate = True # this only applies to the "Z" schedule, not clear it's useful or not with fade
+                    index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
+                                                                        accelerate)
+                    if float_carry >= 0.5:
+                        index += 1
+
+                if index > num_frames:
+                    index = num_frames
+
+                # frame = cv2.imread(file)
+                # data = np.array(frame, np.uint8)
+                # percent = fade
+                # value = data * percent
+                # img = value.astype(np.uint8)
+                # cv2.imwrite(output_path, img)
+
+                Mtqdm().update_bar(bar)
+
+    def blur_frame_param(self, index : int, context : dict):
+        from_resize_w = context["from_resize_w"]
+        from_resize_h = context["from_resize_h"]
+        from_center_x = context["from_center_x"]
+        from_center_y = context["from_center_y"]
+        step_resize_w = context["step_resize_w"]
+        step_resize_h = context["step_resize_h"]
+        step_center_x = context["step_center_x"]
+        step_center_y = context["step_center_y"]
+        main_crop_w = context["main_crop_w"]
+        main_crop_h = context["main_crop_h"]
+        num_frames = context["num_frames"]
+        schedule = context["schedule"]
+        start_frame = context["start_frame"]
+        end_frame = context["end_frame"]
+
+        if index < start_frame:
+            index = 0
+        elif index > end_frame:
+            index = end_frame - start_frame
+        else:
+            index -= start_frame
+            accelerate = step_resize_w > 0.0
+            index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
+                                                                accelerate)
+            if float_carry >= 0.5:
+                index += 1
+
+        if index > num_frames:
+            index = num_frames
+
+        resize_w = int(from_resize_w + (index * step_resize_w))
+        resize_h = int(from_resize_h + (index * step_resize_h))
+        center_x = from_center_x + (index * step_center_x)
+        center_y = from_center_y + (index * step_center_y)
+        crop_offset_x = int(center_x - (main_crop_w / 2.0))
+        crop_offset_y = int(center_y - (main_crop_h / 2.0))
+
+        if resize_w < main_crop_w:
+            resize_w = main_crop_w
+        if resize_h < main_crop_h:
+            resize_h = main_crop_h
+
+        return resize_w, resize_h, crop_offset_x, crop_offset_y
+
+
 
     def process_fade(self, scenes_base_path, output_base_path, kept_scenes, desc, adjust_for_inflation):
         with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
