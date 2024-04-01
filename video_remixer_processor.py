@@ -405,18 +405,6 @@ class VideoRemixerProcessor():
         working_input_path = self.scenes_source_path(self.state.EFFECTS_STEP)
 
         working_paths = []
-        if self.state.effects_hint_chosen(self.state.EFFECTS_VIEW_HINT):
-            operation = "View FX"
-            self.processing_messages_context["operation"] = operation
-            working_output_path = os.path.join(output_base_path, "view_fx")
-            working_paths.append(working_output_path)
-            create_directory(working_output_path)
-
-            self.process_resizing(working_input_path, working_output_path,
-                                  self.state.EFFECTS_VIEW_HINT, kept_scenes, operation,
-                                  adjust_for_inflation=True)
-            working_input_path = working_output_path
-
         if self.state.effects_hint_chosen(self.state.EFFECTS_FADE_HINT):
             operation = "Fade FX"
             self.processing_messages_context["operation"] = operation
@@ -435,6 +423,18 @@ class VideoRemixerProcessor():
             create_directory(working_output_path)
 
             self.process_blur(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
+            working_input_path = working_output_path
+
+        if self.state.effects_hint_chosen(self.state.EFFECTS_VIEW_HINT):
+            operation = "View FX"
+            self.processing_messages_context["operation"] = operation
+            working_output_path = os.path.join(output_base_path, "view_fx")
+            working_paths.append(working_output_path)
+            create_directory(working_output_path)
+
+            self.process_resizing(working_input_path, working_output_path,
+                                  self.state.EFFECTS_VIEW_HINT, kept_scenes, operation,
+                                  adjust_for_inflation=True)
             working_input_path = working_output_path
 
         # copy from last working input path to effects path
@@ -1359,12 +1359,12 @@ class VideoRemixerProcessor():
         return None, None, None, None, None, None, None, None, None, None, None
 
     def _get_blur_type(self, hint, type):
-        if hint[0] == type:
-            value = type
-            remainder = hint[1:]
-        else:
-            value = None
-            remainder = hint
+        value = None
+        remainder = hint
+        if hint:
+            if hint[0] == type:
+                value = type
+                remainder = hint[1:]
         return value, remainder
 
     def get_blur_type(self, hint):
