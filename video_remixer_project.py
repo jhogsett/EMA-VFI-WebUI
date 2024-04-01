@@ -228,6 +228,7 @@ class VideoRemixerProject():
             self.state.resize_path,
             self.state.resynthesis_path,
             self.state.inflation_path,
+            self.state.effects_path,
             self.state.upscale_path])
 
         if purge_path:
@@ -294,6 +295,8 @@ class VideoRemixerProject():
         if message:
             messages.add(message)
 
+        # skip effects path unless needed (are these neede?)
+
         self.state.upscale_path, message = self.ensure_valid_path(
             "Upscale Path", self.state.upscale_path)
         if message:
@@ -320,6 +323,7 @@ class VideoRemixerProject():
             self.state.resize_path,
             self.state.resynthesis_path,
             self.state.inflation_path,
+            self.state.effects_path,
             self.state.upscale_path
         ])
         self.log(f"generated content directories purged to {purged_path}")
