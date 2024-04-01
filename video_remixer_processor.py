@@ -1,6 +1,7 @@
 """Video Remixer Content Processing"""
 import os
 import math
+from random import randint
 import shutil
 from typing import Callable, TYPE_CHECKING
 import cv2
@@ -17,7 +18,6 @@ from deep_interpolate import DeepInterpolate
 from interpolate_series import InterpolateSeries
 from resequence_files import ResequenceFiles
 from upscale_series import UpscaleSeries
-
 
 if TYPE_CHECKING:
     from video_remixer import VideoRemixerState
@@ -67,8 +67,10 @@ class VideoRemixerProcessor():
     DEFAULT_ANIMATION_TIME = 0 # whole scene
     FADE_TYPE_IN = "I"
     FADE_TYPE_OUT = "O"
-    BLUR_TYPE_BLACK = "K"
-    # BLUR_TYPE_GAUSS = "B"
+    BLUR_TYPE_BLACK = "B"
+    BLUR_TYPE_WHITE = "W"
+    BLUR_TYPE_NOISE = "N"
+    DEFAULT_BLUR_TYPE = BLUR_TYPE_BLACK
     NO_RESIZE_HINT = "N"
 
     ### Exports --------------------
@@ -122,15 +124,6 @@ class VideoRemixerProcessor():
             return self._processed_content_complete(self.state.video_clips_path, expected_files=expected_items)
         else:
             raise RuntimeError(f"'processing_step' {processing_step} is unrecognized")
-
-    def _processed_content_complete(self, path, expected_dirs = 0, expected_files = 0):
-        if not path or not os.path.exists(path):
-            return False
-        if expected_dirs:
-            return len(get_directories(path)) == expected_dirs
-        if expected_files:
-            return len(get_files(path)) == expected_files
-        return True
 
     def prepare_save_remix(self, output_filepath : str, invalidate_video_clips=True):
         if not output_filepath:
@@ -226,7 +219,7 @@ class VideoRemixerProcessor():
 
     ### Internal --------------------
 
-    # Handling feedback to user about processing
+    # Handling processing feedback to user
 
     def add_processing_message(self, message):
         operation = self.processing_messages_context.get("operation", "unknown")
@@ -239,6 +232,15 @@ class VideoRemixerProcessor():
 
 
     # Preprocessing
+
+    def _processed_content_complete(self, path, expected_dirs = 0, expected_files = 0):
+        if not path or not os.path.exists(path):
+            return False
+        if expected_dirs:
+            return len(get_directories(path)) == expected_dirs
+        if expected_files:
+            return len(get_files(path)) == expected_files
+        return True
 
     # processed content is stale if it is not selected and exists
     def processed_content_stale(self, selected : bool, path : str):
@@ -256,34 +258,42 @@ class VideoRemixerProcessor():
         if self.processed_content_stale(self.state.resize_chosen(), self.state.resize_path):
             self.state.purge_processed_content(purge_from=self.state.RESIZE_STEP)
 
-        if self.processed_content_stale(self.state.resynthesize_chosen(), self.state.resynthesis_path) or purge_resynth:
+        if self.processed_content_stale(self.state.resynthesize_chosen(),
+                                        self.state.resynthesis_path) or purge_resynth:
             self.state.purge_processed_content(purge_from=self.state.RESYNTH_STEP)
 
-        if self.processed_content_stale(self.state.inflate_chosen(), self.state.inflation_path) or purge_inflation:
+        if self.processed_content_stale(self.state.inflate_chosen(),
+                                        self.state.inflation_path) or purge_inflation:
             self.state.purge_processed_content(purge_from=self.state.INFLATE_STEP)
 
         if self.processed_content_stale(self.state.effects_chosen(), self.state.effects_path):
             self.state.purge_processed_content(purge_from=self.state.EFFECTS_STEP)
 
-        if self.processed_content_stale(self.state.upscale_chosen(), self.state.upscale_path) or purge_upscale:
+        if self.processed_content_stale(self.state.upscale_chosen(),
+                                        self.state.upscale_path) or purge_upscale:
             self.state.purge_processed_content(purge_from=self.state.UPSCALE_STEP)
 
     def purge_incomplete_processed_content(self):
         # content is incomplete if the wrong number of scene directories are present
         # if it is currently selected and incomplete, it should be purged
-        if self.state.resize_chosen() and not self.processed_content_complete(self.state.RESIZE_STEP):
+        if self.state.resize_chosen() and not self.processed_content_complete(
+                self.state.RESIZE_STEP):
             self.state.purge_processed_content(purge_from=self.state.RESIZE_STEP)
 
-        if self.state.resynthesize_chosen() and not self.processed_content_complete(self.state.RESYNTH_STEP):
+        if self.state.resynthesize_chosen() and not self.processed_content_complete(
+                self.state.RESYNTH_STEP):
             self.state.purge_processed_content(purge_from=self.state.RESYNTH_STEP)
 
-        if self.state.inflate_chosen() and not self.processed_content_complete(self.state.INFLATE_STEP):
+        if self.state.inflate_chosen() and not self.processed_content_complete(
+                self.state.INFLATE_STEP):
             self.state.purge_processed_content(purge_from=self.state.INFLATE_STEP)
 
-        if self.state.effects_chosen() and not self.processed_content_complete(self.state.EFFECTS_STEP):
+        if self.state.effects_chosen() and not self.processed_content_complete(
+                self.state.EFFECTS_STEP):
             self.state.purge_processed_content(purge_from=self.state.EFFECTS_STEP)
 
-        if self.state.upscale_chosen() and not self.processed_content_complete(self.state.UPSCALE_STEP):
+        if self.state.upscale_chosen() and not self.processed_content_complete(
+                self.state.UPSCALE_STEP):
             self.state.purge_processed_content(purge_from=self.state.UPSCALE_STEP)
 
 
@@ -456,6 +466,9 @@ class VideoRemixerProcessor():
         blur_hint = self.state.get_hint(self.state.scene_labels.get(scene_name),
                                         self.state.EFFECTS_BLUR_HINT)
 
+        blur_type, remaining_hint = self.get_blur_type(blur_hint)
+        blur_hint = remaining_hint
+
         blur_handled = False
         if blur_hint:
             content_width = self.state.video_details["content_width"]
@@ -468,13 +481,13 @@ class VideoRemixerProcessor():
                 #     self._process_animation_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
 
                 blur_handled = blur_handled or \
-                    self._process_combined_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                    self._process_combined_blur_hint(blur_hint, blur_type, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
                 blur_handled = blur_handled or \
-                    self._process_quadrant_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                    self._process_quadrant_blur_hint(blur_hint, blur_type, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
                 blur_handled = blur_handled or \
-                    self._process_percent_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                    self._process_percent_blur_hint(blur_hint, blur_type, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
             except Exception as error:
                 message = f"Skipping processing of hint {blur_hint} due to error: {error}"
@@ -482,43 +495,45 @@ class VideoRemixerProcessor():
 
         return blur_handled
 
-    def _process_animation_blur_hint(self, blur_hint, scene_input_path, scene_output_path,
-                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
-                                     main_crop_w, main_crop_h, scene_name, adjust_for_inflation):
-        if self.ANIMATED_ZOOM_HINT in blur_hint:
-            # resize_hint = self.get_implied_zoom(resize_hint)
-            # self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
-            from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
-                to_param2, to_param3, frame_from, frame_to, schedule \
-                    = self.get_animated_zoom(blur_hint)
-            if from_type and to_type:
-                first_frame, last_frame, _ = details_from_group_name(scene_name)
-                num_frames = (last_frame - first_frame) + 1
-                context = self.compute_animated_zoom(scene_name, num_frames,
-                        from_type, from_param1, from_param2, from_param3,
-                        to_type, to_param1, to_param2, to_param3, frame_from,
-                        frame_to, schedule, main_resize_w, main_resize_h,
-                        main_offset_x, main_offset_y, main_crop_w, main_crop_h,
-                        adjust_for_inflation)
-                # context = self.compute_animated_blur(context)
 
-                # scale_type = self.state.remixer_settings["scale_type_up"]
-                # self.resize_scene(scene_input_path,
-                #                     scene_output_path,
-                #                     None,
-                #                     None,
-                #                     main_crop_w,
-                #                     main_crop_h,
-                #                     None,
-                #                     None,
-                #                     scale_type,
-                #                     crop_type="crop",
-                #                     params_fn=self._resize_frame_param,
-                #                     params_context=context)
-                return True
-        return False
 
-    def _process_combined_blur_hint(self, blur_hint, scene_input_path, scene_output_path,
+    # def _process_animation_blur_hint(self, blur_hint, blur_type, scene_input_path, scene_output_path,
+    #                                  main_resize_w, main_resize_h, main_offset_x, main_offset_y,
+    #                                  main_crop_w, main_crop_h, scene_name, adjust_for_inflation):
+    #     if self.ANIMATED_ZOOM_HINT in blur_hint:
+    #         # resize_hint = self.get_implied_zoom(resize_hint)
+    #         # self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
+    #         from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
+    #             to_param2, to_param3, frame_from, frame_to, schedule \
+    #                 = self.get_animated_zoom(blur_hint)
+    #         if from_type and to_type:
+    #             first_frame, last_frame, _ = details_from_group_name(scene_name)
+    #             num_frames = (last_frame - first_frame) + 1
+    #             context = self.compute_animated_zoom(scene_name, num_frames,
+    #                     from_type, from_param1, from_param2, from_param3,
+    #                     to_type, to_param1, to_param2, to_param3, frame_from,
+    #                     frame_to, schedule, main_resize_w, main_resize_h,
+    #                     main_offset_x, main_offset_y, main_crop_w, main_crop_h,
+    #                     adjust_for_inflation)
+    #             # context = self.compute_animated_blur(context)
+
+    #             # scale_type = self.state.remixer_settings["scale_type_up"]
+    #             # self.resize_scene(scene_input_path,
+    #             #                     scene_output_path,
+    #             #                     None,
+    #             #                     None,
+    #             #                     main_crop_w,
+    #             #                     main_crop_h,
+    #             #                     None,
+    #             #                     None,
+    #             #                     scale_type,
+    #             #                     crop_type="crop",
+    #             #                     params_fn=self._resize_frame_param,
+    #             #                     params_context=context)
+    #             return True
+    #     return False
+
+    def _process_combined_blur_hint(self, blur_hint, blur_type, scene_input_path, scene_output_path,
                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                     main_crop_w, main_crop_h):
         if self.COMBINED_ZOOM_HINT in blur_hint:
@@ -532,12 +547,15 @@ class VideoRemixerProcessor():
                 crop_offset_x = center_x - (main_crop_w / 2.0)
                 crop_offset_y = center_y - (main_crop_h / 2.0)
 
-                self.static_blur_scene(scene_input_path, scene_output_path, resize_w, resize_h,
-                                       crop_offset_x, crop_offset_y, main_crop_w, main_crop_h)
+                self.static_blur_scene(scene_input_path, scene_output_path, blur_type, resize_w,
+                                       resize_h, crop_offset_x, crop_offset_y, main_crop_w,
+                                       main_crop_h)
                 return True
         return False
 
-    def _process_quadrant_blur_hint(self, blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
+    def _process_quadrant_blur_hint(self, blur_hint, blur_type, scene_input_path, scene_output_path,
+                                    main_resize_w, main_resize_h, main_offset_x, main_offset_y,
+                                    main_crop_w, main_crop_h):
         if self.QUADRANT_ZOOM_HINT in blur_hint:
             # interpret 'x/y' as x: quadrant, y: square-based number of quadrants
             # '5/9' and '13/25' would be the center squares of 3x3 and 5x5 grids
@@ -552,12 +570,15 @@ class VideoRemixerProcessor():
                 crop_offset_x = center_x - (main_crop_w / 2.0)
                 crop_offset_y = center_y - (main_crop_h / 2.0)
 
-                self.static_blur_scene(scene_input_path, scene_output_path, resize_w, resize_h,
-                                       crop_offset_x, crop_offset_y, main_crop_w, main_crop_h)
+                self.static_blur_scene(scene_input_path, scene_output_path, blur_type, resize_w,
+                                       resize_h, crop_offset_x, crop_offset_y, main_crop_w,
+                                       main_crop_h)
                 return True
         return False
 
-    def _process_percent_blur_hint(self, blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h):
+    def _process_percent_blur_hint(self, blur_hint, blur_type, scene_input_path, scene_output_path,
+                                   main_resize_w, main_resize_h, main_offset_x, main_offset_y,
+                                   main_crop_w, main_crop_h):
         if self.PERCENT_ZOOM_HINT in blur_hint:
             zoom_percent = self.get_percent_zoom(blur_hint)
             if zoom_percent:
@@ -569,8 +590,9 @@ class VideoRemixerProcessor():
                 crop_offset_x = center_x - (main_crop_w / 2.0)
                 crop_offset_y = center_y - (main_crop_h / 2.0)
 
-                self.static_blur_scene(scene_input_path, scene_output_path, resize_w, resize_h,
-                                       crop_offset_x, crop_offset_y, main_crop_w, main_crop_h)
+                self.static_blur_scene(scene_input_path, scene_output_path, blur_type, resize_w,
+                                       resize_h, crop_offset_x, crop_offset_y, main_crop_w,
+                                       main_crop_h)
                 return True
         return False
 
@@ -578,7 +600,7 @@ class VideoRemixerProcessor():
     #     # for now the blur itself will not be animating, just the location
     #     return context
 
-    def static_blur_scene(self, scene_input_path, scene_output_path, resize_w, resize_h,
+    def static_blur_scene(self, scene_input_path, scene_output_path, blur_type, resize_w, resize_h,
                           crop_offset_x, crop_offset_y, main_crop_w, main_crop_h):
         # for now, the above figure are calculated as a zoom-in factor, yielding a resize and crop
         # that identify a proper dimension zoomed in crop rectangle
@@ -593,6 +615,16 @@ class VideoRemixerProcessor():
         top = crop_offset_y
         bottom = top + blur_height
 
+        block_blur = False
+        if blur_type == self.BLUR_TYPE_BLACK:
+            block_blur = True
+            blur_value = 0
+        elif blur_type == self.BLUR_TYPE_WHITE:
+            block_blur = True
+            blur_value = 255
+        else:
+            block_blur = False
+
         files = sorted(get_files(scene_input_path))
         with Mtqdm().open_bar(total=len(files), desc="Blurring") as bar:
             for file in files:
@@ -603,10 +635,14 @@ class VideoRemixerProcessor():
                 _height, _width, channels = frame.shape
                 data = np.array(frame, np.uint8)
 
-                if channels == 3:
-                    data[top:bottom, left:right] = [0,0,0]
-                elif channels == 1:
-                    data[top:bottom, left:right] = 0
+                if block_blur:
+                    if channels == 3:
+                        data[top:bottom, left:right] = [blur_value, blur_value, blur_value]
+                    elif channels == 1:
+                        data[top:bottom, left:right] = blur_value
+                else:
+                    noise = np.random.randint(256, size=(blur_height, blur_width, channels))
+                    data[top:bottom, left:right] = noise
 
                 img = data.astype(np.uint8)
                 cv2.imwrite(output_path, img)
@@ -1321,6 +1357,27 @@ class VideoRemixerProcessor():
                 to_type, to_param1, to_param2, to_param3 = self.get_zoom_part(hint_to)
                 return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, frame_from, frame_to, schedule
         return None, None, None, None, None, None, None, None, None, None, None
+
+    def _get_blur_type(self, hint, type):
+        if hint[0] == type:
+            value = type
+            remainder = hint[1:]
+        else:
+            value = None
+            remainder = hint
+        return value, remainder
+
+    def get_blur_type(self, hint):
+        type, remainder = self._get_blur_type(hint, self.BLUR_TYPE_BLACK)
+        if type:
+            return type, remainder
+        type, remainder = self._get_blur_type(hint, self.BLUR_TYPE_WHITE)
+        if type:
+            return type, remainder
+        type, remainder = self._get_blur_type(hint, self.BLUR_TYPE_NOISE)
+        if type:
+            return type, remainder
+        return self.DEFAULT_BLUR_TYPE, hint
 
     def compute_zoom_type(self, type, param1, param2, param3, main_resize_w, main_resize_h,
             main_offset_x, main_offset_y, main_crop_w, main_crop_h):
