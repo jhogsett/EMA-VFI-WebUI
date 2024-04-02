@@ -408,16 +408,6 @@ class VideoRemixerProcessor():
         working_input_path = self.scenes_source_path(self.state.EFFECTS_STEP)
 
         working_paths = []
-        if self.state.effects_hint_chosen(self.state.EFFECTS_FADE_HINT):
-            operation = "Fade FX"
-            self.processing_messages_context["operation"] = operation
-            working_output_path = os.path.join(output_base_path, "fade_fx")
-            working_paths.append(working_output_path)
-            create_directory(working_output_path)
-
-            self.process_fade(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
-            working_input_path = working_output_path
-
         if self.state.effects_hint_chosen(self.state.EFFECTS_BLUR_HINT):
             operation = "Blur FX"
             self.processing_messages_context["operation"] = operation
@@ -426,6 +416,16 @@ class VideoRemixerProcessor():
             create_directory(working_output_path)
 
             self.process_blur(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
+            working_input_path = working_output_path
+
+        if self.state.effects_hint_chosen(self.state.EFFECTS_FADE_HINT):
+            operation = "Fade FX"
+            self.processing_messages_context["operation"] = operation
+            working_output_path = os.path.join(output_base_path, "fade_fx")
+            working_paths.append(working_output_path)
+            create_directory(working_output_path)
+
+            self.process_fade(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
             working_input_path = working_output_path
 
         if self.state.effects_hint_chosen(self.state.EFFECTS_VIEW_HINT):
@@ -640,8 +640,8 @@ class VideoRemixerProcessor():
         slice_width = right - left
         slice_height = bottom - top
 
-        pixelation_width = int(block_factor)
-        pixelation_height = int(pixelation_width * aspect)
+        pixelation_width = max(1, int(block_factor))
+        pixelation_height = max(1, int(pixelation_width * aspect))
 
         downsampled = cv2.resize(image_slice, (pixelation_width, pixelation_height),
                                 interpolation=cv2.INTER_LINEAR)
