@@ -34,6 +34,9 @@ def main():
     parser.add_argument("--crop_type", default="none", type=str,
         help="Cropping type 'crop' (default), 'none'")
 
+    parser.add_argument("--type", default="png", type=str,
+                        help="File type for frame files (Default 'png')")
+
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
@@ -50,7 +53,7 @@ def main():
                  args.crop_offset_x,
                  args.crop_offset_y,
                  args.crop_type,
-                 ).resize()
+                 ).resize(type=args.type)
 
 class ResizeFrames:
     """Encapsulate logic for Resize Frames feature"""
