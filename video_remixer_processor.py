@@ -70,7 +70,10 @@ class VideoRemixerProcessor():
     BLUR_TYPE_BLACK = "B"
     BLUR_TYPE_WHITE = "W"
     BLUR_TYPE_NOISE = "N"
+    BLUR_TYPE_PIXELATED = "X"
     DEFAULT_BLUR_TYPE = BLUR_TYPE_BLACK
+    BLUR_TYPES = [BLUR_TYPE_BLACK, BLUR_TYPE_WHITE, BLUR_TYPE_NOISE, BLUR_TYPE_PIXELATED]
+    DEFAULT_BLOCK_FACTOR = 32
     NO_RESIZE_HINT = "N"
 
     ### Exports --------------------
@@ -466,11 +469,12 @@ class VideoRemixerProcessor():
         blur_hint = self.state.get_hint(self.state.scene_labels.get(scene_name),
                                         self.state.EFFECTS_BLUR_HINT)
 
-        blur_type, remaining_hint = self.get_blur_type(blur_hint)
+        blur_type, blur_param, remaining_hint = self.get_blur_type(blur_hint)
+
         blur_hint = remaining_hint
 
         blur_handled = False
-        if blur_hint:
+        if blur_type:
             content_width = self.state.video_details["content_width"]
             content_height = self.state.video_details["content_height"]
             main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
@@ -481,17 +485,23 @@ class VideoRemixerProcessor():
                 #     self._process_animation_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
 
                 blur_handled = blur_handled or \
-                    self._process_combined_blur_hint(blur_hint, blur_type, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                    self._process_combined_blur_hint(blur_hint, blur_type, blur_param, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
                 blur_handled = blur_handled or \
-                    self._process_quadrant_blur_hint(blur_hint, blur_type, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                    self._process_quadrant_blur_hint(blur_hint, blur_type, blur_param, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
                 blur_handled = blur_handled or \
-                    self._process_percent_blur_hint(blur_hint, blur_type, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                    self._process_percent_blur_hint(blur_hint, blur_type, blur_param, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
             except Exception as error:
                 message = f"Skipping processing of hint {blur_hint} due to error: {error}"
                 blur_handled = False
+                if self.state.remixer_settings.get("raise_on_error"):
+                    raise
+
+        if message:
+            self.add_processing_message(message)
+            self.log(message)
 
         return blur_handled
 
@@ -533,7 +543,7 @@ class VideoRemixerProcessor():
     #             return True
     #     return False
 
-    def _process_combined_blur_hint(self, blur_hint, blur_type, scene_input_path, scene_output_path,
+    def _process_combined_blur_hint(self, blur_hint, blur_type, blur_param, scene_input_path, scene_output_path,
                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                     main_crop_w, main_crop_h):
         if self.COMBINED_ZOOM_HINT in blur_hint:
@@ -547,13 +557,13 @@ class VideoRemixerProcessor():
                 crop_offset_x = center_x - (main_crop_w / 2.0)
                 crop_offset_y = center_y - (main_crop_h / 2.0)
 
-                self.static_blur_scene(scene_input_path, scene_output_path, blur_type, resize_w,
+                self.static_blur_scene(scene_input_path, scene_output_path, blur_type, blur_param, resize_w,
                                        resize_h, crop_offset_x, crop_offset_y, main_crop_w,
                                        main_crop_h)
                 return True
         return False
 
-    def _process_quadrant_blur_hint(self, blur_hint, blur_type, scene_input_path, scene_output_path,
+    def _process_quadrant_blur_hint(self, blur_hint, blur_type, blur_param, scene_input_path, scene_output_path,
                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                     main_crop_w, main_crop_h):
         if self.QUADRANT_ZOOM_HINT in blur_hint:
@@ -570,13 +580,13 @@ class VideoRemixerProcessor():
                 crop_offset_x = center_x - (main_crop_w / 2.0)
                 crop_offset_y = center_y - (main_crop_h / 2.0)
 
-                self.static_blur_scene(scene_input_path, scene_output_path, blur_type, resize_w,
+                self.static_blur_scene(scene_input_path, scene_output_path, blur_type, blur_param, resize_w,
                                        resize_h, crop_offset_x, crop_offset_y, main_crop_w,
                                        main_crop_h)
                 return True
         return False
 
-    def _process_percent_blur_hint(self, blur_hint, blur_type, scene_input_path, scene_output_path,
+    def _process_percent_blur_hint(self, blur_hint, blur_type, blur_param, scene_input_path, scene_output_path,
                                    main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                    main_crop_w, main_crop_h):
         if self.PERCENT_ZOOM_HINT in blur_hint:
@@ -590,7 +600,7 @@ class VideoRemixerProcessor():
                 crop_offset_x = center_x - (main_crop_w / 2.0)
                 crop_offset_y = center_y - (main_crop_h / 2.0)
 
-                self.static_blur_scene(scene_input_path, scene_output_path, blur_type, resize_w,
+                self.static_blur_scene(scene_input_path, scene_output_path, blur_type, blur_param, resize_w,
                                        resize_h, crop_offset_x, crop_offset_y, main_crop_w,
                                        main_crop_h)
                 return True
@@ -600,7 +610,48 @@ class VideoRemixerProcessor():
     #     # for now the blur itself will not be animating, just the location
     #     return context
 
-    def static_blur_scene(self, scene_input_path, scene_output_path, blur_type, resize_w, resize_h,
+    BLUR_VALUE_BLACK = 16  # NTSC standard
+    BLUR_VALUE_WHITE = 235
+
+    def blur_frame_block(self, frame, top, bottom, left, right, value):
+        print(top, bottom, left, right, value)
+        _height, _width, channels = frame.shape
+        data = np.array(frame, np.uint8)
+        if channels == 3:
+            data[top:bottom, left:right] = [value, value, value]
+        elif channels == 1:
+            data[top:bottom, left:right] = value
+        return data.astype(np.uint8)
+
+    def blur_frame_noise(self, frame, top, bottom, left, right):
+        _height, _width, channels = frame.shape
+        data = np.array(frame, np.uint8)
+        noise = np.random.randint(256, size=(bottom-top, right-left, channels))
+        data[top:bottom, left:right] = noise
+        return data.astype(np.uint8)
+
+    # https://stackoverflow.com/questions/55508615/how-to-pixelate-image-using-opencv-in-python
+    def blur_frame_pixelated(self, frame, top, bottom, left, right, block_factor):
+        height, width = frame.shape[:2]
+        aspect = height / width
+
+        data = np.array(frame, np.uint8)
+        image_slice = data[top:bottom, left:right]
+        slice_width = right - left
+        slice_height = bottom - top
+
+        pixelation_width = int(block_factor)
+        pixelation_height = int(pixelation_width * aspect)
+
+        downsampled = cv2.resize(image_slice, (pixelation_width, pixelation_height),
+                                interpolation=cv2.INTER_LINEAR)
+        reupsampled = cv2.resize(downsampled, (slice_width, slice_height),
+                                interpolation=cv2.INTER_NEAREST)
+        data[top:bottom, left:right] = reupsampled[0:slice_height, 0:slice_width]
+
+        return data.astype(np.uint8)
+
+    def static_blur_scene(self, scene_input_path, scene_output_path, blur_type, blur_param, resize_w, resize_h,
                           crop_offset_x, crop_offset_y, main_crop_w, main_crop_h):
         # for now, the above figure are calculated as a zoom-in factor, yielding a resize and crop
         # that identify a proper dimension zoomed in crop rectangle
@@ -615,16 +666,6 @@ class VideoRemixerProcessor():
         top = crop_offset_y
         bottom = top + blur_height
 
-        block_blur = False
-        if blur_type == self.BLUR_TYPE_BLACK:
-            block_blur = True
-            blur_value = 0
-        elif blur_type == self.BLUR_TYPE_WHITE:
-            block_blur = True
-            blur_value = 255
-        else:
-            block_blur = False
-
         files = sorted(get_files(scene_input_path))
         with Mtqdm().open_bar(total=len(files), desc="Blurring") as bar:
             for file in files:
@@ -632,23 +673,25 @@ class VideoRemixerProcessor():
                 output_path = os.path.join(scene_output_path, filename + ext)
 
                 frame = cv2.imread(file)
-                _height, _width, channels = frame.shape
-                data = np.array(frame, np.uint8)
 
-                if block_blur:
-                    if channels == 3:
-                        data[top:bottom, left:right] = [blur_value, blur_value, blur_value]
-                    elif channels == 1:
-                        data[top:bottom, left:right] = blur_value
-                else:
-                    noise = np.random.randint(256, size=(blur_height, blur_width, channels))
-                    data[top:bottom, left:right] = noise
+                if blur_type == self.BLUR_TYPE_BLACK:
+                    value = max(0, min(225, int(blur_param))) if blur_param else self.BLUR_VALUE_BLACK
+                    frame = self.blur_frame_block(frame, top, bottom, left, right, value)
 
-                img = data.astype(np.uint8)
-                cv2.imwrite(output_path, img)
+                elif blur_type == self.BLUR_TYPE_WHITE:
+                    value = max(0, min(225, int(blur_param))) if blur_param else self.BLUR_VALUE_WHITE
+                    frame = self.blur_frame_block(frame, top, bottom, left, right, self.BLUR_VALUE_WHITE)
 
+                elif blur_type == self.BLUR_TYPE_PIXELATED:
+                    block_factor = int(blur_param) if blur_param else self.DEFAULT_BLOCK_FACTOR
+                    block_factor /= expansion
+                    frame = self.blur_frame_pixelated(frame, top, bottom, left, right, block_factor)
+
+                elif blur_type == self.BLUR_TYPE_NOISE:
+                    frame = self.blur_frame_noise(frame, top, bottom, left, right)
+
+                cv2.imwrite(output_path, frame.astype(np.uint8))
                 Mtqdm().update_bar(bar)
-
 
     def blur_scene(self,
                      scene_input_path,
@@ -1358,26 +1401,31 @@ class VideoRemixerProcessor():
                 return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, frame_from, frame_to, schedule
         return None, None, None, None, None, None, None, None, None, None, None
 
-    def _get_blur_type(self, hint, type):
-        value = None
+    def _get_blur_type(self, hint, check_type):
+        blur_type = None
+        param = None
         remainder = hint
-        if hint:
-            if hint[0] == type:
-                value = type
-                remainder = hint[1:]
-        return value, remainder
+
+        if check_type in hint:
+            split_pos = hint.index(check_type)
+            blur_type = hint[:split_pos+1]
+            remainder = hint[split_pos+1:]
+
+            # if the blur type was found in a position other than first,
+            # the preceding value is stripped and passed into to blur function
+            if len(blur_type) > 1:
+                param = blur_type[:-1]
+                blur_type = blur_type[-1]
+
+        return blur_type, param, remainder
 
     def get_blur_type(self, hint):
-        type, remainder = self._get_blur_type(hint, self.BLUR_TYPE_BLACK)
-        if type:
-            return type, remainder
-        type, remainder = self._get_blur_type(hint, self.BLUR_TYPE_WHITE)
-        if type:
-            return type, remainder
-        type, remainder = self._get_blur_type(hint, self.BLUR_TYPE_NOISE)
-        if type:
-            return type, remainder
-        return self.DEFAULT_BLUR_TYPE, hint
+        if hint:
+            for blur_type in self.BLUR_TYPES:
+                type, param, remainder = self._get_blur_type(hint, blur_type)
+                if type:
+                    return type, param, remainder
+        return self.DEFAULT_BLUR_TYPE, None, hint
 
     def compute_zoom_type(self, type, param1, param2, param3, main_resize_w, main_resize_h,
             main_offset_x, main_offset_y, main_crop_w, main_crop_h):
