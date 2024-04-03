@@ -469,35 +469,38 @@ class VideoRemixerProcessor():
         blur_hints = self.state.get_hint(self.state.scene_labels.get(scene_name),
                                          self.state.EFFECTS_BLUR_HINT, allow_multiple=True)
 
-        for blur_hint in blur_hints:
-            blur_type, blur_param, remaining_hint = self.get_blur_type(blur_hint)
-            blur_hint = remaining_hint
+        # for blur_hint in blur_hints:
+        # this isn't right, the set of blurs will need to be passed into the blur functions to handle
 
-            blur_handled = False
-            if blur_type:
-                content_width = self.state.video_details["content_width"]
-                content_height = self.state.video_details["content_height"]
-                main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
-                    self.setup_resize_hint(content_width, content_height, False)
+        blur_hint = blur_hints[0] if blur_hints else None
+        blur_type, blur_param, remaining_hint = self.get_blur_type(blur_hint)
+        blur_hint = remaining_hint
 
-                try:
-                    # blur_handled = blur_handled or \
-                    #     self._process_animation_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
+        blur_handled = False
+        if blur_hint:
+            content_width = self.state.video_details["content_width"]
+            content_height = self.state.video_details["content_height"]
+            main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
+                self.setup_resize_hint(content_width, content_height, False)
 
-                    blur_handled = blur_handled or \
-                        self._process_combined_blur_hint(blur_hint, blur_type, blur_param, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+            try:
+                # blur_handled = blur_handled or \
+                #     self._process_animation_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
 
-                    blur_handled = blur_handled or \
-                        self._process_quadrant_blur_hint(blur_hint, blur_type, blur_param, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                blur_handled = blur_handled or \
+                    self._process_combined_blur_hint(blur_hint, blur_type, blur_param, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
-                    blur_handled = blur_handled or \
-                        self._process_percent_blur_hint(blur_hint, blur_type, blur_param, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                blur_handled = blur_handled or \
+                    self._process_quadrant_blur_hint(blur_hint, blur_type, blur_param, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
-                except Exception as error:
-                    message = f"Skipping processing of hint {blur_hint} due to error: {error}"
-                    blur_handled = False
-                    if self.state.remixer_settings.get("raise_on_error"):
-                        raise
+                blur_handled = blur_handled or \
+                    self._process_percent_blur_hint(blur_hint, blur_type, blur_param, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+            except Exception as error:
+                message = f"Skipping processing of hint {blur_hint} due to error: {error}"
+                blur_handled = False
+                if self.state.remixer_settings.get("raise_on_error"):
+                    raise
 
         if message:
             self.add_processing_message(message)
