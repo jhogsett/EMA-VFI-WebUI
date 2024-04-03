@@ -34,6 +34,7 @@ class VideoRemixerProcessor():
         self.saved_view = self.DEFAULT_VIEW
         self.processing_messages = []
         self.processing_messages_context = {}
+        self.saved_lens_hint = self.DEFAULT_LENS_HINT
 
     def log(self, message):
         if self.log_fn:
@@ -80,6 +81,7 @@ class VideoRemixerProcessor():
     LENS_TYPES = [LENS_TYPE_UNDISTORT, LENS_TYPE_DISTORT]
     LENS_MIN_UNDISTORT = -10.0
     LENS_MAX_UNDISTORT = 10.0
+    DEFAULT_LENS_HINT = "0.0U"
     NO_RESIZE_HINT = "N"
 
     ### Exports --------------------
@@ -463,6 +465,8 @@ class VideoRemixerProcessor():
 
     def process_lens_effects(self, scenes_base_path, output_base_path, kept_scenes, desc,
                              adjust_for_inflation):
+        self.saved_lens_hint = self.DEFAULT_LENS_HINT
+
         with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
             for scene_name in kept_scenes:
                 self.processing_messages_context["scene_name"] = scene_name
@@ -484,6 +488,12 @@ class VideoRemixerProcessor():
         message = None
         scene_label = self.state.scene_labels.get(scene_name)
         lens_hint = self.state.get_hint(scene_label, self.state.EFFECTS_LENS_HINT)
+
+        # if there's no lens correction hint, and the saved correction differs
+        # from the default, presume the saved correction is what's wanted for
+        # an unhinted scene
+        if not lens_hint and self.saved_lens_hint != self.DEFAULT_LENS_HINT:
+            lens_hint = self.saved_lens_hint
 
         handled = False
         if lens_hint:
@@ -509,6 +519,8 @@ class VideoRemixerProcessor():
 
     def _process_animated_lens_hint(self, lens_hint, scene_input_path, scene_output_path, scene_name, adjust_for_inflation):
         if self.ANIMATED_ZOOM_HINT in lens_hint:
+            lens_hint = self.get_implied_lens_hint(lens_hint)
+            self.log(f"get_implied_lens_hint() filtered lens hint: {lens_hint}")
             type_from, param_from, type_to, param_to, frame_from, frame_to, schedule = self.get_animated_lens(lens_hint)
 
             if type_from and type_to and param_from and param_to:
@@ -527,13 +539,15 @@ class VideoRemixerProcessor():
         return False
 
     def _process_static_lens_hint(self, lens_hint, scene_input_path, scene_output_path):
-        type, param, remainder = self.get_lens_hint(lens_hint)
+        type, param = self.get_lens_hint(lens_hint)
         param = float(param)
         if type == self.LENS_TYPE_UNDISTORT:
             self.static_undistort_scene(scene_input_path, scene_output_path, param * -1.)
+            self.saved_lens_hint = lens_hint
             return True
         elif type == self.LENS_TYPE_DISTORT:
             self.static_undistort_scene(scene_input_path, scene_output_path, param)
+            self.saved_lens_hint = lens_hint
             return True
         return False
 
@@ -564,6 +578,9 @@ class VideoRemixerProcessor():
 
     # https://stackoverflow.com/questions/26602981/correct-barrel-distortion-in-opencv-manually-without-chessboard-image
     def undistort_frame(self, frame, param):
+        if param == 0.0:
+            return frame
+
         height, width = frame.shape[:2]
 
         distCoeff = np.zeros((4, 1), np.float64)
@@ -575,7 +592,12 @@ class VideoRemixerProcessor():
         # assume unit matrix for camera
         cam = np.eye(3, dtype=np.float32)
 
+        # this will quickly lead to a nice circular "pipe" effect at the image edge
+        # - if this needs to lead to it slower, change to use max() instead
+        # - if this instead should perform a barrel (oval) distortion,
+        #   set these to the width and height or some scaled variation
         focal_length = float(min(width, height))
+
         cam[0, 2] = width / 2.   # define center x
         cam[1, 2] = height / 2.  # define center y
         cam[0, 0] = focal_length # define focal length x
@@ -596,6 +618,54 @@ class VideoRemixerProcessor():
 
                 cv2.imwrite(output_path, frame.astype(np.uint8))
                 Mtqdm().update_bar(bar)
+
+    def get_implied_lens_hint(self, hint):
+        if self.ANIMATED_ZOOM_HINT in hint:
+            if len(hint) >= self.ANIMATED_ZOOM_MIN_LEN:
+                split_pos = hint.index(self.ANIMATED_ZOOM_HINT)
+                hint_from = hint[:split_pos]
+                hint_to = hint[split_pos+1:]
+
+                # if the hint_to part includes time or schedule info, remove it to get only the view
+                lens_to = hint_to
+                remainder = ""
+                if self.ANIMATION_TIME_HINT in lens_to:
+                    split_pos = lens_to.index(self.ANIMATION_TIME_HINT)
+                    remainder = lens_to[split_pos:]
+                    lens_to = lens_to[:split_pos]
+                    # may include schedule part, which can come after time part
+                elif self.ANIMATION_SCHEDULE_HINT in lens_to:
+                    split_pos = lens_to.index(self.ANIMATION_SCHEDULE_HINT)
+                    remainder = lens_to[split_pos:]
+                    lens_to = lens_to[:split_pos]
+
+                if not hint_from or not lens_to:
+                    if not hint_from and not lens_to:
+                        # single dash (both missing) means return to default lens hint
+                        hint_from = self.saved_lens_hint
+                        hint_to = self.DEFAULT_LENS_HINT
+                        lens_to = self.DEFAULT_LENS_HINT
+                        self.log(f"get_implied_lens_hint(): using saved hint for from: {hint_from} and default hint for to: {hint_to}")
+
+                    elif hint_from and not lens_to:
+                        # missing 'to' means go to saved lens hint
+                        hint_to = self.saved_lens_hint
+                        self.log(f"get_implied_lens_hint(): using passed hint for from: {hint_from} and saved hint for to: {hint_to}")
+
+                    elif not hint_from and lens_to:
+                        # missing 'from' means go from saved lens hint
+                        hint_from = self.saved_lens_hint
+                        self.log(f"get_implied_lens_hint(): using saved hint for from: {hint_from} and passed hint for to: {hint_to}")
+
+                    else:
+                        self.log(f"get_implied_lens_hint(): using passed hint for from: {hint_from} and passed hint for to: {hint_to}")
+
+                if lens_to:
+                    self.saved_lens_hint = lens_to
+
+                return f"{hint_from}-{lens_to}{remainder}"
+        return hint
+
 
     # TODO DRY
     def get_animated_lens(self, hint):
@@ -1427,7 +1497,8 @@ class VideoRemixerProcessor():
 
     def process_resize_hint(self, hint_type, scene_input_path, scene_output_path, scene_name, adjust_for_inflation):
         message = None
-        resize_hint = self.state.get_hint(self.state.scene_labels.get(scene_name), hint_type)
+        scene_label = self.state.scene_labels.get(scene_name)
+        resize_hint = self.state.get_hint(scene_label, hint_type)
 
         # if there's no resize hint, and the saved view differs from the default,
         # presume the saved view is what's wanted for an unhinted scene
@@ -1487,7 +1558,7 @@ class VideoRemixerProcessor():
         if self.ANIMATED_ZOOM_HINT in resize_hint:
             # interprent 'any-any' as animating from one to the other zoom factor
             resize_hint = self.get_implied_zoom(resize_hint)
-            self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
+            self.log(f"get_implied_zoom() filtered resize hint: {resize_hint}")
             from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
                 to_param2, to_param3, frame_from, frame_to, schedule \
                     = self.get_animated_zoom(resize_hint)
