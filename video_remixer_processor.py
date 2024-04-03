@@ -58,6 +58,7 @@ class VideoRemixerProcessor():
     ANIMATED_ZOOM_MIN_LEN = 1 # -
     ANIMATED_FADE_MIN_LEN = 1 # I
     ANIMATED_BLUR_MIN_LEN = 1 # K
+    ANIMATED_LENS_MIN_LEN = 2 # 1U
     MAX_SELF_FIT_ZOOM = 1000
     FIXED_UPSCALE_FACTOR = 4.0
     TEMP_UPSCALE_PATH = "upscaled_frames"
@@ -77,6 +78,8 @@ class VideoRemixerProcessor():
     LENS_TYPE_UNDISTORT = "U"
     LENS_TYPE_DISTORT = "D"
     LENS_TYPES = [LENS_TYPE_UNDISTORT, LENS_TYPE_DISTORT]
+    LENS_MIN_UNDISTORT = -10.0
+    LENS_MAX_UNDISTORT = 10.0
     NO_RESIZE_HINT = "N"
 
     ### Exports --------------------
@@ -431,16 +434,6 @@ class VideoRemixerProcessor():
             self.process_blur(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
             working_input_path = working_output_path
 
-        if self.state.effects_hint_chosen(self.state.EFFECTS_FADE_HINT):
-            operation = "Fade FX"
-            self.processing_messages_context["operation"] = operation
-            working_output_path = os.path.join(output_base_path, "fade_fx")
-            working_paths.append(working_output_path)
-            create_directory(working_output_path)
-
-            self.process_fade(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
-            working_input_path = working_output_path
-
         if self.state.effects_hint_chosen(self.state.EFFECTS_VIEW_HINT):
             operation = "View FX"
             self.processing_messages_context["operation"] = operation
@@ -451,6 +444,16 @@ class VideoRemixerProcessor():
             self.process_resizing(working_input_path, working_output_path,
                                   self.state.EFFECTS_VIEW_HINT, kept_scenes, operation,
                                   adjust_for_inflation=True)
+            working_input_path = working_output_path
+
+        if self.state.effects_hint_chosen(self.state.EFFECTS_FADE_HINT):
+            operation = "Fade FX"
+            self.processing_messages_context["operation"] = operation
+            working_output_path = os.path.join(output_base_path, "fade_fx")
+            working_paths.append(working_output_path)
+            create_directory(working_output_path)
+
+            self.process_fade(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
             working_input_path = working_output_path
 
         # copy from last working input path to effects path
@@ -480,18 +483,17 @@ class VideoRemixerProcessor():
                           adjust_for_inflation):
         message = None
         scene_label = self.state.scene_labels.get(scene_name)
-
         lens_hint = self.state.get_hint(scene_label, self.state.EFFECTS_LENS_HINT)
-        type, param, _remainder = self.get_lens_type(lens_hint)
 
         handled = False
-        if type and param:
+        if lens_hint:
             try:
-                # blur_handled = blur_handled or \
-                #     self._process_animation_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
+                handled = handled or \
+                    self._process_animated_lens_hint(lens_hint, scene_input_path, scene_output_path,
+                                                     scene_name, adjust_for_inflation)
 
                 handled = handled or \
-                    self._process_lens_hint(type, param, scene_input_path, scene_output_path)
+                    self._process_static_lens_hint(lens_hint, scene_input_path, scene_output_path)
 
             except Exception as error:
                 message = f"Skipping processing of hint {lens_hint} due to error: {error}"
@@ -505,7 +507,27 @@ class VideoRemixerProcessor():
 
         return handled
 
-    def _process_lens_hint(self, type, param, scene_input_path, scene_output_path):
+    def _process_animated_lens_hint(self, lens_hint, scene_input_path, scene_output_path, scene_name, adjust_for_inflation):
+        if self.ANIMATED_ZOOM_HINT in lens_hint:
+            type_from, param_from, type_to, param_to, frame_from, frame_to, schedule = self.get_animated_lens(lens_hint)
+
+            if type_from and type_to and param_from and param_to:
+                first_frame, last_frame, _ = details_from_group_name(scene_name)
+                num_frames = (last_frame - first_frame) + 1
+                param_from = float(param_from)
+                param_to = float(param_to)
+                context = self.compute_animated_lens(scene_name, num_frames, type_from, param_from,
+                                                    type_to, param_to, frame_from, frame_to, schedule,
+                                                    adjust_for_inflation)
+
+                self.animate_undistort_scene(scene_input_path,
+                                scene_output_path,
+                                context=context)
+            return True
+        return False
+
+    def _process_static_lens_hint(self, lens_hint, scene_input_path, scene_output_path):
+        type, param, remainder = self.get_lens_hint(lens_hint)
         param = float(param)
         if type == self.LENS_TYPE_UNDISTORT:
             self.static_undistort_scene(scene_input_path, scene_output_path, param * -1.)
@@ -513,41 +535,281 @@ class VideoRemixerProcessor():
         elif type == self.LENS_TYPE_DISTORT:
             self.static_undistort_scene(scene_input_path, scene_output_path, param)
             return True
-
         return False
 
+    def _get_lens_hint(self, hint, check_type):
+        lens_type = None
+        param = None
+        remainder = hint
+
+        if check_type in hint:
+            split_pos = hint.index(check_type)
+            lens_type = hint[:split_pos+1]
+
+            # if the lens type was found in a position other than first,
+            # the preceding value is stripped and passed into lens function
+            if len(lens_type) > 1:
+                param = lens_type[:-1]
+                lens_type = lens_type[-1]
+
+        return lens_type, param
+
+    def get_lens_hint(self, hint):
+        if hint:
+            for lens_type in self.LENS_TYPES:
+                type, param = self._get_lens_hint(hint, lens_type)
+                if type:
+                    return type, param
+        return None, None
+
     # https://stackoverflow.com/questions/26602981/correct-barrel-distortion-in-opencv-manually-without-chessboard-image
+    def undistort_frame(self, frame, param):
+        height, width = frame.shape[:2]
+
+        distCoeff = np.zeros((4, 1), np.float64)
+        distCoeff[0,0] = param; # negative to remove barrel distortion
+        distCoeff[1,0] = 0.
+        distCoeff[2,0] = 0.
+        distCoeff[3,0] = 0.
+
+        # assume unit matrix for camera
+        cam = np.eye(3, dtype=np.float32)
+
+        focal_length = float(min(width, height))
+        cam[0, 2] = width / 2.   # define center x
+        cam[1, 2] = height / 2.  # define center y
+        cam[0, 0] = focal_length # define focal length x
+        cam[1, 1] = focal_length # define focal length y
+
+        # here the undistortion will be computed
+        return cv2.undistort(frame, cam, distCoeff)
+
     def static_undistort_scene(self, scene_input_path, scene_output_path, param):
-        print("!" * 100, param)
         files = sorted(get_files(scene_input_path))
-        with Mtqdm().open_bar(total=len(files), desc="Distorting") as bar:
+        with Mtqdm().open_bar(total=len(files), desc="Distort FX") as bar:
             for file in files:
                 _, filename, ext = split_filepath(file)
                 output_path = os.path.join(scene_output_path, filename + ext)
 
                 frame = cv2.imread(file)
-                height, width = frame.shape[:2]
-
-                distCoeff = np.zeros((4, 1), np.float64)
-                distCoeff[0,0] = param; # negative to remove barrel distortion
-                distCoeff[1,0] = 0.
-                distCoeff[2,0] = 0.
-                distCoeff[3,0] = 0.
-
-                # assume unit matrix for camera
-                cam = np.eye(3, dtype=np.float32)
-
-                focal_length = float(min(width, height))
-                cam[0, 2] = width / 2.   # define center x
-                cam[1, 2] = height / 2.  # define center y
-                cam[0, 0] = focal_length # define focal length x
-                cam[1, 1] = focal_length # define focal length y
-
-                # here the undistortion will be computed
-                frame = cv2.undistort(frame, cam, distCoeff)
+                frame = self.undistort_frame(frame, param)
 
                 cv2.imwrite(output_path, frame.astype(np.uint8))
                 Mtqdm().update_bar(bar)
+
+    # TODO DRY
+    def get_animated_lens(self, hint):
+        if self.ANIMATED_ZOOM_HINT in hint:
+            if len(hint) >= self.ANIMATED_ZOOM_MIN_LEN:
+                schedule = self.DEFAULT_ANIMATION_SCHEDULE
+                time = self.DEFAULT_ANIMATION_TIME
+                if self.ANIMATION_SCHEDULE_HINT in hint:
+                    split_pos = hint.index(self.ANIMATION_SCHEDULE_HINT)
+                    remainder = hint[:split_pos]
+                    schedule = hint[split_pos+1:]
+                    hint = remainder
+                if self.ANIMATION_TIME_HINT in hint:
+                    split_pos = hint.index(self.ANIMATION_TIME_HINT)
+                    remainder = hint[:split_pos]
+                    time = hint[split_pos+1:]
+                    hint = remainder
+                    if self.ANIMATION_TIME_SEP in time:
+                        # a specific frame range is specified
+                        split_pos = time.index(self.ANIMATION_TIME_SEP)
+                        # one or both values may be empty strings
+                        frame_from = time[:split_pos]
+                        frame_to = time[split_pos+1:]
+                    else:
+                        # a frame count is specified with an implied range starting at zero
+                        frame_from = 0
+                        frame_to = int(time)
+                else:
+                    frame_from = ""
+                    frame_to = ""
+                split_pos = hint.index(self.ANIMATED_ZOOM_HINT)
+                hint_from = hint[:split_pos]
+                hint_to = hint[split_pos+1:]
+
+                from_type, from_param = self.get_lens_hint(hint_from)
+                to_type, to_param = self.get_lens_hint(hint_to)
+                return from_type, from_param, to_type, to_param, frame_from, frame_to, schedule
+        return None, None, None, None, None, None, None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+        if len(hint) >= self.ANIMATED_LENS_MIN_LEN:
+            schedule = self.DEFAULT_ANIMATION_SCHEDULE
+            time = self.DEFAULT_ANIMATION_TIME
+            if self.ANIMATION_SCHEDULE_HINT in hint:
+                split_pos = hint.index(self.ANIMATION_SCHEDULE_HINT)
+                remainder = hint[:split_pos]
+                schedule = hint[split_pos+1:]
+                hint = remainder
+            if self.ANIMATION_TIME_HINT in hint:
+                split_pos = hint.index(self.ANIMATION_TIME_HINT)
+                remainder = hint[:split_pos]
+                time = hint[split_pos+1:]
+                hint = remainder
+                if self.ANIMATION_TIME_SEP in time:
+                    # a specific frame range is specified
+                    split_pos = time.index(self.ANIMATION_TIME_SEP)
+                    # one or both values may be empty strings
+                    frame_from = time[:split_pos]
+                    frame_to = time[split_pos+1:]
+                else:
+                    # a frame count is specified with an implied range starting at zero
+                    frame_from = 0
+                    frame_to = int(time)
+            else:
+                frame_from = ""
+                frame_to = ""
+            fade_type = hint
+            return fade_type, frame_from, frame_to, schedule
+        return None, None, None, None
+
+    # TODO DRY
+    def compute_animated_lens(self, scene_name, num_frames, type_from, param_from, type_to, param_to,
+                              frame_from, frame_to, schedule, adjust_for_inflation):
+        # animation time override
+        if frame_from == "" and frame_to == "":
+            # unspecified range, ignore
+            frame_from = 0
+            frame_to = num_frames
+        elif frame_to == "":
+            # frame_to is the last frame
+            frame_to = num_frames
+        elif frame_from == "":
+            # frame_from is offset from the end
+            frame_from = num_frames - int(frame_to)
+            frame_to = num_frames
+        frame_from = int(frame_from)
+        frame_to = int(frame_to)
+
+        if frame_from >= 0 and frame_to <= num_frames and frame_from < frame_to:
+            num_frames = frame_to - frame_from
+        else:
+            # safety catch
+            frame_from = 0
+            frame_to = num_frames
+
+        # account for inflation if being used for view handling
+        if adjust_for_inflation:
+            _video_clip_fps, forced_inflation_rate = self.compute_scene_fps(scene_name)
+            num_frames = self.compute_inflated_frame_count(num_frames, forced_inflation_rate)
+            frame_from = self.compute_inflated_frame_count(frame_from, forced_inflation_rate)
+            frame_to = self.compute_inflated_frame_count(frame_to, forced_inflation_rate)
+
+        if type_from == self.LENS_TYPE_UNDISTORT:
+            param_from *= -1.
+        if type_to == self.LENS_TYPE_UNDISTORT:
+            param_to *= -1.
+        lens_from = param_from
+        lens_to = param_to
+        diff_lens = lens_to - lens_from
+
+        # TODO why is this needed? without it, the last transition doesn't happen
+        # - maybe it needs to be the number of transitions between frames not number of frames
+        # Ensure the final transition occurs
+        num_frames -= 1
+        step_lens = diff_lens / num_frames
+
+        context = {}
+        context["lens_from"] = lens_from
+        context["step_lens"] = step_lens
+        context["num_frames"] = num_frames
+        context["schedule"] = schedule
+        context["start_frame"] = frame_from
+        context["end_frame"] = frame_to
+        return context
+
+    def animate_undistort_scene(self,
+                     scene_input_path,
+                     scene_output_path,
+                     context : any=None):
+
+        lens_from = context["lens_from"]
+        step_lens = context["step_lens"]
+        num_frames = context["num_frames"]
+        schedule = context["schedule"]
+        start_frame = context["start_frame"]
+        end_frame = context["end_frame"]
+
+        files = sorted(get_files(scene_input_path))
+        with Mtqdm().open_bar(total=len(files), desc="Distort FX") as bar:
+            for index, file in enumerate(files):
+                _, filename, ext = split_filepath(file)
+                output_path = os.path.join(scene_output_path, filename + ext)
+
+                if index < start_frame:
+                    index = 0
+                elif index > end_frame:
+                    index = end_frame - start_frame
+                else:
+                    index -= start_frame
+
+                    accelerate = True
+                    index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
+                                                                        accelerate)
+                    if float_carry >= 0.5:
+                        index += 1
+
+                if index > num_frames:
+                    index = num_frames
+
+                param = lens_from + (step_lens * index)
+                if param < self.LENS_MIN_UNDISTORT:
+                    param = self.LENS_MIN_UNDISTORT
+                elif param > self.LENS_MAX_UNDISTORT:
+                    param = self.LENS_MAX_UNDISTORT
+
+                frame = cv2.imread(file)
+
+                frame = self.undistort_frame(frame, param)
+                cv2.imwrite(output_path, frame)
+
+                Mtqdm().update_bar(bar)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -614,8 +876,6 @@ class VideoRemixerProcessor():
             self.log(message)
 
         return blur_handled
-
-
 
     # def _process_animation_blur_hint(self, blur_hint, blur_type, scene_input_path, scene_output_path,
     #                                  main_resize_w, main_resize_h, main_offset_x, main_offset_y,
@@ -1510,32 +1770,6 @@ class VideoRemixerProcessor():
                 to_type, to_param1, to_param2, to_param3 = self.get_zoom_part(hint_to)
                 return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, frame_from, frame_to, schedule
         return None, None, None, None, None, None, None, None, None, None, None
-
-    def _get_lens_type(self, hint, check_type):
-        lens_type = None
-        param = None
-        remainder = hint
-
-        if check_type in hint:
-            split_pos = hint.index(check_type)
-            lens_type = hint[:split_pos+1]
-            remainder = hint[split_pos+1:]
-
-            # if the lens type was found in a position other than first,
-            # the preceding value is stripped and passed into lens function
-            if len(lens_type) > 1:
-                param = lens_type[:-1]
-                lens_type = lens_type[-1]
-
-        return lens_type, param, remainder
-
-    def get_lens_type(self, hint):
-        if hint:
-            for lens_type in self.LENS_TYPES:
-                type, param, remainder = self._get_lens_type(hint, lens_type)
-                if type:
-                    return type, param, remainder
-        return None, None, hint
 
     def _get_blur_type(self, hint, check_type):
         blur_type = None
