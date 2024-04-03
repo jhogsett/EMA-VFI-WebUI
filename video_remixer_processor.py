@@ -74,6 +74,9 @@ class VideoRemixerProcessor():
     DEFAULT_BLUR_TYPE = BLUR_TYPE_BLACK
     BLUR_TYPES = [BLUR_TYPE_BLACK, BLUR_TYPE_WHITE, BLUR_TYPE_NOISE, BLUR_TYPE_PIXELATED]
     DEFAULT_BLOCK_FACTOR = 32
+    LENS_TYPE_UNDISTORT = "U"
+    LENS_TYPE_DISTORT = "D"
+    LENS_TYPES = [LENS_TYPE_UNDISTORT, LENS_TYPE_DISTORT]
     NO_RESIZE_HINT = "N"
 
     ### Exports --------------------
@@ -408,6 +411,16 @@ class VideoRemixerProcessor():
         working_input_path = self.scenes_source_path(self.state.EFFECTS_STEP)
 
         working_paths = []
+        if self.state.effects_hint_chosen(self.state.EFFECTS_LENS_HINT):
+            operation = "Lens FX"
+            self.processing_messages_context["operation"] = operation
+            working_output_path = os.path.join(output_base_path, "lens_fx")
+            working_paths.append(working_output_path)
+            create_directory(working_output_path)
+
+            self.process_lens_effects(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
+            working_input_path = working_output_path
+
         if self.state.effects_hint_chosen(self.state.EFFECTS_BLUR_HINT):
             operation = "Blur FX"
             self.processing_messages_context["operation"] = operation
@@ -445,6 +458,100 @@ class VideoRemixerProcessor():
 
         remove_directories(working_paths)
 
+    def process_lens_effects(self, scenes_base_path, output_base_path, kept_scenes, desc,
+                             adjust_for_inflation):
+        with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
+            for scene_name in kept_scenes:
+                self.processing_messages_context["scene_name"] = scene_name
+
+                scene_input_path = os.path.join(scenes_base_path, scene_name)
+                scene_output_path = os.path.join(output_base_path, scene_name)
+                create_directory(scene_output_path)
+
+                handled = self.process_lens_hint(scene_input_path, scene_output_path,
+                                                 scene_name, adjust_for_inflation)
+
+                if not handled:
+                    copy_files(scene_input_path, scene_output_path)
+
+                Mtqdm().update_bar(bar)
+
+    def process_lens_hint(self, scene_input_path, scene_output_path, scene_name,
+                          adjust_for_inflation):
+        message = None
+        scene_label = self.state.scene_labels.get(scene_name)
+
+        lens_hint = self.state.get_hint(scene_label, self.state.EFFECTS_LENS_HINT)
+        type, param, _remainder = self.get_lens_type(lens_hint)
+
+        handled = False
+        if type and param:
+            try:
+                # blur_handled = blur_handled or \
+                #     self._process_animation_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
+
+                handled = handled or \
+                    self._process_lens_hint(type, param, scene_input_path, scene_output_path)
+
+            except Exception as error:
+                message = f"Skipping processing of hint {lens_hint} due to error: {error}"
+                handled = False
+                if self.state.remixer_settings.get("raise_on_error"):
+                    raise
+
+        if message:
+            self.add_processing_message(message)
+            self.log(message)
+
+        return handled
+
+    def _process_lens_hint(self, type, param, scene_input_path, scene_output_path):
+        param = float(param)
+        if type == self.LENS_TYPE_UNDISTORT:
+            self.static_undistort_scene(scene_input_path, scene_output_path, param * -1.)
+            return True
+        elif type == self.LENS_TYPE_DISTORT:
+            self.static_undistort_scene(scene_input_path, scene_output_path, param)
+            return True
+
+        return False
+
+    # https://stackoverflow.com/questions/26602981/correct-barrel-distortion-in-opencv-manually-without-chessboard-image
+    def static_undistort_scene(self, scene_input_path, scene_output_path, param):
+        print("!" * 100, param)
+        files = sorted(get_files(scene_input_path))
+        with Mtqdm().open_bar(total=len(files), desc="Distorting") as bar:
+            for file in files:
+                _, filename, ext = split_filepath(file)
+                output_path = os.path.join(scene_output_path, filename + ext)
+
+                frame = cv2.imread(file)
+                height, width = frame.shape[:2]
+
+                distCoeff = np.zeros((4, 1), np.float64)
+                distCoeff[0,0] = param; # negative to remove barrel distortion
+                distCoeff[1,0] = 0.
+                distCoeff[2,0] = 0.
+                distCoeff[3,0] = 0.
+
+                # assume unit matrix for camera
+                cam = np.eye(3, dtype=np.float32)
+
+                focal_length = float(min(width, height))
+                cam[0, 2] = width / 2.   # define center x
+                cam[1, 2] = height / 2.  # define center y
+                cam[0, 0] = focal_length # define focal length x
+                cam[1, 1] = focal_length # define focal length y
+
+                # here the undistortion will be computed
+                frame = cv2.undistort(frame, cam, distCoeff)
+
+                cv2.imwrite(output_path, frame.astype(np.uint8))
+                Mtqdm().update_bar(bar)
+
+
+
+
     def process_blur(self, scenes_base_path, output_base_path, kept_scenes, desc,
                      adjust_for_inflation):
         with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
@@ -472,8 +579,8 @@ class VideoRemixerProcessor():
         # for blur_hint in blur_hints:
         # this isn't right, the set of blurs will need to be passed into the blur functions to handle
 
-        blur_hint = blur_hints[0] if blur_hints else None
-        blur_type, blur_param, remaining_hint = self.get_blur_type(blur_hint)
+        full_blur_hint = blur_hints[0] if blur_hints else None
+        blur_type, blur_param, remaining_hint = self.get_blur_type(full_blur_hint)
         blur_hint = remaining_hint
 
         blur_handled = False
@@ -497,7 +604,7 @@ class VideoRemixerProcessor():
                     self._process_percent_blur_hint(blur_hint, blur_type, blur_param, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
             except Exception as error:
-                message = f"Skipping processing of hint {blur_hint} due to error: {error}"
+                message = f"Skipping processing of hint {full_blur_hint} due to error: {error}"
                 blur_handled = False
                 if self.state.remixer_settings.get("raise_on_error"):
                     raise
@@ -1404,6 +1511,32 @@ class VideoRemixerProcessor():
                 return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, frame_from, frame_to, schedule
         return None, None, None, None, None, None, None, None, None, None, None
 
+    def _get_lens_type(self, hint, check_type):
+        lens_type = None
+        param = None
+        remainder = hint
+
+        if check_type in hint:
+            split_pos = hint.index(check_type)
+            lens_type = hint[:split_pos+1]
+            remainder = hint[split_pos+1:]
+
+            # if the lens type was found in a position other than first,
+            # the preceding value is stripped and passed into lens function
+            if len(lens_type) > 1:
+                param = lens_type[:-1]
+                lens_type = lens_type[-1]
+
+        return lens_type, param, remainder
+
+    def get_lens_type(self, hint):
+        if hint:
+            for lens_type in self.LENS_TYPES:
+                type, param, remainder = self._get_lens_type(hint, lens_type)
+                if type:
+                    return type, param, remainder
+        return None, None, hint
+
     def _get_blur_type(self, hint, check_type):
         blur_type = None
         param = None
@@ -1428,7 +1561,7 @@ class VideoRemixerProcessor():
                 type, param, remainder = self._get_blur_type(hint, blur_type)
                 if type:
                     return type, param, remainder
-        return self.DEFAULT_BLUR_TYPE, None, hint
+        return None, None, hint
 
     def compute_zoom_type(self, type, param1, param2, param3, main_resize_w, main_resize_h,
             main_offset_x, main_offset_y, main_crop_w, main_crop_h):
