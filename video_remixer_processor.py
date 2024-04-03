@@ -79,8 +79,8 @@ class VideoRemixerProcessor():
     LENS_TYPE_UNDISTORT = "U"
     LENS_TYPE_DISTORT = "D"
     LENS_TYPES = [LENS_TYPE_UNDISTORT, LENS_TYPE_DISTORT]
-    LENS_MIN_UNDISTORT = -10.0
-    LENS_MAX_UNDISTORT = 10.0
+    LENS_MIN_UNDISTORT = -100.0
+    LENS_MAX_UNDISTORT = 100.0
     DEFAULT_LENS_HINT = "0.0U"
     NO_RESIZE_HINT = "N"
 
@@ -416,6 +416,8 @@ class VideoRemixerProcessor():
         working_input_path = self.scenes_source_path(self.state.EFFECTS_STEP)
 
         working_paths = []
+
+        # corrective effects are applied first, so downstream effects benefit from the correction
         if self.state.effects_hint_chosen(self.state.EFFECTS_LENS_HINT):
             operation = "Lens FX"
             self.processing_messages_context["operation"] = operation
@@ -426,6 +428,9 @@ class VideoRemixerProcessor():
             self.process_lens_effects(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
             working_input_path = working_output_path
 
+        # groovy effects are processed after correction and before view and fade
+
+        # this should be renamed Block FX
         if self.state.effects_hint_chosen(self.state.EFFECTS_BLUR_HINT):
             operation = "Blur FX"
             self.processing_messages_context["operation"] = operation
@@ -436,6 +441,7 @@ class VideoRemixerProcessor():
             self.process_blur(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
             working_input_path = working_output_path
 
+        # view is processed after all other effects (except fade) to take into account all effects
         if self.state.effects_hint_chosen(self.state.EFFECTS_VIEW_HINT):
             operation = "View FX"
             self.processing_messages_context["operation"] = operation
@@ -448,6 +454,7 @@ class VideoRemixerProcessor():
                                   adjust_for_inflation=True)
             working_input_path = working_output_path
 
+        # Fade is processed last so the fade effect doesn't interfere with other effect processing
         if self.state.effects_hint_chosen(self.state.EFFECTS_FADE_HINT):
             operation = "Fade FX"
             self.processing_messages_context["operation"] = operation
@@ -521,14 +528,14 @@ class VideoRemixerProcessor():
         if self.ANIMATED_ZOOM_HINT in lens_hint:
             lens_hint = self.get_implied_lens_hint(lens_hint)
             self.log(f"get_implied_lens_hint() filtered lens hint: {lens_hint}")
-            type_from, param_from, type_to, param_to, frame_from, frame_to, schedule = self.get_animated_lens(lens_hint)
+            type_from, param_from, type_to, param_to, frame_from, frame_to, schedule = self.get_animated_lens_hints(lens_hint)
 
             if type_from and type_to and param_from and param_to:
                 first_frame, last_frame, _ = details_from_group_name(scene_name)
                 num_frames = (last_frame - first_frame) + 1
                 param_from = float(param_from)
                 param_to = float(param_to)
-                context = self.compute_animated_lens(scene_name, num_frames, type_from, param_from,
+                context = self.compute_animated_lens_hints(scene_name, num_frames, type_from, param_from,
                                                     type_to, param_to, frame_from, frame_to, schedule,
                                                     adjust_for_inflation)
 
@@ -666,9 +673,8 @@ class VideoRemixerProcessor():
                 return f"{hint_from}-{lens_to}{remainder}"
         return hint
 
-
     # TODO DRY
-    def get_animated_lens(self, hint):
+    def get_animated_lens_hints(self, hint):
         if self.ANIMATED_ZOOM_HINT in hint:
             if len(hint) >= self.ANIMATED_ZOOM_MIN_LEN:
                 schedule = self.DEFAULT_ANIMATION_SCHEDULE
@@ -705,70 +711,8 @@ class VideoRemixerProcessor():
                 return from_type, from_param, to_type, to_param, frame_from, frame_to, schedule
         return None, None, None, None, None, None, None
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        if len(hint) >= self.ANIMATED_LENS_MIN_LEN:
-            schedule = self.DEFAULT_ANIMATION_SCHEDULE
-            time = self.DEFAULT_ANIMATION_TIME
-            if self.ANIMATION_SCHEDULE_HINT in hint:
-                split_pos = hint.index(self.ANIMATION_SCHEDULE_HINT)
-                remainder = hint[:split_pos]
-                schedule = hint[split_pos+1:]
-                hint = remainder
-            if self.ANIMATION_TIME_HINT in hint:
-                split_pos = hint.index(self.ANIMATION_TIME_HINT)
-                remainder = hint[:split_pos]
-                time = hint[split_pos+1:]
-                hint = remainder
-                if self.ANIMATION_TIME_SEP in time:
-                    # a specific frame range is specified
-                    split_pos = time.index(self.ANIMATION_TIME_SEP)
-                    # one or both values may be empty strings
-                    frame_from = time[:split_pos]
-                    frame_to = time[split_pos+1:]
-                else:
-                    # a frame count is specified with an implied range starting at zero
-                    frame_from = 0
-                    frame_to = int(time)
-            else:
-                frame_from = ""
-                frame_to = ""
-            fade_type = hint
-            return fade_type, frame_from, frame_to, schedule
-        return None, None, None, None
-
     # TODO DRY
-    def compute_animated_lens(self, scene_name, num_frames, type_from, param_from, type_to, param_to,
+    def compute_animated_lens_hints(self, scene_name, num_frames, type_from, param_from, type_to, param_to,
                               frame_from, frame_to, schedule, adjust_for_inflation):
         # animation time override
         if frame_from == "" and frame_to == "":
@@ -868,21 +812,6 @@ class VideoRemixerProcessor():
                 cv2.imwrite(output_path, frame)
 
                 Mtqdm().update_bar(bar)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     def process_blur(self, scenes_base_path, output_base_path, kept_scenes, desc,
                      adjust_for_inflation):
