@@ -409,18 +409,46 @@ class VideoRemixerState():
                 del self.scene_labels[scene_name]
         self.save()
 
-    def split_hint(self, hint : str):
-        """Splits a processing hint string such as 'a:1,B:22,C:3c3' into a dict"""
+    def split_hint(self, hint : str, allow_multiple : bool):
+        """Splits a processing hint string such as 'a:1,B:22,C:3c3' into a dict
+           If allow_multiple=bool, dict values are in a list"""
         hints = hint.split(",")
         results = {}
         hint : str
         for hint in hints:
             parts = hint.split(":")
             if len(parts) == 2:
-                results[parts[0].upper()] = parts[1].upper()
+                hint_type = parts[0].upper()
+                hint_value = parts[1].upper()
+                if allow_multiple:
+                    if hint_type in results.keys():
+                        results[hint_type].append(hint_value)
+                    else:
+                        results[hint_type] = [hint_value]
+                else:
+                    results[hint_type] = hint_value
         return results
 
-    def get_hint(self, scene_label, hint_type):
+def split_hint(hint : str, allow_multiple=False):
+    """Splits a processing hint string such as 'a:1,B:22,C:3c3' into a dict"""
+    hints = hint.split(",")
+    results = {}
+    hint : str
+    for hint in hints:
+        parts = hint.split(":")
+        if len(parts) == 2:
+            hint_type = parts[0].upper()
+            hint_value = parts[1].upper()
+            if allow_multiple:
+                if hint_type in results.keys():
+                    results[hint_type].append(hint_value)
+                else:
+                    results[hint_type] = [hint_value]
+            else:
+                results[hint_type] = hint_value
+    return results
+
+    def get_hint(self, scene_label, hint_type, allow_multiple=False):
         """return a found hint of the passed type if the label exists and it is found"""
         if scene_label:
             _, hint, _ = self.split_label(scene_label)
