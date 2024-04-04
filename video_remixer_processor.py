@@ -650,7 +650,7 @@ class VideoRemixerProcessor():
                         # single dash (both missing) means return to default lens hint
                         hint_from = self.saved_lens_hint
                         hint_to = self.DEFAULT_LENS_HINT
-                        # lens_to = self.DEFAULT_LENS_HINT
+                        lens_to = self.DEFAULT_LENS_HINT
                         self.log(f"get_implied_lens_hint(): using saved hint for from: {hint_from} and default hint for to: {hint_to}")
 
                     elif hint_from and not lens_to:
@@ -666,10 +666,10 @@ class VideoRemixerProcessor():
                     else:
                         self.log(f"get_implied_lens_hint(): using passed hint for from: {hint_from} and passed hint for to: {hint_to}")
 
-                if hint_to:
-                    self.saved_lens_hint = hint_to
+                if lens_to:
+                    self.saved_lens_hint = lens_to
 
-                return f"{hint_from}-{hint_to}{remainder}"
+                return f"{hint_from}-{lens_to}{remainder}"
         return hint
 
     # TODO DRY
