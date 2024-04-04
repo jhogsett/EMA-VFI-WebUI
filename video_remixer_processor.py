@@ -34,6 +34,7 @@ class VideoRemixerProcessor():
         self.saved_view = self.DEFAULT_VIEW
         self.processing_messages = []
         self.processing_messages_context = {}
+        self.saved_lens_hint = self.DEFAULT_LENS_HINT
 
     def log(self, message):
         if self.log_fn:
@@ -57,7 +58,8 @@ class VideoRemixerProcessor():
     COMBINED_ZOOM_MIN_LEN = 8 # 1/1@100%
     ANIMATED_ZOOM_MIN_LEN = 1 # -
     ANIMATED_FADE_MIN_LEN = 1 # I
-    ANIMATED_BLUR_MIN_LEN = 1 # K
+    ANIMATED_BLOCK_MIN_LEN = 9 # N1/4-N4/4
+    ANIMATED_LENS_MIN_LEN = 1 # -
     MAX_SELF_FIT_ZOOM = 1000
     FIXED_UPSCALE_FACTOR = 4.0
     TEMP_UPSCALE_PATH = "upscaled_frames"
@@ -67,13 +69,19 @@ class VideoRemixerProcessor():
     DEFAULT_ANIMATION_TIME = 0 # whole scene
     FADE_TYPE_IN = "I"
     FADE_TYPE_OUT = "O"
-    BLUR_TYPE_BLACK = "B"
-    BLUR_TYPE_WHITE = "W"
-    BLUR_TYPE_NOISE = "N"
-    BLUR_TYPE_PIXELATED = "X"
-    DEFAULT_BLUR_TYPE = BLUR_TYPE_BLACK
-    BLUR_TYPES = [BLUR_TYPE_BLACK, BLUR_TYPE_WHITE, BLUR_TYPE_NOISE, BLUR_TYPE_PIXELATED]
+    BLOCK_TYPE_BLACK = "B"
+    BLOCK_TYPE_WHITE = "W"
+    BLOCK_TYPE_NOISE = "N"
+    BLOCK_TYPE_PIXELATED = "X"
+    DEFAULT_BLOCK_TYPE = BLOCK_TYPE_BLACK
+    BLOCK_TYPES = [BLOCK_TYPE_BLACK, BLOCK_TYPE_WHITE, BLOCK_TYPE_NOISE, BLOCK_TYPE_PIXELATED]
     DEFAULT_BLOCK_FACTOR = 32
+    LENS_TYPE_UNDISTORT = "U"
+    LENS_TYPE_DISTORT = "D"
+    LENS_TYPES = [LENS_TYPE_UNDISTORT, LENS_TYPE_DISTORT]
+    LENS_MIN_UNDISTORT = -1000.0
+    LENS_MAX_UNDISTORT = 1000.0
+    DEFAULT_LENS_HINT = "0D"
     NO_RESIZE_HINT = "N"
 
     ### Exports --------------------
@@ -408,26 +416,31 @@ class VideoRemixerProcessor():
         working_input_path = self.scenes_source_path(self.state.EFFECTS_STEP)
 
         working_paths = []
-        if self.state.effects_hint_chosen(self.state.EFFECTS_BLUR_HINT):
-            operation = "Blur FX"
+
+        # corrective effects are applied first, so downstream effects benefit from the correction
+        if self.state.effects_hint_chosen(self.state.EFFECTS_LENS_HINT):
+            operation = "Lens FX"
             self.processing_messages_context["operation"] = operation
-            working_output_path = os.path.join(output_base_path, "blur_fx")
+            working_output_path = os.path.join(output_base_path, "lens_fx")
             working_paths.append(working_output_path)
             create_directory(working_output_path)
 
-            self.process_blur(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
+            self.process_lens_effects(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
             working_input_path = working_output_path
 
-        if self.state.effects_hint_chosen(self.state.EFFECTS_FADE_HINT):
-            operation = "Fade FX"
+        # groovy effects are processed after correction and before view and fade
+
+        if self.state.effects_hint_chosen(self.state.EFFECTS_BLOCK_HINT):
+            operation = "Block FX"
             self.processing_messages_context["operation"] = operation
-            working_output_path = os.path.join(output_base_path, "fade_fx")
+            working_output_path = os.path.join(output_base_path, "block_fx")
             working_paths.append(working_output_path)
             create_directory(working_output_path)
 
-            self.process_fade(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
+            self.process_block_effects(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
             working_input_path = working_output_path
 
+        # view is processed after all other effects (except fade) to take into account all effects
         if self.state.effects_hint_chosen(self.state.EFFECTS_VIEW_HINT):
             operation = "View FX"
             self.processing_messages_context["operation"] = operation
@@ -440,12 +453,368 @@ class VideoRemixerProcessor():
                                   adjust_for_inflation=True)
             working_input_path = working_output_path
 
+        # Fade is processed last so the fade effect doesn't interfere with other effect processing
+        if self.state.effects_hint_chosen(self.state.EFFECTS_FADE_HINT):
+            operation = "Fade FX"
+            self.processing_messages_context["operation"] = operation
+            working_output_path = os.path.join(output_base_path, "fade_fx")
+            working_paths.append(working_output_path)
+            create_directory(working_output_path)
+
+            self.process_fade(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
+            working_input_path = working_output_path
+
         # copy from last working input path to effects path
         shutil.copytree(working_input_path, output_base_path, dirs_exist_ok=True)
 
         remove_directories(working_paths)
 
-    def process_blur(self, scenes_base_path, output_base_path, kept_scenes, desc,
+    def process_lens_effects(self, scenes_base_path, output_base_path, kept_scenes, desc,
+                             adjust_for_inflation):
+        self.saved_lens_hint = self.DEFAULT_LENS_HINT
+
+        with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
+            for scene_name in kept_scenes:
+                self.processing_messages_context["scene_name"] = scene_name
+
+                scene_input_path = os.path.join(scenes_base_path, scene_name)
+                scene_output_path = os.path.join(output_base_path, scene_name)
+                create_directory(scene_output_path)
+
+                handled = self.process_lens_hint(scene_input_path, scene_output_path,
+                                                 scene_name, adjust_for_inflation)
+                if not handled:
+                    copy_files(scene_input_path, scene_output_path)
+
+                Mtqdm().update_bar(bar)
+
+    def process_lens_hint(self, scene_input_path, scene_output_path, scene_name,
+                          adjust_for_inflation):
+        message = None
+        scene_label = self.state.scene_labels.get(scene_name)
+        lens_hint = self.state.get_hint(scene_label, self.state.EFFECTS_LENS_HINT)
+
+        # if there's no lens correction hint, and the saved correction differs
+        # from the default, presume the saved correction is what's wanted for
+        # an unhinted scene
+        if not lens_hint and self.saved_lens_hint != self.DEFAULT_LENS_HINT:
+            lens_hint = self.saved_lens_hint
+
+        handled = False
+        if lens_hint:
+            try:
+                handled = handled or \
+                    self.process_animated_lens_hint(lens_hint, scene_input_path, scene_output_path,
+                                                     scene_name, adjust_for_inflation)
+
+                handled = handled or \
+                    self.process_static_lens_hint(lens_hint, scene_input_path, scene_output_path)
+
+            except Exception as error:
+                message = f"Skipping processing of hint {lens_hint} due to error: {error}"
+                handled = False
+                if self.state.remixer_settings.get("raise_on_error"):
+                    raise
+
+        if message:
+            self.add_processing_message(message)
+            self.log(message)
+
+        return handled
+
+    def process_animated_lens_hint(self, lens_hint, scene_input_path, scene_output_path, scene_name, adjust_for_inflation):
+        if self.ANIMATED_ZOOM_HINT in lens_hint:
+            lens_hint = self.get_implied_lens_hint(lens_hint)
+            self.log(f"get_implied_lens_hint() filtered lens hint: {lens_hint}")
+            type_from, param_from, type_to, param_to, frame_from, frame_to, schedule = \
+                self.get_animated_lens_hints(lens_hint)
+
+            if type_from and type_to:
+                first_frame, last_frame, _ = details_from_group_name(scene_name)
+                num_frames = (last_frame - first_frame) + 1
+                param_from = float(param_from)
+                param_to = float(param_to)
+                context = self.compute_animated_lens_hints(scene_name, num_frames, type_from, param_from,
+                                                    type_to, param_to, frame_from, frame_to, schedule,
+                                                    adjust_for_inflation)
+
+                self.animate_undistort_scene(scene_input_path,
+                                scene_output_path,
+                                context=context)
+                return True
+        return False
+
+    def process_static_lens_hint(self, lens_hint, scene_input_path, scene_output_path):
+        type, param = self.get_lens_hint(lens_hint)
+        param = float(param)
+        if type == self.LENS_TYPE_UNDISTORT:
+            self.static_undistort_scene(scene_input_path, scene_output_path, param * -1.)
+            self.saved_lens_hint = lens_hint
+            return True
+        elif type == self.LENS_TYPE_DISTORT:
+            self.static_undistort_scene(scene_input_path, scene_output_path, param)
+            self.saved_lens_hint = lens_hint
+            return True
+        return False
+
+    def _get_lens_hint(self, hint, check_type):
+        lens_type = None
+        param = None
+        remainder = hint
+
+        if check_type in hint:
+            split_pos = hint.index(check_type)
+            lens_type = hint[:split_pos+1]
+
+            # if the lens type was found in a position other than first,
+            # the preceding value is stripped and passed into lens function
+            if len(lens_type) > 1:
+                param = lens_type[:-1]
+                lens_type = lens_type[-1]
+
+        return lens_type, param
+
+    def get_lens_hint(self, hint):
+        if hint:
+            for lens_type in self.LENS_TYPES:
+                type, param = self._get_lens_hint(hint, lens_type)
+                if type:
+                    return type, param
+        return None, None
+
+    # https://stackoverflow.com/questions/26602981/correct-barrel-distortion-in-opencv-manually-without-chessboard-image
+    def undistort_frame(self, frame, param):
+        if param == 0.0:
+            return frame
+
+        height, width = frame.shape[:2]
+
+        distCoeff = np.zeros((4, 1), np.float64)
+        distCoeff[0,0] = param; # negative to remove barrel distortion
+        distCoeff[1,0] = 0.
+        distCoeff[2,0] = 0.
+        distCoeff[3,0] = 0.
+
+        # assume unit matrix for camera
+        cam = np.eye(3, dtype=np.float32)
+
+        # this will quickly lead to a nice circular "pipe" effect at the image edge
+        # - if this needs to lead to it slower, change to use max() instead
+        # - if this instead should perform a barrel (oval) distortion,
+        #   set these to the width and height or some scaled variation
+        focal_length = float(min(width, height))
+
+        cam[0, 2] = width / 2.   # define center x
+        cam[1, 2] = height / 2.  # define center y
+        cam[0, 0] = focal_length # define focal length x
+        cam[1, 1] = focal_length # define focal length y
+
+        # here the undistortion will be computed
+        return cv2.undistort(frame, cam, distCoeff)
+
+    def static_undistort_scene(self, scene_input_path, scene_output_path, param):
+        files = sorted(get_files(scene_input_path))
+        with Mtqdm().open_bar(total=len(files), desc="Distort FX") as bar:
+            for file in files:
+                _, filename, ext = split_filepath(file)
+                output_path = os.path.join(scene_output_path, filename + ext)
+
+                frame = cv2.imread(file)
+                frame = self.undistort_frame(frame, param)
+
+                cv2.imwrite(output_path, frame.astype(np.uint8))
+                Mtqdm().update_bar(bar)
+
+    def get_implied_lens_hint(self, hint):
+        if self.ANIMATED_ZOOM_HINT in hint:
+            if len(hint) >= self.ANIMATED_LENS_MIN_LEN:
+                split_pos = hint.index(self.ANIMATED_ZOOM_HINT)
+                hint_from = hint[:split_pos]
+                hint_to = hint[split_pos+1:]
+
+                # if the hint_to part includes time or schedule info, remove it to get only the view
+                lens_to = hint_to
+                remainder = ""
+                if self.ANIMATION_TIME_HINT in lens_to:
+                    split_pos = lens_to.index(self.ANIMATION_TIME_HINT)
+                    remainder = lens_to[split_pos:]
+                    lens_to = lens_to[:split_pos]
+                    # may include schedule part, which can come after time part
+                elif self.ANIMATION_SCHEDULE_HINT in lens_to:
+                    split_pos = lens_to.index(self.ANIMATION_SCHEDULE_HINT)
+                    remainder = lens_to[split_pos:]
+                    lens_to = lens_to[:split_pos]
+
+                if not hint_from or not lens_to:
+                    if not hint_from and not lens_to:
+                        # single dash (both missing) means return to default lens hint
+                        hint_from = self.saved_lens_hint
+                        hint_to = self.DEFAULT_LENS_HINT
+                        lens_to = self.DEFAULT_LENS_HINT
+                        self.log(f"get_implied_lens_hint(): using saved hint for from: {hint_from} and default hint for to: {hint_to}")
+
+                    elif hint_from and not lens_to:
+                        # missing 'to' means go to saved lens hint
+                        hint_to = self.saved_lens_hint
+                        self.log(f"get_implied_lens_hint(): using passed hint for from: {hint_from} and saved hint for to: {hint_to}")
+
+                    elif not hint_from and lens_to:
+                        # missing 'from' means go from saved lens hint
+                        hint_from = self.saved_lens_hint
+                        self.log(f"get_implied_lens_hint(): using saved hint for from: {hint_from} and passed hint for to: {hint_to}")
+
+                    else:
+                        self.log(f"get_implied_lens_hint(): using passed hint for from: {hint_from} and passed hint for to: {hint_to}")
+
+                if lens_to:
+                    self.saved_lens_hint = lens_to
+
+                return f"{hint_from}-{lens_to}{remainder}"
+        return hint
+
+    # TODO DRY
+    def get_animated_lens_hints(self, lens_hint):
+        hint = lens_hint
+        if self.ANIMATED_ZOOM_HINT in hint:
+            if len(hint) >= self.ANIMATED_LENS_MIN_LEN:
+                schedule = self.DEFAULT_ANIMATION_SCHEDULE
+                time = self.DEFAULT_ANIMATION_TIME
+                if self.ANIMATION_SCHEDULE_HINT in hint:
+                    split_pos = hint.index(self.ANIMATION_SCHEDULE_HINT)
+                    remainder = hint[:split_pos]
+                    schedule = hint[split_pos+1:]
+                    hint = remainder
+                if self.ANIMATION_TIME_HINT in hint:
+                    split_pos = hint.index(self.ANIMATION_TIME_HINT)
+                    remainder = hint[:split_pos]
+                    time = hint[split_pos+1:]
+                    hint = remainder
+                    if self.ANIMATION_TIME_SEP in time:
+                        # a specific frame range is specified
+                        split_pos = time.index(self.ANIMATION_TIME_SEP)
+                        # one or both values may be empty strings
+                        frame_from = time[:split_pos]
+                        frame_to = time[split_pos+1:]
+                    else:
+                        # a frame count is specified with an implied range starting at zero
+                        frame_from = 0
+                        frame_to = int(time)
+                else:
+                    frame_from = ""
+                    frame_to = ""
+
+                split_pos = lens_hint.index(self.ANIMATED_ZOOM_HINT)
+                hint_from = lens_hint[:split_pos]
+                hint_to = lens_hint[split_pos+1:]
+
+                from_type, from_param = self.get_lens_hint(hint_from)
+                to_type, to_param = self.get_lens_hint(hint_to)
+                return from_type, from_param, to_type, to_param, frame_from, frame_to, schedule
+        return None, None, None, None, None, None, None
+
+    # TODO DRY
+    def compute_animated_lens_hints(self, scene_name, num_frames, type_from, param_from, type_to, param_to,
+                              frame_from, frame_to, schedule, adjust_for_inflation):
+        # animation time override
+        if frame_from == "" and frame_to == "":
+            # unspecified range, ignore
+            frame_from = 0
+            frame_to = num_frames
+        elif frame_to == "":
+            # frame_to is the last frame
+            frame_to = num_frames
+        elif frame_from == "":
+            # frame_from is offset from the end
+            frame_from = num_frames - int(frame_to)
+            frame_to = num_frames
+        frame_from = int(frame_from)
+        frame_to = int(frame_to)
+
+        if frame_from >= 0 and frame_to <= num_frames and frame_from < frame_to:
+            num_frames = frame_to - frame_from
+        else:
+            # safety catch
+            frame_from = 0
+            frame_to = num_frames
+
+        # account for inflation if being used for view handling
+        if adjust_for_inflation:
+            _video_clip_fps, forced_inflation_rate = self.compute_scene_fps(scene_name)
+            num_frames = self.compute_inflated_frame_count(num_frames, forced_inflation_rate)
+            frame_from = self.compute_inflated_frame_count(frame_from, forced_inflation_rate)
+            frame_to = self.compute_inflated_frame_count(frame_to, forced_inflation_rate)
+
+        if type_from == self.LENS_TYPE_UNDISTORT:
+            param_from *= -1.
+        if type_to == self.LENS_TYPE_UNDISTORT:
+            param_to *= -1.
+        lens_from = param_from
+        lens_to = param_to
+        diff_lens = lens_to - lens_from
+
+        # TODO why is this needed? without it, the last transition doesn't happen
+        # - maybe it needs to be the number of transitions between frames not number of frames
+        # Ensure the final transition occurs
+        num_frames -= 1
+        step_lens = diff_lens / num_frames
+
+        context = {}
+        context["lens_from"] = lens_from
+        context["step_lens"] = step_lens
+        context["num_frames"] = num_frames
+        context["schedule"] = schedule
+        context["start_frame"] = frame_from
+        context["end_frame"] = frame_to
+        return context
+
+    def animate_undistort_scene(self,
+                     scene_input_path,
+                     scene_output_path,
+                     context : any=None):
+
+        lens_from = context["lens_from"]
+        step_lens = context["step_lens"]
+        num_frames = context["num_frames"]
+        schedule = context["schedule"]
+        start_frame = context["start_frame"]
+        end_frame = context["end_frame"]
+
+        files = sorted(get_files(scene_input_path))
+        with Mtqdm().open_bar(total=len(files), desc="Distort FX") as bar:
+            for index, file in enumerate(files):
+                _, filename, ext = split_filepath(file)
+                output_path = os.path.join(scene_output_path, filename + ext)
+
+                if index < start_frame:
+                    index = 0
+                elif index > end_frame:
+                    index = end_frame - start_frame
+                else:
+                    index -= start_frame
+
+                    accelerate = True
+                    index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
+                                                                        accelerate)
+                    if float_carry >= 0.5:
+                        index += 1
+
+                if index > num_frames:
+                    index = num_frames
+
+                param = lens_from + (step_lens * index)
+                if param < self.LENS_MIN_UNDISTORT:
+                    param = self.LENS_MIN_UNDISTORT
+                elif param > self.LENS_MAX_UNDISTORT:
+                    param = self.LENS_MAX_UNDISTORT
+
+                frame = cv2.imread(file)
+
+                frame = self.undistort_frame(frame, param)
+                cv2.imwrite(output_path, frame)
+
+                Mtqdm().update_bar(bar)
+
+    def process_block_effects(self, scenes_base_path, output_base_path, kept_scenes, desc,
                      adjust_for_inflation):
         with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
             for scene_name in kept_scenes:
@@ -455,50 +824,40 @@ class VideoRemixerProcessor():
                 scene_output_path = os.path.join(output_base_path, scene_name)
                 create_directory(scene_output_path)
 
-                blur_handled = self.process_blur_hint(scene_input_path, scene_output_path,
-                                                      scene_name, adjust_for_inflation)
-
-                if not blur_handled:
+                handled = self.process_block_hint(scene_input_path, scene_output_path,
+                                                  scene_name)
+                if not handled:
                     copy_files(scene_input_path, scene_output_path)
 
                 Mtqdm().update_bar(bar)
 
-    def process_blur_hint(self, scene_input_path, scene_output_path, scene_name,
-                          adjust_for_inflation):
+    def process_block_hint(self, scene_input_path, scene_output_path, scene_name):
         message = None
-        blur_hints = self.state.get_hint(self.state.scene_labels.get(scene_name),
-                                         self.state.EFFECTS_BLUR_HINT, allow_multiple=True)
-
-        # for blur_hint in blur_hints:
-        # this isn't right, the set of blurs will need to be passed into the blur functions to handle
-
-        blur_hint = blur_hints[0] if blur_hints else None
-        blur_type, blur_param, remaining_hint = self.get_blur_type(blur_hint)
-        blur_hint = remaining_hint
-
-        blur_handled = False
-        if blur_hint:
+        hint = self.state.get_hint(self.state.scene_labels.get(scene_name),
+                                         self.state.EFFECTS_BLOCK_HINT)
+        handled = False
+        if hint:
             content_width = self.state.video_details["content_width"]
             content_height = self.state.video_details["content_height"]
             main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
                 self.setup_resize_hint(content_width, content_height, False)
 
             try:
-                # blur_handled = blur_handled or \
-                #     self._process_animation_blur_hint(blur_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
+                # handled = handled or \
+                #     self._process_animated_block_hint(hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
 
-                blur_handled = blur_handled or \
-                    self._process_combined_blur_hint(blur_hint, blur_type, blur_param, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                handled = handled or \
+                    self._process_combined_block_hint(hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
-                blur_handled = blur_handled or \
-                    self._process_quadrant_blur_hint(blur_hint, blur_type, blur_param, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                handled = handled or \
+                    self._process_quadrant_block_hint(hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
-                blur_handled = blur_handled or \
-                    self._process_percent_blur_hint(blur_hint, blur_type, blur_param, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                handled = handled or \
+                    self._process_percent_block_hint(hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
             except Exception as error:
-                message = f"Skipping processing of hint {blur_hint} due to error: {error}"
-                blur_handled = False
+                message = f"Skipping processing of hint {hint} due to error: {error}"
+                handled = False
                 if self.state.remixer_settings.get("raise_on_error"):
                     raise
 
@@ -506,19 +865,21 @@ class VideoRemixerProcessor():
             self.add_processing_message(message)
             self.log(message)
 
-        return blur_handled
+        return handled
 
 
 
-    # def _process_animation_blur_hint(self, blur_hint, blur_type, scene_input_path, scene_output_path,
+
+    # def _process_animated_block_hint(self, block_hint, scene_input_path, scene_output_path,
     #                                  main_resize_w, main_resize_h, main_offset_x, main_offset_y,
     #                                  main_crop_w, main_crop_h, scene_name, adjust_for_inflation):
-    #     if self.ANIMATED_ZOOM_HINT in blur_hint:
+    #     if self.ANIMATED_ZOOM_HINT in block_hint:
     #         # resize_hint = self.get_implied_zoom(resize_hint)
     #         # self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
     #         from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
     #             to_param2, to_param3, frame_from, frame_to, schedule \
-    #                 = self.get_animated_zoom(blur_hint)
+    #                 = self.get_animated_block_hints(block_hint)
+
     #         if from_type and to_type:
     #             first_frame, last_frame, _ = details_from_group_name(scene_name)
     #             num_frames = (last_frame - first_frame) + 1
@@ -528,7 +889,7 @@ class VideoRemixerProcessor():
     #                     frame_to, schedule, main_resize_w, main_resize_h,
     #                     main_offset_x, main_offset_y, main_crop_w, main_crop_h,
     #                     adjust_for_inflation)
-    #             # context = self.compute_animated_blur(context)
+    #             # context = self.compute_animated_block(context)
 
     #             # scale_type = self.state.remixer_settings["scale_type_up"]
     #             # self.resize_scene(scene_input_path,
@@ -546,11 +907,55 @@ class VideoRemixerProcessor():
     #             return True
     #     return False
 
-    def _process_combined_blur_hint(self, blur_hint, blur_type, blur_param, scene_input_path, scene_output_path,
+    # def get_animated_block_hints(self, hint):
+    #     if self.ANIMATED_ZOOM_HINT in hint:
+    #         if len(hint) >= self.ANIMATED_ZOOM_MIN_LEN:
+    #             schedule = self.DEFAULT_ANIMATION_SCHEDULE
+    #             time = self.DEFAULT_ANIMATION_TIME
+    #             if self.ANIMATION_SCHEDULE_HINT in hint:
+    #                 split_pos = hint.index(self.ANIMATION_SCHEDULE_HINT)
+    #                 remainder = hint[:split_pos]
+    #                 schedule = hint[split_pos+1:]
+    #                 hint = remainder
+    #             if self.ANIMATION_TIME_HINT in hint:
+    #                 split_pos = hint.index(self.ANIMATION_TIME_HINT)
+    #                 remainder = hint[:split_pos]
+    #                 time = hint[split_pos+1:]
+    #                 hint = remainder
+    #                 if self.ANIMATION_TIME_SEP in time:
+    #                     # a specific frame range is specified
+    #                     split_pos = time.index(self.ANIMATION_TIME_SEP)
+    #                     # one or both values may be empty strings
+    #                     frame_from = time[:split_pos]
+    #                     frame_to = time[split_pos+1:]
+    #                 else:
+    #                     # a frame count is specified with an implied range starting at zero
+    #                     frame_from = 0
+    #                     frame_to = int(time)
+    #             else:
+    #                 frame_from = ""
+    #                 frame_to = ""
+    #             split_pos = hint.index(self.ANIMATED_ZOOM_HINT)
+    #             hint_from = hint[:split_pos]
+    #             hint_to = hint[split_pos+1:]
+
+    #             from_type, from_param1, from_param2, from_param3 = self.get_zoom_part(hint_from)
+    #             to_type, to_param1, to_param2, to_param3 = self.get_zoom_part(hint_to)
+    #             return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, frame_from, frame_to, schedule
+
+    #     return None, None, None, None, None, None, None, None, None, None, None
+
+
+
+
+    def _process_combined_block_hint(self, block_hint, scene_input_path, scene_output_path,
                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                     main_crop_w, main_crop_h):
-        if self.COMBINED_ZOOM_HINT in blur_hint:
-            quadrant, quadrants, zoom_percent = self.get_combined_zoom(blur_hint)
+        block_type, block_param, remaining_hint = self.get_block_type(block_hint)
+        block_hint = remaining_hint
+
+        if self.COMBINED_ZOOM_HINT in block_hint:
+            quadrant, quadrants, zoom_percent = self.get_combined_zoom(block_hint)
             if quadrant and quadrants and zoom_percent:
                 resize_w, resize_h, center_x, center_y = \
                     self.compute_combined_zoom(quadrant, quadrants, zoom_percent,
@@ -560,20 +965,23 @@ class VideoRemixerProcessor():
                 crop_offset_x = center_x - (main_crop_w / 2.0)
                 crop_offset_y = center_y - (main_crop_h / 2.0)
 
-                self.static_blur_scene(scene_input_path, scene_output_path, blur_type, blur_param, resize_w,
+                self.static_block_scene(scene_input_path, scene_output_path, block_type, block_param, resize_w,
                                        resize_h, crop_offset_x, crop_offset_y, main_crop_w,
                                        main_crop_h)
                 return True
         return False
 
-    def _process_quadrant_blur_hint(self, blur_hint, blur_type, blur_param, scene_input_path, scene_output_path,
+    def _process_quadrant_block_hint(self, block_hint, scene_input_path, scene_output_path,
                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                     main_crop_w, main_crop_h):
-        if self.QUADRANT_ZOOM_HINT in blur_hint:
+        block_type, block_param, remaining_hint = self.get_block_type(block_hint)
+        block_hint = remaining_hint
+
+        if self.QUADRANT_ZOOM_HINT in block_hint:
             # interpret 'x/y' as x: quadrant, y: square-based number of quadrants
             # '5/9' and '13/25' would be the center squares of 3x3 and 5x5 grids
             #   zoomed in at 300% and 500%
-            quadrant, quadrants = self.get_quadrant_zoom(blur_hint)
+            quadrant, quadrants = self.get_quadrant_zoom(block_hint)
             if quadrant and quadrants:
                 resize_w, resize_h, center_x, center_y = \
                     self.compute_quadrant_zoom(quadrant, quadrants,
@@ -583,17 +991,20 @@ class VideoRemixerProcessor():
                 crop_offset_x = center_x - (main_crop_w / 2.0)
                 crop_offset_y = center_y - (main_crop_h / 2.0)
 
-                self.static_blur_scene(scene_input_path, scene_output_path, blur_type, blur_param, resize_w,
+                self.static_block_scene(scene_input_path, scene_output_path, block_type, block_param, resize_w,
                                        resize_h, crop_offset_x, crop_offset_y, main_crop_w,
                                        main_crop_h)
                 return True
         return False
 
-    def _process_percent_blur_hint(self, blur_hint, blur_type, blur_param, scene_input_path, scene_output_path,
+    def _process_percent_block_hint(self, block_hint, scene_input_path, scene_output_path,
                                    main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                    main_crop_w, main_crop_h):
-        if self.PERCENT_ZOOM_HINT in blur_hint:
-            zoom_percent = self.get_percent_zoom(blur_hint)
+        block_type, block_param, remaining_hint = self.get_block_type(block_hint)
+        block_hint = remaining_hint
+
+        if self.PERCENT_ZOOM_HINT in block_hint:
+            zoom_percent = self.get_percent_zoom(block_hint)
             if zoom_percent:
                 resize_w, resize_h, center_x, center_y = \
                     self.compute_percent_zoom(zoom_percent,
@@ -603,21 +1014,20 @@ class VideoRemixerProcessor():
                 crop_offset_x = center_x - (main_crop_w / 2.0)
                 crop_offset_y = center_y - (main_crop_h / 2.0)
 
-                self.static_blur_scene(scene_input_path, scene_output_path, blur_type, blur_param, resize_w,
+                self.static_block_scene(scene_input_path, scene_output_path, block_type, block_param, resize_w,
                                        resize_h, crop_offset_x, crop_offset_y, main_crop_w,
                                        main_crop_h)
                 return True
         return False
 
-    # def compute_animated_blur(self, context):
-    #     # for now the blur itself will not be animating, just the location
+    # def compute_animated_block(self, context):
+    #     # for now the block itself will not be animating, just the location
     #     return context
 
-    BLUR_VALUE_BLACK = 16  # NTSC standard
-    BLUR_VALUE_WHITE = 235
+    BLOCK_VALUE_BLACK = 16  # NTSC standard
+    BLOCK_VALUE_WHITE = 235
 
-    def blur_frame_block(self, frame, top, bottom, left, right, value):
-        print(top, bottom, left, right, value)
+    def block_frame_block(self, frame, top, bottom, left, right, value):
         _height, _width, channels = frame.shape
         data = np.array(frame, np.uint8)
         if channels == 3:
@@ -626,7 +1036,7 @@ class VideoRemixerProcessor():
             data[top:bottom, left:right] = value
         return data.astype(np.uint8)
 
-    def blur_frame_noise(self, frame, top, bottom, left, right):
+    def block_frame_noise(self, frame, top, bottom, left, right):
         _height, _width, channels = frame.shape
         data = np.array(frame, np.uint8)
         noise = np.random.randint(256, size=(bottom-top, right-left, channels))
@@ -634,7 +1044,7 @@ class VideoRemixerProcessor():
         return data.astype(np.uint8)
 
     # https://stackoverflow.com/questions/55508615/how-to-pixelate-image-using-opencv-in-python
-    def blur_frame_pixelated(self, frame, top, bottom, left, right, block_factor):
+    def block_frame_pixelated(self, frame, top, bottom, left, right, block_factor):
         height, width = frame.shape[:2]
         aspect = height / width
 
@@ -654,49 +1064,49 @@ class VideoRemixerProcessor():
 
         return data.astype(np.uint8)
 
-    def static_blur_scene(self, scene_input_path, scene_output_path, blur_type, blur_param, resize_w, resize_h,
+    def static_block_scene(self, scene_input_path, scene_output_path, block_type, block_param, resize_w, resize_h,
                           crop_offset_x, crop_offset_y, main_crop_w, main_crop_h):
         # for now, the above figure are calculated as a zoom-in factor, yielding a resize and crop
         # that identify a proper dimension zoomed in crop rectangle
-        # this needs to be inverted, to represent a blur rectangle within the original frame
+        # this needs to be inverted, to represent a block rectangle within the original frame
         expansion = resize_w / main_crop_w
         crop_offset_x = int(crop_offset_x / expansion)
         crop_offset_y = int(crop_offset_y / expansion)
-        blur_width = int(main_crop_w / expansion)
-        blur_height = int(main_crop_h / expansion)
+        block_width = int(main_crop_w / expansion)
+        block_height = int(main_crop_h / expansion)
         left = crop_offset_x
-        right = left + blur_width
+        right = left + block_width
         top = crop_offset_y
-        bottom = top + blur_height
+        bottom = top + block_height
 
         files = sorted(get_files(scene_input_path))
-        with Mtqdm().open_bar(total=len(files), desc="Blurring") as bar:
+        with Mtqdm().open_bar(total=len(files), desc="Blockring") as bar:
             for file in files:
                 _, filename, ext = split_filepath(file)
                 output_path = os.path.join(scene_output_path, filename + ext)
 
                 frame = cv2.imread(file)
 
-                if blur_type == self.BLUR_TYPE_BLACK:
-                    value = max(0, min(225, int(blur_param))) if blur_param else self.BLUR_VALUE_BLACK
-                    frame = self.blur_frame_block(frame, top, bottom, left, right, value)
+                if block_type == self.BLOCK_TYPE_BLACK:
+                    value = max(0, min(225, int(block_param))) if block_param else self.BLOCK_VALUE_BLACK
+                    frame = self.block_frame_block(frame, top, bottom, left, right, value)
 
-                elif blur_type == self.BLUR_TYPE_WHITE:
-                    value = max(0, min(225, int(blur_param))) if blur_param else self.BLUR_VALUE_WHITE
-                    frame = self.blur_frame_block(frame, top, bottom, left, right, self.BLUR_VALUE_WHITE)
+                elif block_type == self.BLOCK_TYPE_WHITE:
+                    value = max(0, min(225, int(block_param))) if block_param else self.BLOCK_VALUE_WHITE
+                    frame = self.block_frame_block(frame, top, bottom, left, right, self.BLOCK_VALUE_WHITE)
 
-                elif blur_type == self.BLUR_TYPE_PIXELATED:
-                    block_factor = int(blur_param) if blur_param else self.DEFAULT_BLOCK_FACTOR
+                elif block_type == self.BLOCK_TYPE_PIXELATED:
+                    block_factor = int(block_param) if block_param else self.DEFAULT_BLOCK_FACTOR
                     block_factor /= expansion
-                    frame = self.blur_frame_pixelated(frame, top, bottom, left, right, block_factor)
+                    frame = self.block_frame_pixelated(frame, top, bottom, left, right, block_factor)
 
-                elif blur_type == self.BLUR_TYPE_NOISE:
-                    frame = self.blur_frame_noise(frame, top, bottom, left, right)
+                elif block_type == self.BLOCK_TYPE_NOISE:
+                    frame = self.block_frame_noise(frame, top, bottom, left, right)
 
                 cv2.imwrite(output_path, frame.astype(np.uint8))
                 Mtqdm().update_bar(bar)
 
-    def blur_scene(self,
+    def block_scene(self,
                      scene_input_path,
                      scene_output_path,
                      context : any=None):
@@ -737,7 +1147,7 @@ class VideoRemixerProcessor():
 
                 Mtqdm().update_bar(bar)
 
-    def blur_frame_param(self, index : int, context : dict):
+    def block_frame_param(self, index : int, context : dict):
         from_resize_w = context["from_resize_w"]
         from_resize_h = context["from_resize_h"]
         from_center_x = context["from_center_x"]
@@ -781,7 +1191,6 @@ class VideoRemixerProcessor():
             resize_h = main_crop_h
 
         return resize_w, resize_h, crop_offset_x, crop_offset_y
-
 
 
     def process_fade(self, scenes_base_path, output_base_path, kept_scenes, desc, adjust_for_inflation):
@@ -1060,7 +1469,8 @@ class VideoRemixerProcessor():
 
     def process_resize_hint(self, hint_type, scene_input_path, scene_output_path, scene_name, adjust_for_inflation):
         message = None
-        resize_hint = self.state.get_hint(self.state.scene_labels.get(scene_name), hint_type)
+        scene_label = self.state.scene_labels.get(scene_name)
+        resize_hint = self.state.get_hint(scene_label, hint_type)
 
         # if there's no resize hint, and the saved view differs from the default,
         # presume the saved view is what's wanted for an unhinted scene
@@ -1120,7 +1530,7 @@ class VideoRemixerProcessor():
         if self.ANIMATED_ZOOM_HINT in resize_hint:
             # interprent 'any-any' as animating from one to the other zoom factor
             resize_hint = self.get_implied_zoom(resize_hint)
-            self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
+            self.log(f"get_implied_zoom() filtered resize hint: {resize_hint}")
             from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
                 to_param2, to_param3, frame_from, frame_to, schedule \
                     = self.get_animated_zoom(resize_hint)
@@ -1404,31 +1814,31 @@ class VideoRemixerProcessor():
                 return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, frame_from, frame_to, schedule
         return None, None, None, None, None, None, None, None, None, None, None
 
-    def _get_blur_type(self, hint, check_type):
-        blur_type = None
+    def _get_block_type(self, hint, check_type):
+        block_type = None
         param = None
         remainder = hint
 
         if check_type in hint:
             split_pos = hint.index(check_type)
-            blur_type = hint[:split_pos+1]
+            block_type = hint[:split_pos+1]
             remainder = hint[split_pos+1:]
 
-            # if the blur type was found in a position other than first,
-            # the preceding value is stripped and passed into to blur function
-            if len(blur_type) > 1:
-                param = blur_type[:-1]
-                blur_type = blur_type[-1]
+            # if the block type was found in a position other than first,
+            # the preceding value is stripped and passed into to block function
+            if len(block_type) > 1:
+                param = block_type[:-1]
+                block_type = block_type[-1]
 
-        return blur_type, param, remainder
+        return block_type, param, remainder
 
-    def get_blur_type(self, hint):
+    def get_block_type(self, hint):
         if hint:
-            for blur_type in self.BLUR_TYPES:
-                type, param, remainder = self._get_blur_type(hint, blur_type)
+            for block_type in self.BLOCK_TYPES:
+                type, param, remainder = self._get_block_type(hint, block_type)
                 if type:
                     return type, param, remainder
-        return self.DEFAULT_BLUR_TYPE, None, hint
+        return None, None, hint
 
     def compute_zoom_type(self, type, param1, param2, param3, main_resize_w, main_resize_h,
             main_offset_x, main_offset_y, main_crop_w, main_crop_h):
