@@ -541,7 +541,7 @@ class VideoRemixerProcessor():
                 self.animate_undistort_scene(scene_input_path,
                                 scene_output_path,
                                 context=context)
-            return True
+                return True
         return False
 
     def process_static_lens_hint(self, lens_hint, scene_input_path, scene_output_path):
