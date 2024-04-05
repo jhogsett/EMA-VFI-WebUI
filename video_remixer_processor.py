@@ -739,10 +739,10 @@ class VideoRemixerProcessor():
 
         # account for inflation if being used for view handling
         if adjust_for_inflation:
-            _video_clip_fps, forced_inflation_rate = self.compute_scene_fps(scene_name)
-            num_frames = self.compute_inflated_frame_count(num_frames, forced_inflation_rate)
-            frame_from = self.compute_inflated_frame_count(frame_from, forced_inflation_rate)
-            frame_to = self.compute_inflated_frame_count(frame_to, forced_inflation_rate)
+            _video_clip_fps, fps_factor = self.compute_scene_fps(scene_name)
+            num_frames = self.compute_inflated_frame_count(num_frames, fps_factor)
+            frame_from = self.compute_inflated_frame_count(frame_from, fps_factor)
+            frame_to = self.compute_inflated_frame_count(frame_to, fps_factor)
 
         if type_from == self.LENS_TYPE_UNDISTORT:
             param_from *= -1.
@@ -1303,10 +1303,10 @@ class VideoRemixerProcessor():
 
         # account for inflation if being used for view handling
         if adjust_for_inflation:
-            _video_clip_fps, forced_inflation_rate = self.compute_scene_fps(scene_name)
-            num_frames = self.compute_inflated_frame_count(num_frames, forced_inflation_rate)
-            frame_from = self.compute_inflated_frame_count(frame_from, forced_inflation_rate)
-            frame_to = self.compute_inflated_frame_count(frame_to, forced_inflation_rate)
+            _video_clip_fps, fps_factor = self.compute_scene_fps(scene_name)
+            num_frames = self.compute_inflated_frame_count(num_frames, fps_factor)
+            frame_from = self.compute_inflated_frame_count(frame_from, fps_factor)
+            frame_to = self.compute_inflated_frame_count(frame_to, fps_factor)
 
         if fade_type == self.FADE_TYPE_IN:
             fade_from = 0.0
@@ -2058,10 +2058,10 @@ class VideoRemixerProcessor():
 
         # account for inflation if being used for view handling
         if adjust_for_inflation:
-            _video_clip_fps, forced_inflation_rate = self.compute_scene_fps(scene_name)
-            num_frames = self.compute_inflated_frame_count(num_frames, forced_inflation_rate)
-            frame_from = self.compute_inflated_frame_count(frame_from, forced_inflation_rate)
-            frame_to = self.compute_inflated_frame_count(frame_to, forced_inflation_rate)
+            _video_clip_fps, fps_factor = self.compute_scene_fps(scene_name)
+            num_frames = self.compute_inflated_frame_count(num_frames, fps_factor)
+            frame_from = self.compute_inflated_frame_count(frame_from, fps_factor)
+            frame_to = self.compute_inflated_frame_count(frame_to, fps_factor)
 
         from_resize_w, from_resize_h, from_center_x, from_center_y = \
             self.compute_zoom_type(from_type, from_param1, from_param2, from_param3,
@@ -2737,7 +2737,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                 scene_output_filepath = os.path.join(self.state.video_clips_path,
                                                      f"{scene_name}.mp4")
 
-                video_clip_fps, _forced_inflation_rate = self.compute_scene_fps(scene_name)
+                video_clip_fps, fps_factor = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
                                 self.state.frame_format,
@@ -2857,7 +2857,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                         use_custom_video_options = use_custom_video_options\
                             .replace("<LABEL>", f"[{error}]")
 
-                video_clip_fps, _forced_inflation_rate = self.compute_scene_fps(scene_name)
+                video_clip_fps, fps_factor = self.compute_scene_fps(scene_name)
 
                 ResequenceFiles(scene_input_path,
                                 self.state.frame_format,
@@ -2895,7 +2895,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                 fps_factor = project_inflation_rate
 
         inflation_and_slow_motion_considered_fps = self.state.project_fps * fps_factor
-        return inflation_and_slow_motion_considered_fps, forced_inflation_rate
+        return inflation_and_slow_motion_considered_fps, fps_factor
 
     def compute_forced_inflation(self, scene_name):
         force_inflation = False
