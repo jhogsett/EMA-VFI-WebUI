@@ -169,7 +169,7 @@ def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
         frame_count = 1_000_000
 
     num_width = len(str(frame_count))
-    filename_pattern = f"{base_filename}%0{num_width}d{type}"
+    filename_pattern = f"{base_filename}%0{num_width}d.{type}"
     ffcmd = FFmpeg(inputs= {input_path : None},
         outputs={os.path.join(output_path, filename_pattern) : f"-start_number {start_number}"},
         global_options="-y " + global_options)
