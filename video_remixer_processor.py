@@ -35,6 +35,7 @@ class VideoRemixerProcessor():
         self.processing_messages = []
         self.processing_messages_context = {}
         self.saved_lens_hint = self.DEFAULT_LENS_HINT
+        self.noise_dampening = None
 
     def log(self, message):
         if self.log_fn:
@@ -77,6 +78,8 @@ class VideoRemixerProcessor():
     DEFAULT_BLOCK_TYPE = BLOCK_TYPE_BLACK
     BLOCK_TYPES = [BLOCK_TYPE_BLACK, BLOCK_TYPE_WHITE, BLOCK_TYPE_NOISE, BLOCK_TYPE_STATIC, BLOCK_TYPE_PIXELATED]
     DEFAULT_BLOCK_FACTOR = 32
+    BLOCK_VALUE_BLACK = 0   #16  # NTSC standard
+    BLOCK_VALUE_WHITE = 255 #235
     LENS_TYPE_UNDISTORT = "U"
     LENS_TYPE_DISTORT = "D"
     LENS_TYPES = [LENS_TYPE_UNDISTORT, LENS_TYPE_DISTORT]
@@ -842,6 +845,7 @@ class VideoRemixerProcessor():
             content_height = self.state.video_details["content_height"]
             main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
                 self.setup_resize_hint(content_width, content_height, False)
+            self.noise_dampening = None
 
             try:
                 # handled = handled or \
@@ -1025,9 +1029,6 @@ class VideoRemixerProcessor():
     #     # for now the block itself will not be animating, just the location
     #     return context
 
-    BLOCK_VALUE_BLACK = 16  # NTSC standard
-    BLOCK_VALUE_WHITE = 235
-
     def block_frame_block(self, frame, top, bottom, left, right, value):
         _height, _width, channels = frame.shape
         data = np.array(frame, np.uint8)
@@ -1039,6 +1040,7 @@ class VideoRemixerProcessor():
 
     def block_frame_noise(self, frame, top, bottom, left, right, block_factor, monochrome=False):
         height, width, channels = frame.shape
+
         aspect = height / width
         data = np.array(frame, np.uint8)
         slice_width = right - left
@@ -1048,13 +1050,25 @@ class VideoRemixerProcessor():
 
         # limit noise to NTSC safe limits to be more realistic
         safe_range = self.BLOCK_VALUE_WHITE - self.BLOCK_VALUE_BLACK
+
+        if isinstance(self.noise_dampening, type(None)):
+            self.noise_dampening = np.random.randint(safe_range,
+                                  size=(pixelation_height, pixelation_width,
+                                        channels)) + self.BLOCK_VALUE_BLACK
+            if monochrome and channels == 3:
+                self.noise_dampening[:,:,1] = self.noise_dampening[:,:,0]
+                self.noise_dampening[:,:,2] = self.noise_dampening[:,:,0]
+
         noise = np.random.randint(safe_range,
                                   size=(pixelation_height, pixelation_width,
                                         channels)) + self.BLOCK_VALUE_BLACK
-
         if monochrome and channels == 3:
             noise[:,:,1] = noise[:,:,0]
             noise[:,:,2] = noise[:,:,0]
+
+        self.noise_dampening = (self.noise_dampening + noise) / 2
+        noise = self.noise_dampening
+
         reupsampled = cv2.resize(noise, (slice_width, slice_height),
                                 interpolation=cv2.INTER_NEAREST)
 
@@ -1098,7 +1112,7 @@ class VideoRemixerProcessor():
         block_factor /= expansion
 
         files = sorted(get_files(scene_input_path))
-        with Mtqdm().open_bar(total=len(files), desc="Blockring") as bar:
+        with Mtqdm().open_bar(total=len(files), desc="Block FX") as bar:
             for file in files:
                 _, filename, ext = split_filepath(file)
                 output_path = os.path.join(scene_output_path, filename + ext)
