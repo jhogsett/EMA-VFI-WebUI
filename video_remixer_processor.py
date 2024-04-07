@@ -72,9 +72,10 @@ class VideoRemixerProcessor():
     BLOCK_TYPE_BLACK = "B"
     BLOCK_TYPE_WHITE = "W"
     BLOCK_TYPE_NOISE = "N"
+    BLOCK_TYPE_STATIC = "S"
     BLOCK_TYPE_PIXELATED = "X"
     DEFAULT_BLOCK_TYPE = BLOCK_TYPE_BLACK
-    BLOCK_TYPES = [BLOCK_TYPE_BLACK, BLOCK_TYPE_WHITE, BLOCK_TYPE_NOISE, BLOCK_TYPE_PIXELATED]
+    BLOCK_TYPES = [BLOCK_TYPE_BLACK, BLOCK_TYPE_WHITE, BLOCK_TYPE_NOISE, BLOCK_TYPE_STATIC, BLOCK_TYPE_PIXELATED]
     DEFAULT_BLOCK_FACTOR = 32
     LENS_TYPE_UNDISTORT = "U"
     LENS_TYPE_DISTORT = "D"
@@ -1036,23 +1037,38 @@ class VideoRemixerProcessor():
             data[top:bottom, left:right] = value
         return data.astype(np.uint8)
 
-    def block_frame_noise(self, frame, top, bottom, left, right):
-        _height, _width, channels = frame.shape
+    def block_frame_noise(self, frame, top, bottom, left, right, block_factor, monochrome=False):
+        height, width, channels = frame.shape
+        aspect = height / width
         data = np.array(frame, np.uint8)
-        noise = np.random.randint(256, size=(bottom-top, right-left, channels))
-        data[top:bottom, left:right] = noise
+        slice_width = right - left
+        slice_height = bottom - top
+        pixelation_width = max(1, int(block_factor))
+        pixelation_height = max(1, int(pixelation_width * aspect))
+
+        # limit noise to NTSC safe limits to be more realistic
+        safe_range = self.BLOCK_VALUE_WHITE - self.BLOCK_VALUE_BLACK
+        noise = np.random.randint(safe_range,
+                                  size=(pixelation_height, pixelation_width,
+                                        channels)) + self.BLOCK_VALUE_BLACK
+
+        if monochrome and channels == 3:
+            noise[:,:,1] = noise[:,:,0]
+            noise[:,:,2] = noise[:,:,0]
+        reupsampled = cv2.resize(noise, (slice_width, slice_height),
+                                interpolation=cv2.INTER_NEAREST)
+
+        data[top:bottom, left:right] = reupsampled[0:slice_height, 0:slice_width]
         return data.astype(np.uint8)
 
     # https://stackoverflow.com/questions/55508615/how-to-pixelate-image-using-opencv-in-python
     def block_frame_pixelated(self, frame, top, bottom, left, right, block_factor):
         height, width = frame.shape[:2]
         aspect = height / width
-
         data = np.array(frame, np.uint8)
         image_slice = data[top:bottom, left:right]
         slice_width = right - left
         slice_height = bottom - top
-
         pixelation_width = max(1, int(block_factor))
         pixelation_height = max(1, int(pixelation_width * aspect))
 
@@ -1060,8 +1076,8 @@ class VideoRemixerProcessor():
                                 interpolation=cv2.INTER_LINEAR)
         reupsampled = cv2.resize(downsampled, (slice_width, slice_height),
                                 interpolation=cv2.INTER_NEAREST)
-        data[top:bottom, left:right] = reupsampled[0:slice_height, 0:slice_width]
 
+        data[top:bottom, left:right] = reupsampled[0:slice_height, 0:slice_width]
         return data.astype(np.uint8)
 
     def static_block_scene(self, scene_input_path, scene_output_path, block_type, block_param, resize_w, resize_h,
@@ -1078,6 +1094,8 @@ class VideoRemixerProcessor():
         right = left + block_width
         top = crop_offset_y
         bottom = top + block_height
+        block_factor = int(block_param) if block_param else self.DEFAULT_BLOCK_FACTOR
+        block_factor /= expansion
 
         files = sorted(get_files(scene_input_path))
         with Mtqdm().open_bar(total=len(files), desc="Blockring") as bar:
@@ -1096,12 +1114,13 @@ class VideoRemixerProcessor():
                     frame = self.block_frame_block(frame, top, bottom, left, right, self.BLOCK_VALUE_WHITE)
 
                 elif block_type == self.BLOCK_TYPE_PIXELATED:
-                    block_factor = int(block_param) if block_param else self.DEFAULT_BLOCK_FACTOR
-                    block_factor /= expansion
                     frame = self.block_frame_pixelated(frame, top, bottom, left, right, block_factor)
 
                 elif block_type == self.BLOCK_TYPE_NOISE:
-                    frame = self.block_frame_noise(frame, top, bottom, left, right)
+                    frame = self.block_frame_noise(frame, top, bottom, left, right, block_factor)
+
+                elif block_type == self.BLOCK_TYPE_STATIC:
+                    frame = self.block_frame_noise(frame, top, bottom, left, right, block_factor, monochrome=True)
 
                 cv2.imwrite(output_path, frame.astype(np.uint8))
                 Mtqdm().update_bar(bar)
