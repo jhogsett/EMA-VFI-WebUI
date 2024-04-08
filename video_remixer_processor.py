@@ -71,13 +71,15 @@ class VideoRemixerProcessor():
     DEFAULT_ANIMATION_TIME = 0 # whole scene
     FADE_TYPE_IN = "I"
     FADE_TYPE_OUT = "O"
+    STICKY_HINT = "!"
     BLOCK_TYPE_BLACK = "B"
     BLOCK_TYPE_WHITE = "W"
     BLOCK_TYPE_NOISE = "N"
     BLOCK_TYPE_STATIC = "S"
     BLOCK_TYPE_PIXELATED = "X"
+    # BLOCK_TYPE_SCRAMBLE = "R"
     DEFAULT_BLOCK_TYPE = BLOCK_TYPE_BLACK
-    BLOCK_TYPES = [BLOCK_TYPE_BLACK, BLOCK_TYPE_WHITE, BLOCK_TYPE_NOISE, BLOCK_TYPE_STATIC, BLOCK_TYPE_PIXELATED]
+    BLOCK_TYPES = [BLOCK_TYPE_BLACK, BLOCK_TYPE_WHITE, BLOCK_TYPE_NOISE, BLOCK_TYPE_STATIC, BLOCK_TYPE_PIXELATED, STICKY_HINT]
     DEFAULT_BLOCK_FACTOR = 32
     BLOCK_VALUE_BLACK = 0   #16  # NTSC standard
     BLOCK_VALUE_WHITE = 255 #235
@@ -88,7 +90,6 @@ class VideoRemixerProcessor():
     LENS_MAX_UNDISTORT = 1000.0
     DEFAULT_LENS_HINT = "0D"
     NO_ACTION_HINT = "N"
-    STICKY_HINT = "!"
 
     ### Exports --------------------
 
@@ -1865,7 +1866,6 @@ class VideoRemixerProcessor():
 
     def _get_block_type(self, hint, check_type):
         block_type = None
-        sticky = False
         param = None
         remainder = hint
 
@@ -1874,20 +1874,23 @@ class VideoRemixerProcessor():
             block_type = hint[:split_pos+1]
             remainder = hint[split_pos+1:]
 
-            # if the block type was found in a position other than first,
-            # the preceding value is a type-specific parameter
             if len(block_type) > 1:
+                # if the block type was found in a position other than first,
+                # the preceding value is a type-specific parameter
                 param = block_type[:-1]
                 block_type = block_type[-1]
+            elif block_type[0] == self.STICKY_HINT:
+                # if the block type is just the stick hint flag, clear the stick hints
+                self.sticky_block_hints = []
+                return None, None, None
 
-            # if the block type was followed by the sticky hint character,
-            # add the hint except the sticky hint character to the sticky hint list
-            if remainder[0] == self.STICKY_HINT:
+            if remainder and remainder[0] == self.STICKY_HINT:
+                # if the block type was followed by the sticky hint character,
+                # add the hint without the sticky hint character to the sticky hint list
                 remainder = remainder[1:]
                 sticky_hint = f"{param or ''}{block_type}{remainder}"
                 if sticky_hint not in self.sticky_block_hints:
                     self.sticky_block_hints.append(sticky_hint)
-                # TODO a way to disable a block hint
 
         return block_type, param, remainder
 
