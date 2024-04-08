@@ -36,6 +36,7 @@ class VideoRemixerProcessor():
         self.processing_messages_context = {}
         self.saved_lens_hint = self.DEFAULT_LENS_HINT
         self.noise_dampening = None
+        self.sticky_block_hints = []
 
     def log(self, message):
         if self.log_fn:
@@ -86,7 +87,8 @@ class VideoRemixerProcessor():
     LENS_MIN_UNDISTORT = -1000.0
     LENS_MAX_UNDISTORT = 1000.0
     DEFAULT_LENS_HINT = "0D"
-    NO_RESIZE_HINT = "N"
+    NO_ACTION_HINT = "N"
+    STICKY_HINT = "!"
 
     ### Exports --------------------
 
@@ -819,6 +821,7 @@ class VideoRemixerProcessor():
 
     def process_block_effects(self, scenes_base_path, output_base_path, kept_scenes, desc,
                      adjust_for_inflation):
+        self.sticky_block_hints = []
         with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
             for scene_name in kept_scenes:
                 self.processing_messages_context["scene_name"] = scene_name
@@ -839,6 +842,8 @@ class VideoRemixerProcessor():
         scene_handled = False
         hints = self.state.get_hint(self.state.scene_labels.get(scene_name),
                                         self.state.EFFECTS_BLOCK_HINT, allow_multiple=True)
+        hints = self.sticky_block_hints + hints if hints else self.sticky_block_hints
+
         if hints:
             content_width = self.state.video_details["content_width"]
             content_height = self.state.video_details["content_height"]
@@ -874,7 +879,7 @@ class VideoRemixerProcessor():
                                 raise
 
                     cv2.imwrite(output_path, frame.astype(np.uint8))
-                Mtqdm().update_bar(bar)
+                    Mtqdm().update_bar(bar)
 
         if message:
             self.add_processing_message(message)
@@ -1530,7 +1535,7 @@ class VideoRemixerProcessor():
 
             try:
                 resize_handled = resize_handled or \
-                    self._process_no_resize_hint(resize_hint, scene_input_path, scene_output_path)
+                    self._process_NO_ACTION_HINT(resize_hint, scene_input_path, scene_output_path)
 
                 resize_handled = resize_handled or \
                     self._process_animation_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
@@ -1553,11 +1558,11 @@ class VideoRemixerProcessor():
 
         return resize_handled
 
-    def _process_no_resize_hint(self, resize_hint, scene_input_path, scene_output_path):
+    def _process_NO_ACTION_HINT(self, resize_hint, scene_input_path, scene_output_path):
         # disable resizing and instead copy source frames as-is
         # this allows the for_resizing_effects behavior access to the original detail
         # copy the files using the resequencer
-        if resize_hint == self.NO_RESIZE_HINT:
+        if resize_hint == self.NO_ACTION_HINT:
             ResequenceFiles(scene_input_path,
                             self.state.frame_format,
                             "scene_frame",
@@ -1860,6 +1865,7 @@ class VideoRemixerProcessor():
 
     def _get_block_type(self, hint, check_type):
         block_type = None
+        sticky = False
         param = None
         remainder = hint
 
@@ -1869,10 +1875,19 @@ class VideoRemixerProcessor():
             remainder = hint[split_pos+1:]
 
             # if the block type was found in a position other than first,
-            # the preceding value is stripped and passed into to block function
+            # the preceding value is a type-specific parameter
             if len(block_type) > 1:
                 param = block_type[:-1]
                 block_type = block_type[-1]
+
+            # if the block type was followed by the sticky hint character,
+            # add the hint except the sticky hint character to the sticky hint list
+            if remainder[0] == self.STICKY_HINT:
+                remainder = remainder[1:]
+                sticky_hint = f"{param or ''}{block_type}{remainder}"
+                if sticky_hint not in self.sticky_block_hints:
+                    self.sticky_block_hints.append(sticky_hint)
+                # TODO a way to disable a block hint
 
         return block_type, param, remainder
 
