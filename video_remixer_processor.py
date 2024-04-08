@@ -239,7 +239,9 @@ class VideoRemixerProcessor():
     def add_processing_message(self, message):
         operation = self.processing_messages_context.get("operation", "unknown")
         scene_name = self.processing_messages_context.get("scene_name", "unknown")
-        self.processing_messages.append(f"Operation: {operation} Scene: {scene_name} Message: {message}")
+        message = f"Operation: {operation} Scene: {scene_name} Message: {message}"
+        if message not in self.processing_messages:
+            self.processing_messages.append(message)
 
     def reset_processing_messages(self):
         self.processing_messages = []
@@ -421,19 +423,6 @@ class VideoRemixerProcessor():
 
         working_paths = []
 
-        # corrective effects are applied first, so downstream effects benefit from the correction
-        if self.state.effects_hint_chosen(self.state.EFFECTS_LENS_HINT):
-            operation = "Lens FX"
-            self.processing_messages_context["operation"] = operation
-            working_output_path = os.path.join(output_base_path, "lens_fx")
-            working_paths.append(working_output_path)
-            create_directory(working_output_path)
-
-            self.process_lens_effects(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
-            working_input_path = working_output_path
-
-        # groovy effects are processed after correction and before view and fade
-
         if self.state.effects_hint_chosen(self.state.EFFECTS_BLOCK_HINT):
             operation = "Block FX"
             self.processing_messages_context["operation"] = operation
@@ -442,6 +431,16 @@ class VideoRemixerProcessor():
             create_directory(working_output_path)
 
             self.process_block_effects(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
+            working_input_path = working_output_path
+
+        if self.state.effects_hint_chosen(self.state.EFFECTS_LENS_HINT):
+            operation = "Lens FX"
+            self.processing_messages_context["operation"] = operation
+            working_output_path = os.path.join(output_base_path, "lens_fx")
+            working_paths.append(working_output_path)
+            create_directory(working_output_path)
+
+            self.process_lens_effects(working_input_path, working_output_path, kept_scenes, operation, adjust_for_inflation=True)
             working_input_path = working_output_path
 
         # view is processed after all other effects (except fade) to take into account all effects
@@ -845,7 +844,6 @@ class VideoRemixerProcessor():
             content_height = self.state.video_details["content_height"]
             main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
                 self.setup_resize_hint(content_width, content_height, False)
-            self.noise_dampening = None
 
             files = sorted(get_files(scene_input_path))
             with Mtqdm().open_bar(total=len(files), desc="Block FX") as bar:
@@ -856,6 +854,7 @@ class VideoRemixerProcessor():
 
                     for hint in hints:
                         try:
+                            self.noise_dampening = None
                             hint_handled = False
                             # handled = handled or \
                             #     self._process_animated_block_hint(hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
