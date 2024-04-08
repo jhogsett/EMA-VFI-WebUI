@@ -854,9 +854,9 @@ class VideoRemixerProcessor():
                     output_path = os.path.join(scene_output_path, filename + ext)
                     frame = cv2.imread(file)
 
-                    hint_handled = False
                     for hint in hints:
                         try:
+                            hint_handled = False
                             # handled = handled or \
                             #     self._process_animated_block_hint(hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
 
