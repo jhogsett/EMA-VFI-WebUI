@@ -1127,14 +1127,6 @@ class VideoRemixerProcessor():
         block_factor = int(block_param) if block_param else self.DEFAULT_BLOCK_FACTOR
         block_factor /= expansion
 
-        # files = sorted(get_files(scene_input_path))
-        # with Mtqdm().open_bar(total=len(files), desc="Block FX") as bar:
-        #     for file in files:
-        #         _, filename, ext = split_filepath(file)
-        #         output_path = os.path.join(scene_output_path, filename + ext)
-
-        #         frame = cv2.imread(file)
-
         if block_type == self.BLOCK_TYPE_BLACK:
             value = max(0, min(225, int(block_param))) if block_param else self.BLOCK_VALUE_BLACK
             frame = self.block_frame_block(frame, top, bottom, left, right, value)
