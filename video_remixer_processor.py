@@ -834,14 +834,14 @@ class VideoRemixerProcessor():
                 scene_output_path = os.path.join(output_base_path, scene_name)
                 create_directory(scene_output_path)
 
-                handled = self.process_block_hint(scene_input_path, scene_output_path,
+                handled = self.process_block_hints(scene_input_path, scene_output_path,
                                                   scene_name)
                 if not handled:
                     copy_files(scene_input_path, scene_output_path)
 
                 Mtqdm().update_bar(bar)
 
-    def process_block_hint(self, scene_input_path, scene_output_path, scene_name):
+    def process_block_hints(self, scene_input_path, scene_output_path, scene_name):
         message = None
         scene_handled = False
         hints = self.state.get_hint(self.state.scene_labels.get(scene_name),
@@ -869,16 +869,16 @@ class VideoRemixerProcessor():
                             #     self._process_animated_block_hint(hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
 
                             if not hint_handled:
-                                hint_handled, frame = self._process_animated_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, index)
+                                hint_handled, frame = self.process_animated_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, index)
 
                             if not hint_handled:
-                                hint_handled, frame = self._process_combined_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                                hint_handled, frame = self.process_combined_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
                             if not hint_handled:
-                                hint_handled, frame = self._process_quadrant_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                                hint_handled, frame = self.process_quadrant_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
                             if not hint_handled:
-                                hint_handled, frame = self._process_percent_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+                                hint_handled, frame = self.process_percent_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
 
                             scene_handled = scene_handled or hint_handled
                         except Exception as error:
@@ -896,8 +896,7 @@ class VideoRemixerProcessor():
 
         return scene_handled
 
-    def _process_animated_block_hint(self, hint, frame, main_resize_w, main_resize_h, main_offset_x,
-                                     main_offset_y, main_crop_w, main_crop_h, index):
+    def get_animated_block_hints(self, hint):
         if self.ANIMATED_ZOOM_HINT in hint:
             if len(hint) >= self.ANIMATED_BLOCK_MIN_LEN:
                 split_pos = hint.index(self.ANIMATED_ZOOM_HINT)
@@ -905,16 +904,14 @@ class VideoRemixerProcessor():
                 hint_to = hint[split_pos+1:]
 
                 from_block_type, from_block_param, remaining_hint_from = self.get_block_type(hint_from)
-
-                # resize_hint = self.get_implied_zoom(resize_hint)
-                # self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
                 to_block_type, to_block_param, remaining_hint_to = self.get_block_type(hint_to)
 
                 # remove the block hint specific parts of the hint and process like a zoom hint
+                # 'type' may include a block fx parameter
                 block_hint = f"{remaining_hint_from}-{remaining_hint_to}"
                 from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, \
                         to_param3, frame_from, frame_to, schedule \
-                    = self.get_animated_zoom(block_hint)
+                    = self.get_zoom_part(block_hint)
 
                 return from_block_type, from_block_param, to_block_type, to_block_param, from_type, \
                     from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, \
@@ -994,8 +991,43 @@ class VideoRemixerProcessor():
 
 
 
+    def process_animated_block_hint(self, block_hint, frame,
+                                    main_resize_w, main_resize_h, main_offset_x, main_offset_y,
+                                    main_crop_w, main_crop_h, index):
 
-    def _process_combined_block_hint(self, block_hint, frame,
+        from_block_type, from_block_param, to_block_type, to_block_param, \
+            from_type, from_param1, from_param2, from_param3, \
+            to_type, to_param1, to_param2, to_param3, \
+            frame_from, frame_to, schedule = self.get_animated_block_hints(block_hint)
+
+
+
+
+
+
+
+
+        block_type, block_param, remaining_hint = self.get_block_type(block_hint)
+        block_hint = remaining_hint
+
+        if self.COMBINED_ZOOM_HINT in block_hint:
+            quadrant, quadrants, zoom_percent = self.get_combined_zoom(block_hint)
+            if quadrant and quadrants and zoom_percent:
+                resize_w, resize_h, center_x, center_y = \
+                    self.compute_combined_zoom(quadrant, quadrants, zoom_percent,
+                                                main_resize_w, main_resize_h,
+                                                main_offset_x, main_offset_y,
+                                                main_crop_w, main_crop_h)
+                crop_offset_x = center_x - (main_crop_w / 2.0)
+                crop_offset_y = center_y - (main_crop_h / 2.0)
+
+                frame = self.static_block_scene(frame, block_type, block_param, resize_w,
+                                       resize_h, crop_offset_x, crop_offset_y, main_crop_w,
+                                       main_crop_h)
+                return True, frame
+        return False, frame
+
+    def process_combined_block_hint(self, block_hint, frame,
                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                     main_crop_w, main_crop_h):
         block_type, block_param, remaining_hint = self.get_block_type(block_hint)
@@ -1018,7 +1050,7 @@ class VideoRemixerProcessor():
                 return True, frame
         return False, frame
 
-    def _process_quadrant_block_hint(self, block_hint, frame,
+    def process_quadrant_block_hint(self, block_hint, frame,
                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                     main_crop_w, main_crop_h):
         block_type, block_param, remaining_hint = self.get_block_type(block_hint)
@@ -1044,7 +1076,7 @@ class VideoRemixerProcessor():
                 return True, frame
         return False, frame
 
-    def _process_percent_block_hint(self, block_hint, frame,
+    def process_percent_block_hint(self, block_hint, frame,
                                    main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                    main_crop_w, main_crop_h):
         block_type, block_param, remaining_hint = self.get_block_type(block_hint)
@@ -1297,7 +1329,7 @@ class VideoRemixerProcessor():
         return fade_handled
 
     def _process_fade_hint(self, fade_hint, scene_input_path, scene_output_path, scene_name, adjust_for_inflation):
-        fade_type, frame_from, frame_to, schedule = self.get_animated_fade(fade_hint)
+        fade_type, frame_from, frame_to, schedule = self.get_animated_fade_hints(fade_hint)
 
         if fade_type:
             first_frame, last_frame, _ = details_from_group_name(scene_name)
@@ -1312,7 +1344,7 @@ class VideoRemixerProcessor():
         return False
 
     # TODO DRY
-    def get_animated_fade(self, hint):
+    def get_animated_fade_hints(self, hint):
         if len(hint) >= self.ANIMATED_FADE_MIN_LEN:
             schedule = self.DEFAULT_ANIMATION_SCHEDULE
             time = self.DEFAULT_ANIMATION_TIME
@@ -1601,7 +1633,7 @@ class VideoRemixerProcessor():
             self.log(f"get_implied_zoom() filtered resize hint: {resize_hint}")
             from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
                 to_param2, to_param3, frame_from, frame_to, schedule \
-                    = self.get_animated_zoom(resize_hint)
+                    = self.get_animated_zoom_hints(resize_hint)
             if from_type and to_type:
                 first_frame, last_frame, _ = details_from_group_name(scene_name)
                 num_frames = (last_frame - first_frame) + 1
@@ -1846,7 +1878,7 @@ class VideoRemixerProcessor():
                 return f"{hint_from}-{view_to}{remainder}"
         return hint
 
-    def get_animated_zoom(self, hint):
+    def get_animated_zoom_hints(self, hint):
         if self.ANIMATED_ZOOM_HINT in hint:
             if len(hint) >= self.ANIMATED_ZOOM_MIN_LEN:
                 schedule = self.DEFAULT_ANIMATION_SCHEDULE
