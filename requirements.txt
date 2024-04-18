@@ -11,6 +11,6 @@ scipy==1.10.1
 scikit-image==0.19.3
 tensorboardX==2.6
 timm==0.6.12
-torch==1.13.1
+torch==2.2.0
 torchvision==0.14.1
 tqdm==4.64.1
