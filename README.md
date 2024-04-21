@@ -8,7 +8,7 @@
 
 ![frame-interpolation](https://github.com/jhogsett/EMA-VFI-WebUI/assets/825994/2370458c-6414-421f-8aa2-33a0db84c2cf)
 
-🎬 [Windows 11 example install steps 11/03/2023](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Example-Windows-11-Install-Steps-November-3,-2023)
+🎬 [Windows 11 example install steps 4/20/2024](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Example-Windows-11-Install-Steps-April-20,-2024)
 
 _**💥 See more samples in the**_ [Samples Showcase](https://github.com/jhogsett/EMA-VFI-WebUI/wiki/Samples-Showcase)
 
