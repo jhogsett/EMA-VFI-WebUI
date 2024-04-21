@@ -1,6 +1,9 @@
 ffmpy==0.3.0
 gradio==3.36.1
 gradio_client==0.7.1
+imageio==2.34.0
 matplotlib==3.6.3
+opencv-python==4.9.0.80
 Pillow==10.3.0
 PyYAML==6.0
+torch==2.2.0
