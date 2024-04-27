@@ -909,9 +909,9 @@ class VideoRemixerProcessor():
                 # remove the block hint specific parts of the hint and process like a zoom hint
                 # 'type' may include a block fx parameter
                 block_hint = f"{remaining_hint_from}-{remaining_hint_to}"
-                from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, \
-                        to_param3, frame_from, frame_to, schedule \
-                    = self.get_zoom_part(block_hint)
+                from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
+                    to_param2, to_param3, frame_from, frame_to, schedule \
+                        = self.get_animated_zoom_hints(block_hint)
 
                 return from_block_type, from_block_param, to_block_type, to_block_param, \
                     from_type, from_param1, from_param2, from_param3, \
