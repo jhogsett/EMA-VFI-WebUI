@@ -10,6 +10,7 @@ from webui_utils.file_utils import split_filepath, create_directory, get_directo
     remove_directories, copy_files, simple_sanitize_filename, move_files
 from webui_utils.video_utils import details_from_group_name, PNGtoMP4, combine_video_audio,\
     combine_videos, PNGtoCustom, image_size
+from webui_utils.simple_utils import dummy_args
 from webui_utils.mtqdm import Mtqdm
 from slice_video import SliceVideo
 from resize_frames import ResizeFrames
@@ -824,7 +825,7 @@ class VideoRemixerProcessor():
     def process_block_effects(self, scenes_base_path, output_base_path, kept_scenes, desc,
                      adjust_for_inflation):
         self.sticky_block_hints = []
-        self.block_animation_contexts = []
+        self.block_animation_contexts = {}
 
         with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
             for scene_name in kept_scenes:
@@ -835,13 +836,14 @@ class VideoRemixerProcessor():
                 create_directory(scene_output_path)
 
                 handled = self.process_block_hints(scene_input_path, scene_output_path,
-                                                  scene_name)
+                                                  scene_name, adjust_for_inflation)
                 if not handled:
                     copy_files(scene_input_path, scene_output_path)
 
                 Mtqdm().update_bar(bar)
 
-    def process_block_hints(self, scene_input_path, scene_output_path, scene_name):
+    def process_block_hints(self, scene_input_path, scene_output_path, scene_name,
+                            adjust_for_inflation):
         message = None
         scene_handled = False
         hints = self.state.get_hint(self.state.scene_labels.get(scene_name),
@@ -865,11 +867,9 @@ class VideoRemixerProcessor():
                         try:
                             self.noise_dampening = None
                             hint_handled = False
-                            # handled = handled or \
-                            #     self._process_animated_block_hint(hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
 
                             if not hint_handled:
-                                hint_handled, frame = self.process_animated_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, index)
+                                hint_handled, frame = self.process_animated_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, index, scene_name, adjust_for_inflation)
 
                             if not hint_handled:
                                 hint_handled, frame = self.process_combined_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
@@ -883,7 +883,7 @@ class VideoRemixerProcessor():
                             scene_handled = scene_handled or hint_handled
                         except Exception as error:
                             message = f"Skipping processing of hint {hint} due to error: {error}"
-                            handled = False
+                            hint_handled = False
                             if self.state.remixer_settings.get("raise_on_error"):
                                 raise
 
@@ -913,118 +913,48 @@ class VideoRemixerProcessor():
                         to_param3, frame_from, frame_to, schedule \
                     = self.get_zoom_part(block_hint)
 
-                return from_block_type, from_block_param, to_block_type, to_block_param, from_type, \
-                    from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, \
-                        frame_from, frame_to, schedule
+                return from_block_type, from_block_param, to_block_type, to_block_param, \
+                    from_type, from_param1, from_param2, from_param3, \
+                    to_type, to_param1, to_param2, to_param3, \
+                    frame_from, frame_to, schedule
 
-        return None, None, None, None, None, None, None, None, None, None, None, None, None, None, \
-            None
-
-    # def _process_animated_block_hint(self, block_hint, scene_input_path, scene_output_path,
-    #                                  main_resize_w, main_resize_h, main_offset_x, main_offset_y,
-    #                                  main_crop_w, main_crop_h, scene_name, adjust_for_inflation):
-
-    #         if from_type and to_type:
-    #             first_frame, last_frame, _ = details_from_group_name(scene_name)
-    #             num_frames = (last_frame - first_frame) + 1
-    #             context = self.compute_animated_zoom(scene_name, num_frames,
-    #                     from_type, from_param1, from_param2, from_param3,
-    #                     to_type, to_param1, to_param2, to_param3, frame_from,
-    #                     frame_to, schedule, main_resize_w, main_resize_h,
-    #                     main_offset_x, main_offset_y, main_crop_w, main_crop_h,
-    #                     adjust_for_inflation)
-    #             # context = self.compute_animated_block(context)
-
-    #             # scale_type = self.state.remixer_settings["scale_type_up"]
-    #             # self.resize_scene(scene_input_path,
-    #             #                     scene_output_path,
-    #             #                     None,
-    #             #                     None,
-    #             #                     main_crop_w,
-    #             #                     main_crop_h,
-    #             #                     None,
-    #             #                     None,
-    #             #                     scale_type,
-    #             #                     crop_type="crop",
-    #             #                     params_fn=self._resize_frame_param,
-    #             #                     params_context=context)
-    #             return True
-    #     return False
-
-    # def get_animated_block_hints(self, hint):
-    #     if self.ANIMATED_ZOOM_HINT in hint:
-    #         if len(hint) >= self.ANIMATED_ZOOM_MIN_LEN:
-    #             schedule = self.DEFAULT_ANIMATION_SCHEDULE
-    #             time = self.DEFAULT_ANIMATION_TIME
-    #             if self.ANIMATION_SCHEDULE_HINT in hint:
-    #                 split_pos = hint.index(self.ANIMATION_SCHEDULE_HINT)
-    #                 remainder = hint[:split_pos]
-    #                 schedule = hint[split_pos+1:]
-    #                 hint = remainder
-    #             if self.ANIMATION_TIME_HINT in hint:
-    #                 split_pos = hint.index(self.ANIMATION_TIME_HINT)
-    #                 remainder = hint[:split_pos]
-    #                 time = hint[split_pos+1:]
-    #                 hint = remainder
-    #                 if self.ANIMATION_TIME_SEP in time:
-    #                     # a specific frame range is specified
-    #                     split_pos = time.index(self.ANIMATION_TIME_SEP)
-    #                     # one or both values may be empty strings
-    #                     frame_from = time[:split_pos]
-    #                     frame_to = time[split_pos+1:]
-    #                 else:
-    #                     # a frame count is specified with an implied range starting at zero
-    #                     frame_from = 0
-    #                     frame_to = int(time)
-    #             else:
-    #                 frame_from = ""
-    #                 frame_to = ""
-    #             split_pos = hint.index(self.ANIMATED_ZOOM_HINT)
-    #             hint_from = hint[:split_pos]
-    #             hint_to = hint[split_pos+1:]
-
-    #             from_type, from_param1, from_param2, from_param3 = self.get_zoom_part(hint_from)
-    #             to_type, to_param1, to_param2, to_param3 = self.get_zoom_part(hint_to)
-    #             return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, frame_from, frame_to, schedule
-
-    #     return None, None, None, None, None, None, None, None, None, None, None
-
-
+        return dummy_args(15)
 
     def process_animated_block_hint(self, block_hint, frame,
                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
-                                    main_crop_w, main_crop_h, index):
+                                    main_crop_w, main_crop_h,
+                                    index, scene_name, adjust_for_inflation):
 
         from_block_type, from_block_param, to_block_type, to_block_param, \
-            from_type, from_param1, from_param2, from_param3, \
-            to_type, to_param1, to_param2, to_param3, \
-            frame_from, frame_to, schedule = self.get_animated_block_hints(block_hint)
+                from_type, from_param1, from_param2, from_param3, \
+                to_type, to_param1, to_param2, to_param3, \
+                frame_from, frame_to, schedule = \
+            self.get_animated_block_hints(block_hint)
 
+        # TODO use "from" block type, ignore a different "to" type (or raise error)?
 
+        context = self.block_animation_contexts.get(block_hint)
+        if not context:
+            if from_type and to_type:
+                first_frame, last_frame, _ = details_from_group_name(scene_name)
+                num_frames = (last_frame - first_frame) + 1
+                context = self.compute_animated_zoom(scene_name, num_frames,
+                        from_type, from_param1, from_param2, from_param3,
+                        to_type, to_param1, to_param2, to_param3, frame_from,
+                        frame_to, schedule, main_resize_w, main_resize_h,
+                        main_offset_x, main_offset_y, main_crop_w, main_crop_h,
+                        adjust_for_inflation)
 
+                # TODO add context for the block param animation
 
+                self.block_animation_contexts[block_hint] = context
 
-
-
-
-        block_type, block_param, remaining_hint = self.get_block_type(block_hint)
-        block_hint = remaining_hint
-
-        if self.COMBINED_ZOOM_HINT in block_hint:
-            quadrant, quadrants, zoom_percent = self.get_combined_zoom(block_hint)
-            if quadrant and quadrants and zoom_percent:
-                resize_w, resize_h, center_x, center_y = \
-                    self.compute_combined_zoom(quadrant, quadrants, zoom_percent,
-                                                main_resize_w, main_resize_h,
-                                                main_offset_x, main_offset_y,
-                                                main_crop_w, main_crop_h)
-                crop_offset_x = center_x - (main_crop_w / 2.0)
-                crop_offset_y = center_y - (main_crop_h / 2.0)
-
-                frame = self.static_block_scene(frame, block_type, block_param, resize_w,
-                                       resize_h, crop_offset_x, crop_offset_y, main_crop_w,
-                                       main_crop_h)
-                return True, frame
+        if context:
+            resize_w, resize_h, crop_offset_x, crop_offset_y = self._resize_frame_param(index, context)
+            frame = self.static_block_scene(frame, from_block_type, from_block_param, resize_w,
+                                    resize_h, crop_offset_x, crop_offset_y, main_crop_w,
+                                    main_crop_h)
+            return True, frame
         return False, frame
 
     def process_combined_block_hint(self, block_hint, frame,
