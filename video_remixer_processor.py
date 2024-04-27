@@ -945,15 +945,36 @@ class VideoRemixerProcessor():
                         main_offset_x, main_offset_y, main_crop_w, main_crop_h,
                         adjust_for_inflation)
 
-                # TODO add context for the block param animation
+                if context:
+                    context["block_type"] = from_block_type
 
-                self.block_animation_contexts[block_hint] = context
+                    if from_block_param or to_block_param:
+                        if not from_block_param:
+                            from_block_param = self.DEFAULT_BLOCK_FACTOR
+                        if not to_block_param:
+                            to_block_param = self.DEFAULT_BLOCK_FACTOR
+
+                        num_frames = context["num_frames"]
+                        diff_block_param = float(to_block_param) - float(from_block_param)
+                        step_block_param = diff_block_param / num_frames
+                        context["from_block_param"] = float(from_block_param)
+                        context["step_block_param"] = step_block_param
+
+                    self.block_animation_contexts[block_hint] = context
 
         if context:
-            resize_w, resize_h, crop_offset_x, crop_offset_y = self._resize_frame_param(index, context)
-            frame = self.static_block_scene(frame, from_block_type, from_block_param, resize_w,
-                                    resize_h, crop_offset_x, crop_offset_y, main_crop_w,
-                                    main_crop_h)
+            resize_w, resize_h, crop_offset_x, crop_offset_y = \
+                self._resize_frame_param(index, context)
+
+            block_type = context["block_type"]
+            from_block_param = context.get("from_block_param")
+            step_block_param = context.get("step_block_param")
+            block_param = None
+            if from_block_param and step_block_param:
+                block_param = int(from_block_param + (index * step_block_param))
+
+            frame = self.static_block_scene(frame, block_type, block_param, resize_w, resize_h,
+                                            crop_offset_x, crop_offset_y, main_crop_w, main_crop_h)
             return True, frame
         return False, frame
 
