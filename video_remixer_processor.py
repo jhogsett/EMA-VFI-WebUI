@@ -931,8 +931,6 @@ class VideoRemixerProcessor():
                 frame_from, frame_to, schedule = \
             self.get_animated_block_hints(block_hint)
 
-        # TODO use "from" block type, ignore a different "to" type (or raise error)?
-
         context = self.block_animation_contexts.get(block_hint)
         if not context:
             if from_type and to_type:
@@ -963,6 +961,27 @@ class VideoRemixerProcessor():
                     self.block_animation_contexts[block_hint] = context
 
         if context:
+            start_frame = context["start_frame"]
+            end_frame = context["end_frame"]
+            schedule = context["schedule"]
+            num_frames = context["num_frames"]
+
+            if index < start_frame:
+                index = 0
+            elif index > end_frame:
+                index = end_frame - start_frame
+            else:
+                index -= start_frame
+
+                accelerate = True
+                index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
+                                                                    accelerate)
+                if float_carry >= 0.5:
+                    index += 1
+
+            if index > num_frames:
+                index = num_frames
+
             resize_w, resize_h, crop_offset_x, crop_offset_y = \
                 self._resize_frame_param(index, context)
 
