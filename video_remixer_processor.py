@@ -842,6 +842,27 @@ class VideoRemixerProcessor():
 
                 Mtqdm().update_bar(bar)
 
+    # have default arguments so this is more easily reused for showing a preview
+    def process_block_hint(self, hint, frame, main_resize_w, main_resize_h, main_offset_x,
+                            main_offset_y, main_crop_w, main_crop_h, index=None, scene_name=None,
+                            adjust_for_inflation=False):
+        self.noise_dampening = None
+        hint_handled = False
+
+        if not hint_handled and (index != None and scene_name != None):
+            hint_handled, frame = self.process_animated_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, index, scene_name, adjust_for_inflation)
+
+        if not hint_handled:
+            hint_handled, frame = self.process_combined_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+        if not hint_handled:
+            hint_handled, frame = self.process_quadrant_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+        if not hint_handled:
+            hint_handled, frame = self.process_percent_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+        return hint_handled, frame
+
     def process_block_hints(self, scene_input_path, scene_output_path, scene_name,
                             adjust_for_inflation):
         message = None
@@ -865,21 +886,7 @@ class VideoRemixerProcessor():
 
                     for hint in hints:
                         try:
-                            self.noise_dampening = None
-                            hint_handled = False
-
-                            if not hint_handled:
-                                hint_handled, frame = self.process_animated_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, index, scene_name, adjust_for_inflation)
-
-                            if not hint_handled:
-                                hint_handled, frame = self.process_combined_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
-
-                            if not hint_handled:
-                                hint_handled, frame = self.process_quadrant_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
-
-                            if not hint_handled:
-                                hint_handled, frame = self.process_percent_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
-
+                            hint_handled, frame = self.process_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, index, scene_name, adjust_for_inflation)
                             scene_handled = scene_handled or hint_handled
                         except Exception as error:
                             message = f"Skipping processing of hint {hint} due to error: {error}"
@@ -1175,93 +1182,6 @@ class VideoRemixerProcessor():
                 # cv2.imwrite(output_path, frame.astype(np.uint8))
                 # Mtqdm().update_bar(bar)
         return frame
-
-    # def block_scene(self,
-    #                  scene_input_path,
-    #                  scene_output_path,
-    #                  context : any=None):
-
-    #     num_frames = context["num_frames"]
-    #     schedule = context["schedule"]
-    #     start_frame = context["start_frame"]
-    #     end_frame = context["end_frame"]
-
-    #     files = sorted(get_files(scene_input_path))
-    #     with Mtqdm().open_bar(total=len(files), desc="Fading") as bar:
-    #         for index, file in enumerate(files):
-    #             _, filename, ext = split_filepath(file)
-    #             output_path = os.path.join(scene_output_path, filename + ext)
-
-    #             if index < start_frame:
-    #                 index = 0
-    #             elif index > end_frame:
-    #                 index = end_frame - start_frame
-    #             else:
-    #                 index -= start_frame
-
-    #                 accelerate = True # this only applies to the "Z" schedule, not clear it's useful or not with fade
-    #                 index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
-    #                                                                     accelerate)
-    #                 if float_carry >= 0.5:
-    #                     index += 1
-
-    #             if index > num_frames:
-    #                 index = num_frames
-
-    #             # frame = cv2.imread(file)
-    #             # data = np.array(frame, np.uint8)
-    #             # percent = fade
-    #             # value = data * percent
-    #             # img = value.astype(np.uint8)
-    #             # cv2.imwrite(output_path, img)
-
-    #             Mtqdm().update_bar(bar)
-
-    # def block_frame_param(self, index : int, context : dict):
-    #     from_resize_w = context["from_resize_w"]
-    #     from_resize_h = context["from_resize_h"]
-    #     from_center_x = context["from_center_x"]
-    #     from_center_y = context["from_center_y"]
-    #     step_resize_w = context["step_resize_w"]
-    #     step_resize_h = context["step_resize_h"]
-    #     step_center_x = context["step_center_x"]
-    #     step_center_y = context["step_center_y"]
-    #     main_crop_w = context["main_crop_w"]
-    #     main_crop_h = context["main_crop_h"]
-    #     num_frames = context["num_frames"]
-    #     schedule = context["schedule"]
-    #     start_frame = context["start_frame"]
-    #     end_frame = context["end_frame"]
-
-    #     if index < start_frame:
-    #         index = 0
-    #     elif index > end_frame:
-    #         index = end_frame - start_frame
-    #     else:
-    #         index -= start_frame
-    #         accelerate = step_resize_w > 0.0
-    #         index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
-    #                                                             accelerate)
-    #         if float_carry >= 0.5:
-    #             index += 1
-
-    #     if index > num_frames:
-    #         index = num_frames
-
-    #     resize_w = int(from_resize_w + (index * step_resize_w))
-    #     resize_h = int(from_resize_h + (index * step_resize_h))
-    #     center_x = from_center_x + (index * step_center_x)
-    #     center_y = from_center_y + (index * step_center_y)
-    #     crop_offset_x = int(center_x - (main_crop_w / 2.0))
-    #     crop_offset_y = int(center_y - (main_crop_h / 2.0))
-
-    #     if resize_w < main_crop_w:
-    #         resize_w = main_crop_w
-    #     if resize_h < main_crop_h:
-    #         resize_h = main_crop_h
-
-    #     return resize_w, resize_h, crop_offset_x, crop_offset_y
-
 
     def process_fade(self, scenes_base_path, output_base_path, kept_scenes, desc, adjust_for_inflation):
         with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
