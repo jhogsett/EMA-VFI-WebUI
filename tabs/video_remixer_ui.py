@@ -2349,7 +2349,7 @@ class VideoRemixer(TabBase):
         if scene_index < 0 or scene_index > last_scene:
             return format_markdown(f"Please enter a Scene Index from 0 to {last_scene}", "warning")
 
-        removed = self.state.force_drop_processed_scene(scene_index)
+        removed = self.processor.force_drop_processed_scene(scene_index)
 
         self.state.save()
         removed = "\r\n".join(removed)
