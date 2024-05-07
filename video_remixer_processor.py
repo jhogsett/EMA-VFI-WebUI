@@ -2650,23 +2650,72 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
     def force_drop_processed_scene(self, scene_index):
         scene_name = self.state.scene_names[scene_index]
         self.drop_kept_scene(scene_name)
+
         removed = []
         purge_dirs = []
-        for path in [
-            self.state.resize_path,
-            self.state.resynthesis_path,
-            self.state.inflation_path,
-            self.state.effects_path,
-            self.state.upscale_path,
-            self.state.video_clips_path,
-            self.state.audio_clips_path,
-            self.state.clips_path
-        ]:
-            content_path = os.path.join(path, scene_name)
-            if os.path.exists(content_path):
-                purge_dirs.append(content_path)
-        purge_root = self.state.purge_paths(purge_dirs)
-        removed += purge_dirs
+
+        # for path in [
+        #     self.state.resize_path,
+        #     self.state.resynthesis_path,
+        #     self.state.inflation_path,
+        #     self.state.effects_path,
+        #     self.state.upscale_path,
+        #     # self.state.video_clips_path,
+        #     # self.state.audio_clips_path,
+        #     # self.state.clips_path
+        # ]:
+        #     content_path = os.path.join(path, scene_name)
+        #     if os.path.exists(content_path):
+        #         purge_dirs.append(content_path)
+        # purge_root = self.state.purge_paths(purge_dirs)
+        # removed += purge_dirs
+
+
+
+        paths = [
+            self.resize_path,
+            self.resynthesis_path,
+            self.inflation_path,
+            self.effects_path,
+            self.upscale_path
+        ]
+
+        processed_content_dropped = False
+        purge_root = None
+
+        for path in paths:
+
+            if path and os.path.exists(path):
+
+                dirs = get_directories(path)
+                if scene_name in dirs:
+
+                    processed_path = os.path.join(path, scene_name)
+                    _, processed_type, _ = split_filepath(path)
+                    purge_root = self.purge_paths([processed_path], purged_path=purge_root, additional_path=processed_type)
+                    try:
+                        processed_content_dropped = True
+
+                        self.split_processed_content(path,
+                                                    scene_name,
+                                                    new_lower_scene_name,
+                                                    new_upper_scene_name,
+                                                    split_percent)
+                    except ValueError as error:
+                        self.log(
+                            f"Error splitting processed content path {path}: {error} - ignored")
+                        continue
+                else:
+                    self.log(f"Planned skip of splitting processed content path {path}: scene {scene_name} not found")
+            else:
+                self.log(f"Planned skip of splitting processed content path {path}: path not found")
+
+
+
+
+
+
+
 
         if purge_root:
             self.state.project.copy_project_file(purge_root)
@@ -2676,6 +2725,19 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         self.state.clean_remix_content(purge_from="audio_clips")
 
         return removed
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     # General Remix Video Processing
 
