@@ -475,13 +475,12 @@ class VideoRemixerState():
             return None
 
     def purge_paths(self, path_list : list, keep_original=False, purged_path=None,
-                    skip_empty_paths=False, additional_path="", use_last_path=False):
+                    skip_empty_paths=False, additional_path=""):
         """Purge a list of paths to the purged content directory
         keep_original: True=don't remove original content when purging
         purged_path: Used if calling multiple times to store purged content in the same purge directory
         skip_empty_paths: True=don't purge directories that have no files inside
         additional_path: If set, adds an additional segment onto the storage path (not returned)
-        use_last_path: True=use last path segemtn of purge path as root directory
         Returns: Path to the purged content directory (not incl. additional_path)
         """
         paths_to_purge = []
@@ -500,14 +499,10 @@ class VideoRemixerState():
 
         for path in paths_to_purge:
             use_purged_path = os.path.join(purged_path, additional_path)
-            if use_last_path:
-                _, last_path, _ = split_filepath(path)
-                use_purged_path = os.path.join(use_purged_path, last_path)
-
             if keep_original:
-                # _, last_path, _ = split_filepath(path)
-                # copy_path = os.path.join(use_purged_path, last_path)
-                copy_files(path, use_purged_path)
+                _, last_path, _ = split_filepath(path)
+                copy_path = os.path.join(use_purged_path, last_path)
+                copy_files(path, copy_path)
             else:
                 shutil.move(path, use_purged_path)
         return purged_path
@@ -554,7 +549,7 @@ class VideoRemixerState():
 
         # purge all of the paths, keeping the originals, for safekeeping ahead of reprocessing
         purge_root = self.purge_paths(clean_paths, keep_original=True, purged_path=purge_root,
-                                      skip_empty_paths=True, use_last_path=True)
+                                      skip_empty_paths=True)
         if purge_root:
             self.project.copy_project_file(purge_root)
 
@@ -775,7 +770,8 @@ class VideoRemixerState():
 
         if backup_scene:
             scene_path = os.path.join(self.scenes_path, scene_name)
-            purge_root = self.purge_paths([scene_path], keep_original=True, use_last_path=True)
+            purge_root = self.purge_paths([scene_path], keep_original=True,
+                                          additional_path=self.SCENES_PATH)
             if purge_root:
                 self.project.copy_project_file(purge_root)
 

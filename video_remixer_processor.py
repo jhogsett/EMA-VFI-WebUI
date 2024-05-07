@@ -2662,16 +2662,6 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
             self.state.audio_clips_path,
             self.state.clips_path
         ]:
-            _, root_path, _ = split_filepath(path)
-            purge_path = os.path.join()
-
-
-
-
-
-            content_path = os.path.join(pre_path, content_root)
-            create_directory(content_path)
-
             content_path = os.path.join(path, scene_name)
             if os.path.exists(content_path):
                 purge_dirs.append(content_path)
