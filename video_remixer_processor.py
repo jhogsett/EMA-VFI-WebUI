@@ -997,7 +997,7 @@ class VideoRemixerProcessor():
             from_block_param = context.get("from_block_param")
             step_block_param = context.get("step_block_param")
             block_param = None
-            if from_block_param and step_block_param:
+            if from_block_param != None and step_block_param != None:
                 block_param = int(from_block_param + (index * step_block_param))
 
             frame = self.static_block_scene(frame, block_type, block_param, resize_w, resize_h,
