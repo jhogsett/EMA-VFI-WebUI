@@ -2984,6 +2984,7 @@ class VideoRemixer(TabBase):
         return False, False, False, False, False, False, False, False
 
     def delete_all_project_content(self):
+        message = None
         removed = []
         removed.append(self.state.delete_purged_content())
         removed.append(self.state.delete_path(self.state.frames_path))
@@ -3008,6 +3009,7 @@ class VideoRemixer(TabBase):
 
     def delete_button713(self, delete_all):
         if self.state.project_path:
+            message = None
             if delete_all:
                 message = self.delete_all_project_content()
             return format_markdown(message)
