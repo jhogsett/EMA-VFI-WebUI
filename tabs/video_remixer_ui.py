@@ -3009,6 +3009,7 @@ class VideoRemixer(TabBase):
 
     def delete_button713(self, delete_all):
         if self.state.project_path:
+            message = None
             if delete_all:
                 message = self.delete_all_project_content()
             return format_markdown(message)
