@@ -1764,6 +1764,9 @@ class VideoRemixerProcessor():
                 hint_b = hint[split_pos+1:]
                 a_type, a_quadrant, a_quadrants, a_zoom_percent = self.get_zoom_part(hint_a)
                 b_type, b_quadrant, b_quadrants, b_zoom_percent = self.get_zoom_part(hint_b)
+                quadrant = None
+                quadrants = None
+                zoom_percent = None
                 if a_type == self.PERCENT_ZOOM_HINT and b_type == self.QUADRANT_ZOOM_HINT:
                     zoom_percent = a_zoom_percent
                     quadrant, quadrants = b_quadrant, b_quadrants
@@ -2826,6 +2829,14 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         self.state.save()
 
         scenes_base_path = self.furthest_processed_path()
+        draw_box = None
+        box_color = None
+        font_color = None
+        draw_shadow = None
+        shadow_x = None
+        shadow_y = None
+        shadow_color = None
+
         if custom_video_options.find("<LABEL>") != -1:
             if not draw_text_options:
                 raise RuntimeError("'draw_text_options' is None at create_custom_video_clips()")
