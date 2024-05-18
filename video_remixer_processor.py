@@ -74,7 +74,7 @@ class VideoRemixerProcessor():
     FADE_TYPE_IN = "I"
     FADE_TYPE_OUT = "O"
     STICKY_HINT = "!"
-    BLOCK_TYPE_BLACK = "B"
+    BLOCK_TYPE_BLACK = "K"
     BLOCK_TYPE_WHITE = "W"
     BLOCK_TYPE_NOISE = "N"
     BLOCK_TYPE_STATIC = "S"
@@ -1162,6 +1162,8 @@ class VideoRemixerProcessor():
         bottom = top + block_height
         block_factor = int(block_param) if block_param else self.DEFAULT_BLOCK_FACTOR
         block_factor /= expansion
+
+        # TODO the block parameter is overloaded as gray level and also as block factor
 
         if block_type == self.BLOCK_TYPE_BLACK:
             value = max(0, min(225, int(block_param))) if block_param else self.BLOCK_VALUE_BLACK
