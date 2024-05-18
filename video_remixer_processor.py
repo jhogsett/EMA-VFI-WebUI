@@ -93,6 +93,7 @@ class VideoRemixerProcessor():
     LENS_MAX_UNDISTORT = 1000.0
     DEFAULT_LENS_HINT = "0D"
     NO_ACTION_HINT = "N"
+    DEFAULT_BLOCK_VIEW = "100%"
 
     ### Exports --------------------
 
@@ -1827,13 +1828,18 @@ class VideoRemixerProcessor():
                 self.sticky_block_hints = []
                 return None, None, None
 
-            if remainder and remainder[0] == self.STICKY_HINT:
-                # if the block type was followed by the sticky hint character,
-                # add the hint without the sticky hint character to the sticky hint list
-                remainder = remainder[1:]
-                sticky_hint = f"{param or ''}{block_type}{remainder}"
-                if sticky_hint not in self.sticky_block_hints:
-                    self.sticky_block_hints.append(sticky_hint)
+            # the remainder stores the view specification of the block hint
+            if remainder:
+                if remainder[0] == self.STICKY_HINT:
+                    # if the block type was followed by the sticky hint character,
+                    # add the hint without the sticky hint character to the sticky hint list
+                    remainder = remainder[1:]
+                    sticky_hint = f"{param or ''}{block_type}{remainder}"
+                    if sticky_hint not in self.sticky_block_hints:
+                        self.sticky_block_hints.append(sticky_hint)
+            else:
+                # if there's no view specification, use the block default
+                remainder = self.DEFAULT_BLOCK_VIEW
 
         return block_type, param, remainder
 
