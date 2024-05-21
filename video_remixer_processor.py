@@ -915,23 +915,9 @@ class VideoRemixerProcessor():
                 from_block_type, from_block_param, remaining_hint_from = self.get_block_type(hint_from)
                 to_block_type, to_block_param, remaining_hint_to = self.get_block_type(hint_to)
 
-
-
-
                 # remove the block hint specific parts of the hint and process like a zoom hint
                 # 'type' may include a block fx parameter
                 block_hint = f"{remaining_hint_from}-{remaining_hint_to}"
-
-
-
-
-
-                print(block_hint)
-
-
-
-
-
                 from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
                     to_param2, to_param3, frame_from, frame_to, schedule \
                         = self.get_animated_zoom_hints(block_hint)
@@ -971,9 +957,9 @@ class VideoRemixerProcessor():
 
                     if from_block_param or to_block_param:
                         if not from_block_param:
-                            from_block_param = self.DEFAULT_BLOCK_FACTOR
+                            from_block_param = self.default_block_param(from_type)
                         if not to_block_param:
-                            to_block_param = self.DEFAULT_BLOCK_FACTOR
+                            to_block_param = self.default_block_param(to_type)
 
                         num_frames = context["num_frames"]
                         diff_block_param = float(to_block_param) - float(from_block_param)
@@ -1161,6 +1147,15 @@ class VideoRemixerProcessor():
         data[top:bottom, left:right] = reupsampled[0:slice_height, 0:slice_width]
         return data.astype(np.uint8)
 
+    def default_block_param(self, block_type):
+        return {
+            self.BLOCK_TYPE_BLACK : self.BLOCK_VALUE_BLACK,
+            self.BLOCK_TYPE_WHITE : self.BLOCK_VALUE_WHITE,
+            self.BLOCK_TYPE_NOISE : self.DEFAULT_BLOCK_FACTOR,
+            self.BLOCK_TYPE_STATIC : self.DEFAULT_BLOCK_FACTOR,
+            self.BLOCK_TYPE_PIXELATED : self.DEFAULT_BLOCK_FACTOR
+        }.get(block_type, '')
+
     def static_block_scene(self, frame, block_type, block_param, resize_w, resize_h,
                           crop_offset_x, crop_offset_y, main_crop_w, main_crop_h):
         # for now, the above figure are calculated as a zoom-in factor, yielding a resize and crop
@@ -1175,7 +1170,7 @@ class VideoRemixerProcessor():
         right = left + block_width
         top = crop_offset_y
         bottom = top + block_height
-        block_factor = int(block_param) if block_param else self.DEFAULT_BLOCK_FACTOR
+        block_factor = int(block_param) if block_param else self.default_block_param(block_type)
         block_factor /= expansion
 
         # TODO the block parameter is overloaded as gray level and also as block factor
