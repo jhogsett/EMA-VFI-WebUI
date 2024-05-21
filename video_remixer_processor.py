@@ -10,6 +10,7 @@ from webui_utils.file_utils import split_filepath, create_directory, get_directo
     remove_directories, copy_files, simple_sanitize_filename, move_files
 from webui_utils.video_utils import details_from_group_name, PNGtoMP4, combine_video_audio,\
     combine_videos, PNGtoCustom, image_size
+from webui_utils.simple_utils import dummy_args
 from webui_utils.mtqdm import Mtqdm
 from slice_video import SliceVideo
 from resize_frames import ResizeFrames
@@ -37,6 +38,7 @@ class VideoRemixerProcessor():
         self.saved_lens_hint = self.DEFAULT_LENS_HINT
         self.noise_dampening = None
         self.sticky_block_hints = []
+        self.block_animation_contexts = {}
 
     def log(self, message):
         if self.log_fn:
@@ -60,7 +62,7 @@ class VideoRemixerProcessor():
     COMBINED_ZOOM_MIN_LEN = 8 # 1/1@100%
     ANIMATED_ZOOM_MIN_LEN = 1 # -
     ANIMATED_FADE_MIN_LEN = 1 # I
-    ANIMATED_BLOCK_MIN_LEN = 9 # N1/4-N4/4
+    ANIMATED_BLOCK_MIN_LEN = 5 # 1X-8X
     ANIMATED_LENS_MIN_LEN = 1 # -
     MAX_SELF_FIT_ZOOM = 1000
     FIXED_UPSCALE_FACTOR = 4.0
@@ -72,13 +74,14 @@ class VideoRemixerProcessor():
     FADE_TYPE_IN = "I"
     FADE_TYPE_OUT = "O"
     STICKY_HINT = "!"
-    BLOCK_TYPE_BLACK = "B"
+    BLOCK_TYPE_BLACK = "K"
     BLOCK_TYPE_WHITE = "W"
     BLOCK_TYPE_NOISE = "N"
     BLOCK_TYPE_STATIC = "S"
     BLOCK_TYPE_PIXELATED = "X"
     # BLOCK_TYPE_SCRAMBLE = "R"
-    DEFAULT_BLOCK_TYPE = BLOCK_TYPE_BLACK
+    # DEFAULT_BLOCK_TYPE = BLOCK_TYPE_PIXELATED
+    # DEFAULT_BLOCK_PARAM = "1/1"
     BLOCK_TYPES = [BLOCK_TYPE_BLACK, BLOCK_TYPE_WHITE, BLOCK_TYPE_NOISE, BLOCK_TYPE_STATIC, BLOCK_TYPE_PIXELATED, STICKY_HINT]
     DEFAULT_BLOCK_FACTOR = 32
     BLOCK_VALUE_BLACK = 0   #16  # NTSC standard
@@ -90,6 +93,7 @@ class VideoRemixerProcessor():
     LENS_MAX_UNDISTORT = 1000.0
     DEFAULT_LENS_HINT = "0D"
     NO_ACTION_HINT = "N"
+    DEFAULT_BLOCK_VIEW = "100%"
 
     ### Exports --------------------
 
@@ -823,6 +827,8 @@ class VideoRemixerProcessor():
     def process_block_effects(self, scenes_base_path, output_base_path, kept_scenes, desc,
                      adjust_for_inflation):
         self.sticky_block_hints = []
+        self.block_animation_contexts = {}
+
         with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
             for scene_name in kept_scenes:
                 self.processing_messages_context["scene_name"] = scene_name
@@ -831,14 +837,36 @@ class VideoRemixerProcessor():
                 scene_output_path = os.path.join(output_base_path, scene_name)
                 create_directory(scene_output_path)
 
-                handled = self.process_block_hint(scene_input_path, scene_output_path,
-                                                  scene_name)
+                handled = self.process_block_hints(scene_input_path, scene_output_path,
+                                                  scene_name, adjust_for_inflation)
                 if not handled:
                     copy_files(scene_input_path, scene_output_path)
 
                 Mtqdm().update_bar(bar)
 
-    def process_block_hint(self, scene_input_path, scene_output_path, scene_name):
+    # have default arguments so this is more easily reused for showing a preview
+    def process_block_hint(self, hint, frame, main_resize_w, main_resize_h, main_offset_x,
+                            main_offset_y, main_crop_w, main_crop_h, index=None, scene_name=None,
+                            adjust_for_inflation=False):
+        self.noise_dampening = None
+        hint_handled = False
+
+        if not hint_handled and (index != None and scene_name != None):
+            hint_handled, frame = self.process_animated_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, index, scene_name, adjust_for_inflation)
+
+        if not hint_handled:
+            hint_handled, frame = self.process_combined_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+        if not hint_handled:
+            hint_handled, frame = self.process_quadrant_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+        if not hint_handled:
+            hint_handled, frame = self.process_percent_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+        return hint_handled, frame
+
+    def process_block_hints(self, scene_input_path, scene_output_path, scene_name,
+                            adjust_for_inflation):
         message = None
         scene_handled = False
         hints = self.state.get_hint(self.state.scene_labels.get(scene_name),
@@ -853,29 +881,18 @@ class VideoRemixerProcessor():
 
             files = sorted(get_files(scene_input_path))
             with Mtqdm().open_bar(total=len(files), desc="Block FX") as bar:
-                for file in files:
+                for index, file in enumerate(files):
                     _, filename, ext = split_filepath(file)
                     output_path = os.path.join(scene_output_path, filename + ext)
                     frame = cv2.imread(file)
 
                     for hint in hints:
                         try:
-                            self.noise_dampening = None
-                            hint_handled = False
-                            # handled = handled or \
-                            #     self._process_animated_block_hint(hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
-
-                            if not hint_handled:
-                                hint_handled, frame = self._process_combined_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
-                            if not hint_handled:
-                                hint_handled, frame = self._process_quadrant_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
-                            if not hint_handled:
-                                hint_handled, frame = self._process_percent_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
-
+                            hint_handled, frame = self.process_block_hint(hint, frame, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, index, scene_name, adjust_for_inflation)
                             scene_handled = scene_handled or hint_handled
                         except Exception as error:
                             message = f"Skipping processing of hint {hint} due to error: {error}"
-                            handled = False
+                            hint_handled = False
                             if self.state.remixer_settings.get("raise_on_error"):
                                 raise
 
@@ -888,88 +905,108 @@ class VideoRemixerProcessor():
 
         return scene_handled
 
+    def get_animated_block_hints(self, hint):
+        if self.ANIMATED_ZOOM_HINT in hint:
+            if len(hint) >= self.ANIMATED_BLOCK_MIN_LEN:
+                split_pos = hint.index(self.ANIMATED_ZOOM_HINT)
+                hint_from = hint[:split_pos]
+                hint_to = hint[split_pos+1:]
 
+                from_block_type, from_block_param, remaining_hint_from = self.get_block_type(hint_from)
+                to_block_type, to_block_param, remaining_hint_to = self.get_block_type(hint_to)
 
+                # remove the block hint specific parts of the hint and process like a zoom hint
+                # 'type' may include a block fx parameter
+                block_hint = f"{remaining_hint_from}-{remaining_hint_to}"
+                from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
+                    to_param2, to_param3, frame_from, frame_to, schedule \
+                        = self.get_animated_zoom_hints(block_hint)
 
-    # def _process_animated_block_hint(self, block_hint, scene_input_path, scene_output_path,
-    #                                  main_resize_w, main_resize_h, main_offset_x, main_offset_y,
-    #                                  main_crop_w, main_crop_h, scene_name, adjust_for_inflation):
-    #     if self.ANIMATED_ZOOM_HINT in block_hint:
-    #         # resize_hint = self.get_implied_zoom(resize_hint)
-    #         # self.log(f"get_implied_zoom()) filtered resize hint: {resize_hint}")
-    #         from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
-    #             to_param2, to_param3, frame_from, frame_to, schedule \
-    #                 = self.get_animated_block_hints(block_hint)
+                return from_block_type, from_block_param, to_block_type, to_block_param, \
+                    from_type, from_param1, from_param2, from_param3, \
+                    to_type, to_param1, to_param2, to_param3, \
+                    frame_from, frame_to, schedule
 
-    #         if from_type and to_type:
-    #             first_frame, last_frame, _ = details_from_group_name(scene_name)
-    #             num_frames = (last_frame - first_frame) + 1
-    #             context = self.compute_animated_zoom(scene_name, num_frames,
-    #                     from_type, from_param1, from_param2, from_param3,
-    #                     to_type, to_param1, to_param2, to_param3, frame_from,
-    #                     frame_to, schedule, main_resize_w, main_resize_h,
-    #                     main_offset_x, main_offset_y, main_crop_w, main_crop_h,
-    #                     adjust_for_inflation)
-    #             # context = self.compute_animated_block(context)
+        return dummy_args(15)
 
-    #             # scale_type = self.state.remixer_settings["scale_type_up"]
-    #             # self.resize_scene(scene_input_path,
-    #             #                     scene_output_path,
-    #             #                     None,
-    #             #                     None,
-    #             #                     main_crop_w,
-    #             #                     main_crop_h,
-    #             #                     None,
-    #             #                     None,
-    #             #                     scale_type,
-    #             #                     crop_type="crop",
-    #             #                     params_fn=self._resize_frame_param,
-    #             #                     params_context=context)
-    #             return True
-    #     return False
+    def process_animated_block_hint(self, block_hint, frame,
+                                    main_resize_w, main_resize_h, main_offset_x, main_offset_y,
+                                    main_crop_w, main_crop_h,
+                                    index, scene_name, adjust_for_inflation):
 
-    # def get_animated_block_hints(self, hint):
-    #     if self.ANIMATED_ZOOM_HINT in hint:
-    #         if len(hint) >= self.ANIMATED_ZOOM_MIN_LEN:
-    #             schedule = self.DEFAULT_ANIMATION_SCHEDULE
-    #             time = self.DEFAULT_ANIMATION_TIME
-    #             if self.ANIMATION_SCHEDULE_HINT in hint:
-    #                 split_pos = hint.index(self.ANIMATION_SCHEDULE_HINT)
-    #                 remainder = hint[:split_pos]
-    #                 schedule = hint[split_pos+1:]
-    #                 hint = remainder
-    #             if self.ANIMATION_TIME_HINT in hint:
-    #                 split_pos = hint.index(self.ANIMATION_TIME_HINT)
-    #                 remainder = hint[:split_pos]
-    #                 time = hint[split_pos+1:]
-    #                 hint = remainder
-    #                 if self.ANIMATION_TIME_SEP in time:
-    #                     # a specific frame range is specified
-    #                     split_pos = time.index(self.ANIMATION_TIME_SEP)
-    #                     # one or both values may be empty strings
-    #                     frame_from = time[:split_pos]
-    #                     frame_to = time[split_pos+1:]
-    #                 else:
-    #                     # a frame count is specified with an implied range starting at zero
-    #                     frame_from = 0
-    #                     frame_to = int(time)
-    #             else:
-    #                 frame_from = ""
-    #                 frame_to = ""
-    #             split_pos = hint.index(self.ANIMATED_ZOOM_HINT)
-    #             hint_from = hint[:split_pos]
-    #             hint_to = hint[split_pos+1:]
+        from_block_type, from_block_param, to_block_type, to_block_param, \
+                from_type, from_param1, from_param2, from_param3, \
+                to_type, to_param1, to_param2, to_param3, \
+                frame_from, frame_to, schedule = \
+            self.get_animated_block_hints(block_hint)
 
-    #             from_type, from_param1, from_param2, from_param3 = self.get_zoom_part(hint_from)
-    #             to_type, to_param1, to_param2, to_param3 = self.get_zoom_part(hint_to)
-    #             return from_type, from_param1, from_param2, from_param3, to_type, to_param1, to_param2, to_param3, frame_from, frame_to, schedule
+        context = self.block_animation_contexts.get(block_hint)
+        if not context:
+            if from_type and to_type:
+                first_frame, last_frame, _ = details_from_group_name(scene_name)
+                num_frames = (last_frame - first_frame) + 1
+                context = self.compute_animated_zoom(scene_name, num_frames,
+                        from_type, from_param1, from_param2, from_param3,
+                        to_type, to_param1, to_param2, to_param3, frame_from,
+                        frame_to, schedule, main_resize_w, main_resize_h,
+                        main_offset_x, main_offset_y, main_crop_w, main_crop_h,
+                        adjust_for_inflation)
 
-    #     return None, None, None, None, None, None, None, None, None, None, None
+                if context:
+                    context["block_type"] = from_block_type
 
+                    if from_block_param or to_block_param:
+                        if not from_block_param:
+                            from_block_param = self.default_block_param(from_type)
+                        if not to_block_param:
+                            to_block_param = self.default_block_param(to_type)
 
+                        num_frames = context["num_frames"]
+                        diff_block_param = float(to_block_param) - float(from_block_param)
+                        step_block_param = diff_block_param / num_frames
+                        context["from_block_param"] = float(from_block_param)
+                        context["step_block_param"] = step_block_param
 
+                    self.block_animation_contexts[block_hint] = context
 
-    def _process_combined_block_hint(self, block_hint, frame,
+        if context:
+            start_frame = context["start_frame"]
+            end_frame = context["end_frame"]
+            schedule = context["schedule"]
+            num_frames = context["num_frames"]
+
+            if index < start_frame:
+                index = 0
+            elif index > end_frame:
+                index = end_frame - start_frame
+            else:
+                index -= start_frame
+
+                accelerate = True
+                index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
+                                                                    accelerate)
+                if float_carry >= 0.5:
+                    index += 1
+
+            if index > num_frames:
+                index = num_frames
+
+            resize_w, resize_h, crop_offset_x, crop_offset_y = \
+                self._resize_frame_param(index, context)
+
+            block_type = context["block_type"]
+            from_block_param = context.get("from_block_param")
+            step_block_param = context.get("step_block_param")
+            block_param = None
+            if from_block_param != None and step_block_param != None:
+                block_param = int(from_block_param + (index * step_block_param))
+
+            frame = self.static_block_scene(frame, block_type, block_param, resize_w, resize_h,
+                                            crop_offset_x, crop_offset_y, main_crop_w, main_crop_h)
+            return True, frame
+        return False, frame
+
+    def process_combined_block_hint(self, block_hint, frame,
                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                     main_crop_w, main_crop_h):
         block_type, block_param, remaining_hint = self.get_block_type(block_hint)
@@ -992,7 +1029,7 @@ class VideoRemixerProcessor():
                 return True, frame
         return False, frame
 
-    def _process_quadrant_block_hint(self, block_hint, frame,
+    def process_quadrant_block_hint(self, block_hint, frame,
                                     main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                     main_crop_w, main_crop_h):
         block_type, block_param, remaining_hint = self.get_block_type(block_hint)
@@ -1018,7 +1055,7 @@ class VideoRemixerProcessor():
                 return True, frame
         return False, frame
 
-    def _process_percent_block_hint(self, block_hint, frame,
+    def process_percent_block_hint(self, block_hint, frame,
                                    main_resize_w, main_resize_h, main_offset_x, main_offset_y,
                                    main_crop_w, main_crop_h):
         block_type, block_param, remaining_hint = self.get_block_type(block_hint)
@@ -1110,6 +1147,15 @@ class VideoRemixerProcessor():
         data[top:bottom, left:right] = reupsampled[0:slice_height, 0:slice_width]
         return data.astype(np.uint8)
 
+    def default_block_param(self, block_type):
+        return {
+            self.BLOCK_TYPE_BLACK : self.BLOCK_VALUE_BLACK,
+            self.BLOCK_TYPE_WHITE : self.BLOCK_VALUE_WHITE,
+            self.BLOCK_TYPE_NOISE : self.DEFAULT_BLOCK_FACTOR,
+            self.BLOCK_TYPE_STATIC : self.DEFAULT_BLOCK_FACTOR,
+            self.BLOCK_TYPE_PIXELATED : self.DEFAULT_BLOCK_FACTOR
+        }.get(block_type, '')
+
     def static_block_scene(self, frame, block_type, block_param, resize_w, resize_h,
                           crop_offset_x, crop_offset_y, main_crop_w, main_crop_h):
         # for now, the above figure are calculated as a zoom-in factor, yielding a resize and crop
@@ -1124,8 +1170,10 @@ class VideoRemixerProcessor():
         right = left + block_width
         top = crop_offset_y
         bottom = top + block_height
-        block_factor = int(block_param) if block_param else self.DEFAULT_BLOCK_FACTOR
+        block_factor = int(block_param) if block_param else self.default_block_param(block_type)
         block_factor /= expansion
+
+        # TODO the block parameter is overloaded as gray level and also as block factor
 
         if block_type == self.BLOCK_TYPE_BLACK:
             value = max(0, min(225, int(block_param))) if block_param else self.BLOCK_VALUE_BLACK
@@ -1147,93 +1195,6 @@ class VideoRemixerProcessor():
                 # cv2.imwrite(output_path, frame.astype(np.uint8))
                 # Mtqdm().update_bar(bar)
         return frame
-
-    # def block_scene(self,
-    #                  scene_input_path,
-    #                  scene_output_path,
-    #                  context : any=None):
-
-    #     num_frames = context["num_frames"]
-    #     schedule = context["schedule"]
-    #     start_frame = context["start_frame"]
-    #     end_frame = context["end_frame"]
-
-    #     files = sorted(get_files(scene_input_path))
-    #     with Mtqdm().open_bar(total=len(files), desc="Fading") as bar:
-    #         for index, file in enumerate(files):
-    #             _, filename, ext = split_filepath(file)
-    #             output_path = os.path.join(scene_output_path, filename + ext)
-
-    #             if index < start_frame:
-    #                 index = 0
-    #             elif index > end_frame:
-    #                 index = end_frame - start_frame
-    #             else:
-    #                 index -= start_frame
-
-    #                 accelerate = True # this only applies to the "Z" schedule, not clear it's useful or not with fade
-    #                 index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
-    #                                                                     accelerate)
-    #                 if float_carry >= 0.5:
-    #                     index += 1
-
-    #             if index > num_frames:
-    #                 index = num_frames
-
-    #             # frame = cv2.imread(file)
-    #             # data = np.array(frame, np.uint8)
-    #             # percent = fade
-    #             # value = data * percent
-    #             # img = value.astype(np.uint8)
-    #             # cv2.imwrite(output_path, img)
-
-    #             Mtqdm().update_bar(bar)
-
-    # def block_frame_param(self, index : int, context : dict):
-    #     from_resize_w = context["from_resize_w"]
-    #     from_resize_h = context["from_resize_h"]
-    #     from_center_x = context["from_center_x"]
-    #     from_center_y = context["from_center_y"]
-    #     step_resize_w = context["step_resize_w"]
-    #     step_resize_h = context["step_resize_h"]
-    #     step_center_x = context["step_center_x"]
-    #     step_center_y = context["step_center_y"]
-    #     main_crop_w = context["main_crop_w"]
-    #     main_crop_h = context["main_crop_h"]
-    #     num_frames = context["num_frames"]
-    #     schedule = context["schedule"]
-    #     start_frame = context["start_frame"]
-    #     end_frame = context["end_frame"]
-
-    #     if index < start_frame:
-    #         index = 0
-    #     elif index > end_frame:
-    #         index = end_frame - start_frame
-    #     else:
-    #         index -= start_frame
-    #         accelerate = step_resize_w > 0.0
-    #         index, float_carry = self._apply_animation_schedule(schedule, num_frames, index,
-    #                                                             accelerate)
-    #         if float_carry >= 0.5:
-    #             index += 1
-
-    #     if index > num_frames:
-    #         index = num_frames
-
-    #     resize_w = int(from_resize_w + (index * step_resize_w))
-    #     resize_h = int(from_resize_h + (index * step_resize_h))
-    #     center_x = from_center_x + (index * step_center_x)
-    #     center_y = from_center_y + (index * step_center_y)
-    #     crop_offset_x = int(center_x - (main_crop_w / 2.0))
-    #     crop_offset_y = int(center_y - (main_crop_h / 2.0))
-
-    #     if resize_w < main_crop_w:
-    #         resize_w = main_crop_w
-    #     if resize_h < main_crop_h:
-    #         resize_h = main_crop_h
-
-    #     return resize_w, resize_h, crop_offset_x, crop_offset_y
-
 
     def process_fade(self, scenes_base_path, output_base_path, kept_scenes, desc, adjust_for_inflation):
         with Mtqdm().open_bar(total=len(kept_scenes), desc=desc) as bar:
@@ -1271,7 +1232,7 @@ class VideoRemixerProcessor():
         return fade_handled
 
     def _process_fade_hint(self, fade_hint, scene_input_path, scene_output_path, scene_name, adjust_for_inflation):
-        fade_type, frame_from, frame_to, schedule = self.get_animated_fade(fade_hint)
+        fade_type, frame_from, frame_to, schedule = self.get_animated_fade_hints(fade_hint)
 
         if fade_type:
             first_frame, last_frame, _ = details_from_group_name(scene_name)
@@ -1286,7 +1247,7 @@ class VideoRemixerProcessor():
         return False
 
     # TODO DRY
-    def get_animated_fade(self, hint):
+    def get_animated_fade_hints(self, hint):
         if len(hint) >= self.ANIMATED_FADE_MIN_LEN:
             schedule = self.DEFAULT_ANIMATION_SCHEDULE
             time = self.DEFAULT_ANIMATION_TIME
@@ -1528,7 +1489,7 @@ class VideoRemixerProcessor():
 
             try:
                 resize_handled = resize_handled or \
-                    self._process_NO_ACTION_HINT(resize_hint, scene_input_path, scene_output_path)
+                    self._process_no_action_hint(resize_hint, scene_input_path, scene_output_path)
 
                 resize_handled = resize_handled or \
                     self._process_animation_hint(resize_hint, scene_input_path, scene_output_path, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h, scene_name, adjust_for_inflation)
@@ -1551,7 +1512,7 @@ class VideoRemixerProcessor():
 
         return resize_handled
 
-    def _process_NO_ACTION_HINT(self, resize_hint, scene_input_path, scene_output_path):
+    def _process_no_action_hint(self, resize_hint, scene_input_path, scene_output_path):
         # disable resizing and instead copy source frames as-is
         # this allows the for_resizing_effects behavior access to the original detail
         # copy the files using the resequencer
@@ -1575,7 +1536,7 @@ class VideoRemixerProcessor():
             self.log(f"get_implied_zoom() filtered resize hint: {resize_hint}")
             from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
                 to_param2, to_param3, frame_from, frame_to, schedule \
-                    = self.get_animated_zoom(resize_hint)
+                    = self.get_animated_zoom_hints(resize_hint)
             if from_type and to_type:
                 first_frame, last_frame, _ = details_from_group_name(scene_name)
                 num_frames = (last_frame - first_frame) + 1
@@ -1823,7 +1784,7 @@ class VideoRemixerProcessor():
                 return f"{hint_from}-{view_to}{remainder}"
         return hint
 
-    def get_animated_zoom(self, hint):
+    def get_animated_zoom_hints(self, hint):
         if self.ANIMATED_ZOOM_HINT in hint:
             if len(hint) >= self.ANIMATED_ZOOM_MIN_LEN:
                 schedule = self.DEFAULT_ANIMATION_SCHEDULE
@@ -1863,6 +1824,7 @@ class VideoRemixerProcessor():
         block_type = None
         param = None
         remainder = hint
+        extra = None
 
         if check_type in hint:
             split_pos = hint.index(check_type)
@@ -1879,14 +1841,32 @@ class VideoRemixerProcessor():
                 self.sticky_block_hints = []
                 return None, None, None
 
-            if remainder and remainder[0] == self.STICKY_HINT:
-                # if the block type was followed by the sticky hint character,
-                # add the hint without the sticky hint character to the sticky hint list
-                remainder = remainder[1:]
-                sticky_hint = f"{param or ''}{block_type}{remainder}"
-                if sticky_hint not in self.sticky_block_hints:
-                    self.sticky_block_hints.append(sticky_hint)
+            # the remainder may contain only animation timing and/or schedule information
+            # split this out to determine if there's no hint view param
+            #   so the default should be used
+            if self.ANIMATION_TIME_HINT in remainder:
+                split_pos = remainder.index(self.ANIMATION_TIME_HINT)
+                extra = remainder[split_pos:]
+                remainder = remainder[:split_pos]
+            elif self.ANIMATION_SCHEDULE_HINT in remainder:
+                split_pos = remainder.index(self.ANIMATION_SCHEDULE_HINT)
+                extra = remainder[split_pos:]
+                remainder = remainder[:split_pos]
 
+            # the remainder stores the view specification of the block hint
+            if remainder:
+                if remainder[0] == self.STICKY_HINT:
+                    # if the block type was followed by the sticky hint character,
+                    # add the hint without the sticky hint character to the sticky hint list
+                    remainder = remainder[1:]
+                    sticky_hint = f"{param or ''}{block_type}{remainder}"
+                    if sticky_hint not in self.sticky_block_hints:
+                        self.sticky_block_hints.append(sticky_hint)
+            else:
+                # if there's no view specification, use the block default
+                remainder = self.DEFAULT_BLOCK_VIEW
+
+        remainder = f"{remainder}{extra or ''}"
         return block_type, param, remainder
 
     def get_block_type(self, hint):

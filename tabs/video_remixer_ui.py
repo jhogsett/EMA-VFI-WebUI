@@ -10,6 +10,7 @@ from webui_utils.file_utils import get_files, create_directory, get_directories,
     is_safe_path, duplicate_directory, move_files
 from webui_utils.video_utils import details_from_group_name, split_color_alpha, join_color_alpha
 from webui_utils.jot import Jot
+from webui_utils.auto_increment import AutoIncrementFilename
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
@@ -22,6 +23,7 @@ from .video_blender_ui import VideoBlender
 from video_remixer_processor import VideoRemixerProcessor
 from video_remixer_project import VideoRemixerProject
 from video_remixer_reports import VideoRemixerReports
+import cv2
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -589,6 +591,14 @@ class VideoRemixer(TabBase):
                                                                     info=None,
                                                                     precision=0, container=False,
                                                                     min_width=120)
+                                with gr.Accordion("Advanced Options", open=False):
+                                    with gr.Row():
+                                        set_view_hint_702 = gr.Textbox(placeholder="View Hint",
+                                                                    max_lines=1, show_label=False,
+                                                                    min_width=100, container=False) #scale=3,
+                                        preview_view_hint_702 = gr.Button(value="Visualize View Hint",
+                                                                      size="sm", min_width=40) # scale=0,
+
                             with gr.Column():
                                 preview_image702 = gr.Image(type="filepath",
                         label="Split Frame Preview", tool=None, height=max_thumb_size)
@@ -1216,6 +1226,14 @@ class VideoRemixer(TabBase):
                                              set_scene_label])
 
         back_button702.click(self.back_button702, outputs=tabs_video_remixer)
+
+        set_view_hint_702.submit(self.set_view_hint_702,
+                                 inputs=[scene_id_702, split_percent_702, set_view_hint_702],
+                                 outputs=[preview_image702, scene_info_702], show_progress=False)
+
+        preview_view_hint_702.click(self.preview_view_hint_702,
+                                    inputs=[scene_id_702, split_percent_702, set_view_hint_702],
+                                    outputs=[preview_image702, scene_info_702], show_progress=False)
 
         export_project_703.click(self.export_project_703,
                                  inputs=[export_path_703, project_name_703],
@@ -2467,6 +2485,54 @@ class VideoRemixer(TabBase):
 
     def go_to_f_submit702(self, scene_index, split_percent, go_to_frame):
         return self.go_to_f_button702(scene_index, split_percent, go_to_frame)
+
+
+    def set_view_hint_702(self, scene_index, split_percent, view_hint):
+        return self.update_view_hint_preview(scene_index, split_percent, view_hint)
+
+    def preview_view_hint_702(self, scene_index, split_percent, view_hint):
+        return self.update_view_hint_preview(scene_index, split_percent, view_hint)
+
+    def update_view_hint_preview(self, scene_index, split_percent, view_hint):
+        if not isinstance(scene_index, (int, float)):
+            return dummy_args(2)
+        scene_index = int(scene_index)
+        if scene_index < 0 or scene_index >= len(self.state.scene_names):
+            return dummy_args(2)
+
+        _, _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index, self.GAP)
+        display_frame = self.state.compute_preview_frame(scene_index, split_percent)
+
+        content_width = self.state.video_details["content_width"]
+        content_height = self.state.video_details["content_height"]
+        main_resize_w, main_resize_h, main_crop_w, main_crop_h, main_offset_x, main_offset_y = \
+            self.processor.setup_resize_hint(content_width, content_height, False)
+
+        block_hint = None
+        block_hint_open = f"{self.state.EFFECTS_BLOCK_HINT}{self.state.HINT_MARKER}".upper()
+        view_hint = view_hint.upper()
+        block_type = self.processor.BLOCK_TYPE_PIXELATED
+
+        if view_hint.startswith(block_hint_open):
+            block_hint = view_hint[len(block_hint_open):]
+        else:
+            block_hint = f"{block_type}{view_hint}"
+
+        if block_hint:
+            self.log(f"update_view_hint_preview() using block hint {block_hint}")
+
+            _, _, ext = split_filepath(display_frame, include_extension_dot=False)
+            preview_filepath, _ = AutoIncrementFilename(self.config.directories["working"], ext)\
+                .next_filename("view_hint_preview", ext)
+
+            image = cv2.imread(display_frame)
+            handled, image = self.processor.process_block_hint(block_hint, image, main_resize_w, main_resize_h, main_offset_x, main_offset_y, main_crop_w, main_crop_h)
+
+            if handled:
+                cv2.imwrite(preview_filepath, image)
+                return preview_filepath, scene_info
+
+        return display_frame, scene_info
 
     def update_preview(self, scene_index, split_percent):
         if not isinstance(scene_index, (int, float)):

@@ -127,8 +127,10 @@ class VideoRemixerState():
     DROPPED_SCENES_PATH = "DROPPED_SCENES"
     THUMBNAILS_PATH = "THUMBNAILS"
     SPLIT_LABELS = r"(?P<sort>\(.*?\))?(?P<hint>\{.*?\})?\s*(?P<title>.*)?"
+    HINT_DELIMITERS = "{}"
     KEEP_MARK = "Keep"
     DROP_MARK = "Drop"
+    HINT_MARKER = ":"
     RESIZE_HINT = "R"
     RESYNTHESIS_HINT = "Y"
     INFLATION_HINT = "I"
@@ -417,7 +419,7 @@ class VideoRemixerState():
         results = {}
         hint : str
         for hint in hints:
-            parts = hint.split(":")
+            parts = hint.split(self.HINT_MARKER)
             if len(parts) == 2:
                 hint_type = parts[0].upper()
                 hint_value = parts[1].upper()
