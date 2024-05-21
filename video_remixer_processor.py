@@ -915,9 +915,23 @@ class VideoRemixerProcessor():
                 from_block_type, from_block_param, remaining_hint_from = self.get_block_type(hint_from)
                 to_block_type, to_block_param, remaining_hint_to = self.get_block_type(hint_to)
 
+
+
+
                 # remove the block hint specific parts of the hint and process like a zoom hint
                 # 'type' may include a block fx parameter
                 block_hint = f"{remaining_hint_from}-{remaining_hint_to}"
+
+
+
+
+
+                print(block_hint)
+
+
+
+
+
                 from_type, from_param1, from_param2, from_param3, to_type, to_param1, \
                     to_param2, to_param3, frame_from, frame_to, schedule \
                         = self.get_animated_zoom_hints(block_hint)
@@ -1815,6 +1829,7 @@ class VideoRemixerProcessor():
         block_type = None
         param = None
         remainder = hint
+        extra = None
 
         if check_type in hint:
             split_pos = hint.index(check_type)
@@ -1831,6 +1846,20 @@ class VideoRemixerProcessor():
                 self.sticky_block_hints = []
                 return None, None, None
 
+            # the remainder may contain only animation timing and/or schedule information
+            # split this out to determine if there's no hint view param
+            #   so the default should be used
+            if self.ANIMATION_SCHEDULE_HINT in remainder:
+                print("1" * 100)
+                split_pos = remainder.index(self.ANIMATION_SCHEDULE_HINT)
+                extra = remainder[split_pos:]
+                remainder = remainder[:split_pos]
+            elif self.ANIMATION_TIME_HINT in remainder:
+                print("2" * 100)
+                split_pos = remainder.index(self.ANIMATION_TIME_HINT)
+                extra = remainder[split_pos:]
+                remainder = remainder[:split_pos]
+
             # the remainder stores the view specification of the block hint
             if remainder:
                 if remainder[0] == self.STICKY_HINT:
@@ -1844,6 +1873,8 @@ class VideoRemixerProcessor():
                 # if there's no view specification, use the block default
                 remainder = self.DEFAULT_BLOCK_VIEW
 
+        remainder = f"{remainder}{extra or ''}"
+        print("3" * 100, remainder)
         return block_type, param, remainder
 
     def get_block_type(self, hint):
