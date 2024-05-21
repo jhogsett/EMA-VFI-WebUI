@@ -1,5 +1,6 @@
 """EMA-VFI-WebUI Application"""
 import os
+os.environ['FOR_DISABLE_CONSOLE_CTRL_HANDLER'] = "1"
 import shutil
 import time
 import signal
