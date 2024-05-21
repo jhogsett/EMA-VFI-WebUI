@@ -1850,15 +1850,13 @@ class VideoRemixerProcessor():
             # split this out to determine if there's no hint view param
             #   so the default should be used
             if self.ANIMATION_TIME_HINT in remainder:
-                split_pos = remainder.index(self.ANIMATION_SCHEDULE_HINT)
-                extra = remainder[split_pos:]
-                remainder = remainder[:split_pos]
-                print("1" * 100, extra, remainder)
-            if self.ANIMATION_SCHEDULE_HINT in remainder:
                 split_pos = remainder.index(self.ANIMATION_TIME_HINT)
                 extra = remainder[split_pos:]
                 remainder = remainder[:split_pos]
-                print("2" * 100, extra, remainder)
+            elif self.ANIMATION_SCHEDULE_HINT in remainder:
+                split_pos = remainder.index(self.ANIMATION_SCHEDULE_HINT)
+                extra = remainder[split_pos:]
+                remainder = remainder[:split_pos]
 
             # the remainder stores the view specification of the block hint
             if remainder:
@@ -1874,7 +1872,6 @@ class VideoRemixerProcessor():
                 remainder = self.DEFAULT_BLOCK_VIEW
 
         remainder = f"{remainder}{extra or ''}"
-        # print("3" * 100, remainder)
         return block_type, param, remainder
 
     def get_block_type(self, hint):
