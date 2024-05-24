@@ -169,7 +169,7 @@ def GIFtoPNG(input_path : str, # pylint: disable=invalid-name
         frame_count = 1_000_000
 
     num_width = len(str(frame_count))
-    filename_pattern = f"{base_filename}%0{num_width}d{type}"
+    filename_pattern = f"{base_filename}%0{num_width}d.{type}"
     ffcmd = FFmpeg(inputs= {input_path : None},
         outputs={os.path.join(output_path, filename_pattern) : f"-start_number {start_number}"},
         global_options="-y " + global_options)
@@ -511,11 +511,7 @@ def get_detected_scenes(input_path : str, threshold : float=0.5, type : str="png
         int(line.split()[1].split(":")[1]) for line in stdout_lines if line.startswith("frame:")]
 
 def get_detected_breaks(input_path : str, duration : float=0.5, ratio : float=0.98, type : str="png"):
-    # ffmpeg -framerate 1 -i "G:\CONTENT\HH\TEST\png%05d.png" -filter_complex "blackdetect=d=0.5,metadata=print:file=bldet.txt" -f null -
-    # frame:5106 pts:5106    pts_time:5106
-    # lavfi.black_start=5106
-    # frame:5152 pts:5152    pts_time:5152
-    # lavfi.black_end=5152
+    #ffmpeg -framerate 1 -i "C:\CONTENT\REMIX-touch_the_sky_ST_Me-TV-05062023-2005\SOURCE\source_%06d.jpg" -filter_complex "blackdetect=d=2:pic_th=0.98,metadata=print:file=bldet.txt" -f null -
     if not os.path.exists(input_path):
         raise ValueError(f"path does not exist: {input_path}")
     if not isinstance(duration, float):
@@ -553,6 +549,11 @@ def get_detected_breaks(input_path : str, duration : float=0.5, ratio : float=0.
     breaks = []
     for index, start in enumerate(start_frames):
         end = end_frames[index]
+
+        if (end - start) < 2:
+            # ignore unusable break
+            continue
+
         # break at the midpoint
         breaks.append(int((start + end) / 2))
     return breaks
@@ -712,7 +713,7 @@ f"{default_filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(
         start_time = seconds_to_hms(start_second)
         ffcmd = FFmpeg(inputs= {input_path : f"-ss {start_time}"},
                                 outputs={output_filepath :
-                f"-vf scale=iw*{scale_factor}:-2 -qscale:v 2 -vframes 1"},
+                f"-vf scale=iw*{scale_factor}:-2 -qmin 1 -qscale:v 1 -vframes 1"},
             global_options="-y " + global_options)
 
     cmd = ffcmd.cmd
@@ -895,3 +896,23 @@ def image_size(path : str):
         return image.width, image.height
     except OSError as error:
         raise ValueError(f"error with path '{path}': {error}")
+
+def split_color_alpha(color_alpha : str, default_color="#000000", default_alpha="1.0",
+                        ignore_errors=False):
+    """Split a FFmpeg color string like `#FFFFFF@0.9` into `#FFFFFF` and `0.9` """
+    if len(color_alpha):
+        if color_alpha.index("@") >= 0:
+            parts = color_alpha.split("@")
+            if len(parts) >= 2:
+                return parts[0], parts[1]
+        else:
+            return color_alpha, default_alpha
+
+    if ignore_errors:
+        return default_color, default_alpha
+    else:
+        raise ValueError(f"split_color_alpha(): unable to parse {color_alpha}")
+
+def join_color_alpha(color : str, alpha : str="1.0"):
+    """Join a color value and alpha like `#FFFFFF` and `0.9` into an FFmpeg color string like `#FFFFFF@0.9`"""
+    return f"{color}@{alpha}"

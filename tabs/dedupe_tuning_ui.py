@@ -9,6 +9,7 @@ from webui_utils.auto_increment import AutoIncrementDirectory
 from interpolate_engine import InterpolateEngine
 from tabs.tab_base import TabBase
 from deduplicate_frames import DeduplicateFrames
+from webui_utils.video_utils import determine_input_format
 
 class DuplicateTuning(TabBase):
     """Encapsulates UI elements and events for the Duplicate Frames Report feature"""
@@ -79,18 +80,20 @@ class DuplicateTuning(TabBase):
             output_filepath = os.path.join(output_path, output_basename + ".csv")
             self.log(f"creating duplicate tuning report at {output_filepath}")
             try:
-                tuning_data = DeduplicateFrames(None,
-                                            input_path,
-                                            output_filepath,
-                                            0,
-                                            max_dupes,
-                                            None,
-                                            self.log,
-                                            tune_min=min_threshold,
-                                            tune_max=max_threshold,
-                                            tune_step=threshold_step).invoke_tuning(
-                    suppress_output=True)
-                report = str(tuning_data)
+                type = determine_input_format(input_path)
+                DeduplicateFrames(None,
+                                  input_path,
+                                  output_filepath,
+                                  0,
+                                  max_dupes,
+                                  None,
+                                  self.log,
+                                  type=type,
+                                  tune_min=min_threshold,
+                                  tune_max=max_threshold,
+                                  tune_step=threshold_step).invoke_tuning(
+                                      suppress_output=True)
+
                 return gr.update(value=[output_filepath], visible=True), \
                        gr.update(value=output_filepath, visible=True), \
                        gr.update(value=None, visible=False)

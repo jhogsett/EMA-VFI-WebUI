@@ -9,7 +9,8 @@ from webui_utils.image_utils import create_gif
 from webui_utils.file_utils import get_files, create_directory, locate_frame_file, \
     duplicate_directory
 from webui_utils.auto_increment import AutoIncrementDirectory, AutoIncrementFilename
-from webui_utils.video_utils import PNGtoMP4, QUALITY_SMALLER_SIZE, MP4toPNG
+from webui_utils.video_utils import PNGtoMP4, QUALITY_SMALLER_SIZE, MP4toPNG, \
+    determine_input_format, determine_output_pattern
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
 from interpolate import Interpolate
@@ -80,13 +81,13 @@ class VideoBlender(TabBase):
                                         maximum=max_frame_rate, step=0.01, label="Frame Rate")
                 with gr.Row():
                     input_project_path = gr.Textbox(label="Project Frames Path", max_lines=1,
-                        placeholder="Path to frame PNG files for video being restored")
+                        placeholder="Path to frame files for video being restored")
                 with gr.Row():
                     input_path1 = gr.Textbox(label="Original / Video #1 Frames Path",
-                                max_lines=1, placeholder="Path to original or video #1 PNG files")
+                                max_lines=1, placeholder="Path to original or video #1 frame files")
                 with gr.Row():
                     input_path2 = gr.Textbox(label="Alternate / Video #2 Frames Path",
-                                max_lines=1, placeholder="Path to alternate or video #2 PNG files")
+                                max_lines=1, placeholder="Path to alternate or video #2 frame files")
                 load_button = gr.Button("Open Video Blender Project " +
                     SimpleIcons.ROCKET, variant="primary")
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
@@ -163,7 +164,7 @@ class VideoBlender(TabBase):
                         with gr.Row():
                             project_path_ff = gr.Textbox(label="Video Blender Project Path",
                                                         max_lines=1,
-                                                        placeholder="Path to video frame PNG files")
+                                                        placeholder="Path to video frame files")
                         with gr.Row():
                             input_clean_before_ff = gr.Number(
                                 label="Last clean frame BEFORE damaged ones", value=0,
@@ -193,8 +194,8 @@ class VideoBlender(TabBase):
                         video_preview = gr.Video(label="Preview", interactive=False,
                             include_audio=False, width=800, container=True, scale=8)
                     gr.Column(scale=1)
-                preview_path = gr.Textbox(label="Path to PNG Sequence", max_lines=1,
-                    placeholder="Path on this server to the PNG files to be converted")
+                preview_path = gr.Textbox(label="Path to frame image Sequence", max_lines=1,
+                    placeholder="Path on this server to the frame files to be previewed")
                 with gr.Row():
                     render_video = gr.Button("Render Video", variant="primary")
                     input_frame_rate = gr.Slider(value=frame_rate, minimum=1,
@@ -223,7 +224,7 @@ class VideoBlender(TabBase):
                         with gr.Row(variant="panel"):
                             with gr.Column(scale=1):
                                 step1_enabled = gr.Checkbox(value=True,
-                                            label=SimpleIcons.ONE + " Split MP4 to PNG Frames Set")
+                                            label=SimpleIcons.ONE + " Split MP4 to Frames Set")
                             with gr.Column(scale=12):
                                 with gr.Row():
                                     step1_input = gr.Textbox(label="MP4 Path", max_lines=1,
@@ -533,8 +534,9 @@ class VideoBlender(TabBase):
             output_path, run_index = AutoIncrementDirectory(base_output_path).next_directory("run")
             output_basename = "fixed_frames"
 
-            before_file = locate_frame_file(project_path, before_frame)
-            after_file = locate_frame_file(project_path, after_frame)
+            type = determine_input_format(project_path)
+            before_file = locate_frame_file(project_path, before_frame, type=type)
+            after_file = locate_frame_file(project_path, after_frame, type=type)
             num_frames = (after_frame - before_frame) - 1
             search_depth = int(self.config.blender_settings["frame_fixer_depth"])
 
@@ -557,10 +559,12 @@ class VideoBlender(TabBase):
                                 before_frame : int):
         """Apply Fixed Frames button handler"""
         if fixed_frames_path:
-            fixed_frames = sorted(get_files(fixed_frames_path, "png"))
+            type = determine_input_format(fixed_frames_path)
+            fixed_frames = sorted(get_files(fixed_frames_path, type))
             frame = before_frame + 1
+            type = determine_input_format(project_path)
             for file in fixed_frames:
-                project_file = locate_frame_file(project_path, frame)
+                project_file = locate_frame_file(project_path, frame, type=type)
                 self.log(f"copying {file} to {project_file}")
                 shutil.copy(file, project_file)
                 frame += 1
@@ -581,11 +585,12 @@ class VideoBlender(TabBase):
     def video_blender_render_preview(self, input_path : str, frame_rate : int):
         """Render Video button handler"""
         if input_path:
+            type = determine_input_format(input_path)
             output_filepath, _ = AutoIncrementFilename(self.config.directories["working"],
                 "mp4").next_filename("video_preview", "mp4")
             global_options = self.config.ffmpeg_settings["global_options"]
             PNGtoMP4(input_path, None, float(frame_rate), output_filepath,
-                crf=QUALITY_SMALLER_SIZE, global_options=global_options)
+                crf=QUALITY_SMALLER_SIZE, global_options=global_options, type=type)
             return output_filepath
 
     def video_blender_new_project_ui_switch_1(self,
@@ -629,7 +634,7 @@ class VideoBlender(TabBase):
 
         step1_path_label = "MP4 Path" if step1_path_enabled_mp4 else "Source Frames Path"
         step1_path_placeholder = "Path on this server to the source MP4 file"\
-            if step1_path_enabled_mp4 else "Path on this server to the source PNG frame files"
+            if step1_path_enabled_mp4 else "Path on this server to the source frame files"
 
         step2_path_label = "Repair Frames Path" if step2_path_enabled else "n/a"
         step2_path_placeholder = "Path on this server to the repair frames"\
@@ -709,15 +714,17 @@ class VideoBlender(TabBase):
                 self.log(f"using custom restored frames directory {restored_frames_path}")
 
             if step1_enabled:
-                output_pattern = "source_frame%09d.png"
-                self.log(f"using FFmpeg to create PNG frames from input video {step1_path}")
+                type = determine_input_format(step1_path)
+                output_pattern = determine_output_pattern(step1_path, type=type)
+                self.log(f"using FFmpeg to create frames from input video {step1_path}")
                 deinterlace = False
                 global_options = self.config.ffmpeg_settings["global_options"]
                 ffmpeg_cmd = MP4toPNG(step1_path, output_pattern, float(step1_frame_rate),
-                        source_frames_path, deinterlace=deinterlace, global_options=global_options)
+                        source_frames_path, deinterlace=deinterlace, global_options=global_options,
+                        type=type)
                 self.log(ffmpeg_cmd)
             else:
-                self.log(f"skipping creating PNG frames, using frames from {source_frames_path}")
+                self.log(f"skipping creating frames, using frames from {source_frames_path}")
 
             if step2_enabled:
                 interpolater = Interpolate(self.engine.model, self.log)
@@ -725,12 +732,13 @@ class VideoBlender(TabBase):
                 deep_interpolater = DeepInterpolate(interpolater, use_time_step, self.log)
                 series_interpolater = InterpolateSeries(deep_interpolater, self.log)
                 output_basename = "repair_frame"
-                file_list = get_files(source_frames_path, extension="png")
+                type = determine_input_format(source_frames_path)
+                file_list = get_files(source_frames_path, type)
                 self.log(f"beginning series of frame recreations at {resynth_frames_path}")
                 series_interpolater.interpolate_series(file_list, resynth_frames_path, 1,
                                                        output_basename, offset=2)
                 self.log(f"auto-resequencing recreated frames at {resynth_frames_path}")
-                ResequenceFiles(resynth_frames_path, "png", "repair_frame", 1, 1, 1, 0, -1, True,
+                ResequenceFiles(resynth_frames_path, type, "repair_frame", 1, 1, 1, 0, -1, True,
                     self.log).resequence()
             else:
                 self.log(
@@ -741,15 +749,16 @@ class VideoBlender(TabBase):
                 # source set not present in the repair set: the outermost frames.
                 # Copy the first and last frames from the source set to the repair set
                 # to keep frames aligned
-                source_files = sorted(get_files(source_frames_path, "png"))
+                type = determine_input_format(source_frames_path)
+                source_files = sorted(get_files(source_frames_path, type))
                 num_files = len(source_files)
                 lower_outer_frame = source_files[0]
                 upper_outer_frame = source_files[-1]
                 num_width = len(str(num_files))
                 lower_frame = 0
                 upper_frame = num_files
-                lower_filename = f"repair_frame{str(lower_frame).zfill(num_width)}.png"
-                upper_filename = f"repair_frame{str(upper_frame).zfill(num_width)}.png"
+                lower_filename = f"repair_frame{str(lower_frame).zfill(num_width)}.{type}"
+                upper_filename = f"repair_frame{str(upper_frame).zfill(num_width)}.{type}"
                 lower_filepath = os.path.join(resynth_frames_path, lower_filename)
                 upper_filepath = os.path.join(resynth_frames_path, upper_filename)
                 self.log(
@@ -778,15 +787,18 @@ class VideoBlender(TabBase):
                 self.log("synchronizing frame sets")
 
                 self.log(f"resequencing source files in {source_frames_path}")
-                ResequenceFiles(source_frames_path, "png", "source_frame", 0, 1, 1, 0, -1, True,
+                type = determine_input_format(source_frames_path)
+                ResequenceFiles(source_frames_path, type, "source_frame", 0, 1, 1, 0, -1, True,
                     self.log).resequence()
 
                 self.log(f"resequencing restored files in {restored_frames_path}")
-                ResequenceFiles(restored_frames_path, "png", "source_frame", 0, 1, 1, 0, -1, True,
+                type = determine_input_format(restored_frames_path)
+                ResequenceFiles(restored_frames_path, type, "source_frame", 0, 1, 1, 0, -1, True,
                     self.log).resequence()
 
                 self.log(f"resequencing resynthesized files in {resynth_frames_path}")
-                ResequenceFiles(resynth_frames_path, "png", "repair_frame", 0, 1, 1, 0, -1, True,
+                type = determine_input_format(resynth_frames_path)
+                ResequenceFiles(resynth_frames_path, type, "repair_frame", 0, 1, 1, 0, -1, True,
                     self.log).resequence()
             else:
                 self.log("skipping synchronization of frame sets")

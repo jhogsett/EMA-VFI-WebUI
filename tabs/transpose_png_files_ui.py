@@ -5,6 +5,7 @@ import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.file_utils import get_directories
+from webui_utils.video_utils import determine_input_format
 from webui_utils.mtqdm import Mtqdm
 from webui_tips import WebuiTips
 from interpolate_engine import InterpolateEngine
@@ -76,5 +77,6 @@ class TransposePngFiles(TabBase):
     def transpose_png_files(self, input_path : str, input_type : str):
         """Transpose button handler"""
         if input_path:
+            type = determine_input_format(input_path)
             input_type = TransposePngFiles.UI_TYPES_TO_INTERNAL[input_type]
-            _TransposePngFiles(input_path, input_type, self.log_fn).transpose()
+            _TransposePngFiles(input_path, input_type, self.log_fn).transpose(type=type)

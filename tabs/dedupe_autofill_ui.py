@@ -71,7 +71,7 @@ class AutofillFrames(TabBase):
                             placeholder="Path on this server for the deduplicated PNG files")
                     message_box_batch = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_BATCH))
                     gr.Markdown("*Progress can be tracked in the console*")
-                    dedupe_batch = gr.Button("Deduplicate Frames " + SimpleIcons.SLOW_SYMBOL,
+                    dedupe_batch = gr.Button("Deduplicate Batch " + SimpleIcons.SLOW_SYMBOL,
                                              variant="primary")
             with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                 WebuiTips.autofill_duplicates.render()
@@ -194,18 +194,16 @@ class AutofillFrames(TabBase):
                 raise ValueError("Search Precision must be >= 1")
 
         try:
-            type = determine_input_format(input_path)
-
             if not output_path:
                 base_output_path = self.config.directories["output_deduplication"]
                 output_path, _ = AutoIncrementDirectory(base_output_path).next_directory("run")
 
+            type = determine_input_format(input_path)
             interpolater = Interpolate(self.engine.model, self.log, type=type)
             target_interpolater = TargetInterpolate(interpolater, self.log, type=type)
             use_time_step = self.config.engine_settings["use_time_step"]
             frame_restorer = RestoreFrames(interpolater, target_interpolater, use_time_step,
                                             self.log, type=type)
-
             message, auto_filled_files, _ = DeduplicateFrames(frame_restorer,
                                                                 input_path,
                                                                 output_path,
@@ -222,7 +220,6 @@ class AutofillFrames(TabBase):
                                                     depth,
                                                     message,
                                                     auto_filled_files)
-
             report_name = "autofill-report"
             report_path = os.path.join(output_path, report_name)
             create_directory(report_path)
