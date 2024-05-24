@@ -148,7 +148,6 @@ class ResequenceFiles:
     def resequence_batch(self, contiguous=True, ignore_name_clash=True):
         """Resequence groups of files. Returns a string with any errors."""
         group_names = sorted(get_directories(self.input_path), reverse=self.reverse)
-        self.log(f"Found {len(group_names)} file groups")
         return self.resequence_groups(group_names,
                                       contiguous=contiguous,
                                       ignore_name_clash=ignore_name_clash)
@@ -158,7 +157,6 @@ class ResequenceFiles:
         files = sorted(glob.glob(os.path.join(self.input_path, "*." + self.file_type)),
                        reverse=self.reverse)
         num_files = len(files)
-        self.log(f"Found {num_files} files")
 
         if not ignore_name_clash:
             check_for_name_clash(files, self.new_base_filename, self.file_type)
@@ -181,11 +179,9 @@ class ResequenceFiles:
                 if self.rename:
                     new_filepath = os.path.join(self.input_path, new_filename)
                     os.replace(old_filepath, new_filepath)
-                    self.log(f"File {file} renamed to {new_filepath}")
                 else:
                     new_filepath = os.path.join(self.output_path, new_filename)
                     shutil.copy(old_filepath, new_filepath)
-                    self.log(f"File {file} copied to {new_filepath}")
 
                 running_index += self.index_step
                 Mtqdm().update_bar(bar)

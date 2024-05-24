@@ -95,7 +95,6 @@ class SplitFrames:
             if self.num_groups < 1:
                 raise ValueError("'num_groups' must be >= 1")
             files_per_group = int(math.ceil(num_files / self.num_groups))
-        self.log(f"Splitting files to {self.num_groups} groups of {files_per_group} files")
 
         add_resynthesis_frames = self.type == "resynthesis"
         add_inflation_frame = self.type == "inflation"
@@ -103,12 +102,10 @@ class SplitFrames:
         if self.dry_run:
             print(f"[Dry Run] Creating base output path {self.output_path}")
         else:
-            self.log(f"Creating base output path {self.output_path}")
             create_directory(self.output_path)
 
         file_groups = [[] for n in range(self.num_groups)]
         for group in range(self.num_groups):
-            self.log(f"Collecting filenames for group {group}")
             start_index = group * files_per_group
             for index in range(files_per_group):
                 file_index = start_index + index
@@ -116,7 +113,6 @@ class SplitFrames:
                     file_groups[group].append(files[file_index])
 
             if add_resynthesis_frames:
-                self.log("Adding surrounding anchor frames for resynthesis")
                 prev_group = group - 1
                 _prev_start_index = prev_group * files_per_group
                 prev_last_index = _prev_start_index + files_per_group-1
@@ -131,21 +127,15 @@ class SplitFrames:
                     next_start_file = files[next_start_index]
                 else:
                     next_start_file = None
-                self.log(
-        f"Anchor files for resynthesis frames: prev '{prev_last_file}' next '{next_start_file}'")
 
                 if group == 0:
-                    self.log("Adding after anchor frame")
                     file_groups[group] = file_groups[group] + [next_start_file]
                 elif group == self.num_groups-1:
-                    self.log("Adding before anchor frame")
                     file_groups[group] = [prev_last_file] + file_groups[group]
                 else:
-                    self.log("Adding before and after anchor frames")
                     file_groups[group] = [prev_last_file] + file_groups[group] + [next_start_file]
 
             elif add_inflation_frame:
-                self.log("Adding ending anchor frame for inflation")
                 next_group = group + 1
                 next_start_index = next_group * files_per_group
 
@@ -153,11 +143,8 @@ class SplitFrames:
                     next_start_file = files[next_start_index]
                 else:
                     next_start_file = None
-                self.log(
-                f"Anchor File for inflation frames: next '{next_start_file}'")
 
                 if group < self.num_groups-1:
-                    self.log("Adding after anchor frame")
                     file_groups[group] = file_groups[group] + [next_start_file]
 
         group_paths = []
@@ -195,7 +182,6 @@ class SplitFrames:
                 if self.dry_run:
                     self.log(f"[Dry Run] Creating directory {group_path}")
                 else:
-                    self.log(f"Creating directory {group_path}")
                     create_directory(group_path)
 
                 desc = "Copying" if self.action == "copy" else "Moving"
@@ -207,7 +193,6 @@ class SplitFrames:
                         if self.dry_run:
                             print(f"[Dry Run] Copying {from_filepath} to {to_filepath}")
                         else:
-                            self.log(f"Copying {from_filepath} to {to_filepath}")
                             shutil.copy(from_filepath, to_filepath)
                         Mtqdm().update_bar(file_bar)
                 Mtqdm().update_bar(group_bar)
@@ -216,7 +201,6 @@ class SplitFrames:
                     if self.dry_run:
                         print(f"[Dry Run] Resequencing files in {group_path}")
                     else:
-                        self.log(f"Resequencing files in {group_path}")
                         base_filename = f"{group_name}-{self.type}-split-frame"
                         ResequenceFiles(group_path,
                                         self.file_ext,
@@ -232,7 +216,6 @@ class SplitFrames:
                         if self.dry_run:
                             print(f"[Dry Run] Deleting {file}")
                         else:
-                            self.log(f"Deleting {file}")
                             os.remove(file)
                     Mtqdm().update_bar(bar)
 

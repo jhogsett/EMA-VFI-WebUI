@@ -138,7 +138,7 @@ def _get_types(extension : str | list | None) -> list:
             unused.append(ext)
     return list(set(result)), unused
 
-def get_files(path : str, extension : list | str | None=None) -> list:
+def get_files(path : str, extension : list | str | None=None, ignore_empty_path=False) -> list:
     """Get a list of files in the path per the extension(s). Names include the path."""
     if isinstance(path, str):
         if isinstance(extension, (list, str, type(None))):
@@ -152,7 +152,9 @@ def get_files(path : str, extension : list | str | None=None) -> list:
         else:
             raise ValueError("'extension' must be a string, a list of strings, or 'None'")
     else:
-        raise ValueError("'path' must be a string")
+        if not ignore_empty_path:
+            raise ValueError("'path' must be a string")
+    return []
 
 def get_matching_files(path : str, filespec : str) -> list:
     """Get a list of files in path matching 'filespec', which can be a filename or wildcard"""
@@ -165,10 +167,10 @@ def get_matching_files(path : str, filespec : str) -> list:
     else:
         raise ValueError("'path' must be a string")
 
-def get_directories(path : str) -> list:
+def get_directories(path : str, ignore_empty_path=False) -> list:
     """Get a list of directories in the path"""
     if isinstance(path, str):
-        if os.path.exists(path):
+        if os.path.exists(path) and not ignore_empty_path:
             if is_safe_path(path):
                 entries = os.listdir(path)
                 directories = []
@@ -182,7 +184,9 @@ def get_directories(path : str) -> list:
         else:
             raise ValueError("'path' does not exist")
     else:
-        raise ValueError("'path' must be a string")
+        if not ignore_empty_path:
+            raise ValueError("'path' must be a string")
+    return []
 
 def copy_files(from_path : str, to_path : str, create_to_path=True, ignore_empty_directories=True):
     """Copy files from from_path to to_path. Returns the count of files copied"""
@@ -362,10 +366,10 @@ def simple_sanitize_filename(filename, default_filename=None):
        Uses the default_filename if a safe filename cannot be produced
        Raises ValueError if default_filename is not provided
     """
-    # Keep only alphanumeric chars and spaces, and convert all space sequences into underscores
+    # Keep only alphanumeric chars, hyphens, and spaces, and convert all space sequences into underscores
     safe_name = re.sub(r' +',
                        '_',
-                       re.sub(r'[^A-Za-z0-9 ]+',
+                       re.sub(r'[^-A-Za-z0-9 ]+',
                               '',
                               filename)) or default_filename
     if safe_name:

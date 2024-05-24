@@ -33,14 +33,15 @@ class SimplifyPngFiles:
         num_files = len(files)
         self.log(f"Found {num_files} files")
 
-        with Mtqdm().open_bar(len(files), desc="Simplifying") as bar:
-            for file in files:
-                self.log(f"removing image info from {file}")
-                img = Image.open(file)
-                if img.info:
-                    self.log(f"removing: {img.info}")
-                img.save(file)
-                Mtqdm().update_bar(bar)
+        if files:
+            with Mtqdm().open_bar(len(files), desc="Simplifying") as bar:
+                for file in files:
+                    self.log(f"removing image info from {file}")
+                    img = Image.open(file)
+                    if img.info:
+                        self.log(f"removing: {img.info}")
+                    img.save(file)
+                    Mtqdm().update_bar(bar)
 
     def log(self, message : str) -> None:
         """Logging"""
