@@ -165,7 +165,6 @@ class SliceVideo:
         frames_source = os.path.join(self.group_path, group_name)
         pattern = determine_input_pattern(frames_source, type)
         frames_path = os.path.join(frames_source, pattern)
-        self.log(f"slicing from frames path {frames_path}")
 
         try:
             ffmpeg_cmd, errors = slice_video_frames(frames_path,
@@ -183,8 +182,8 @@ class SliceVideo:
                         self.gif_end_delay,
                         global_options=self.global_options,
                         output_filename=slice_name)
-            self.log(f"FFmpeg command line: '{ffmpeg_cmd}'")
-            self.log(f"FFmpeg stderr output: '{errors}'")
+            # self.log(f"FFmpeg command line: '{ffmpeg_cmd}'")
+            # self.log(f"FFmpeg stderr output: '{errors}'")
             return None
         except FFRuntimeError as error:
             message = f"FFRuntimeError {error}"
@@ -194,10 +193,8 @@ class SliceVideo:
     def slice(self, ignore_errors=False):
         group_names = validate_input_path(self.group_path, -1)
         if self.output_path:
-            self.log(f"Creating output path {self.output_path}")
             create_directory(self.output_path)
 
-        self.log("using slice_video (may cause long delay while processing request)")
         pbar_desc = f"Slice {self.type}"
         errors = []
         with Mtqdm().open_bar(total=len(group_names), desc=pbar_desc) as bar:
@@ -213,10 +210,8 @@ class SliceVideo:
     def slice_group(self, group_name, ignore_errors=False):
         validate_input_path(self.group_path, -1)
         if self.output_path:
-            self.log(f"Creating output path {self.output_path}")
             create_directory(self.output_path)
 
-        self.log("using slice_video (may cause long delay while processing request)")
         pbar_desc = f"Slice {self.type}"
         errors = []
         with Mtqdm().open_bar(total=1, desc=pbar_desc) as bar:
@@ -231,7 +226,6 @@ class SliceVideo:
     def slice_frame_group(self, group_name, ignore_errors=False, slice_name="", type : str="png"):
         validate_input_path(self.group_path, -1)
         if self.output_path:
-            self.log(f"Creating output path {self.output_path}")
             create_directory(self.output_path)
 
         pbar_desc = f"Slice {self.type}"

@@ -101,7 +101,6 @@ realesrgan_settings:
   tile_pad: 10
   tiling: 256
 remixer_settings:
-  audio_format: wav
   backup_split_scenes: True
   custom_ffmpeg_video: -c:v libx264 -crf 23
   custom_ffmpeg_audio: -c:a aac -shortest
@@ -130,6 +129,7 @@ remixer_settings:
   maximum_crf: 28
   min_frames_per_scene: 10
   minimum_crf: 17
+  raise_on_error: False
   scale_type_up: "lanczos"
   scale_type_down: "area"
   source_audio_crf: 28

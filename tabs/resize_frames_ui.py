@@ -9,6 +9,7 @@ from webui_utils.mtqdm import Mtqdm
 from webui_tips import WebuiTips
 from resize_frames import ResizeFrames as _ResizeFrames
 from tabs.tab_base import TabBase
+from webui_utils.video_utils import determine_input_format
 
 class ResizeFrames(TabBase):
     """Encapsulates UI elements and events for the Resize Frames feature"""
@@ -141,6 +142,7 @@ class ResizeFrames(TabBase):
                        crop_offset_y : int):
         """Resize Frames button handler"""
         if input_path and output_path:
+            type = determine_input_format(input_path)
             self.log(f"initializing ResizeFrames with input_path={input_path}" +\
                      f" output_path={output_path} scale_type={scale_type}" +\
                     f" scale_width={scale_width} scale_height={scale_height}" +\
@@ -157,4 +159,4 @@ class ResizeFrames(TabBase):
                          crop_width=crop_width,
                          crop_height=crop_height,
                          crop_offset_x=crop_offset_x,
-                         crop_offset_y=crop_offset_y).resize()
+                         crop_offset_y=crop_offset_y).resize(type=type)

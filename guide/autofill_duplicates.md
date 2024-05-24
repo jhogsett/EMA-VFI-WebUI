@@ -1,10 +1,6 @@
 **Auto-Fill Duplicate Frames** - Detect duplicate frames and fill with interpolated replacements
 
 ## How It Works
-1. Set _Input PNG Files Path_ to a path on this server for the PNG files being deduplicated
-1. Set _Output PNG Files Path_ to a path on this server to store the deduplicated PNG files
-    - Output PNG File Path can be left blank to use the default folder
-    - _Tip: The default folder is set by the_ `config.directories.output_deduplication` _setting_
 1. Set _Detect Threshold_ to specify the sensitivity to frame differences
     - A lower value finds fewer duplicates; a higher value finds more
     - This value requires experimentation. See _More Details_ below.
@@ -18,9 +14,16 @@
 1. Set _Search Precision_ to the depth of search needed for accuracy
     - High precision yields precise frame timing, but takes a long time
     - Less precision is faster, with possible imprecise frame timing
-1. Click _Deduplicate Frames_
-1. The _Details_ box shows the result of the operation, or any errors encountered
+1. Choose _Individual Path_ or _Batch Processing_
+    - If **Individual Path**
+        1. Set _Input PNG Files Path_ to a path on this server for the PNG files being deduplicated
+        1. Set _Output PNG Files Path_ to a path on this server to store the deduplicated PNG files
+    - If **Batch Processing**
+        1. Set _Input PNG Files Path_ to a directory on this servery containing the frame groups to be deduplicated
+        1. Set _Output PNG Files Path_ to a directory on this server for the deduplicated frame groups
+1. Click _Deduplicate Frames_ or _Deduplicate Batch_
 1. On completion, a report .txt file is written to the output path with details of the auto-filling
+- Progress can be tracked in the console
 
 ## Important
 - This process could be slow, perhaps many hours long!
