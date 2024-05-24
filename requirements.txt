@@ -7,3 +7,4 @@ opencv-python==4.9.0.80
 Pillow==10.3.0
 PyYAML==6.0
 torch==2.2.0
+protobuf>=3.18.3 # not directly required, pinned by Snyk to avoid a vulnerability
