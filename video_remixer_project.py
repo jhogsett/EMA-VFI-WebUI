@@ -594,6 +594,16 @@ class VideoRemixerProject():
         duplicate_directory(imported.scenes_path, self.state.scenes_path)
         duplicate_directory(imported.thumbnail_path, self.state.thumbnail_path)
 
+        # duplicate processed directories, which may exist with processed scene content
+        try:
+            duplicate_directory(imported.resize_path, self.state.resize_path, ignore_missing=True)
+            duplicate_directory(imported.resynthesis_path, self.state.resynthesis_path, ignore_missing=True)
+            duplicate_directory(imported.inflation_path, self.state.inflation_path, ignore_missing=True)
+            duplicate_directory(imported.effects_path, self.state.effects_path, ignore_missing=True)
+            duplicate_directory(imported.upscale_path, self.state.upscale_path, ignore_missing=True)
+        except Exception as error:
+            self.log(f"import_project() error importing processsed content: {error}")
+
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
 
         self.state.current_scene = self.state.scene_names.index(imported.scene_names[0])
