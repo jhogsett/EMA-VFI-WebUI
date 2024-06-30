@@ -232,9 +232,9 @@ GOOD_LOCATE_FRAME_FILE_ARGS = [
 ]
 
 BAD_LOCATE_FRAME_FILE_ARGS = [
-    ((None, None), "'png_files_path' must be a string"),
-    (("", None), "'png_files_path' must be a legal path"),
-    ((os.path.join(FIXTURE_PATH, ".."), None), "'png_files_path' must be a legal path"),
+    ((None, None), "'frame_files_path' must be a string"),
+    (("", None), "'frame_files_path' must be a legal path"),
+    ((os.path.join(FIXTURE_PATH, ".."), None), "'frame_files_path' must be a legal path"),
     ((FIXTURE_PATH, None), "'frame_number' must be an int or float"),
 ]
 
