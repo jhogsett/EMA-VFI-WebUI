@@ -1341,7 +1341,13 @@ class VideoRemixer(TabBase):
 
         purge_button715.click(self.purge_button715, outputs=[tabs_video_remixer, message_box715])
 
-        create_button716.click(self.create_button716, inputs=[videos_path, thumbnail_type, min_frames_per_scene], outputs=message_box716)
+        create_button716.click(self.create_button716,
+                            inputs=[videos_path, project_fps, split_type, scene_threshold,
+                                    break_duration, break_ratio, resize_w, resize_h, crop_w,
+                                    crop_h, crop_offset_x, crop_offset_y, frame_format,
+                                    deinterlace, split_time,
+                                    thumbnail_type, min_frames_per_scene],
+                            outputs=message_box716)
 
     def _gather_fonts(self):
         fonts = get_files(self.FONTS_ROOT, "ttf")
@@ -1368,6 +1374,9 @@ class VideoRemixer(TabBase):
                                                    self.log)
 
             self.state.ingest.ingest_video(video_path)
+
+            self.state.video_info1 = VideoRemixerReports(self.state, self.log).ingested_video_report()
+
             return True, None
         except ValueError as error:
             return False, str(error)
@@ -1385,9 +1394,7 @@ class VideoRemixer(TabBase):
                    *empty_args
 
         success, message = self._next_button00(video_path)
-        if success:
-            self.state.video_info1 = VideoRemixerReports(self.state, self.log).ingested_video_report()
-        else:
+        if not success:
             return gr.update(selected=self.TAB_REMIX_HOME), \
                    format_markdown(str(message), "error"), \
                    *empty_args
@@ -1510,11 +1517,49 @@ class VideoRemixer(TabBase):
             return self.PROGRESS_STEPS["home"]
 
     ### REMIX SETTINGS EVENT HANDLERS
-    def _next_button1(self, project_path):
+    def _next_button1(self,
+                      project_path,
+                      project_fps,
+                      split_type,
+                      scene_threshold,
+                      break_duration,
+                      break_ratio,
+                      resize_w,
+                      resize_h,
+                      crop_w,
+                      crop_h,
+                      crop_offset_x,
+                      crop_offset_y,
+                      frame_format,
+                      deinterlace,
+                      split_time):
+
         # this is first project write
         self.state.project_path = project_path
         self.log(f"creating project path {project_path}")
         create_directory(project_path)
+
+        self.state.project_fps = project_fps
+        self.state.split_type = split_type
+        self.state.scene_threshold = scene_threshold
+        self.state.break_duration = break_duration
+        self.state.break_ratio = break_ratio
+        self.state.resize_w = int(resize_w)
+        self.state.resize_h = int(resize_h)
+        self.state.crop_w = int(crop_w)
+        self.state.crop_h = int(crop_h)
+        self.state.crop_offset_x = int(crop_offset_x)
+        self.state.crop_offset_y = int(crop_offset_y)
+        self.state.frame_format = frame_format
+        self.state.split_time = split_time
+        self.state.deinterlace = deinterlace
+        self.state.processed_content_invalid = True
+        self.state.project_info2 =  VideoRemixerReports(self.state, self.log).project_settings_report()
+
+        # this is the first time project progress advances
+        # user will expect to return to the setup tab on reopening
+        self.log(f"saving new project at {self.state.project.project_filepath()}")
+        self.state.save_progress("setup")
 
     def next_button1(self,
                      project_path,
@@ -1580,27 +1625,27 @@ class VideoRemixer(TabBase):
             # self.log(f"creating project path {project_path}")
             # create_directory(project_path)
 
-            self.state.project_fps = project_fps
-            self.state.split_type = split_type
-            self.state.scene_threshold = scene_threshold
-            self.state.break_duration = break_duration
-            self.state.break_ratio = break_ratio
-            self.state.resize_w = int(resize_w)
-            self.state.resize_h = int(resize_h)
-            self.state.crop_w = int(crop_w)
-            self.state.crop_h = int(crop_h)
-            self.state.crop_offset_x = int(crop_offset_x)
-            self.state.crop_offset_y = int(crop_offset_y)
-            self.state.frame_format = frame_format
-            self.state.split_time = split_time
-            self.state.deinterlace = deinterlace
-            self.state.processed_content_invalid = True
-            self.state.project_info2 =  VideoRemixerReports(self.state, self.log).project_settings_report()
+            # self.state.project_fps = project_fps
+            # self.state.split_type = split_type
+            # self.state.scene_threshold = scene_threshold
+            # self.state.break_duration = break_duration
+            # self.state.break_ratio = break_ratio
+            # self.state.resize_w = int(resize_w)
+            # self.state.resize_h = int(resize_h)
+            # self.state.crop_w = int(crop_w)
+            # self.state.crop_h = int(crop_h)
+            # self.state.crop_offset_x = int(crop_offset_x)
+            # self.state.crop_offset_y = int(crop_offset_y)
+            # self.state.frame_format = frame_format
+            # self.state.split_time = split_time
+            # self.state.deinterlace = deinterlace
+            # self.state.processed_content_invalid = True
+            # self.state.project_info2 =  VideoRemixerReports(self.state, self.log).project_settings_report()
 
-            # this is the first time project progress advances
-            # user will expect to return to the setup tab on reopening
-            self.log(f"saving new project at {self.state.project.project_filepath()}")
-            self.state.save_progress("setup")
+            # # this is the first time project progress advances
+            # # user will expect to return to the setup tab on reopening
+            # self.log(f"saving new project at {self.state.project.project_filepath()}")
+            # self.state.save_progress("setup")
 
             Session().set("last-video-remixer-project", project_path)
 
@@ -3282,7 +3327,29 @@ class VideoRemixer(TabBase):
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 message
 
-    def create_button716(self, videos_path, thumbnail_type, min_frames_per_scene):
+        create_button716.click(self.create_button716,
+                            inputs=[videos_path,
+                                    thumbnail_type, min_frames_per_scene],
+                            outputs=message_box716)
+
+    def create_button716(self,
+                         videos_path,
+                         project_fps,
+                         split_type,
+                         scene_threshold,
+                         break_duration,
+                         break_ratio,
+                         resize_w,
+                         resize_h,
+                         crop_w,
+                         crop_h,
+                         crop_offset_x,
+                         crop_offset_y,
+                         frame_format,
+                         deinterlace,
+                         split_time,
+                         thumbnail_type,
+                         min_frames_per_scene):
         messages = []
         if not videos_path:
             return format_markdown(
@@ -3293,32 +3360,30 @@ class VideoRemixer(TabBase):
 
         file_types = ",".join(self.config.remixer_settings["file_types"])
         file_list = get_files(videos_path, file_types)
+        num_files = len(file_list)
 
-        if len(file_list) == 0:
+        if num_files < 1:
             return format_markdown(
         f"Directory '{videos_path}' was not found to contain files of these types: {file_types}",
                 "error")
 
-        try:
-            self.use_saved_settings(ignore_errors=False)
-        except ValueError:
-            return format_markdown(f"This feature requires the **_Remember These Settings_** feature on the **_Remix Settings_** tab be used to set options for all bulk created projects", "error")
+        with Mtqdm().open_bar(total=num_files, desc="Create Project") as bar:
+            for file in file_list:
+                try:
+                    success, message = self._next_button00(file)
+                    if not success:
+                        messages.append(message)
+                        continue
 
-        for file in file_list:
-            try:
-                success, message = self._next_button00(file)
-                if not success:
-                    messages.append(message)
-                    continue
+                    self._next_button1(self.state.project_path, project_fps, split_type, scene_threshold, break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h, crop_offset_x, crop_offset_y, frame_format, deinterlace, split_time)
 
-                self._next_button1(self.state.project_path)
+                    self._next_button2(thumbnail_type, min_frames_per_scene, False)
 
-                self.use_saved_settings(ignore_errors=False)
+                except ValueError as error:
+                    messages.append(str(error))
 
-                self._next_button2(thumbnail_type, min_frames_per_scene, False)
-
-            except ValueError as error:
-                messages.append(str(error))
+                finally:
+                    Mtqdm().update_bar(bar)
 
         if messages:
             return format_markdown("\r\n".join(messages), "warning")
