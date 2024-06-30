@@ -57,6 +57,7 @@ class VideoRemixer(TabBase):
     TAB_EXTRA_MANAGE_STORAGE = 5
     TAB_EXTRA_MERGE_SCENES = 6
     TAB_EXTRA_VIDEO_BLEND_SCENE = 7
+    TAB_EXTRA_BULK_PROCESSING = 8
 
     TAB_EXTRA_MERGE_RANGE = 0
     TAB_EXTRA_MERGE_COALESCE = 1
@@ -738,8 +739,7 @@ class VideoRemixer(TabBase):
                                                         variant="stop", scale=0)
 
                     # MANAGE STORAGE
-                    with gr.Tab(SimpleIcons.HERB +" Manage Storage",
-                                id=self.TAB_EXTRA_MANAGE_STORAGE):
+                    with gr.Tab(SimpleIcons.HERB +" Manage Storage", id=self.TAB_EXTRA_MANAGE_STORAGE):
                         gr.Markdown("Free Disk Space by Removing Unneeded Content")
                         with gr.Tabs():
 
@@ -923,6 +923,33 @@ class VideoRemixer(TabBase):
                                                 value="Select All", scale=0)
                                             select_none_button712 = gr.Button(
                                                 value="Select None", scale=0)
+
+                    # BULK PROCESSING
+                    with gr.Tab(SimpleIcons.ROBOT +" Bulk Processing", id=self.TAB_EXTRA_BULK_PROCESSING):
+                        gr.Markdown("Processing Across Multiple Projects")
+                        with gr.Tabs():
+
+                            with gr.Tab(SimpleIcons.FACTORY + " Create Multiple Projects"):
+                                gr.Markdown(
+                    "**_Create Video Remixer projects for each video in a directory_**")
+                                with gr.Row():
+                                    videos_path = gr.Textbox(label="Videos Path", max_lines=1,
+                                placeholder="Path on this server to the videos to be remixed")
+                                with gr.Row():
+                                   message_box716 = gr.Markdown(
+                                        format_markdown(
+                                "Click Create Projects to: Make a project for each video"))
+                                gr.Markdown(
+                                    format_markdown(
+                                        SimpleIcons.WARNING + \
+                                            " This action consumes large amounts of disk space",
+                                            "warning"))
+                                gr.Markdown(
+                                    format_markdown(
+                "Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                with gr.Row():
+                                    create_button716 = gr.Button(value="Create Projects",
+                                                                variant="primary", scale=0)
 
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_remixer_extra.render()
@@ -1313,6 +1340,8 @@ class VideoRemixer(TabBase):
                                     set_scene_label])
 
         purge_button715.click(self.purge_button715, outputs=[tabs_video_remixer, message_box715])
+
+        create_button716.click(self.create_button716, inputs=videos_path, outputs=message_box716)
 
     def _gather_fonts(self):
         fonts = get_files(self.FONTS_ROOT, "ttf")
@@ -3119,6 +3148,24 @@ class VideoRemixer(TabBase):
             message = format_markdown("There is no loaded project.", "error")
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 message
+
+    def create_button716(self, videos_path):
+        if not videos_path:
+            return format_markdown(
+                "Enter a path to a directory of videos on this server to get started", "warning")
+
+        if not os.path.exists(videos_path):
+            return format_markdown(f"Directory '{videos_path}' was not found", "error")
+
+        file_types = ",".join(self.config.remixer_settings["file_types"])
+        file_list = get_files(videos_path, file_types)
+
+        if len(file_list) == 0:
+            return format_markdown(
+        f"Directory '{videos_path}' was not found to contain files of these types: {file_types}",
+                "error")
+
+        return format_markdown(f"{len(file_list)} files found")
 
     def save_mp4_video(self, output_filepath, quality=None):
         self.state.output_filepath = output_filepath
