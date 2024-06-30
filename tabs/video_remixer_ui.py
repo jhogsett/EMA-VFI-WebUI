@@ -1619,7 +1619,21 @@ class VideoRemixer(TabBase):
         self.state.source_frames_invalid = deinterlace != self.state.deinterlace
 
         try:
-            self._next_button1(project_path)
+            self._next_button1(project_path,
+                               project_fps,
+                               split_type,
+                               scene_threshold,
+                               break_duration,
+                               break_ratio,
+                               resize_w,
+                               resize_h,
+                               crop_w,
+                               crop_h,
+                               crop_offset_x,
+                               crop_offset_y,
+                               frame_format,
+                               deinterlace,
+                               split_time)
             # # this is first project write
             # self.state.project_path = project_path
             # self.log(f"creating project path {project_path}")
@@ -3326,11 +3340,6 @@ class VideoRemixer(TabBase):
             message = format_markdown("There is no loaded project.", "error")
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 message
-
-        create_button716.click(self.create_button716,
-                            inputs=[videos_path,
-                                    thumbnail_type, min_frames_per_scene],
-                            outputs=message_box716)
 
     def create_button716(self,
                          videos_path,
