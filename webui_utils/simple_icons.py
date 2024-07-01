@@ -120,6 +120,7 @@ class SimpleIcons:
     STETHOSCOPE ="🩺"
     STILL = "⚗️"
     SWEAT = "💦"
+    TORNADO = "🌪️"
     TWO_HEARTS = "💕"
 
     # shared symbol definitions
@@ -204,6 +205,7 @@ class SimpleIcons:
         STILL,
         TELEVISION,
         THREE,
+        TORNADO,
         TWO,
         TWO_HEARTS,
         VULCAN_HAND,

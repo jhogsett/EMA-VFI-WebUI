@@ -951,6 +951,28 @@ class VideoRemixer(TabBase):
                                     create_button716 = gr.Button(value="Create Projects",
                                                                 variant="primary", scale=0)
 
+                            with gr.Tab(SimpleIcons.TORNADO + " Process Multiple Projects"):
+                                gr.Markdown(
+                    "**_Perform Processing for each Video Remixer project in a directory_**")
+                                with gr.Row():
+                                    projects_path = gr.Textbox(label="Projects Path", max_lines=1,
+                                placeholder="Path on this server to the Video Remixer projects to be processed")
+                                with gr.Row():
+                                   message_box717 = gr.Markdown(
+                                        format_markdown(
+                                "Click Process Projects to: Process each Video Remixer project"))
+                                gr.Markdown(
+                                    format_markdown(
+                                        SimpleIcons.WARNING + \
+                                            " This action make take a very long time to complete",
+                                            "warning"))
+                                gr.Markdown(
+                                    format_markdown(
+                "Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                with gr.Row():
+                                    process_button717 = gr.Button(value="Process Projects",
+                                                                variant="primary", scale=0)
+
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_remixer_extra.render()
 
@@ -1348,6 +1370,12 @@ class VideoRemixer(TabBase):
                                     deinterlace, split_time,
                                     thumbnail_type, min_frames_per_scene],
                             outputs=message_box716)
+
+        process_button717.click(self.process_button717,
+                            inputs=[projects_path, resynthesize, inflate, resize, upscale,
+                                    upscale_option, inflate_by_option, inflate_slow_option,
+                                    resynth_option, auto_save_remix, auto_delete_remix],
+                            outputs=message_box717)
 
     def _gather_fonts(self):
         fonts = get_files(self.FONTS_ROOT, "ttf")
@@ -3341,6 +3369,15 @@ class VideoRemixer(TabBase):
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 message
 
+    def save_mp4_video(self, output_filepath, quality=None):
+        self.state.output_filepath = output_filepath
+        self.state.output_quality = quality or self.config.remixer_settings["default_crf"]
+
+        self.state.save()
+
+        kept_scenes = self.processor.prepare_save_remix(output_filepath)
+        self.processor.save_remix(kept_scenes)
+
     def create_button716(self,
                          videos_path,
                          project_fps,
@@ -3376,7 +3413,7 @@ class VideoRemixer(TabBase):
         f"Directory '{videos_path}' was not found to contain files of these types: {file_types}",
                 "error")
 
-        with Mtqdm().open_bar(total=num_files, desc="Create Project") as bar:
+        with Mtqdm().open_bar(total=num_files, desc="Create Projects") as bar:
             for file in file_list:
                 try:
                     success, message = self._next_button00(file)
@@ -3399,11 +3436,55 @@ class VideoRemixer(TabBase):
         else:
             return format_markdown(f"{len(file_list)} files processed")
 
-    def save_mp4_video(self, output_filepath, quality=None):
-        self.state.output_filepath = output_filepath
-        self.state.output_quality = quality or self.config.remixer_settings["default_crf"]
+    def process_button717(self,
+                          projects_path,
+                          resynthesize,
+                          inflate,
+                          resize,
+                          upscale,
+                          upscale_option,
+                          inflate_by_option,
+                          inflate_slow_option,
+                          resynth_option,
+                          auto_save_remix,
+                          auto_delete_remix):
+        messages = []
+        if not projects_path:
+            return format_markdown(
+            "Enter a path to a directory of Video Remixer projects on this server to get started",
+            "warning")
 
-        self.state.save()
+        if not os.path.exists(projects_path):
+            return format_markdown(f"Directory '{projects_path}' was not found", "error")
 
-        kept_scenes = self.processor.prepare_save_remix(output_filepath)
-        self.processor.save_remix(kept_scenes)
+        dir_list = get_directories(projects_path)
+        num_dirs = len(dir_list)
+
+        if num_dirs < 1:
+            return format_markdown(
+                f"Directory '{projects_path}' was not found to contain Video Remixer projects",
+                "error")
+
+        with Mtqdm().open_bar(total=num_dirs, desc="Process Projects") as bar:
+            for dir in dir_list:
+                try:
+                    ...
+                    # success, message = self._next_button00(file)
+                    # if not success:
+                    #     messages.append(message)
+                    #     continue
+
+                    # self._next_button1(self.state.project_path, project_fps, split_type, scene_threshold, break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h, crop_offset_x, crop_offset_y, frame_format, deinterlace, split_time)
+
+                    # self._next_button2(thumbnail_type, min_frames_per_scene, False)
+
+                except ValueError as error:
+                    messages.append(str(error))
+
+                finally:
+                    Mtqdm().update_bar(bar)
+
+        if messages:
+            return format_markdown("\r\n".join(messages), "warning")
+        else:
+            return format_markdown(f"{len(dir_list)} projects processed")

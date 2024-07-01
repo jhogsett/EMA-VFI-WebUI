@@ -168,7 +168,9 @@ def get_matching_files(path : str, filespec : str) -> list:
         raise ValueError("'path' must be a string")
 
 def get_directories(path : str, ignore_empty_path=False) -> list:
-    """Get a list of directories in the path"""
+    """Get a list of directories in the path
+       if ignore_empty_path is True
+    """
     if isinstance(path, str):
         if os.path.exists(path) and not ignore_empty_path:
             if is_safe_path(path):
