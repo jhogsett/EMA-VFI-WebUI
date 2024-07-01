@@ -1443,6 +1443,40 @@ class VideoRemixer(TabBase):
             self.state.project_fps
 
     # User has clicked Open Project > from Remix Home
+    def _next_button01(self, project_path):
+        try:
+            project_file = VideoRemixerProject.determine_project_filepath(project_path)
+        except ValueError as error:
+            self.log(f"error determining project filepath from '{project_path}': {error}")
+            raise error
+
+        try:
+            remixer_settings = self.config.remixer_settings
+            global_options = self.config.ffmpeg_settings["global_options"]
+            self.state = VideoRemixerProject.load(project_file, remixer_settings, global_options,
+                                                  self.log)
+        except ValueError as error:
+            self.log(f"error loading project from '{project_path}': {error}")
+            raise error
+
+        if self.state.project_ported(project_file):
+            try:
+                self.state = VideoRemixerProject.load_ported(self.state.project_path, project_file,
+                                                             remixer_settings, global_options,
+                                                             self.log)
+            except ValueError as error:
+                self.log(f"error opening ported project from '{project_file}': {error}")
+                raise error
+
+        self.processor = VideoRemixerProcessor(self.state,
+                                               self.engine,
+                                               self.config.engine_settings,
+                                               self.config.realesrgan_settings,
+                                               global_options,
+                                               self.log)
+
+        return self.state.project.post_load_integrity_check()
+
     def next_button01(self, project_path):
         empty_args = dummy_args(36)
         if not project_path:
@@ -1455,43 +1489,8 @@ class VideoRemixer(TabBase):
                    format_markdown(f"Directory '{project_path}' was not found", "error"), \
                    *empty_args
 
-        try:
-            project_file = VideoRemixerProject.determine_project_filepath(project_path)
-        except ValueError as error:
-            return gr.update(selected=self.TAB_REMIX_HOME), \
-                   format_markdown(str(error), "error"), \
-                   *empty_args
+        messages = self._next_button01(project_path)
 
-        try:
-            remixer_settings = self.config.remixer_settings
-            global_options = self.config.ffmpeg_settings["global_options"]
-            self.state = VideoRemixerProject.load(project_file, remixer_settings, global_options,
-                                                  self.log)
-        except ValueError as error:
-            self.log(f"error opening project: {error}")
-            return gr.update(selected=self.TAB_REMIX_HOME), \
-                   format_markdown(str(error), "error"), \
-                   *empty_args
-
-        if self.state.project_ported(project_file):
-            try:
-                self.state = VideoRemixerProject.load_ported(self.state.project_path, project_file,
-                                                             remixer_settings, global_options,
-                                                             self.log)
-            except ValueError as error:
-                self.log(f"error opening ported project at {project_file}: {error}")
-                return gr.update(selected=self.TAB_REMIX_HOME), \
-                    format_markdown(str(error), "error"), \
-                   *empty_args
-
-        self.processor = VideoRemixerProcessor(self.state,
-                                               self.engine,
-                                               self.config.engine_settings,
-                                               self.config.realesrgan_settings,
-                                               global_options,
-                                               self.log)
-
-        messages = self.state.project.post_load_integrity_check()
         if messages:
             message_text = format_markdown(messages, "warning")
         else:
@@ -1662,32 +1661,6 @@ class VideoRemixer(TabBase):
                                frame_format,
                                deinterlace,
                                split_time)
-            # # this is first project write
-            # self.state.project_path = project_path
-            # self.log(f"creating project path {project_path}")
-            # create_directory(project_path)
-
-            # self.state.project_fps = project_fps
-            # self.state.split_type = split_type
-            # self.state.scene_threshold = scene_threshold
-            # self.state.break_duration = break_duration
-            # self.state.break_ratio = break_ratio
-            # self.state.resize_w = int(resize_w)
-            # self.state.resize_h = int(resize_h)
-            # self.state.crop_w = int(crop_w)
-            # self.state.crop_h = int(crop_h)
-            # self.state.crop_offset_x = int(crop_offset_x)
-            # self.state.crop_offset_y = int(crop_offset_y)
-            # self.state.frame_format = frame_format
-            # self.state.split_time = split_time
-            # self.state.deinterlace = deinterlace
-            # self.state.processed_content_invalid = True
-            # self.state.project_info2 =  VideoRemixerReports(self.state, self.log).project_settings_report()
-
-            # # this is the first time project progress advances
-            # # user will expect to return to the setup tab on reopening
-            # self.log(f"saving new project at {self.state.project.project_filepath()}")
-            # self.state.save_progress("setup")
 
             Session().set("last-video-remixer-project", project_path)
 
@@ -1857,9 +1830,6 @@ class VideoRemixer(TabBase):
             error = self.state.ingest.split_scenes(prevent_overwrite=False)
             if error:
                 raise ValueError(f"There was an error splitting the source video: {error}")
-                # return gr.update(selected=self.TAB_SET_UP_PROJECT), \
-                #     format_markdown(f"There was an error splitting the source video: {error}", "error"), \
-                #    *empty_args
 
             self.state.save()
 
@@ -1875,9 +1845,6 @@ class VideoRemixer(TabBase):
                 self.state.save()
             except ValueError as error:
                 raise ValueError(f"There was an error retrieving source frame dimensions: {error}")
-                # return gr.update(selected=self.TAB_SET_UP_PROJECT), \
-                #     format_markdown(f"There was an error retrieving source frame dimensions: {error}", "error"), \
-                #    *empty_args
 
             # if there's only one scene, assume it should be kept to save some time
             if len(self.state.scene_names) < 2:
@@ -1892,9 +1859,6 @@ class VideoRemixer(TabBase):
             self.state.ingest.create_thumbnails()
         except ValueError as error:
             raise ValueError(f"There was an error creating thumbnails from the source video: {error}")
-            # return gr.update(selected=self.TAB_SET_UP_PROJECT), \
-            #        format_markdown(f"There was an error creating thumbnails from the source video: {error}", "error"), \
-            #        *empty_args
 
         self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
         self.state.save()
@@ -1924,111 +1888,6 @@ class VideoRemixer(TabBase):
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                 format_markdown(f"There was an error setting up the project: {error}", "error"), \
                 *empty_args
-
-        # self.state.thumbnail_type = thumbnail_type
-        # self.state.min_frames_per_scene = min_frames_per_scene
-        # self.state.save()
-
-        # # TODO this enormous conditional is messy
-        # # TODO some logic should be moved to ingest class
-        # if not skip_detection or not self.state.ingest.scenes_present():
-        #     try:
-        #         self.log(f"copying video from {self.state.source_video} to project path")
-        #         self.state.ingest.save_original_video(prevent_overwrite=True)
-        #     except ValueError as error:
-        #         # ignore, don't copy the file a second time if the user is restarting here
-        #         self.log(f"ignoring: {error}")
-
-        #     self.state.save()
-
-        #     try:
-        #         self.log(f"creating source audio from {self.state.source_video}")
-        #         source_audio_crf = self.config.remixer_settings["source_audio_crf"]
-        #         self.state.ingest.create_source_audio(source_audio_crf, prevent_overwrite=True)
-        #     except ValueError as error:
-        #         self.log(f"ignoring: {error}")
-
-        #     self.state.save()
-
-        #     # user may be redoing project set up
-        #     # settings changes could affect already-processed content
-        #     self.log("resetting project on rendering for project settings")
-        #     self.state.project.reset_at_project_settings()
-
-        #     # split video into frames, avoid doing again if redoing setup
-        #     # unless the source frames were flagged invalid in the previous step
-        #     self.log("splitting source video into frames")
-        #     prevent_overwrite = not self.state.source_frames_invalid
-        #     ffcmd = self.state.ingest.render_source_frames(prevent_overwrite=prevent_overwrite)
-        #     if not ffcmd:
-        #         self.log("rendering source frames skipped")
-        #     else:
-        #         self.state.save()
-        #         self.log(f"FFmpeg command: {ffcmd}")
-
-        #     self.state.scenes_path = os.path.join(self.state.project_path,
-        #                                           VideoRemixerState.SCENES_PATH)
-        #     self.state.dropped_scenes_path = os.path.join(self.state.project_path,
-        #                                                   VideoRemixerState.DROPPED_SCENES_PATH)
-        #     self.log(f"creating scenes directory {self.state.scenes_path}")
-        #     create_directory(self.state.scenes_path)
-        #     self.log(f"creating dropped scenes directory {self.state.dropped_scenes_path}")
-        #     create_directory(self.state.dropped_scenes_path)
-
-        #     self.state.save()
-
-        #     # split frames into scenes
-        #     error = self.state.ingest.split_scenes(prevent_overwrite=False)
-        #     if error:
-        #         return gr.update(selected=self.TAB_SET_UP_PROJECT), \
-        #             format_markdown(f"There was an error splitting the source video: {error}", "error"), \
-        #            *empty_args
-        #     self.state.save()
-
-        #     if self.state.min_frames_per_scene > 0:
-        #         self.state.ingest.consolidate_scenes()
-        #         self.state.save()
-
-        #     self.state.scene_names = sorted(get_directories(self.state.scenes_path))
-
-        #     try:
-        #         self.log("enhance source video info with extra data including frame dimensions")
-        #         self.state.ingest.enhance_video_info(ignore_errors=False)
-        #         self.state.save()
-        #     except ValueError as error:
-        #         return gr.update(selected=self.TAB_SET_UP_PROJECT), \
-        #             format_markdown(f"There was an error retrieving source frame dimensions: {error}", "error"), \
-        #            *empty_args
-
-        #     # if there's only one scene, assume it should be kept to save some time
-        #     if len(self.state.scene_names) < 2:
-        #         self.state.keep_all_scenes()
-        #     else:
-        #         self.state.drop_all_scenes()
-
-        #     self.state.current_scene = 0
-        #     self.state.save()
-
-        # try:
-        #     self.state.ingest.create_thumbnails()
-        # except ValueError as error:
-        #     return gr.update(selected=self.TAB_SET_UP_PROJECT), \
-        #            format_markdown(f"There was an error creating thumbnails from the source video: {error}", "error"), \
-        #            *empty_args
-
-        # self.state.thumbnails = sorted(get_files(self.state.thumbnail_path))
-        # self.state.save()
-
-        # # thumbnails may be being recreated
-        # # clear cache to avoid display problems with cached thumbnails
-        # self.state.invalidate_split_scene_cache()
-
-        # self.state.clips_path = os.path.join(self.state.project_path, self.state.CLIPS_PATH)
-        # self.log(f"creating clips directory {self.state.clips_path}")
-        # create_directory(self.state.clips_path)
-
-        # user will expect to return to scene chooser on reopening
-        # self.state.save_progress("choose")
 
         return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                format_markdown(self.TAB2_DEFAULT_MESSAGE), \
@@ -2315,37 +2174,27 @@ class VideoRemixer(TabBase):
     ### PROCESS REMIX EVENT HANDLERS
 
     # User has clicked Process Remix from Process Remix
-    def next_button5(self,
-                     resynthesize,
-                     inflate, resize,
-                     upscale,
-                     upscale_option,
-                     inflate_by_option,
-                     inflate_slow_option,
-                     resynth_option,
-                     auto_save_remix,
-                     auto_delete_remix):
-        empty_args = dummy_args(9)
-
+    def _next_button5(self,
+                      resynthesize,
+                      inflate,
+                      resize,
+                      upscale,
+                      upscale_option,
+                      inflate_by_option,
+                      inflate_slow_option,
+                      resynth_option,
+                      auto_save_remix,
+                      auto_delete_remix):
         if not self.state.project_path or not self.state.scenes_path:
-            return gr.update(selected=self.TAB_PROC_REMIX), \
-                format_markdown(
-                    "The project has not yet been set up from the Set Up Project tab.", "error"), \
-                *empty_args
+            raise ValueError("The project has not yet been set up from the Set Up Project tab.")
 
         kept_scenes = self.state.kept_scenes()
         if not kept_scenes:
-            return gr.update(selected=self.TAB_PROC_REMIX), \
-                format_markdown(
-                    "At least one scene must be set to 'Keep' before processing can proceed",
-                    "warning"), \
-            *empty_args
+            raise ValueError("At least one scene must be set to 'Keep' before processing can proceed")
 
         errors = self.state.ensure_project_dir_permissions()
         if errors:
-            message = "\r\n".join(errors)
-            return gr.update(selected=self.TAB_PROC_REMIX), \
-                format_markdown(message, "error"), *empty_args
+            raise ValueError("\r\n".join(errors))
 
         self.state.resize = resize
 
@@ -2388,9 +2237,6 @@ class VideoRemixer(TabBase):
         self.state.summary_info6 = styled_report
 
         self.state.output_filepath = self.state.default_remix_filepath()
-        output_filepath_custom = self.state.default_remix_filepath("CUSTOM")
-        output_filepath_marked = self.state.default_remix_filepath("MARKED")
-        output_filepath_labeled = self.state.default_remix_filepath("LABELED")
         self.state.save()
 
         # user will expect to return to the save remix tab on reopening
@@ -2403,30 +2249,62 @@ class VideoRemixer(TabBase):
                 self.save_mp4_video(self.state.output_filepath)
                 messages.append(f"Remixed video {self.state.output_filepath} is complete.")
             except ValueError as error:
-                return gr.update(selected=self.TAB_PROC_REMIX), \
-                    format_markdown(
-                        f"An error occurred while automatically saving MP4 video: {error}", "error"), \
-                    *empty_args
+                raise ValueError(f"An error occurred while automatically saving MP4 video: {error}")
 
             if auto_delete_remix:
                 try:
                     message = self.delete_all_project_content()
                     messages.append(message)
                 except ValueError as error:
-                    return gr.update(selected=self.TAB_PROC_REMIX), \
-                        format_markdown(
-                            f"An error occurred while automatically deleting project content: {error}", "error"), \
-                        *empty_args
+                    raise ValueError(f"An error occurred while automatically deleting project content: {error}")
 
+            return "\r\n".join(messages)
+        else:
+            return self.processor.get_processing_messages(raw=False)
+
+    def next_button5(self,
+                     resynthesize,
+                     inflate,
+                     resize,
+                     upscale,
+                     upscale_option,
+                     inflate_by_option,
+                     inflate_slow_option,
+                     resynth_option,
+                     auto_save_remix,
+                     auto_delete_remix):
+        empty_args = dummy_args(9)
+
+        try:
+            messages = self._next_button5(resynthesize,
+                                         inflate,
+                                         resize,
+                                         upscale,
+                                         upscale_option,
+                                         inflate_by_option,
+                                         inflate_slow_option,
+                                         resynth_option,
+                                         auto_save_remix,
+                                         auto_delete_remix)
+        except ValueError as error:
+            return gr.update(selected=self.TAB_PROC_REMIX), \
+                format_markdown(error, "error"), \
+                *empty_args
+
+        if auto_save_remix:
             return gr.update(selected=self.TAB_PROC_REMIX), \
                 format_markdown("\r\n".join(messages)), \
                 *empty_args
 
         else:
-            message = self.processor.get_processing_messages(raw=False) or self.TAB5_DEFAULT_MESSAGE
+            output_filepath_custom = self.state.default_remix_filepath("CUSTOM")
+            output_filepath_marked = self.state.default_remix_filepath("MARKED")
+            output_filepath_labeled = self.state.default_remix_filepath("LABELED")
+
+            message = messages or self.TAB5_DEFAULT_MESSAGE
             return gr.update(selected=self.TAB_SAVE_REMIX), \
                     format_markdown(message), \
-                    styled_report, \
+                    self.state.summary_info6, \
                     self.state.output_filepath, \
                     output_filepath_custom, \
                     output_filepath_marked, \
@@ -3468,15 +3346,21 @@ class VideoRemixer(TabBase):
         with Mtqdm().open_bar(total=num_dirs, desc="Process Projects") as bar:
             for dir in dir_list:
                 try:
-                    ...
-                    # success, message = self._next_button00(file)
-                    # if not success:
-                    #     messages.append(message)
-                    #     continue
+                    project_path = os.path.join(projects_path, dir)
+                    message = self._next_button01(project_path)
+                    messages.append(message)
 
-                    # self._next_button1(self.state.project_path, project_fps, split_type, scene_threshold, break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h, crop_offset_x, crop_offset_y, frame_format, deinterlace, split_time)
-
-                    # self._next_button2(thumbnail_type, min_frames_per_scene, False)
+                    message = self._next_button5(resynthesize,
+                                                 inflate,
+                                                 resize,
+                                                 upscale,
+                                                 upscale_option,
+                                                 inflate_by_option,
+                                                 inflate_slow_option,
+                                                 resynth_option,
+                                                 auto_save_remix,
+                                                 auto_delete_remix)
+                    messages.append(message)
 
                 except ValueError as error:
                     messages.append(str(error))
@@ -3485,6 +3369,6 @@ class VideoRemixer(TabBase):
                     Mtqdm().update_bar(bar)
 
         if messages:
-            return format_markdown("\r\n".join(messages), "warning")
+            return format_markdown("\r\n".join(messages))
         else:
             return format_markdown(f"{len(dir_list)} projects processed")
