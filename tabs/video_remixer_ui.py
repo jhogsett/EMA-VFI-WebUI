@@ -240,9 +240,9 @@ class VideoRemixer(TabBase):
                     skip_detection = gr.Checkbox(value=False, label="Recreate Thumbnails Only",
                 info="Remake thumbnails with existing scenes if present, skipping project setup")
                 with gr.Accordion(label="More Options", open=False):
-                    with gr.Row(variant="compact"):
-                        remove_source = gr.Checkbox(value=False, label="Remove Source Frames",
-                    info="Delete the source frames after scenes have been created")
+                    # with gr.Row(variant="compact"):
+                    remove_source = gr.Checkbox(value=False, label="Remove Source Frames",
+                        info="Delete the source frames after scenes have been created")
 
                 with gr.Row():
                     message_box2 = gr.Markdown(value=format_markdown(self.TAB2_DEFAULT_MESSAGE))
@@ -938,6 +938,10 @@ class VideoRemixer(TabBase):
                                 gr.Markdown(
                     "**_Create Video Remixer projects for each video in a directory_**")
                                 with gr.Row():
+                                    gr.Markdown(
+                                        format_markdown(
+                        "Use the Remix Settings and Set Up Project tabs to choose project options"))
+                                with gr.Row():
                                     videos_path = gr.Textbox(label="Videos Path", max_lines=1,
                                 placeholder="Path on this server to the videos to be remixed")
                                 with gr.Row():
@@ -959,6 +963,10 @@ class VideoRemixer(TabBase):
                             with gr.Tab(SimpleIcons.TORNADO + " Process Multiple Projects"):
                                 gr.Markdown(
                     "**_Perform Processing for each Video Remixer project in a directory_**")
+                                with gr.Row():
+                                    gr.Markdown(
+                                        format_markdown(
+                        "Use the Process Remix tab to choose processing options"))
                                 with gr.Row():
                                     projects_path = gr.Textbox(label="Projects Path", max_lines=1,
                                 placeholder="Path on this server to the Video Remixer projects to be processed")
