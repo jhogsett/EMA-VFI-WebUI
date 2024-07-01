@@ -62,7 +62,7 @@ def _copy(source_path, dest_path):
     Mtqdm().update_bar(_duplicate_directory_progress)
     return retval
 
-def duplicate_directory(source_dir, dest_dir, mirror=False):
+def duplicate_directory(source_dir, dest_dir, mirror=False, ignore_missing=False):
     """Copies contents of source_dir to dest_dir (no mirroring/deletion)"""
     global _duplicate_directory_progress
     if mirror:
@@ -74,9 +74,13 @@ def duplicate_directory(source_dir, dest_dir, mirror=False):
     if not is_safe_path(dest_dir):
         raise ValueError("'dest_dir' must be a legal path")
     if not os.path.exists(source_dir):
-        raise ValueError("'source_dir' was not found")
+        if ignore_missing:
+            return
+        else:
+            raise ValueError("'source_dir' was not found")
     create_directory(dest_dir)
 
+    # TODO the count is wrong if there are only directories present
     count = len(get_files(source_dir))
     _duplicate_directory_progress = Mtqdm().enter_bar(total=count, desc="Files Copied")
     shutil.copytree(source_dir, dest_dir, copy_function=_copy, dirs_exist_ok=True)
