@@ -7,7 +7,7 @@ from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
 from webui_utils.simple_utils import format_markdown, style_report, dummy_args
 from webui_utils.file_utils import get_files, create_directory, get_directories, split_filepath, \
-    is_safe_path, duplicate_directory, move_files
+    is_safe_path, duplicate_directory, move_files, remove_directories
 from webui_utils.video_utils import details_from_group_name, split_color_alpha, join_color_alpha
 from webui_utils.jot import Jot
 from webui_utils.auto_increment import AutoIncrementFilename
@@ -239,6 +239,11 @@ class VideoRemixer(TabBase):
                 with gr.Row():
                     skip_detection = gr.Checkbox(value=False, label="Recreate Thumbnails Only",
                 info="Remake thumbnails with existing scenes if present, skipping project setup")
+                with gr.Accordion(label="More Options", open=False):
+                    with gr.Row(variant="compact"):
+                        remove_source = gr.Checkbox(value=False, label="Remove Source Frames",
+                    info="Delete the source frames after scenes have been created")
+
                 with gr.Row():
                     message_box2 = gr.Markdown(value=format_markdown(self.TAB2_DEFAULT_MESSAGE))
                 gr.Markdown(format_markdown(
@@ -1021,7 +1026,8 @@ class VideoRemixer(TabBase):
                                            frame_format, deinterlace, split_time])
 
         next_button2.click(self.next_button2,
-                           inputs=[thumbnail_type, min_frames_per_scene, skip_detection],
+                           inputs=[thumbnail_type, min_frames_per_scene, skip_detection,
+                                   remove_source],
                            outputs=[tabs_video_remixer, message_box2, scene_index, scene_name,
                                     scene_image, scene_state, scene_info, set_scene_label])
 
@@ -1368,7 +1374,7 @@ class VideoRemixer(TabBase):
                                     break_duration, break_ratio, resize_w, resize_h, crop_w,
                                     crop_h, crop_offset_x, crop_offset_y, frame_format,
                                     deinterlace, split_time,
-                                    thumbnail_type, min_frames_per_scene],
+                                    thumbnail_type, min_frames_per_scene, remove_source],
                             outputs=message_box716)
 
         process_button717.click(self.process_button717,
@@ -1773,7 +1779,7 @@ class VideoRemixer(TabBase):
     ### SET UP PROJECT EVENT HANDLERS
 
     # User has clicked Set Up Project from Set Up Project
-    def _next_button2(self, thumbnail_type, min_frames_per_scene, skip_detection):
+    def _next_button2(self, thumbnail_type, min_frames_per_scene, skip_detection, remove_source):
         self.state.thumbnail_type = thumbnail_type
         self.state.min_frames_per_scene = min_frames_per_scene
         self.state.save()
@@ -1846,6 +1852,10 @@ class VideoRemixer(TabBase):
             except ValueError as error:
                 raise ValueError(f"There was an error retrieving source frame dimensions: {error}")
 
+            if remove_source:
+                self.log(f"removing source frames from {self.state.frames_path}")
+                remove_directories([self.state.frames_path])
+
             # if there's only one scene, assume it should be kept to save some time
             if len(self.state.scene_names) < 2:
                 self.state.keep_all_scenes()
@@ -1874,7 +1884,7 @@ class VideoRemixer(TabBase):
         # user will expect to return to scene chooser on reopening
         self.state.save_progress("choose")
 
-    def next_button2(self, thumbnail_type, min_frames_per_scene, skip_detection):
+    def next_button2(self, thumbnail_type, min_frames_per_scene, skip_detection, remove_source):
         empty_args = dummy_args(6)
 
         if not self.state.project_path:
@@ -1883,7 +1893,7 @@ class VideoRemixer(TabBase):
                    *empty_args
 
         try:
-            self._next_button2(thumbnail_type, min_frames_per_scene, skip_detection)
+            self._next_button2(thumbnail_type, min_frames_per_scene, skip_detection, remove_source)
         except ValueError as error:
             return gr.update(selected=self.TAB_SET_UP_PROJECT), \
                 format_markdown(f"There was an error setting up the project: {error}", "error"), \
@@ -3273,7 +3283,8 @@ class VideoRemixer(TabBase):
                          deinterlace,
                          split_time,
                          thumbnail_type,
-                         min_frames_per_scene):
+                         min_frames_per_scene,
+                         remove_source):
         messages = []
         if not videos_path:
             return format_markdown(
@@ -3301,7 +3312,7 @@ class VideoRemixer(TabBase):
 
                     self._next_button1(self.state.project_path, project_fps, split_type, scene_threshold, break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h, crop_offset_x, crop_offset_y, frame_format, deinterlace, split_time)
 
-                    self._next_button2(thumbnail_type, min_frames_per_scene, False)
+                    self._next_button2(thumbnail_type, min_frames_per_scene, False, remove_source)
 
                 except ValueError as error:
                     messages.append(str(error))
@@ -3365,8 +3376,7 @@ class VideoRemixer(TabBase):
                 except ValueError as error:
                     messages.append(str(error))
 
-                finally:
-                    Mtqdm().update_bar(bar)
+                Mtqdm().update_bar(bar)
 
         if messages:
             return format_markdown("\r\n".join(messages))
