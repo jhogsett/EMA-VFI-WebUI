@@ -960,6 +960,25 @@ class VideoRemixer(TabBase):
                                     create_button716 = gr.Button(value="Create Projects",
                                                                 variant="primary", scale=0)
 
+                            with gr.Tab(SimpleIcons.MAGNIFIER + " Open Multiple Projects by State"):
+                                gr.Markdown(
+                                        "**_Open the first found project in the specified state_**")
+                                with gr.Row():
+                                    projects_path718 = gr.Textbox(label="Projects Path", max_lines=1,
+                                placeholder="Path on this server to the Video Remixer projects to be opened")
+                                with gr.Row():
+                                    project_state718 = gr.Dropdown(choices=["Settings", "Setup", "Choose", "Compile", "Process", "Save"], value="Choose", label="Project State")
+                                with gr.Row():
+                                   message_box718 = gr.Markdown(
+                                        format_markdown(
+                            "Click Open Found Project to: Open a project in the specified state"))
+                                gr.Markdown(
+                                    format_markdown(
+                "Progress can be tracked in the console", color="none", italic=True, bold=False))
+                                with gr.Row():
+                                    open_button718 = gr.Button(value="Open Found Project",
+                                                                variant="primary", scale=0)
+
                             with gr.Tab(SimpleIcons.TORNADO + " Process Multiple Projects"):
                                 gr.Markdown(
                     "**_Perform Processing for each Video Remixer project in a directory_**")
@@ -968,7 +987,7 @@ class VideoRemixer(TabBase):
                                         format_markdown(
                         "Use the Process Remix tab to choose processing options"))
                                 with gr.Row():
-                                    projects_path = gr.Textbox(label="Projects Path", max_lines=1,
+                                    projects_path717 = gr.Textbox(label="Projects Path", max_lines=1,
                                 placeholder="Path on this server to the Video Remixer projects to be processed")
                                 with gr.Row():
                                    message_box717 = gr.Markdown(
@@ -1386,10 +1405,15 @@ class VideoRemixer(TabBase):
                             outputs=message_box716)
 
         process_button717.click(self.process_button717,
-                            inputs=[projects_path, resynthesize, inflate, resize, upscale,
+                            inputs=[projects_path717, resynthesize, inflate, resize, upscale,
                                     upscale_option, inflate_by_option, inflate_slow_option,
                                     resynth_option, auto_save_remix, auto_delete_remix],
                             outputs=message_box717)
+
+        open_button718.click(self.open_button718,
+                             inputs=[projects_path718, project_state718],
+                             outputs=[message_box718, tabs_video_remixer, project_load_path,
+                                      message_box01])
 
     def _gather_fonts(self):
         fonts = get_files(self.FONTS_ROOT, "ttf")
@@ -3390,3 +3414,53 @@ class VideoRemixer(TabBase):
             return format_markdown("\r\n".join(messages))
         else:
             return format_markdown(f"{len(dir_list)} projects processed")
+
+    def open_button718(self, projects_path, project_state):
+        empty_args = dummy_args(2)
+        if not projects_path:
+            return format_markdown(
+            "Enter a path to a directory of Video Remixer projects on this server to get started",
+                "warning"), \
+            gr.update(selected=self.TAB_REMIX_EXTRA), \
+            *empty_args
+
+        if not os.path.exists(projects_path):
+            return format_markdown(f"Directory '{projects_path}' was not found", "error"), \
+            gr.update(selected=self.TAB_REMIX_EXTRA), \
+            *empty_args
+
+        dir_list = get_directories(projects_path)
+        num_dirs = len(dir_list)
+
+        if num_dirs < 1:
+            return format_markdown(
+                f"Directory '{projects_path}' was not found to contain Video Remixer projects",
+                "error"), \
+            gr.update(selected=self.TAB_REMIX_EXTRA), \
+            *empty_args
+
+        with Mtqdm().open_bar(total=num_dirs, desc="Search Projects") as bar:
+            for dir in dir_list:
+                try:
+                    project_path = os.path.join(projects_path, dir)
+                    messages = self._next_button01(project_path)
+                    self.log(messages)
+                    Mtqdm().update_bar(bar)
+
+                    if self.state.progress.startswith(project_state.lower()):
+                        message = f"Found project {project_path}"
+                        return format_markdown(message), \
+                            gr.update(selected=self.TAB_REMIX_HOME), \
+                            project_path, \
+                            format_markdown(self.TAB01_DEFAULT_MESSAGE)
+
+                except ValueError as error:
+                    return format_markdown(f"An error occurred while searching projects: {error}",
+                                           "error"), \
+                    gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    *empty_args
+
+            return format_markdown(f"A project was not found with the state {project_state}",
+                                    "warning"), \
+                gr.update(selected=self.TAB_REMIX_EXTRA), \
+                *empty_args
