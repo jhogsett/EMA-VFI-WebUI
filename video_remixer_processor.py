@@ -2767,12 +2767,15 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         # save the project now to preserve the newly established path
         self.state.save()
 
+        _, source_name, _ = split_filepath(self.state.source_video)
+        source_name = simple_sanitize_filename(source_name)
+
         scenes_base_path = self.furthest_processed_path()
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Video Clips") as bar:
             for scene_name in kept_scenes:
                 scene_input_path = os.path.join(scenes_base_path, scene_name)
                 scene_output_filepath = os.path.join(self.state.video_clips_path,
-                                                     f"{scene_name}.mp4")
+                                                     f"{source_name}_{scene_name}.mp4")
 
                 video_clip_fps, fps_factor = self.compute_scene_fps(scene_name)
 

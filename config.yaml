@@ -107,6 +107,18 @@ remixer_settings:
   default_crf: 23
   def_project_fps: 29.97
   default_gif_fps: 10
+  file_types:
+  - "avi"
+  - "flv"
+  - "gif"
+  - "m4v"
+  - "mov"
+  - "mp4"
+  - "mpeg"
+  - "mpg"
+  - "qt"
+  - "webm"
+  - "wmv"
   gif_end_delay: 1.0
   gif_factor: 10
   labeled_ffmpeg_video: -vf "drawtext=<LABEL>" -c:v libx264 -crf <CRF>
