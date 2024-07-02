@@ -2999,7 +2999,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                     source_name = simple_sanitize_filename(source_name)
 
                     scene_output_filepath = os.path.join(self.state.clips_path,
-                                                         f"{source_name}_[{scene_name}].mp4")
+                                                         f"{source_name}_[{scene_name}]_scene.mp4")
 
                     force_inflation, force_audio, force_inflate_by, force_silent =\
                         self.compute_forced_inflation(scene_name)
