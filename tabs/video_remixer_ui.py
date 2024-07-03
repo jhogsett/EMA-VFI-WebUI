@@ -3349,8 +3349,7 @@ class VideoRemixer(TabBase):
                 except ValueError as error:
                     messages.append(str(error))
 
-                finally:
-                    Mtqdm().update_bar(bar)
+                Mtqdm().update_bar(bar)
 
         if messages:
             return format_markdown("\r\n".join(messages), "warning")
@@ -3392,6 +3391,9 @@ class VideoRemixer(TabBase):
                     project_path = os.path.join(projects_path, dir)
                     message = self._next_button01(project_path)
                     messages.append(message)
+
+                    if len(self.state.kept_scenes() < 1):
+                        self.state.keep_all_scenes()
 
                     message = self._next_button5(resynthesize,
                                                  inflate,
