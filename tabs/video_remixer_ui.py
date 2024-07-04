@@ -3326,7 +3326,7 @@ class VideoRemixer(TabBase):
             return format_markdown(f"Directory '{videos_path}' was not found", "error")
 
         file_types = ",".join(self.config.remixer_settings["file_types"])
-        file_list = get_files(videos_path, file_types)
+        file_list = sorted(get_files(videos_path, file_types))
         num_files = len(file_list)
 
         if num_files < 1:
@@ -3377,7 +3377,7 @@ class VideoRemixer(TabBase):
         if not os.path.exists(projects_path):
             return format_markdown(f"Directory '{projects_path}' was not found", "error")
 
-        dir_list = get_directories(projects_path)
+        dir_list = sorted(get_directories(projects_path))
         num_dirs = len(dir_list)
 
         if num_dirs < 1:
@@ -3431,7 +3431,7 @@ class VideoRemixer(TabBase):
             gr.update(selected=self.TAB_REMIX_EXTRA), \
             *empty_args
 
-        dir_list = get_directories(projects_path)
+        dir_list = sorted(get_directories(projects_path))
         num_dirs = len(dir_list)
 
         if num_dirs < 1:
