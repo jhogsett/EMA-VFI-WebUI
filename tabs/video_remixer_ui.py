@@ -2330,12 +2330,12 @@ class VideoRemixer(TabBase):
                                          auto_delete_remix)
         except ValueError as error:
             return gr.update(selected=self.TAB_PROC_REMIX), \
-                format_markdown(error, "error"), \
+                format_markdown(str(error), "error"), \
                 *empty_args
 
         if auto_save_remix:
             return gr.update(selected=self.TAB_PROC_REMIX), \
-                format_markdown("\r\n".join(messages)), \
+                format_markdown(messages), \
                 *empty_args
 
         else:
