@@ -3392,7 +3392,7 @@ class VideoRemixer(TabBase):
                     message = self._next_button01(project_path)
                     messages.append(message)
 
-                    if len(self.state.kept_scenes() < 1):
+                    if len(self.state.kept_scenes()) < 1:
                         self.state.keep_all_scenes()
 
                     message = self._next_button5(resynthesize,
