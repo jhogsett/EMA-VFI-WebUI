@@ -943,7 +943,8 @@ class VideoRemixer(TabBase):
                         "Use the Remix Settings and Set Up Project tabs to choose project options"))
                                 with gr.Row():
                                     videos_path = gr.Textbox(label="Videos Path", max_lines=1,
-                                placeholder="Path on this server to the videos to be remixed")
+                                placeholder="Path on this server to the videos to be remixed",
+                                value=lambda : Session().get("last-bulk-create-path"))
                                 with gr.Row():
                                    message_box716 = gr.Markdown(
                                         format_markdown(
@@ -965,7 +966,8 @@ class VideoRemixer(TabBase):
                                         "**_Open the first found project in the specified state_**")
                                 with gr.Row():
                                     projects_path718 = gr.Textbox(label="Projects Path", max_lines=1,
-                                placeholder="Path on this server to the Video Remixer projects to be opened")
+                    placeholder="Path on this server to the Video Remixer projects to be opened",
+                                value=lambda : Session().get("last-bulk-open-path"))
                                 with gr.Row():
                                     project_state718 = gr.Dropdown(choices=["Settings", "Setup", "Choose", "Compile", "Process", "Save"], value="Choose", label="Project State")
                                 with gr.Row():
@@ -988,7 +990,8 @@ class VideoRemixer(TabBase):
                         "Use the Process Remix tab to choose processing options"))
                                 with gr.Row():
                                     projects_path717 = gr.Textbox(label="Projects Path", max_lines=1,
-                                placeholder="Path on this server to the Video Remixer projects to be processed")
+                    placeholder="Path on this server to the Video Remixer projects to be processed",
+                                value=lambda : Session().get("last-bulk-process-path"))
                                 with gr.Row():
                                    message_box717 = gr.Markdown(
                                         format_markdown(
@@ -3334,6 +3337,8 @@ class VideoRemixer(TabBase):
         f"Directory '{videos_path}' was not found to contain files of these types: {file_types}",
                 "error")
 
+        Session().set("last-bulk-create-path", videos_path)
+
         with Mtqdm().open_bar(total=num_files, desc="Create Projects") as bar:
             for file in file_list:
                 try:
@@ -3384,6 +3389,8 @@ class VideoRemixer(TabBase):
             return format_markdown(
                 f"Directory '{projects_path}' was not found to contain Video Remixer projects",
                 "error")
+
+        Session().set("last-bulk-process-path", projects_path)
 
         with Mtqdm().open_bar(total=num_dirs, desc="Process Projects") as bar:
             for dir in dir_list:
@@ -3440,6 +3447,8 @@ class VideoRemixer(TabBase):
                 "error"), \
             gr.update(selected=self.TAB_REMIX_EXTRA), \
             *empty_args
+
+        Session().set("last-bulk-open-path", projects_path)
 
         with Mtqdm().open_bar(total=num_dirs, desc="Search Projects") as bar:
             for dir in dir_list:
