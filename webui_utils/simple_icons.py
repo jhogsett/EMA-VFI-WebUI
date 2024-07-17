@@ -84,11 +84,13 @@ class SimpleIcons:
     BOMB = "💣"
     BROKEN_HEART = "💔"
     BROOM = "🧹"
+    BUBBLES = "🫧"
     CHERRY_BLOSSOM = "🌸"
     COCKTAIL = "🍸"
     COOL = "🆒"
     EGGPLANT = "🍆"
     EYES = "👀"
+    FACTORY = "🏭"
     FINISH_FLAG = "🏁"
     FLASHLIGHT ="🔦"
     GEMSTONE = "💎"
@@ -118,6 +120,7 @@ class SimpleIcons:
     STETHOSCOPE ="🩺"
     STILL = "⚗️"
     SWEAT = "💦"
+    TORNADO = "🌪️"
     TWO_HEARTS = "💕"
 
     # shared symbol definitions
@@ -162,6 +165,7 @@ class SimpleIcons:
         CROSSMARK,
         DIVIDE,
         DOCUMENT,
+        FACTORY,
         FILM,
         FINISH_FLAG,
         FIVE,
@@ -190,6 +194,7 @@ class SimpleIcons:
         PROPERTIES,
         RECYCLE,
         RIGHT_DOWN_ARROW,
+        ROBOT,
         ROCKET,
         SCROLL,
         SEEDLING,
@@ -200,6 +205,7 @@ class SimpleIcons:
         STILL,
         TELEVISION,
         THREE,
+        TORNADO,
         TWO,
         TWO_HEARTS,
         VULCAN_HAND,
