@@ -598,17 +598,18 @@ class VideoRemixer(TabBase):
                                                                     precision=0, container=False,
                                                                     min_width=120)
                                 with gr.Accordion("Advanced Options", open=False):
-                                    with gr.Row():
+                                    with gr.Row(variant="compact", equal_height=False):
+                                        use_alt_split_702 = gr.Checkbox(value=False, label="Use Secondary Split", container=False, scale=1)
+                                        split_percent_alt_702 = gr.Slider(value=50.0,
+                                            label="Secondary Split Position", minimum=0.0,
+                                            maximum=100.0, step=0.1, container=False, scale=2,
+                                            info="Earliest split is performed first")
+                                    with gr.Row(variant="compact", equal_height=False):
                                         set_view_hint_702 = gr.Textbox(placeholder="View Hint",
                                                                     max_lines=1, show_label=False,
                                                                     min_width=100, container=False)
                                         preview_view_hint_702 = gr.Button(value="Visualize View Hint",
                                                                       size="sm", min_width=40)
-                                    with gr.Row():
-                                        use_alt_split_702 = gr.Checkbox(value=False, label="Use Secondary Split")
-                                        split_percent_alt_702 = gr.Slider(value=50.0,
-                                            label="Secondary Split Position", minimum=0.0,
-                                            maximum=100.0, step=0.1)
 
                             with gr.Column():
                                 preview_image702 = gr.Image(type="filepath",
@@ -2749,30 +2750,64 @@ class VideoRemixer(TabBase):
         return display_frame, scene_info
 
     def _split_scene(self, scene_index, split_percent, keep_before, keep_after, use_alt_split, split_percent_alt):
-        errors = self.state.ensure_project_dir_permissions()
         empty_args = dummy_args(6)
+
+        errors = self.state.ensure_project_dir_permissions()
         if errors:
             message = "\r\n".join(errors)
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 format_markdown(message, "error"), \
-                False, 50.0, \
+                use_alt_split, split_percent_alt, \
                 *empty_args
 
         backup_split_scenes = self.config.remixer_settings["backup_split_scenes"]
+
+        first_split = split_percent
+        first_keep_before = keep_before
+        first_keep_after = keep_after
+
+        second_split = split_percent_alt
+        second_keep_before = False
+        second_keep_after = False
+
+        if use_alt_split and split_percent_alt < split_percent:
+            first_split = split_percent_alt
+            second_split = split_percent
+
+        if use_alt_split:
+            # scale the secondary split, given the pecentage refers to the original whole range
+            scene_name = self.state.scene_names[int(scene_index)]
+            first_index, last_index, _ = details_from_group_name(scene_name)
+            frame_count = (last_index - first_index) + 1
+            remainder_frame_count = frame_count * ((100.0 - first_split) / 100.0)
+            secondary_remainder_frame_count = frame_count * ((100.0 - second_split) / 100.0)
+            secondary_frame_count = remainder_frame_count - secondary_remainder_frame_count
+            second_split = (secondary_frame_count / remainder_frame_count) * 100.0
+
+        if keep_before or keep_after:
+            second_keep_before = first_keep_after
+            second_keep_after = first_keep_before
+
         try:
-            message = self.state.split_scene(scene_index, split_percent, keep_before, keep_after,
-                                             backup_split_scenes)
+            messages = []
+            messages.append(self.state.split_scene(scene_index, first_split, first_keep_before,
+                                                   first_keep_after, backup_split_scenes))
+
+            if use_alt_split:
+                messages.append(self.state.split_scene(scene_index + 1, second_split,
+                                                       second_keep_before, second_keep_after, False))
+
             self.state.save()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-                format_markdown(message), \
+                format_markdown("\r\n".join(messages)), \
                 False, 50.0, \
                 *self.scene_chooser_details(self.state.current_scene)
 
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 format_markdown(f"Unable to split scene: {error}", "warning"), \
-                False, 50.0, \
+                use_alt_split, split_percent_alt, \
                 *empty_args
 
     def export_project_703(self, new_project_path : str, new_project_name : str):
