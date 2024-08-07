@@ -999,7 +999,7 @@ class VideoRemixer(TabBase):
                                 gr.Markdown(
                                     format_markdown(
                                         SimpleIcons.WARNING + \
-                                            " This action make take a very long time to complete",
+                                            " This action may take a very long time to complete",
                                             "warning"))
                                 gr.Markdown(
                                     format_markdown(
