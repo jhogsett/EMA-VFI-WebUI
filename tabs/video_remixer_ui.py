@@ -2770,6 +2770,9 @@ class VideoRemixer(TabBase):
         second_keep_before = False
         second_keep_after = False
 
+        if split_percent_alt == split_percent:
+            use_alt_split = False
+
         if use_alt_split and split_percent_alt < split_percent:
             first_split = split_percent_alt
             second_split = split_percent
