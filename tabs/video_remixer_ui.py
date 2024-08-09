@@ -598,12 +598,18 @@ class VideoRemixer(TabBase):
                                                                     precision=0, container=False,
                                                                     min_width=120)
                                 with gr.Accordion("Advanced Options", open=False):
-                                    with gr.Row():
+                                    with gr.Row(variant="compact", equal_height=False):
+                                        use_alt_split_702 = gr.Checkbox(value=False, label="Use Secondary Split", container=False, scale=1)
+                                        split_percent_alt_702 = gr.Slider(value=50.0,
+                                            label="Secondary Split Position", minimum=0.0,
+                                            maximum=100.0, step=0.1, container=False, scale=2,
+                                            info="Earliest split is performed first")
+                                    with gr.Row(variant="compact", equal_height=False):
                                         set_view_hint_702 = gr.Textbox(placeholder="View Hint",
                                                                     max_lines=1, show_label=False,
-                                                                    min_width=100, container=False) #scale=3,
+                                                                    min_width=100, container=False)
                                         preview_view_hint_702 = gr.Button(value="Visualize View Hint",
-                                                                      size="sm", min_width=40) # scale=0,
+                                                                      size="sm", min_width=40)
 
                             with gr.Column():
                                 preview_image702 = gr.Image(type="filepath",
@@ -1251,8 +1257,14 @@ class VideoRemixer(TabBase):
         scene_id_702.change(self.update_preview_scene_id, inputs=[scene_id_702, split_percent_702],
                                 outputs=[preview_image702, scene_info_702], show_progress=False)
 
-        split_percent_702.change(self.update_preview_split_percent, inputs=[scene_id_702, split_percent_702],
+        split_percent_702.change(self.update_preview_split_percent,
+                                inputs=[scene_id_702, split_percent_702],
                                 outputs=[preview_image702, scene_info_702], show_progress=False)
+
+        split_percent_alt_702.change(self.update_preview_split_percent_alt,
+                                inputs=[scene_id_702, split_percent_alt_702],
+                                outputs=[preview_image702, scene_info_702],
+                                show_progress=False)
 
         goto_0_702.click(self.goto_0_702, outputs=split_percent_702, show_progress=False)
 
@@ -1294,21 +1306,31 @@ class VideoRemixer(TabBase):
                                 inputs=[scene_id_702, split_percent_702, go_to_f_702],
                                 outputs=split_percent_702, show_progress=False)
 
-        split_button702.click(self.split_button702, inputs=[scene_id_702, split_percent_702],
-                              outputs=[tabs_video_remixer, message_box702, scene_index, scene_name,
+        split_button702.click(self.split_button702,
+                              inputs=[scene_id_702, split_percent_702, use_alt_split_702,
+                                      split_percent_alt_702],
+                              outputs=[tabs_video_remixer, message_box702, use_alt_split_702,
+                                       split_percent_alt_702, scene_index, scene_name,
                                        scene_image, scene_state, scene_info, set_scene_label])
 
         split_keep_before_702.click(self.split_keep_before_702,
-                                    inputs=[scene_id_702, split_percent_702],
-                                    outputs=[tabs_video_remixer, message_box702, scene_index,
-                                             scene_name, scene_image, scene_state, scene_info,
-                                             set_scene_label])
+                                inputs=[scene_id_702, split_percent_702, use_alt_split_702,
+                                    split_percent_alt_702],
+                                outputs=[tabs_video_remixer, message_box702, use_alt_split_702,
+                                            split_percent_alt_702, scene_index, scene_name,
+                                            scene_image, scene_state, scene_info, set_scene_label])
 
         split_keep_after_702.click(self.split_keep_after_702,
-                                    inputs=[scene_id_702, split_percent_702],
-                                    outputs=[tabs_video_remixer, message_box702, scene_index,
-                                             scene_name, scene_image, scene_state, scene_info,
-                                             set_scene_label])
+                                inputs=[scene_id_702, split_percent_702, use_alt_split_702,
+                                    split_percent_alt_702],
+                                outputs=[tabs_video_remixer, message_box702, use_alt_split_702,
+                                            split_percent_alt_702, scene_index, scene_name,
+                                            scene_image, scene_state, scene_info, set_scene_label])
+
+        use_alt_split_702.change(self.use_alt_split_change,
+                                inputs=[use_alt_split_702, split_percent_702, split_percent_alt_702],
+                                outputs=split_percent_alt_702,
+                                show_progress=False)
 
         back_button702.click(self.back_button702, outputs=tabs_video_remixer)
 
@@ -2593,14 +2615,20 @@ class VideoRemixer(TabBase):
             format_markdown(message), \
             *self.scene_chooser_details(self.state.current_scene)
 
-    def split_button702(self, scene_index, split_percent):
-        return self._split_scene(scene_index, split_percent, False, False)
+    def split_button702(self, scene_index, split_percent, use_alt_split, split_percent_alt):
+        return self._split_scene(scene_index, split_percent, False, False, use_alt_split, split_percent_alt)
 
-    def split_keep_before_702(self, scene_index, split_percent):
-        return self._split_scene(scene_index, split_percent, True, False)
+    def split_keep_before_702(self, scene_index, split_percent, use_alt_split, split_percent_alt):
+        return self._split_scene(scene_index, split_percent, True, False, use_alt_split, split_percent_alt)
 
-    def split_keep_after_702(self, scene_index, split_percent):
-        return self._split_scene(scene_index, split_percent, False, True)
+    def split_keep_after_702(self, scene_index, split_percent, use_alt_split, split_percent_alt):
+        return self._split_scene(scene_index, split_percent, False, True, use_alt_split, split_percent_alt)
+
+    def use_alt_split_change(self, use_alt_split, split_percent, split_percent_alt):
+        if use_alt_split:
+            return split_percent
+        else:
+            return split_percent_alt
 
     def back_button702(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
@@ -2610,6 +2638,10 @@ class VideoRemixer(TabBase):
 
     def update_preview_split_percent(self, scene_index, split_percent):
         return self.update_preview(scene_index, split_percent)
+
+    def update_preview_split_percent_alt(self, scene_index, split_percent):
+        display_frame, scene_info = self.update_preview(scene_index, split_percent)
+        return display_frame, scene_info
 
     def goto_0_702(self):
         return 0
@@ -2717,28 +2749,69 @@ class VideoRemixer(TabBase):
         _, _, _, _, scene_info, _ = self.state.scene_chooser_details(scene_index, self.GAP)
         return display_frame, scene_info
 
-    def _split_scene(self, scene_index, split_percent, keep_before, keep_after):
+    def _split_scene(self, scene_index, split_percent, keep_before, keep_after, use_alt_split, split_percent_alt):
+        empty_args = dummy_args(6)
+
         errors = self.state.ensure_project_dir_permissions()
         if errors:
             message = "\r\n".join(errors)
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 format_markdown(message, "error"), \
-                *dummy_args(6)
+                use_alt_split, split_percent_alt, \
+                *empty_args
 
         backup_split_scenes = self.config.remixer_settings["backup_split_scenes"]
+
+        first_split = split_percent
+        first_keep_before = keep_before
+        first_keep_after = keep_after
+
+        second_split = split_percent_alt
+        second_keep_before = False
+        second_keep_after = False
+
+        if split_percent_alt == split_percent:
+            use_alt_split = False
+
+        if use_alt_split and split_percent_alt < split_percent:
+            first_split = split_percent_alt
+            second_split = split_percent
+
+        if use_alt_split:
+            # scale the secondary split, given the pecentage refers to the original whole range
+            scene_name = self.state.scene_names[int(scene_index)]
+            first_index, last_index, _ = details_from_group_name(scene_name)
+            frame_count = (last_index - first_index) + 1
+            remainder_frame_count = frame_count * ((100.0 - first_split) / 100.0)
+            secondary_remainder_frame_count = frame_count * ((100.0 - second_split) / 100.0)
+            secondary_frame_count = remainder_frame_count - secondary_remainder_frame_count
+            second_split = (secondary_frame_count / remainder_frame_count) * 100.0
+
+        if keep_before or keep_after:
+            second_keep_before = first_keep_after
+            second_keep_after = first_keep_before
+
         try:
-            message = self.state.split_scene(scene_index, split_percent, keep_before, keep_after,
-                                             backup_split_scenes)
+            messages = []
+            messages.append(self.state.split_scene(scene_index, first_split, first_keep_before,
+                                                   first_keep_after, backup_split_scenes))
+
+            if use_alt_split:
+                messages.append(self.state.split_scene(scene_index + 1, second_split,
+                                                       second_keep_before, second_keep_after, False))
+
             self.state.save()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-                format_markdown(message), \
+                format_markdown("\r\n".join(messages)), \
+                False, 50.0, \
                 *self.scene_chooser_details(self.state.current_scene)
 
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                 format_markdown(f"Unable to split scene: {error}", "warning"), \
-                *dummy_args(6)
+                use_alt_split, split_percent_alt, \
+                *empty_args
 
     def export_project_703(self, new_project_path : str, new_project_name : str):
         empty_args = dummy_args(2, gr.update(visible=False))
