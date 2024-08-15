@@ -3469,6 +3469,13 @@ class VideoRemixer(TabBase):
             for dir in dir_list:
                 try:
                     project_path = os.path.join(projects_path, dir)
+
+                    try:
+                        VideoRemixerProject.determine_project_filepath(project_path)
+                    except ValueError:
+                        self.log(f"skipping non project directory {project_path}")
+                        continue
+
                     message = self._next_button01(project_path)
                     messages.append(message)
 
