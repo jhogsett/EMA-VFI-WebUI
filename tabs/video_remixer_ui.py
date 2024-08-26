@@ -1332,7 +1332,7 @@ class VideoRemixer(TabBase):
 
         use_alt_split_702.change(self.use_alt_split_change,
                                 inputs=[use_alt_split_702, split_percent_702, split_percent_alt_702],
-                                outputs=split_percent_alt_702,
+                                outputs=[split_percent_702, split_percent_alt_702],
                                 show_progress=False)
 
         back_button702.click(self.back_button702, outputs=tabs_video_remixer)
@@ -2630,9 +2630,9 @@ class VideoRemixer(TabBase):
 
     def use_alt_split_change(self, use_alt_split, split_percent, split_percent_alt):
         if use_alt_split:
-            return split_percent
+            return split_percent, split_percent
         else:
-            return split_percent_alt
+            return split_percent_alt, split_percent
 
     def back_button702(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
