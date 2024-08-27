@@ -969,13 +969,14 @@ class VideoRemixer(TabBase):
 
                             with gr.Tab(SimpleIcons.MAGNIFIER + " Open Multiple Projects by State"):
                                 gr.Markdown(
-                                        "**_Open the first found project in the specified state_**")
+                                        "**_Open a project in the specified state_**")
                                 with gr.Row():
                                     projects_path718 = gr.Textbox(label="Projects Path", max_lines=1,
                     placeholder="Path on this server to the Video Remixer projects to be opened",
                                 value=lambda : Session().get("last-bulk-open-path"))
                                 with gr.Row():
                                     project_state718 = gr.Dropdown(choices=["Settings", "Setup", "Choose", "Compile", "Process", "Save"], value="Choose", label="Project State")
+                                    search_order718 = gr.Radio(choices=["First Found", "Last Found"], value="First Found", label="Search Order")
                                 with gr.Row():
                                    message_box718 = gr.Markdown(
                                         format_markdown(
@@ -998,6 +999,8 @@ class VideoRemixer(TabBase):
                                     projects_path717 = gr.Textbox(label="Projects Path", max_lines=1,
                     placeholder="Path on this server to the Video Remixer projects to be processed",
                                 value=lambda : Session().get("last-bulk-process-path"))
+                                with gr.Row():
+                                    project_state717 = gr.Radio(choices=["All found projects", "Projects in state: Process"], value="All found projects", label="Project State")
                                 with gr.Row():
                                    message_box717 = gr.Markdown(
                                         format_markdown(
@@ -1329,7 +1332,7 @@ class VideoRemixer(TabBase):
 
         use_alt_split_702.change(self.use_alt_split_change,
                                 inputs=[use_alt_split_702, split_percent_702, split_percent_alt_702],
-                                outputs=split_percent_alt_702,
+                                outputs=[split_percent_702, split_percent_alt_702],
                                 show_progress=False)
 
         back_button702.click(self.back_button702, outputs=tabs_video_remixer)
@@ -1430,13 +1433,14 @@ class VideoRemixer(TabBase):
                             outputs=message_box716)
 
         process_button717.click(self.process_button717,
-                            inputs=[projects_path717, resynthesize, inflate, resize, upscale,
-                                    upscale_option, inflate_by_option, inflate_slow_option,
-                                    resynth_option, auto_save_remix, auto_delete_remix],
+                            inputs=[projects_path717, project_state717, resynthesize, inflate,
+                                    resize, upscale, upscale_option, inflate_by_option,
+                                    inflate_slow_option, resynth_option, auto_save_remix,
+                                    auto_delete_remix],
                             outputs=message_box717)
 
         open_button718.click(self.open_button718,
-                             inputs=[projects_path718, project_state718],
+                             inputs=[projects_path718, project_state718, search_order718],
                              outputs=[message_box718, tabs_video_remixer, project_load_path,
                                       message_box01])
 
@@ -2626,9 +2630,9 @@ class VideoRemixer(TabBase):
 
     def use_alt_split_change(self, use_alt_split, split_percent, split_percent_alt):
         if use_alt_split:
-            return split_percent
+            return split_percent, split_percent
         else:
-            return split_percent_alt
+            return split_percent_alt, split_percent
 
     def back_button702(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
@@ -3436,6 +3440,7 @@ class VideoRemixer(TabBase):
 
     def process_button717(self,
                           projects_path,
+                          project_state : str,
                           resynthesize,
                           inflate,
                           resize,
@@ -3463,6 +3468,7 @@ class VideoRemixer(TabBase):
                 f"Directory '{projects_path}' was not found to contain Video Remixer projects",
                 "error")
 
+        all_projects = project_state.startswith("A")
         Session().set("last-bulk-process-path", projects_path)
 
         with Mtqdm().open_bar(total=num_dirs, desc="Process Projects") as bar:
@@ -3474,10 +3480,16 @@ class VideoRemixer(TabBase):
                         VideoRemixerProject.determine_project_filepath(project_path)
                     except ValueError:
                         self.log(f"skipping non project directory {project_path}")
+                        Mtqdm().update_bar(bar)
                         continue
 
                     message = self._next_button01(project_path)
                     messages.append(message)
+
+                    if not all_projects:
+                        if not self.state.progress.startswith("process"):
+                            Mtqdm().update_bar(bar)
+                            continue
 
                     if len(self.state.kept_scenes()) < 1:
                         self.state.keep_all_scenes()
@@ -3504,7 +3516,7 @@ class VideoRemixer(TabBase):
         else:
             return format_markdown(f"{len(dir_list)} projects processed")
 
-    def open_button718(self, projects_path, project_state):
+    def open_button718(self, projects_path, project_state, search_order718 : str):
         empty_args = dummy_args(2)
         if not projects_path:
             return format_markdown(
@@ -3518,7 +3530,8 @@ class VideoRemixer(TabBase):
             gr.update(selected=self.TAB_REMIX_EXTRA), \
             *empty_args
 
-        dir_list = sorted(get_directories(projects_path))
+        last_first = search_order718.startswith("L")
+        dir_list = sorted(get_directories(projects_path), reverse=last_first)
         num_dirs = len(dir_list)
 
         if num_dirs < 1:
@@ -3539,6 +3552,7 @@ class VideoRemixer(TabBase):
                         VideoRemixerProject.determine_project_filepath(project_path)
                     except ValueError:
                         self.log(f"skipping non project directory {project_path}")
+                        Mtqdm().update_bar(bar)
                         continue
 
                     messages = self._next_button01(project_path)
