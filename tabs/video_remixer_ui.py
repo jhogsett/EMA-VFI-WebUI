@@ -425,6 +425,8 @@ class VideoRemixer(TabBase):
                         with gr.Row(variant="compact"):
                             auto_save_remix = gr.Checkbox(label="Automatically save default MP4 video", container=False)
                             auto_delete_remix = gr.Checkbox(label="Delete processed content after saving", container=False)
+                        with gr.Row(variant="compact"):
+                            auto_coalesce_remix = gr.Checkbox(label="Automatically coalesce kept scenes", container=False)
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_remixer_processing.render()
 
@@ -1209,7 +1211,7 @@ class VideoRemixer(TabBase):
         next_button5.click(self.next_button5,
                     inputs=[resynthesize, inflate, resize, upscale, upscale_option,
                             inflate_by_option, inflate_slow_option, resynth_option,
-                            auto_save_remix, auto_delete_remix],
+                            auto_save_remix, auto_delete_remix, auto_coalesce_remix],
                     outputs=[tabs_video_remixer, message_box5, summary_info6, output_filepath,
                              output_filepath_custom, output_filepath_marked, output_filepath_labeled,
                              message_box60, message_box61, message_box62, message_box63])
@@ -1436,7 +1438,7 @@ class VideoRemixer(TabBase):
                             inputs=[projects_path717, project_state717, resynthesize, inflate,
                                     resize, upscale, upscale_option, inflate_by_option,
                                     inflate_slow_option, resynth_option, auto_save_remix,
-                                    auto_delete_remix],
+                                    auto_delete_remix, auto_coalesce_remix],
                             outputs=message_box717)
 
         open_button718.click(self.open_button718,
@@ -2255,7 +2257,8 @@ class VideoRemixer(TabBase):
                       inflate_slow_option,
                       resynth_option,
                       auto_save_remix,
-                      auto_delete_remix):
+                      auto_delete_remix,
+                      auto_coalesce_remix):
         if not self.state.project_path or not self.state.scenes_path:
             raise ValueError("The project has not yet been set up from the Set Up Project tab.")
 
@@ -2266,6 +2269,13 @@ class VideoRemixer(TabBase):
         errors = self.state.ensure_project_dir_permissions()
         if errors:
             raise ValueError("\r\n".join(errors))
+
+        messages = []
+        if auto_coalesce_remix:
+            messages += self.force_coalesce_kept_scenes()
+
+            # get the new coalesced kept scens
+            kept_scenes = self.state.kept_scenes()
 
         self.state.resize = resize
 
@@ -2314,7 +2324,7 @@ class VideoRemixer(TabBase):
         self.state.save_progress("save")
 
         if auto_save_remix:
-            messages = []
+            # messages = []
             messages += self.processor.get_processing_messages(raw=True)
             try:
                 self.save_mp4_video(self.state.output_filepath)
@@ -2331,7 +2341,8 @@ class VideoRemixer(TabBase):
 
             return "\r\n".join(messages)
         else:
-            return self.processor.get_processing_messages(raw=False)
+            messages += self.processor.get_processing_messages(raw=True)
+            return "\r\n".join(messages)
 
     def next_button5(self,
                      resynthesize,
@@ -2343,7 +2354,8 @@ class VideoRemixer(TabBase):
                      inflate_slow_option,
                      resynth_option,
                      auto_save_remix,
-                     auto_delete_remix):
+                     auto_delete_remix,
+                     auto_coalesce_remix):
         empty_args = dummy_args(9)
 
         try:
@@ -2356,7 +2368,8 @@ class VideoRemixer(TabBase):
                                          inflate_slow_option,
                                          resynth_option,
                                          auto_save_remix,
-                                         auto_delete_remix)
+                                         auto_delete_remix,
+                                         auto_coalesce_remix)
         except ValueError as error:
             return gr.update(selected=self.TAB_PROC_REMIX), \
                 format_markdown(str(error), "error"), \
@@ -3082,13 +3095,10 @@ class VideoRemixer(TabBase):
                 *empty_args
 
     # TODO move
-    def coalesce_button706(self, coalesce_scenes):
-        empty_args = dummy_args(6)
+    def get_coalesce_merge_pairs(self):
         kept_scenes = self.state.kept_scenes()
         if len(kept_scenes) < 2:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                format_markdown("There must be at least two kept scenes to merge", "warning"), \
-                *empty_args
+            raise ValueError("There must be at least two kept scenes to merge")
 
         merge_pairs = []
         capture_mode = False
@@ -3119,11 +3129,10 @@ class VideoRemixer(TabBase):
         if capture_mode:
             merge_pairs.append([first_merge_scene, last_merge_scene])
 
-        if coalesce_scenes:
-            title="Scenes have been consolidated:"
-        else:
-            title="Scenes to be consolidated:"
-        message = Jot(title=title)
+        return merge_pairs
+
+    def coalesce_merge_pairs_report(self, merge_pairs):
+        messages = []
         if merge_pairs:
             for merge_pair in merge_pairs:
                 first_index = self.state.scene_names.index(merge_pair[0])
@@ -3137,10 +3146,55 @@ class VideoRemixer(TabBase):
                 first_frame_index, _, num_width = details_from_group_name(first_scene_name)
                 _, last_frame_index, _ = details_from_group_name(last_scene_name)
                 new_scene_name = f"{str(first_frame_index).zfill(num_width)}-{str(last_frame_index).zfill(num_width)}"
-                message.add(f"{','.join(message_line)} -> {new_scene_name}")
+                messages.append(f"{','.join(message_line)} -> {new_scene_name}")
         else:
-            message.add("None")
-        report = message.report()
+            messages.append("None")
+        return messages
+
+    def coalesce_merge_pairs(self, merge_pairs):
+        with Mtqdm().open_bar(total=len(merge_pairs), desc="Coalescing Scenes") as bar:
+            for merge_pair in merge_pairs:
+                first_index = self.state.scene_names.index(merge_pair[0])
+                last_index = self.state.scene_names.index(merge_pair[1])
+                try:
+                    self.merge_scenes(first_index, last_index)
+                except ValueError as error:
+                    self.log(f"Error in coalesce_merge_pairs: {error}")
+                    Mtqdm().update_bar(bar)
+                    raise
+                Mtqdm().update_bar(bar)
+
+    def force_coalesce_kept_scenes(self):
+        messages = []
+        try:
+            merge_pairs = self.get_coalesce_merge_pairs()
+            if merge_pairs:
+                messages.append("Scenes have been consolidated:")
+                messages += self.coalesce_merge_pairs_report(merge_pairs)
+                self.coalesce_merge_pairs(merge_pairs)
+        except ValueError as error:
+            self.log(f"Error in force_coalesce_kept_scenes: {error}")
+            raise
+        return messages
+
+    def coalesce_button706(self, coalesce_scenes):
+        empty_args = dummy_args(6)
+
+        messages = []
+        if coalesce_scenes:
+            messages.append("Scenes have been consolidated:")
+        else:
+            messages.append("Scenes to be consolidated:")
+
+        merge_pairs = []
+        try:
+            merge_pairs = self.get_coalesce_merge_pairs()
+        except ValueError as error:
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown(str(error), "warning"), \
+                *empty_args
+
+        messages += self.coalesce_merge_pairs_report(merge_pairs)
 
         if coalesce_scenes:
             if not merge_pairs:
@@ -3150,26 +3204,23 @@ class VideoRemixer(TabBase):
 
             return_to_scene_index = self.state.scene_names.index(merge_pairs[0][0])
 
-            with Mtqdm().open_bar(total=len(merge_pairs), desc="Coalescing Scenes") as bar:
-                for merge_pair in merge_pairs:
-                    first_index = self.state.scene_names.index(merge_pair[0])
-                    last_index = self.state.scene_names.index(merge_pair[1])
-                    try:
-                        self.merge_scenes(first_index, last_index)
-                    except ValueError as error:
-                        return gr.update(selected=self.TAB_REMIX_EXTRA), \
-                            format_markdown(f"Error: {error}", "error"), \
-                            *empty_args
-                    Mtqdm().update_bar(bar)
+            try:
+                self.coalesce_merge_pairs(merge_pairs)
+            except ValueError as error:
+                return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                    format_markdown(f"Error: {error}", "error"), \
+                    *empty_args
 
             self.state.current_scene = return_to_scene_index
             self.state.invalidate_split_scene_cache()
 
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
-                format_markdown(report), \
+                format_markdown("\r\n".join(messages)), \
                 *self.scene_chooser_details(self.state.current_scene)
         else:
-            return gr.update(selected=self.TAB_REMIX_EXTRA), format_markdown(report), *empty_args
+            return gr.update(selected=self.TAB_REMIX_EXTRA), \
+                format_markdown("\r\n".join(messages)), \
+                *empty_args
 
     def export_button707(self, scene_index):
         empty_args = dummy_args(10)
@@ -3450,7 +3501,8 @@ class VideoRemixer(TabBase):
                           inflate_slow_option,
                           resynth_option,
                           auto_save_remix,
-                          auto_delete_remix):
+                          auto_delete_remix,
+                          auto_coalesce_remix):
         messages = []
         if not projects_path:
             return format_markdown(
@@ -3503,7 +3555,8 @@ class VideoRemixer(TabBase):
                                                  inflate_slow_option,
                                                  resynth_option,
                                                  auto_save_remix,
-                                                 auto_delete_remix)
+                                                 auto_delete_remix,
+                                                 auto_coalesce_remix)
                     messages.append(message)
 
                 except ValueError as error:
