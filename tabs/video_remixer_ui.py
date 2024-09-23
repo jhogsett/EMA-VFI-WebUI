@@ -948,7 +948,8 @@ class VideoRemixer(TabBase):
                                 with gr.Row():
                                     gr.Markdown(
                                         format_markdown(
-                        "Use the Remix Settings and Set Up Project tabs to choose project options"))
+                        "Use the Remix Settings and Set Up Project tabs to choose project options",
+                                            color="more"))
                                 with gr.Row():
                                     videos_path = gr.Textbox(label="Videos Path", max_lines=1,
                                 placeholder="Path on this server to the videos to be remixed",
@@ -991,91 +992,79 @@ class VideoRemixer(TabBase):
                                                                 variant="primary", scale=0)
 
                             with gr.Tab(SimpleIcons.TORNADO + " Process Multiple Projects"):
+
                                 gr.Markdown(
                     "**_Perform Processing for each Video Remixer project in a directory_**")
-                                with gr.Tabs():
-                                    with gr.Tab("Process Remix Videos"):
-                                        gr.Markdown(
-                                            format_markdown(
-                                        "Use the Process Remix tab to choose processing options"))
 
-                                        with gr.Row():
-                                            projects_path7170 = gr.Textbox(
-                    label="Projects Path", max_lines=1,
-                    placeholder="Path on this server to the Video Remixer projects to be processed",
-                    value=lambda : Session().get("last-bulk-process-path"))
-
-                                        with gr.Row():
-                                            project_state7170 = gr.Radio(
+                                gr.Markdown(
+                                    format_markdown(
+                                        "Use the Process Remix tab to choose processing options",
+                                        color="more"))
+                                with gr.Row():
+                                    projects_path7170 = gr.Textbox(
+                label="Projects Path", max_lines=1,
+                placeholder="Path on this server to the Video Remixer projects to be processed",
+                value=lambda : Session().get("last-bulk-process-path"))
+                                with gr.Row():
+                                    project_state7170 = gr.Radio(
                                     choices=["All found projects", "Projects in state: Process"],
                                     value="All found projects", label="Project State")
-
-                                        with gr.Row():
-                                            message_box7170 = gr.Markdown(format_markdown(
+                                with gr.Row():
+                                    message_box7170 = gr.Markdown(format_markdown(
                                 "Click Process Projects to: Process Remix Video for each project"))
-                                        with gr.Row():
-                                            gr.Markdown(
+                                with gr.Row():
+                                    gr.Markdown(
                     format_markdown(
                         SimpleIcons.WARNING + " This action may take a very long time to complete",
                         "warning"))
-                                        with gr.Row():
-                                            gr.Markdown(
-                    format_markdown("Progress can be tracked in the console",
-                        color="none", italic=True, bold=False))
-                                        with gr.Row():
-                                            process_button7170 = gr.Button(value="Process Projects",
-                                                                           variant="primary",
+                                with gr.Row():
+                                    gr.Markdown(
+                                        format_markdown("Progress can be tracked in the console",
+                                            color="none", italic=True, bold=False))
+                                with gr.Row():
+                                    process_button7170 = gr.Button(value="Process Projects",
+                                                                    variant="primary",
                                                                            scale=0)
 
-                                    with gr.Tab("Perform Bulk Actions"):
-                                        with gr.Row():
-                                            process_thumbnails_7171 = gr.Checkbox(value=False,
-                                                label="Recreate Thumbnails")
-                                            with gr.Column(variant="compact"):
-                                                gr.Markdown(
-                                    "Recreate Thumbnails for projects per the Set Up Project tab.")
-
-                                        with gr.Row():
-                                            process_delete_7171 = gr.Checkbox(value=False,
-                                                label="Delete Processed Content")
-                                            with gr.Column(variant="compact"):
-                                                gr.Markdown(
-                                    "Delete all processed project content (except videos)")
-
-                                    #     with gr.Row():
-                                    #         process_settings_7171 = gr.Checkbox(value=False,
-                                    #             label="Update Remix Settings")
-                                    #         with gr.Column(variant="compact"):
-                                    #             gr.Markdown(
-                                    # "Update Settings for projects per the Remix Settings tab.")
-
-                                        with gr.Row():
-                                            projects_path7171 = gr.Textbox(
+                            with gr.Tab(SimpleIcons.ROBOT + " Perform Bulk Actions"):
+                                with gr.Row():
+                                    process_thumbnails_7171 = gr.Checkbox(value=False,
+                                        label="Recreate Thumbnails")
+                                    with gr.Column(variant="compact"):
+                                        gr.Markdown(format_markdown(
+                                    "Recreate Thumbnails for projects per the Set Up Project tab.",
+                                            color="more"))
+                                with gr.Row():
+                                    process_delete_7171 = gr.Checkbox(value=False, label=
+                                                                      "Delete Processed Content")
+                                    with gr.Column(variant="compact"):
+                                        gr.Markdown(format_markdown(
+                                            "Delete all processed project content (except videos)",
+                                            color="more"))
+                                with gr.Row():
+                                    projects_path7171 = gr.Textbox(
                     label="Projects Path", max_lines=1,
                     placeholder="Path on this server to the Video Remixer projects to be processed",
                     value=lambda : Session().get("last-bulk-process-path"))
-
-                                        with gr.Row():
-                                            project_state7171 = gr.Dropdown(
+                                    project_state7171 = gr.Dropdown(
                     choices=["Any", "Settings", "Setup", "Choose", "Compile", "Process", "Save"],
                     value="Any", label="Project State")
-
-                                        with gr.Row():
-                                            message_box7171 = gr.Markdown(format_markdown(
-                                "Click Process Projects to: Perform the selection actions for each project"))
-                                        with gr.Row():
-                                            gr.Markdown(
+                                with gr.Row():
+                                    message_box7171 = gr.Markdown(format_markdown(
+                    "Click Process Projects to: Perform the selection actions for each project"))
+                                with gr.Row():
+                                    gr.Markdown(
                     format_markdown(
                         SimpleIcons.WARNING + " This action may take a very long time to complete",
                         "warning"))
-                                        with gr.Row():
-                                            gr.Markdown(
+                                with gr.Row():
+                                    gr.Markdown(
                     format_markdown("Progress can be tracked in the console",
                         color="none", italic=True, bold=False))
-                                        with gr.Row():
-                                            process_button7171 = gr.Button(value="Process Projects",
-                                                                           variant="primary",
-                                                                           scale=0)
+                                with gr.Row():
+                                    process_button7171 = gr.Button(value="Process Projects",
+                                                                    variant="primary",
+                                                                    scale=0)
 
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_remixer_extra.render()
@@ -2034,10 +2023,11 @@ class VideoRemixer(TabBase):
         return gr.update(selected=self.TAB_REMIX_SETTINGS)
 
     def thumb_change(self, thumbnail_type):
-        self.state.thumbnail_type = thumbnail_type
-        if self.state.project_path:
-            self.log(f"Saving project after hot-setting thumbnail type to {thumbnail_type}")
-            self.state.save()
+        if self.state:
+            self.state.thumbnail_type = thumbnail_type
+            if self.state.project_path:
+                self.log(f"Saving project after hot-setting thumbnail type to {thumbnail_type}")
+                self.state.save()
 
     ### SCENE CHOOSER EVENT HANDLERS
 
