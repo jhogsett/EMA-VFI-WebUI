@@ -994,7 +994,7 @@ class VideoRemixer(TabBase):
                                 gr.Markdown(
                     "**_Perform Processing for each Video Remixer project in a directory_**")
                                 with gr.Tabs():
-                                    with gr.Tab("Process Remix Video For All Projects"):
+                                    with gr.Tab("Process Remix Videos"):
                                         gr.Markdown(
                                             format_markdown(
                                         "Use the Process Remix tab to choose processing options"))
@@ -1004,6 +1004,11 @@ class VideoRemixer(TabBase):
                     label="Projects Path", max_lines=1,
                     placeholder="Path on this server to the Video Remixer projects to be processed",
                     value=lambda : Session().get("last-bulk-process-path"))
+
+                                        with gr.Row():
+                                            project_state7170 = gr.Radio(
+                                    choices=["All found projects", "Projects in state: Process"],
+                                    value="All found projects", label="Project State")
 
                                         with gr.Row():
                                             message_box7170 = gr.Markdown(format_markdown(
@@ -1022,13 +1027,55 @@ class VideoRemixer(TabBase):
                                                                            variant="primary",
                                                                            scale=0)
 
-                                    with gr.Tab("Process All Projects According To State"):
-                                        ...
+                                    with gr.Tab("Perform Bulk Actions"):
+                                        with gr.Row():
+                                            process_thumbnails_7171 = gr.Checkbox(value=False,
+                                                label="Recreate Thumbnails")
+                                            with gr.Column(variant="compact"):
+                                                gr.Markdown(
+                                    "Recreate Thumbnails for projects per the Set Up Project tab.")
 
+                                        with gr.Row():
+                                            process_delete_7171 = gr.Checkbox(value=False,
+                                                label="Delete Processed Content")
+                                            with gr.Column(variant="compact"):
+                                                gr.Markdown(
+                                    "Delete all processed project content (except videos)")
 
-                                # with gr.Row():
-                                #     project_state717 = gr.Radio(choices=["All found projects", "Projects in state: Process"], value="All found projects", label="Project State")
+                                    #     with gr.Row():
+                                    #         process_settings_7171 = gr.Checkbox(value=False,
+                                    #             label="Update Remix Settings")
+                                    #         with gr.Column(variant="compact"):
+                                    #             gr.Markdown(
+                                    # "Update Settings for projects per the Remix Settings tab.")
 
+                                        with gr.Row():
+                                            projects_path7171 = gr.Textbox(
+                    label="Projects Path", max_lines=1,
+                    placeholder="Path on this server to the Video Remixer projects to be processed",
+                    value=lambda : Session().get("last-bulk-process-path"))
+
+                                        with gr.Row():
+                                            project_state7171 = gr.Dropdown(
+                    choices=["Any", "Settings", "Setup", "Choose", "Compile", "Process", "Save"],
+                    value="Any", label="Project State")
+
+                                        with gr.Row():
+                                            message_box7171 = gr.Markdown(format_markdown(
+                                "Click Process Projects to: Perform the selection actions for each project"))
+                                        with gr.Row():
+                                            gr.Markdown(
+                    format_markdown(
+                        SimpleIcons.WARNING + " This action may take a very long time to complete",
+                        "warning"))
+                                        with gr.Row():
+                                            gr.Markdown(
+                    format_markdown("Progress can be tracked in the console",
+                        color="none", italic=True, bold=False))
+                                        with gr.Row():
+                                            process_button7171 = gr.Button(value="Process Projects",
+                                                                           variant="primary",
+                                                                           scale=0)
 
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_remixer_extra.render()
@@ -1446,11 +1493,16 @@ class VideoRemixer(TabBase):
                             outputs=message_box716)
 
         process_button7170.click(self.process_button7170,
-                            inputs=[projects_path7170, resynthesize, inflate,
+                            inputs=[projects_path7170, project_state7170, resynthesize, inflate,
                                     resize, upscale, upscale_option, inflate_by_option,
                                     inflate_slow_option, resynth_option, auto_save_remix,
                                     auto_delete_remix, auto_coalesce_remix],
                             outputs=message_box7170)
+
+        process_button7171.click(self.process_button7171,
+                            inputs=[projects_path7171, project_state7171, process_thumbnails_7171,
+                                    process_delete_7171, thumbnail_type],
+                            outputs=message_box7171)
 
         open_button718.click(self.open_button718,
                              inputs=[projects_path718, project_state718, search_order718],
@@ -1617,7 +1669,8 @@ class VideoRemixer(TabBase):
 
     def _get_progress_tab(self) -> int:
         try:
-            progress = self.state.progress[:-1] if self.state.progress[-1] == "!" \
+            progress = self.state.progress[:-1] \
+                if self.state.progress[-1] == self.state.STICKY_PROGRESS \
                 else self.state.progress
             return self.PROGRESS_STEPS[progress]
         except:
@@ -3502,6 +3555,7 @@ class VideoRemixer(TabBase):
 
     def process_button7170(self,
                           projects_path,
+                          project_state,
                           resynthesize,
                           inflate,
                           resize,
@@ -3530,7 +3584,7 @@ class VideoRemixer(TabBase):
                 f"Directory '{projects_path}' was not found to contain Video Remixer projects",
                 "error")
 
-        # all_projects = project_state.startswith("A")
+        all_projects = project_state.startswith("A")
         Session().set("last-bulk-process-path", projects_path)
 
         with Mtqdm().open_bar(total=num_dirs, desc="Process Projects") as bar:
@@ -3548,10 +3602,10 @@ class VideoRemixer(TabBase):
                     message = self._next_button01(project_path)
                     messages.append(message)
 
-                    # if not all_projects:
-                    #     if not self.state.progress.startswith("process"):
-                    #         Mtqdm().update_bar(bar)
-                    #         continue
+                    if not all_projects:
+                        if not self.state.progress.startswith("process"):
+                            Mtqdm().update_bar(bar)
+                            continue
 
                     if len(self.state.kept_scenes()) < 1:
                         self.state.keep_all_scenes()
@@ -3568,6 +3622,78 @@ class VideoRemixer(TabBase):
                                                  auto_delete_remix,
                                                  auto_coalesce_remix)
                     messages.append(message)
+
+                except ValueError as error:
+                    messages.append(str(error))
+
+                Mtqdm().update_bar(bar)
+
+        if messages:
+            return format_markdown("\r\n".join(messages))
+        else:
+            return format_markdown(f"{len(dir_list)} projects processed")
+
+    def process_button7171(self,
+                            projects_path : str,
+                            project_state : str,
+                            process_thumbnails : bool,
+                            process_delete : bool,
+                            thumbnail_type : str):
+        messages = []
+        if not projects_path:
+            return format_markdown(
+            "Enter a path to a directory of Video Remixer projects on this server to get started",
+            "warning")
+
+        if not os.path.exists(projects_path):
+            return format_markdown(f"Directory '{projects_path}' was not found", "error")
+
+        dir_list = sorted(get_directories(projects_path))
+        num_dirs = len(dir_list)
+
+        if num_dirs < 1:
+            return format_markdown(
+                f"Directory '{projects_path}' was not found to contain Video Remixer projects",
+                "error")
+
+        selected_state = project_state.lower()
+        all_projects = selected_state.startswith("a")
+        Session().set("last-bulk-process-path", projects_path)
+
+        with Mtqdm().open_bar(total=num_dirs, desc="Process Projects") as bar:
+            for dir in dir_list:
+                try:
+                    project_path = os.path.join(projects_path, dir)
+
+                    try:
+                        VideoRemixerProject.determine_project_filepath(project_path)
+                    except ValueError:
+                        self.log(f"skipping non project directory {project_path}")
+                        Mtqdm().update_bar(bar)
+                        continue
+
+                    messages.append(self._next_button01(project_path))
+
+                    if not all_projects:
+                        project_state = self.state.progress[:-1] \
+                            if self.state.progress[-1] == self.state.STICKY_PROGRESS \
+                            else self.state.progress
+                        if not project_state == selected_state:
+                            Mtqdm().update_bar(bar)
+                            continue
+
+                    if process_thumbnails:
+                        try:
+                            self._next_button2(thumbnail_type, 0, True, False)
+                            messages.append(f"Thumbnails recreated for {project_path}")
+                        except ValueError as error:
+                            messages.append(str(error))
+
+                    if process_delete:
+                        try:
+                            messages.append(self.delete_all_project_content())
+                        except ValueError as error:
+                            messages.append(str(error))
 
                 except ValueError as error:
                     messages.append(str(error))

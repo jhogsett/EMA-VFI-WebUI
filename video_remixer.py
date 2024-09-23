@@ -157,6 +157,7 @@ class VideoRemixerState():
     CLIPS_PATH = "CLIPS"
     AUDIO_CLIPS_PATH = "AUDIO"
     VIDEO_CLIPS_PATH = "VIDEO"
+    STICKY_PROGRESS = "!"
 
     def log(self, message):
         self.log_fn(message)
@@ -186,7 +187,7 @@ class VideoRemixerState():
 
     def save_progress(self, progress : str, save_project : bool=True):
         # if the saved progress ends with "!" it means to always return to this tab, so don't change
-        if self.progress[-1] != "!":
+        if self.progress[-1] != self.STICKY_PROGRESS:
             self.progress = progress
         if save_project:
             self.save()
