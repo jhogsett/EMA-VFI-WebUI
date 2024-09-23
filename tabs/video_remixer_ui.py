@@ -993,31 +993,42 @@ class VideoRemixer(TabBase):
                             with gr.Tab(SimpleIcons.TORNADO + " Process Multiple Projects"):
                                 gr.Markdown(
                     "**_Perform Processing for each Video Remixer project in a directory_**")
-                                with gr.Row():
-                                    gr.Markdown(
-                                        format_markdown(
-                        "Use the Process Remix tab to choose processing options"))
-                                with gr.Row():
-                                    projects_path717 = gr.Textbox(label="Projects Path", max_lines=1,
+                                with gr.Tabs():
+                                    with gr.Tab("Process Remix Video For All Projects"):
+                                        gr.Markdown(
+                                            format_markdown(
+                                        "Use the Process Remix tab to choose processing options"))
+
+                                        with gr.Row():
+                                            projects_path7170 = gr.Textbox(
+                    label="Projects Path", max_lines=1,
                     placeholder="Path on this server to the Video Remixer projects to be processed",
-                                value=lambda : Session().get("last-bulk-process-path"))
-                                with gr.Row():
-                                    project_state717 = gr.Radio(choices=["All found projects", "Projects in state: Process"], value="All found projects", label="Project State")
-                                with gr.Row():
-                                   message_box717 = gr.Markdown(
-                                        format_markdown(
-                                "Click Process Projects to: Process each Video Remixer project"))
-                                gr.Markdown(
-                                    format_markdown(
-                                        SimpleIcons.WARNING + \
-                                            " This action may take a very long time to complete",
-                                            "warning"))
-                                gr.Markdown(
-                                    format_markdown(
-                "Progress can be tracked in the console", color="none", italic=True, bold=False))
-                                with gr.Row():
-                                    process_button717 = gr.Button(value="Process Projects",
-                                                                variant="primary", scale=0)
+                    value=lambda : Session().get("last-bulk-process-path"))
+
+                                        with gr.Row():
+                                            message_box7170 = gr.Markdown(format_markdown(
+                                "Click Process Projects to: Process Remix Video for each project"))
+                                        with gr.Row():
+                                            gr.Markdown(
+                    format_markdown(
+                        SimpleIcons.WARNING + " This action may take a very long time to complete",
+                        "warning"))
+                                        with gr.Row():
+                                            gr.Markdown(
+                    format_markdown("Progress can be tracked in the console",
+                        color="none", italic=True, bold=False))
+                                        with gr.Row():
+                                            process_button7170 = gr.Button(value="Process Projects",
+                                                                           variant="primary",
+                                                                           scale=0)
+
+                                    with gr.Tab("Process All Projects According To State"):
+                                        ...
+
+
+                                # with gr.Row():
+                                #     project_state717 = gr.Radio(choices=["All found projects", "Projects in state: Process"], value="All found projects", label="Project State")
+
 
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_remixer_extra.render()
@@ -1434,12 +1445,12 @@ class VideoRemixer(TabBase):
                                     thumbnail_type, min_frames_per_scene, remove_source],
                             outputs=message_box716)
 
-        process_button717.click(self.process_button717,
-                            inputs=[projects_path717, project_state717, resynthesize, inflate,
+        process_button7170.click(self.process_button7170,
+                            inputs=[projects_path7170, resynthesize, inflate,
                                     resize, upscale, upscale_option, inflate_by_option,
                                     inflate_slow_option, resynth_option, auto_save_remix,
                                     auto_delete_remix, auto_coalesce_remix],
-                            outputs=message_box717)
+                            outputs=message_box7170)
 
         open_button718.click(self.open_button718,
                              inputs=[projects_path718, project_state718, search_order718],
@@ -3489,9 +3500,8 @@ class VideoRemixer(TabBase):
         else:
             return format_markdown(f"{len(file_list)} files processed")
 
-    def process_button717(self,
+    def process_button7170(self,
                           projects_path,
-                          project_state : str,
                           resynthesize,
                           inflate,
                           resize,
@@ -3520,7 +3530,7 @@ class VideoRemixer(TabBase):
                 f"Directory '{projects_path}' was not found to contain Video Remixer projects",
                 "error")
 
-        all_projects = project_state.startswith("A")
+        # all_projects = project_state.startswith("A")
         Session().set("last-bulk-process-path", projects_path)
 
         with Mtqdm().open_bar(total=num_dirs, desc="Process Projects") as bar:
@@ -3538,10 +3548,10 @@ class VideoRemixer(TabBase):
                     message = self._next_button01(project_path)
                     messages.append(message)
 
-                    if not all_projects:
-                        if not self.state.progress.startswith("process"):
-                            Mtqdm().update_bar(bar)
-                            continue
+                    # if not all_projects:
+                    #     if not self.state.progress.startswith("process"):
+                    #         Mtqdm().update_bar(bar)
+                    #         continue
 
                     if len(self.state.kept_scenes()) < 1:
                         self.state.keep_all_scenes()
