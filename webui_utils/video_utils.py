@@ -779,12 +779,12 @@ f"{default_filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(
             if gif_high_quality:
                 ffcmd = FFmpeg(inputs= {input_path : None},
                                         outputs={output_filepath :
-                        f"-ss {start_time} -vf 'scale=iw*{scale_factor}:-2,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -vframes 1"},
+                        f"-framerate {fps} -ss {start_time} -vf 'scale=iw*{scale_factor}:-2,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse' -vframes 1"},
                     global_options="-y " + global_options)
             else:
                 ffcmd = FFmpeg(inputs= {input_path : None},
                                         outputs={output_filepath :
-                        f"-ss {start_time} -vf 'scale=iw*{scale_factor}:-2' -vframes 1"},
+                        f"-framerate {fps} -ss {start_time} -vf 'scale=iw*{scale_factor}:-2' -vframes 1"},
                     global_options="-y " + global_options)
 
     elif type == "jpg":
@@ -793,7 +793,7 @@ f"{default_filename}[{str(first_frame).zfill(num_width)}-{str(last_frame).zfill(
         mid_frame = int((last_frame + first_frame) / 2)
         start_second = mid_frame / (fps * 1.0)
         start_time = seconds_to_hms(start_second)
-        ffcmd = FFmpeg(inputs= {input_path : f"-ss {start_time}"},
+        ffcmd = FFmpeg(inputs= {input_path : f"-framerate {fps} -ss {start_time}"},
                                 outputs={output_filepath :
                 f"-vf scale=iw*{scale_factor}:-2 -qscale:v 2 -vframes 1"},
             global_options="-y " + global_options)
