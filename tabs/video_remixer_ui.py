@@ -417,19 +417,20 @@ class VideoRemixer(TabBase):
                         bold=False))
 
                 with gr.Row():
-                    with gr.Column():
+                    with gr.Column(scale=7):
                         with gr.Row():
                             back_button5 = gr.Button(value="< Back", variant="secondary", scale=0)
                             next_button5 = gr.Button(value="Process Remix " +
                                         SimpleIcons.SLOW_SYMBOL, variant="primary",
                                         elem_id="actionbutton")
-                    with gr.Column():
+                    with gr.Column(scale=5):
                         with gr.Accordion(label="Advanced Options", open=False):
                             with gr.Row(variant="compact"):
-                                auto_save_remix = gr.Checkbox(label="Automatically save default MP4 video", container=False)
-                                auto_delete_remix = gr.Checkbox(label="Delete processed content after saving", container=False)
+                                auto_save_remix = gr.Checkbox(label="Save default video", container=False, min_width=120)
+                                keep_scene_videos = gr.Checkbox(label="Keep scene videos", container=False, min_width=120)
+                                auto_delete_remix = gr.Checkbox(label="Delete project content", container=False, min_width=120)
                             with gr.Row(variant="compact"):
-                                auto_coalesce_remix = gr.Checkbox(label="Automatically coalesce kept scenes", container=False)
+                                auto_coalesce_remix = gr.Checkbox(label="Coalesce kept scenes (not for Resynthesis or Inflation)", container=False, min_width=120)
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_remixer_processing.render()
 
@@ -1262,7 +1263,8 @@ class VideoRemixer(TabBase):
         next_button5.click(self.next_button5,
                     inputs=[resynthesize, inflate, resize, upscale, upscale_option,
                             inflate_by_option, inflate_slow_option, resynth_option,
-                            auto_save_remix, auto_delete_remix, auto_coalesce_remix],
+                            auto_save_remix, auto_delete_remix, auto_coalesce_remix,
+                            keep_scene_videos],
                     outputs=[tabs_video_remixer, message_box5, summary_info6, output_filepath,
                              output_filepath_custom, output_filepath_marked, output_filepath_labeled,
                              message_box60, message_box61, message_box62, message_box63])
@@ -1489,7 +1491,7 @@ class VideoRemixer(TabBase):
                             inputs=[projects_path7170, project_state7170, resynthesize, inflate,
                                     resize, upscale, upscale_option, inflate_by_option,
                                     inflate_slow_option, resynth_option, auto_save_remix,
-                                    auto_delete_remix, auto_coalesce_remix],
+                                    auto_delete_remix, auto_coalesce_remix, keep_scene_videos],
                             outputs=message_box7170)
 
         process_button7171.click(self.process_button7171,
@@ -2316,7 +2318,8 @@ class VideoRemixer(TabBase):
                       resynth_option,
                       auto_save_remix,
                       auto_delete_remix,
-                      auto_coalesce_remix):
+                      auto_coalesce_remix,
+                      keep_scene_videos):
         if not self.state.project_path or not self.state.scenes_path:
             raise ValueError("The project has not yet been set up from the Set Up Project tab.")
 
@@ -2388,14 +2391,24 @@ class VideoRemixer(TabBase):
                 self.save_mp4_video(self.state.output_filepath)
                 messages.append(f"Remixed video {self.state.output_filepath} is complete.")
             except ValueError as error:
-                raise ValueError(f"An error occurred while automatically saving MP4 video: {error}")
+                raise ValueError(f"An error occurred while saving default video: {error}")
+
+            if keep_scene_videos:
+                scene_files = get_files(self.state.clips_path)
+                if scene_files:
+                    try:
+                        move_files(self.state.clips_path, self.state.project_path)
+                        for file in scene_files:
+                            messages.append(f"Scene video {file} moved to {self.state.project_path}")
+                    except Exception as error:
+                        messages.append(f"An error occurred while keeping scene videos: {error}")
 
             if auto_delete_remix:
                 try:
                     message = self.delete_all_project_content()
                     messages.append(message)
                 except ValueError as error:
-                    raise ValueError(f"An error occurred while automatically deleting project content: {error}")
+                    raise ValueError(f"An error occurred while deleting project content: {error}")
 
             return "\r\n".join(messages)
         else:
@@ -2413,7 +2426,8 @@ class VideoRemixer(TabBase):
                      resynth_option,
                      auto_save_remix,
                      auto_delete_remix,
-                     auto_coalesce_remix):
+                     auto_coalesce_remix,
+                     keep_scene_videos):
         empty_args = dummy_args(9)
 
         try:
@@ -2427,7 +2441,8 @@ class VideoRemixer(TabBase):
                                          resynth_option,
                                          auto_save_remix,
                                          auto_delete_remix,
-                                         auto_coalesce_remix)
+                                         auto_coalesce_remix,
+                                         keep_scene_videos)
         except ValueError as error:
             return gr.update(selected=self.TAB_PROC_REMIX), \
                 format_markdown(str(error), "error"), \
@@ -3560,7 +3575,8 @@ class VideoRemixer(TabBase):
                           resynth_option,
                           auto_save_remix,
                           auto_delete_remix,
-                          auto_coalesce_remix):
+                          auto_coalesce_remix,
+                          keep_scene_videos):
         messages = []
         if not projects_path:
             return format_markdown(
@@ -3614,7 +3630,8 @@ class VideoRemixer(TabBase):
                                                  resynth_option,
                                                  auto_save_remix,
                                                  auto_delete_remix,
-                                                 auto_coalesce_remix)
+                                                 auto_coalesce_remix,
+                                                 keep_scene_videos)
                     messages.append(message)
 
                 except ValueError as error:
