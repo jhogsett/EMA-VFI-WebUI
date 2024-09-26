@@ -417,16 +417,19 @@ class VideoRemixer(TabBase):
                         bold=False))
 
                 with gr.Row():
-                    back_button5 = gr.Button(value="< Back", variant="secondary", scale=0)
-                    next_button5 = gr.Button(value="Process Remix " +
-                                SimpleIcons.SLOW_SYMBOL, variant="primary",
-                                elem_id="actionbutton")
-                    with gr.Accordion(label="Advanced Options", open=False):
-                        with gr.Row(variant="compact"):
-                            auto_save_remix = gr.Checkbox(label="Automatically save default MP4 video", container=False)
-                            auto_delete_remix = gr.Checkbox(label="Delete processed content after saving", container=False)
-                        with gr.Row(variant="compact"):
-                            auto_coalesce_remix = gr.Checkbox(label="Automatically coalesce kept scenes", container=False)
+                    with gr.Column():
+                        with gr.Row():
+                            back_button5 = gr.Button(value="< Back", variant="secondary", scale=0)
+                            next_button5 = gr.Button(value="Process Remix " +
+                                        SimpleIcons.SLOW_SYMBOL, variant="primary",
+                                        elem_id="actionbutton")
+                    with gr.Column():
+                        with gr.Accordion(label="Advanced Options", open=False):
+                            with gr.Row(variant="compact"):
+                                auto_save_remix = gr.Checkbox(label="Automatically save default MP4 video", container=False)
+                                auto_delete_remix = gr.Checkbox(label="Delete processed content after saving", container=False)
+                            with gr.Row(variant="compact"):
+                                auto_coalesce_remix = gr.Checkbox(label="Automatically coalesce kept scenes", container=False)
                 with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
                     WebuiTips.video_remixer_processing.render()
 
@@ -946,14 +949,14 @@ class VideoRemixer(TabBase):
                                 gr.Markdown(
                     "**_Create Video Remixer projects for each video in a directory_**")
                                 with gr.Row():
-                                    gr.Markdown(
-                                        format_markdown(
-                        "Use the Remix Settings and Set Up Project tabs to choose project options",
-                                            color="more"))
-                                with gr.Row():
                                     videos_path = gr.Textbox(label="Videos Path", max_lines=1,
                                 placeholder="Path on this server to the videos to be remixed",
                                 value=lambda : Session().get("last-bulk-create-path"))
+                                    with gr.Column(variant="compact"):
+                                        gr.Markdown(
+                                        format_markdown(
+                        "Use the Remix Settings and Set Up Project tabs to choose project options",
+                                            color="more"))
                                 with gr.Row():
                                    message_box716 = gr.Markdown(
                                         format_markdown(
@@ -992,23 +995,24 @@ class VideoRemixer(TabBase):
                                                                 variant="primary", scale=0)
 
                             with gr.Tab(SimpleIcons.TORNADO + " Process Multiple Projects"):
-
                                 gr.Markdown(
                     "**_Perform Processing for each Video Remixer project in a directory_**")
-
-                                gr.Markdown(
-                                    format_markdown(
-                                        "Use the Process Remix tab to choose processing options",
-                                        color="more"))
                                 with gr.Row():
                                     projects_path7170 = gr.Textbox(
                 label="Projects Path", max_lines=1,
                 placeholder="Path on this server to the Video Remixer projects to be processed",
                 value=lambda : Session().get("last-bulk-process-path"))
+                                    with gr.Column(variant="compact"):
+                                        gr.Markdown(
+                                    format_markdown(
+                                        "Use the Process Remix tab to choose processing options",
+                                        color="more"))
                                 with gr.Row():
                                     project_state7170 = gr.Radio(
                                     choices=["All found projects", "Projects in state: Process"],
                                     value="All found projects", label="Project State")
+                                    gr.Column(variant="compact")
+
                                 with gr.Row():
                                     message_box7170 = gr.Markdown(format_markdown(
                                 "Click Process Projects to: Process Remix Video for each project"))
