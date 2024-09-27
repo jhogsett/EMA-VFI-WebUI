@@ -178,7 +178,8 @@ class ResequenceFiles:
 
                 if self.rename:
                     new_filepath = os.path.join(self.input_path, new_filename)
-                    os.replace(old_filepath, new_filepath)
+                    if old_filepath != new_filepath:
+                        os.replace(old_filepath, new_filepath)
                 else:
                     new_filepath = os.path.join(self.output_path, new_filename)
                     shutil.copy(old_filepath, new_filepath)
