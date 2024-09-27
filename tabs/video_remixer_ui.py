@@ -611,7 +611,7 @@ class VideoRemixer(TabBase):
                                             maximum=100.0, step=0.1, container=False, scale=2,
                                             info="Earliest split is performed first")
                                     with gr.Row(variant="compact", equal_height=False):
-                                        set_view_hint_702 = gr.Textbox(placeholder="View Hint",
+                                        set_view_hint_702 = gr.Textbox(placeholder="View Hint such as {V:200%}",
                                                                     max_lines=1, show_label=False,
                                                                     min_width=100, container=False)
                                         preview_view_hint_702 = gr.Button(value="Visualize View Hint",
@@ -744,7 +744,7 @@ class VideoRemixer(TabBase):
                                                         variant="stop", scale=0)
                                 with gr.Row():
                                     result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
-                                    open_result703 = gr.Button("Open New Project", visible=False, scale=0)
+                                    open_result703 = gr.Button("Open New Project", visible=False, scale=0, variant="primary")
                             with gr.Tab(SimpleIcons.HEART_EXCLAMATION + " Import Scenes"):
                                 gr.Markdown("**_Import Scenes Exported from the Same Source Video_**")
                                 with gr.Row():
