@@ -620,7 +620,7 @@ class VideoRemixerState():
 
         num_frame_files = len(frame_files)
         if num_frame_files != num_frames:
-            self.log(f"compute_preview_frame(): expected {num_frame_files} frame files but found {num_frames} for scene index {scene_index} - returning None")
+            self.log(f"compute_preview_frame(): expected {num_frames} frame files but found {num_frame_files} for scene index {scene_index} - returning None")
             return None
         return frame_files[split_frame]
 
