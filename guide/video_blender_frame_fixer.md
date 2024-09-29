@@ -7,7 +7,7 @@
 1. Set _Last clean frame BEFORE damaged ones_ to the frame number of a clean frame befor the bad ones
     - This is pre-filled with the current frame number if the _Fix Frames_ button is used
 1. Set _First clean frame AFTER damaged ones_ to the frame number of a clean frame after the bad ones
-1. Click _Preview Fixed Frames_
+1. Click _Create and Preview Fixed Frames_
 1. A set of high-precision replacement frames are made using _Frame Search_
     - The search precision is set via the config setting `blender_settings.frame_fixer_depth`
 1. An animated GIF is shown with the replacement frames
