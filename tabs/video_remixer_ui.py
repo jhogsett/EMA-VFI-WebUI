@@ -1312,8 +1312,8 @@ class VideoRemixer(TabBase):
                                         scene_name, scene_image, scene_state, scene_info,
                                         set_scene_label])
 
-        scene_id_702.change(self.update_preview_scene_id, inputs=[scene_id_702, split_percent_702],
-                                outputs=[preview_image702, scene_info_702], show_progress=False)
+        scene_id_702.input(self.update_preview_scene_id, inputs=[scene_id_702, split_percent_702],
+                                outputs=[preview_image702, scene_info_702], show_progress=True)
 
         split_percent_702.change(self.update_preview_split_percent,
                                 inputs=[scene_id_702, split_percent_702],
