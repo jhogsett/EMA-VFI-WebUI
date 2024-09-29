@@ -635,7 +635,7 @@ class VideoRemixer(TabBase):
                     # MERGE SCENES
                     with gr.Tab(SimpleIcons.PACKAGE + " Merge Scenes",
                                 id=self.TAB_EXTRA_MERGE_SCENES):
-                        gr.Markdown("Removed unneeded splits between adjacent scenes")
+                        gr.Markdown("Removes unneeded splits between adjacent scenes")
                         with gr.Tabs() as tabs_merge_scenes:
                             with gr.Tab(SimpleIcons.PACKAGE + " Merge Scene Range",
                                         id=self.TAB_EXTRA_MERGE_RANGE):
