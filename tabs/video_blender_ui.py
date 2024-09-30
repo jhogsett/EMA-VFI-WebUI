@@ -686,11 +686,6 @@ class VideoBlender(TabBase):
                 step1_enabled, step2_enabled, step3_enabled, step4_enabled, step1_path, step2_path,
                 step3_path):
 
-            # TODO display a message to the user
-            if os.path.exists(new_project_path):
-                self.log(f"project base directory {new_project_path} already exists - skipping")
-                return
-
             self.log(f"creating project base directory {new_project_path}")
             create_directory(new_project_path)
 

@@ -3195,6 +3195,14 @@ class VideoRemixer(TabBase):
         vb_project_name = f"{filename} {scene_name}"
         vb_project_path_name = f"vb_project {scene_name}"
         vb_project_path = os.path.join(self.state.project_path, vb_project_path_name)
+
+        if os.path.exists(vb_project_path):
+            return format_markdown(f"Video Blender project already exists",
+                                   "warning"), \
+                gr.update(selected=self.APP_TAB_VIDEO_REMIXER), \
+                gr.update(selected=VideoBlender.TAB_NEW_PROJECT), \
+                *empty_args
+
         self.log(f"creating video blender project directory {vb_project_path}")
         create_directory(vb_project_path)
 
