@@ -173,7 +173,7 @@ class VideoBlender(TabBase):
                                 label="First clean frame AFTER damaged ones", value=0,
                                 precision=0)
                         with gr.Row():
-                            preview_button_ff = gr.Button(value="Preview Fixed Frames",
+                            preview_button_ff = gr.Button(value="Create and Preview Fixed Frames",
                                 variant="primary", elem_id="highlightbutton")
                     with gr.Column():
                         preview_image_ff = gr.Image(type="filepath",
