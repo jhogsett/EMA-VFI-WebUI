@@ -956,7 +956,7 @@ class VideoRemixer(TabBase):
                                     with gr.Column(variant="compact"):
                                         gr.Markdown(
                                         format_markdown(
-                        "Use the Remix Settings and Set Up Project tabs to choose project options",
+                        "Use the **_Remix Settings_** and **_Set Up Project_** tabs to choose project options",
                                             color="more"))
                                 with gr.Row():
                                    message_box716 = gr.Markdown(
@@ -1006,7 +1006,7 @@ class VideoRemixer(TabBase):
                                     with gr.Column(variant="compact"):
                                         gr.Markdown(
                                     format_markdown(
-                                        "Use the Process Remix tab to choose processing options",
+                                        "Use the **_Process Remix_** tab to choose processing options",
                                         color="more"))
                                 with gr.Row():
                                     project_state7170 = gr.Radio(
