@@ -609,14 +609,16 @@ class VideoRemixerState():
 
         scene_name = self.scene_names[scene_index]
         _, num_frames, _, _, split_frame = self.compute_scene_split(scene_name, split_percent)
-        original_scene_path = os.path.join(self.scenes_path, scene_name)
-        frame_files = self.valid_split_scene_cache(scene_index)
-        if not frame_files:
-            # optimize to uncompile only the first time it's needed
-            self.uncompile_scenes()
 
-            frame_files = sorted(get_files(original_scene_path))
-            self.fill_split_scene_cache(scene_index, frame_files)
+        # original_scene_path = os.path.join(self.scenes_path, scene_name)
+        # frame_files = self.valid_split_scene_cache(scene_index)
+        # if not frame_files:
+        #     # optimize to uncompile only the first time it's needed
+        #     self.uncompile_scenes()
+
+        #     frame_files = sorted(get_files(original_scene_path))
+        #     self.fill_split_scene_cache(scene_index, frame_files)
+        frame_files = self.get_split_scene_cache(scene_index)
 
         num_frame_files = len(frame_files)
         if num_frame_files != num_frames:
@@ -878,3 +880,15 @@ class VideoRemixerState():
     def invalidate_split_scene_cache(self):
         self.split_scene_cache = []
         self.split_scene_cached_index = -1
+
+    def get_split_scene_cache(self, scene_index):
+        entries = self.valid_split_scene_cache(scene_index)
+        if not entries:
+            # optimize to uncompile only the first time it's needed
+            self.uncompile_scenes()
+
+            scene_name = self.scene_names[scene_index]
+            original_scene_path = os.path.join(self.scenes_path, scene_name)
+            entries = sorted(get_files(original_scene_path))
+            self.fill_split_scene_cache(scene_index, entries)
+        return entries
