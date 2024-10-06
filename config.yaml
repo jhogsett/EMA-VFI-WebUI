@@ -100,7 +100,6 @@ realesrgan_settings:
   model_name: "RealESRGAN_x4plus"
   tile_pad: 10
   tiling: 256
-remixer_settings:
   backup_split_scenes: True
   custom_ffmpeg_video: -c:v libx264 -crf 23
   custom_ffmpeg_audio: -c:a aac -shortest
@@ -119,6 +118,8 @@ remixer_settings:
   - "qt"
   - "webm"
   - "wmv"
+  find_break_stride: 128
+  find_break_threshold: 1
   gif_end_delay: 1.0
   gif_factor: 10
   labeled_ffmpeg_video: -vf "drawtext=<LABEL>" -c:v libx264 -crf <CRF>
@@ -144,6 +145,7 @@ remixer_settings:
   raise_on_error: False
   scale_type_up: "lanczos"
   scale_type_down: "area"
+  skip_break_threshold: 3
   source_audio_crf: 28
   thumb_scale: 0.5
   use_tiling_over: 921600

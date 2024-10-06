@@ -24,6 +24,8 @@ from video_remixer_processor import VideoRemixerProcessor
 from video_remixer_project import VideoRemixerProject
 from video_remixer_reports import VideoRemixerReports
 import cv2
+from webui_utils.image_utils import get_average_lightness
+from typing import Literal
 
 class VideoRemixer(TabBase):
     """Encapsulates UI elements and events for the Video Remixer Feature"""
@@ -610,15 +612,15 @@ class VideoRemixer(TabBase):
                                             label="Secondary Split Position", minimum=0.0,
                                             maximum=100.0, step=0.1, container=False, scale=2,
                                             info="Earliest split is performed first")
-                                    with gr.Row(variant="compact", equal_height=True):
-                                        prev_break_702 = gr.Button(value="< Find Break", size="sm", min_width=40)
-                                        next_break_702 = gr.Button(value="Find Break >", size="sm", min_width=40)
+                                    with gr.Row(variant="compact", equal_height=False):
+                                        prev_break_702 = gr.Button(value="< Find Break Frame" + SimpleIcons.SLOW_SYMBOL, size="sm")
+                                        next_break_702 = gr.Button(value="Find Break Frame"  + SimpleIcons.SLOW_SYMBOL + " >", size="sm")
                                     with gr.Row(variant="compact", equal_height=False):
                                         set_view_hint_702 = gr.Textbox(placeholder="View Hint such as {V:200%}",
                                                                     max_lines=1, show_label=False,
-                                                                    min_width=100, container=False)
+                                                                    min_width=100, container=False, scale=2)
                                         preview_view_hint_702 = gr.Button(value="Visualize View Hint",
-                                                                      size="sm", min_width=40)
+                                                                      size="sm", min_width=40, scale=1)
 
                             with gr.Column():
                                 preview_image702 = gr.Image(type="filepath",
@@ -1375,10 +1377,10 @@ class VideoRemixer(TabBase):
 
         prev_break_702.click(self.prev_break_702,
                                 inputs=[scene_id_702, split_percent_702],
-                                outputs=split_percent_702, show_progress=False)
+                                outputs=split_percent_702, show_progress=True)
         next_break_702.click(self.next_break_702,
                                 inputs=[scene_id_702, split_percent_702],
-                                outputs=split_percent_702, show_progress=False)
+                                outputs=split_percent_702, show_progress=True)
 
         set_view_hint_702.submit(self.set_view_hint_702,
                                  inputs=[scene_id_702, split_percent_702, set_view_hint_702],
@@ -2731,9 +2733,21 @@ class VideoRemixer(TabBase):
         else:
             return split_percent_alt, split_percent_alt
 
-    def is_break_frame(self, frame_file):
-        print(frame_file)
-        return True
+    def find_break_frame_type(self, frame_file) -> Literal["break", "skip", "find"]:
+        find_break_stride = self.config.remixer_settings["find_break_stride"]
+        find_break_threshold = self.config.remixer_settings["find_break_threshold"]
+        skip_break_threshold = self.config.remixer_settings["skip_break_threshold"]
+        l = get_average_lightness(frame_file, find_break_stride)
+
+        break_type : str
+        if l <= find_break_threshold:
+            break_type = "break"
+        elif l <= skip_break_threshold:
+            break_type = "skip"
+        else:
+            break_type = "find"
+
+        return break_type
 
     def next_break_702(self, scene_index, split_percent):
         scene_index = int(scene_index)
@@ -2746,22 +2760,84 @@ class VideoRemixer(TabBase):
         _, num_frames, _, _, split_frame = self.state.compute_scene_split(scene_name, split_percent)
 
         last_frame = num_frames - 1
-        last_staring_search_frame = last_frame - 1
-        if split_frame > last_staring_search_frame:
+        last_starting_search_frame = last_frame - 1
+        if split_frame > last_starting_search_frame:
             return split_percent
         starting_search_frame = split_frame + 1
+        search_frame_index : int = starting_search_frame
 
-        skipping_dupes = False
         frame_files = self.state.get_split_scene_cache(scene_index)
-        for frame_index in range(starting_search_frame, num_frames):
-            frame_file = frame_files[frame_index]
-            if self.is_break_frame(frame_file):
-                new_split_percent = 100.0 * (frame_index * 1.0 / num_frames)
-                return new_split_percent
+
+        frame_file = frame_files[search_frame_index]
+        frame_type = self.find_break_frame_type(frame_file)
+        if frame_type == "skip":
+            # skip frames until either a break frame or a find frame
+            for search_frame_index in range(search_frame_index + 1, last_frame + 1):
+                frame_file = frame_files[search_frame_index]
+                frame_type = self.find_break_frame_type(frame_file)
+                if frame_type == "break" or frame_type == "find":
+                    break
+
+        if search_frame_index > last_starting_search_frame:
+            return split_percent
+
+        if frame_type != "break":
+            for search_frame_index in range(search_frame_index + 1, last_frame + 1):
+                frame_file = frame_files[search_frame_index]
+                frame_type = self.find_break_frame_type(frame_file)
+                if frame_type == "break":
+                    break
+
+        if frame_type == "break": # and search_frame_index != starting_search_frame:
+            new_split_percent = 100.0 * (search_frame_index * 1.0 / num_frames)
+            return new_split_percent
+
         return split_percent
 
-    def prev_break_702(self, scene_id, split_percent):
-        ...
+    def prev_break_702(self, scene_index, split_percent):
+        scene_index = int(scene_index)
+        num_scenes = len(self.state.scene_names)
+        last_scene = num_scenes - 1
+        if scene_index < 0 or scene_index > last_scene:
+            return split_percent
+
+        scene_name = self.state.scene_names[scene_index]
+        _, num_frames, _, _, split_frame = self.state.compute_scene_split(scene_name, split_percent)
+
+        last_frame = 0
+        last_starting_search_frame = last_frame + 1
+        if split_frame - 1 < last_starting_search_frame:
+            return split_percent
+        starting_search_frame = split_frame - 2 # split frame is after the split, now going in rev.
+        search_frame_index : int = starting_search_frame
+
+        frame_files = self.state.get_split_scene_cache(scene_index)
+
+        frame_file = frame_files[starting_search_frame]
+        frame_type = self.find_break_frame_type(frame_file)
+        if frame_type == "skip":
+            # skip frames until either a break frame or a find frame
+            for search_frame_index in range(search_frame_index - 1, last_frame - 1, -1):
+                frame_file = frame_files[search_frame_index]
+                frame_type = self.find_break_frame_type(frame_file)
+                if frame_type == "break" or frame_type == "find":
+                    break
+
+        if search_frame_index < last_starting_search_frame:
+            return split_percent
+
+        if frame_type != "break":
+            for search_frame_index in range(search_frame_index - 1, last_frame - 1, -1):
+                frame_file = frame_files[search_frame_index]
+                frame_type = self.find_break_frame_type(frame_file)
+                if frame_type == "break":
+                    break
+
+        if frame_type == "break":
+            new_split_percent = 100.0 * (search_frame_index * 1.0 / num_frames)
+            return new_split_percent
+
+        return split_percent
 
     def back_button702(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)

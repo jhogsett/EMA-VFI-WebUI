@@ -43,3 +43,19 @@ def gif_frame_count(filepath : str):
     gif = Image.open(filepath)
     if gif:
         return gif.n_frames
+
+def get_average_lightness(image_path : str, stride : int = 1) -> int:
+    with Image.open(image_path) as img:
+        img = img.convert('L')
+        pixels = img.getdata()
+        total = 0
+        pixel_count = 0
+        pixels = list(pixels)
+        for pixel in pixels[::stride]:
+            # assume the sampled pixel is an average representative of the stride range
+            total += pixel * stride
+            pixel_count += 1
+
+        average = int(total / (pixel_count * stride))
+        return average
+
