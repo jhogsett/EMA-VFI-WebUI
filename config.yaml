@@ -100,6 +100,7 @@ realesrgan_settings:
   model_name: "RealESRGAN_x4plus"
   tile_pad: 10
   tiling: 256
+remixer_settings:
   backup_split_scenes: True
   custom_ffmpeg_video: -c:v libx264 -crf 23
   custom_ffmpeg_audio: -c:a aac -shortest
