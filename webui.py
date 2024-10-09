@@ -15,8 +15,11 @@ from webui_utils.mtqdm import Mtqdm
 from create_ui import create_ui
 from webui_tips import WebuiTips
 
+global log
+
 def main():
     """Run the application"""
+    global log
     parser = argparse.ArgumentParser(description='EMA-VFI Web UI')
     parser.add_argument("--config_path", type=str, default="config.yaml",
         help="path to config YAML file")
@@ -98,6 +101,16 @@ def clean_working_directory(working_directory):
 def sigint_handler(sig, frame):
     """Make the program just exit at ctrl+c without waiting for anything"""
     ColorOut(f'Interrupted with signal {sig} in {frame}', "red")
+
+    global log
+    if log.messages:
+        log.messages.reverse()
+        recent = log.messages[:16]
+        recent.reverse()
+        ColorOut("Most recent log entries", "yellow")
+        for entry in recent:
+            ColorOut(entry, "yellow", "none")
+
     os._exit(0) #pylint: disable=protected-access
 signal.signal(signal.SIGINT, sigint_handler)
 

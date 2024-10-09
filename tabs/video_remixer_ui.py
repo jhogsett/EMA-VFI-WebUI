@@ -1057,7 +1057,7 @@ class VideoRemixer(TabBase):
                                     projects_path7171 = gr.Textbox(
                     label="Projects Path", max_lines=1,
                     placeholder="Path on this server to the Video Remixer projects to be processed",
-                    value=lambda : Session().get("last-bulk-process-path"))
+                    value=lambda : Session().get("last-bulk-action-path"))
                                     project_state7171 = gr.Dropdown(
                     choices=["Any", "Settings", "Setup", "Choose", "Compile", "Process", "Save"],
                     value="Any", label="Project State")
@@ -3830,7 +3830,7 @@ class VideoRemixer(TabBase):
 
         selected_state = project_state.lower()
         all_projects = selected_state.startswith("a")
-        Session().set("last-bulk-process-path", projects_path)
+        Session().set("last-bulk-action-path", projects_path)
 
         with Mtqdm().open_bar(total=num_dirs, desc="Process Projects") as bar:
             for dir in dir_list:
@@ -3904,8 +3904,11 @@ class VideoRemixer(TabBase):
 
         Session().set("last-bulk-open-path", projects_path)
 
+        messages = []
+        index = 0
         with Mtqdm().open_bar(total=num_dirs, desc="Search Projects") as bar:
             for dir in dir_list:
+                index += 1
                 try:
                     project_path = os.path.join(projects_path, dir)
 
@@ -3914,18 +3917,23 @@ class VideoRemixer(TabBase):
                     except ValueError:
                         self.log(f"skipping non project directory {project_path}")
                         Mtqdm().update_bar(bar)
+                        messages.append(f"Directory {index}/{num_dirs} {project_path} is not a project")
                         continue
 
-                    messages = self._next_button01(project_path)
-                    self.log(messages)
+                    _messages = self._next_button01(project_path)
+                    self.log(_messages)
                     Mtqdm().update_bar(bar)
+                    messages.append(f"Project {index}/{num_dirs} {project_path} state: {self.state.progress}")
 
                     if self.state.progress.startswith(project_state.lower()):
-                        message = f"Found project {project_path}"
-                        return format_markdown(message), \
+                        # messages.append(f"Project {index} {project_path} state: {self.state.progress}")
+                        return format_markdown("\r\n".join(messages)), \
                             gr.update(selected=self.TAB_REMIX_HOME), \
                             project_path, \
                             format_markdown(self.TAB01_DEFAULT_MESSAGE)
+                    # else:
+                    #     messages.append(f"Found project {index} {project_path}")
+
 
                 except ValueError as error:
                     return format_markdown(f"An error occurred while searching projects: {error}",
@@ -3933,7 +3941,7 @@ class VideoRemixer(TabBase):
                     gr.update(selected=self.TAB_REMIX_EXTRA), \
                     *empty_args
 
-            return format_markdown(f"A project was not found with the state {project_state}",
-                                    "warning"), \
-                gr.update(selected=self.TAB_REMIX_EXTRA), \
-                *empty_args
+        messages.append(f"A project was not found with the state {project_state}")
+        return format_markdown("\r\n".join(messages)), \
+            gr.update(selected=self.TAB_REMIX_EXTRA), \
+            *empty_args
