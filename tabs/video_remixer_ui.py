@@ -3751,6 +3751,8 @@ class VideoRemixer(TabBase):
 
         Session().set("last-bulk-open-path", projects_path)
 
+        messages = []
+        index = 0
         with Mtqdm().open_bar(total=num_dirs, desc="Search Projects") as bar:
             for dir in dir_list:
                 try:
@@ -3763,16 +3765,21 @@ class VideoRemixer(TabBase):
                         Mtqdm().update_bar(bar)
                         continue
 
-                    messages = self._next_button01(project_path)
-                    self.log(messages)
+                    _messages = self._next_button01(project_path)
+                    self.log(_messages)
                     Mtqdm().update_bar(bar)
+                    index += 1
+                    messages.append(f"Project {index}/{num_dirs} {project_path} state: {self.state.progress}")
 
                     if self.state.progress.startswith(project_state.lower()):
-                        message = f"Found project {project_path}"
-                        return format_markdown(message), \
+                        # messages.append(f"Project {index} {project_path} state: {self.state.progress}")
+                        return format_markdown("\r\n".join(messages)), \
                             gr.update(selected=self.TAB_REMIX_HOME), \
                             project_path, \
                             format_markdown(self.TAB01_DEFAULT_MESSAGE)
+                    # else:
+                    #     messages.append(f"Found project {index} {project_path}")
+
 
                 except ValueError as error:
                     return format_markdown(f"An error occurred while searching projects: {error}",
@@ -3780,7 +3787,7 @@ class VideoRemixer(TabBase):
                     gr.update(selected=self.TAB_REMIX_EXTRA), \
                     *empty_args
 
-            return format_markdown(f"A project was not found with the state {project_state}",
-                                    "warning"), \
-                gr.update(selected=self.TAB_REMIX_EXTRA), \
-                *empty_args
+        messages.append(f"A project was not found with the state {project_state}")
+        return format_markdown("\r\n".join(messages)), \
+            gr.update(selected=self.TAB_REMIX_EXTRA), \
+            *empty_args
