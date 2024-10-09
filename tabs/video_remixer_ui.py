@@ -2747,7 +2747,10 @@ class VideoRemixer(TabBase):
         else:
             break_type = "find"
 
-        return break_type
+        return break_type, l
+
+    def compute_split_from_frame(self, frame_index, num_frames):
+        return 100.0 * (frame_index * 1.0 / num_frames)
 
     def next_break_702(self, scene_index, split_percent):
         scene_index = int(scene_index)
@@ -2765,34 +2768,40 @@ class VideoRemixer(TabBase):
             return split_percent
         starting_search_frame = split_frame + 1
         search_frame_index : int = starting_search_frame
+        fallback_found_frame = split_frame
+        fallback_value = 256
 
         frame_files = self.state.get_split_scene_cache(scene_index)
 
         frame_file = frame_files[search_frame_index]
-        frame_type = self.find_break_frame_type(frame_file)
+        frame_type, value = self.find_break_frame_type(frame_file)
         if frame_type == "skip":
             # skip frames until either a break frame or a find frame
             for search_frame_index in range(search_frame_index + 1, last_frame + 1):
                 frame_file = frame_files[search_frame_index]
-                frame_type = self.find_break_frame_type(frame_file)
+                frame_type, value = self.find_break_frame_type(frame_file)
                 if frame_type == "break" or frame_type == "find":
                     break
 
         if search_frame_index > last_starting_search_frame:
-            return split_percent
+            return self.compute_split_from_frame(fallback_found_frame, num_frames)
 
         if frame_type != "break":
             for search_frame_index in range(search_frame_index + 1, last_frame + 1):
                 frame_file = frame_files[search_frame_index]
-                frame_type = self.find_break_frame_type(frame_file)
+                frame_type, value = self.find_break_frame_type(frame_file)
+                if value < fallback_value:
+                    fallback_found_frame = search_frame_index
+                    fallback_value = value
                 if frame_type == "break":
                     break
 
         if frame_type == "break": # and search_frame_index != starting_search_frame:
-            new_split_percent = 100.0 * (search_frame_index * 1.0 / num_frames)
-            return new_split_percent
+            # new_split_percent = 100.0 * (search_frame_index * 1.0 / num_frames)
+            # return new_split_percent
+            return self.compute_split_from_frame(search_frame_index, num_frames)
 
-        return split_percent
+        return self.compute_split_from_frame(fallback_found_frame, num_frames)
 
     def prev_break_702(self, scene_index, split_percent):
         scene_index = int(scene_index)
@@ -2810,34 +2819,40 @@ class VideoRemixer(TabBase):
             return split_percent
         starting_search_frame = split_frame - 2 # split frame is after the split, now going in rev.
         search_frame_index : int = starting_search_frame
+        fallback_found_frame = split_frame
+        fallback_value = 256
 
         frame_files = self.state.get_split_scene_cache(scene_index)
 
         frame_file = frame_files[starting_search_frame]
-        frame_type = self.find_break_frame_type(frame_file)
+        frame_type, value = self.find_break_frame_type(frame_file)
         if frame_type == "skip":
             # skip frames until either a break frame or a find frame
             for search_frame_index in range(search_frame_index - 1, last_frame - 1, -1):
                 frame_file = frame_files[search_frame_index]
-                frame_type = self.find_break_frame_type(frame_file)
+                frame_type, value = self.find_break_frame_type(frame_file)
                 if frame_type == "break" or frame_type == "find":
                     break
 
         if search_frame_index < last_starting_search_frame:
-            return split_percent
+            return self.compute_split_from_frame(fallback_found_frame, num_frames)
 
         if frame_type != "break":
             for search_frame_index in range(search_frame_index - 1, last_frame - 1, -1):
                 frame_file = frame_files[search_frame_index]
-                frame_type = self.find_break_frame_type(frame_file)
+                frame_type, value = self.find_break_frame_type(frame_file)
+                if value < fallback_value:
+                    fallback_found_frame = search_frame_index
+                    fallback_value = value
                 if frame_type == "break":
                     break
 
         if frame_type == "break":
-            new_split_percent = 100.0 * (search_frame_index * 1.0 / num_frames)
-            return new_split_percent
+            # new_split_percent = 100.0 * (search_frame_index * 1.0 / num_frames)
+            # return new_split_percent
+            return self.compute_split_from_frame(search_frame_index, num_frames)
 
-        return split_percent
+        return self.compute_split_from_frame(fallback_found_frame, num_frames)
 
     def back_button702(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
