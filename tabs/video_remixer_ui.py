@@ -1184,7 +1184,7 @@ class VideoRemixer(TabBase):
 
         split_scene_button.click(self.split_scene_shortcut, inputs=scene_index,
             outputs=[tabs_video_remixer, tabs_remix_extra, scene_id_702,
-                     split_percent_702, preview_image702])
+                     split_percent_702, preview_image702, scene_info_702])
 
         choose_range_button.click(self.choose_range_shortcut, inputs=scene_index,
             outputs=[tabs_video_remixer, tabs_remix_extra, first_scene_id_701, last_scene_id_701])
