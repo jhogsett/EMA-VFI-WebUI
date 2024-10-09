@@ -1050,7 +1050,7 @@ class VideoRemixer(TabBase):
                                     projects_path7171 = gr.Textbox(
                     label="Projects Path", max_lines=1,
                     placeholder="Path on this server to the Video Remixer projects to be processed",
-                    value=lambda : Session().get("last-bulk-process-path"))
+                    value=lambda : Session().get("last-bulk-action-path"))
                                     project_state7171 = gr.Dropdown(
                     choices=["Any", "Settings", "Setup", "Choose", "Compile", "Process", "Save"],
                     value="Any", label="Project State")
@@ -3677,7 +3677,7 @@ class VideoRemixer(TabBase):
 
         selected_state = project_state.lower()
         all_projects = selected_state.startswith("a")
-        Session().set("last-bulk-process-path", projects_path)
+        Session().set("last-bulk-action-path", projects_path)
 
         with Mtqdm().open_bar(total=num_dirs, desc="Process Projects") as bar:
             for dir in dir_list:
