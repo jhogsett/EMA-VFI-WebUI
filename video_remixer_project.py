@@ -433,6 +433,15 @@ class VideoRemixerProject():
                     shutil.copy(scene_thumbnail, new_thumbnail)
                     Mtqdm().update_bar(bar)
 
+        # remove scene labels that no longer match scene names
+        filtered_labels = {}
+        for scene_name, label in new_state.scene_labels.items():
+            if scene_name in new_state.scene_names:
+                filtered_labels[scene_name] = label
+            else:
+                self.log(f"removing obsolete scene label: {scene_name}, {label} ")
+        new_state.scene_labels = filtered_labels
+
         # reset some things
         new_state.current_scene = 0
         new_state.audio_clips = []
