@@ -2810,8 +2810,6 @@ class VideoRemixer(TabBase):
                     break
 
         if frame_type == "break": # and search_frame_index != starting_search_frame:
-            # new_split_percent = 100.0 * (search_frame_index * 1.0 / num_frames)
-            # return new_split_percent
             return self.compute_split_from_frame(search_frame_index, num_frames)
 
         return self.compute_split_from_frame(fallback_found_frame, num_frames)
@@ -2861,8 +2859,6 @@ class VideoRemixer(TabBase):
                     break
 
         if frame_type == "break":
-            # new_split_percent = 100.0 * (search_frame_index * 1.0 / num_frames)
-            # return new_split_percent
             return self.compute_split_from_frame(search_frame_index, num_frames)
 
         return self.compute_split_from_frame(fallback_found_frame, num_frames)
