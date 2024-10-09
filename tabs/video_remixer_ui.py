@@ -3755,6 +3755,7 @@ class VideoRemixer(TabBase):
         index = 0
         with Mtqdm().open_bar(total=num_dirs, desc="Search Projects") as bar:
             for dir in dir_list:
+                index += 1
                 try:
                     project_path = os.path.join(projects_path, dir)
 
@@ -3763,12 +3764,12 @@ class VideoRemixer(TabBase):
                     except ValueError:
                         self.log(f"skipping non project directory {project_path}")
                         Mtqdm().update_bar(bar)
+                        messages.append(f"Directory {index}/{num_dirs} {project_path} is not a project")
                         continue
 
                     _messages = self._next_button01(project_path)
                     self.log(_messages)
                     Mtqdm().update_bar(bar)
-                    index += 1
                     messages.append(f"Project {index}/{num_dirs} {project_path} state: {self.state.progress}")
 
                     if self.state.progress.startswith(project_state.lower()):
