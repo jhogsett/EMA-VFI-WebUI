@@ -587,6 +587,11 @@ class VideoRemixer(TabBase):
                                     goto_100_702 = gr.Button(value="Last >", scale=1, min_width=90, size="sm")
                                     next_minute_702 = gr.Button(value="Minute >", scale=1, min_width=90, size="sm")
                                 with gr.Row():
+                                    prev_keep_702 = gr.Button(value="< Prev Keep", size="sm", variant="primary")
+                                    next_keep_702 = gr.Button(value="Next Keep >", size="sm", variant="primary")
+                                    prev_break_702 = gr.Button(value="< Prev Break" + SimpleIcons.SLOW_SYMBOL, size="sm", variant="primary")
+                                    next_break_702 = gr.Button(value="Next Break"  + SimpleIcons.SLOW_SYMBOL + " >", size="sm", variant="primary")
+                                with gr.Row():
                                     with gr.Column(scale=1):
                                         with gr.Row(equal_height=True, variant="panel", elem_id="highlightbutton"):
                                             go_to_f_button702 = gr.Button(value="Go to Frame",
@@ -612,9 +617,6 @@ class VideoRemixer(TabBase):
                                             label="Secondary Split Position", minimum=0.0,
                                             maximum=100.0, step=0.1, container=False, scale=2,
                                             info="Earliest split is performed first")
-                                    with gr.Row(variant="compact", equal_height=False):
-                                        prev_break_702 = gr.Button(value="< Find Break Frame" + SimpleIcons.SLOW_SYMBOL, size="sm")
-                                        next_break_702 = gr.Button(value="Find Break Frame"  + SimpleIcons.SLOW_SYMBOL + " >", size="sm")
                                     with gr.Row(variant="compact", equal_height=False):
                                         set_view_hint_702 = gr.Textbox(placeholder="View Hint such as {V:200%}",
                                                                     max_lines=1, show_label=False,
@@ -1375,9 +1377,20 @@ class VideoRemixer(TabBase):
                                 outputs=[split_percent_702, split_percent_alt_702],
                                 show_progress=False)
 
+        prev_keep_702.click(self.prev_keep_702,
+                                inputs=[scene_id_702, split_percent_702],
+                                outputs=[scene_id_702, preview_image702, scene_info_702],
+                                show_progress=True)
+
+        next_keep_702.click(self.next_keep_702,
+                                inputs=[scene_id_702, split_percent_702],
+                                outputs=[scene_id_702, preview_image702, scene_info_702],
+                                show_progress=True)
+
         prev_break_702.click(self.prev_break_702,
                                 inputs=[scene_id_702, split_percent_702],
                                 outputs=split_percent_702, show_progress=True)
+
         next_break_702.click(self.next_break_702,
                                 inputs=[scene_id_702, split_percent_702],
                                 outputs=split_percent_702, show_progress=True)
@@ -2853,6 +2866,16 @@ class VideoRemixer(TabBase):
             return self.compute_split_from_frame(search_frame_index, num_frames)
 
         return self.compute_split_from_frame(fallback_found_frame, num_frames)
+
+    def prev_keep_702(self, scene_index, split_percent):
+        scene_index = int(scene_index)
+        scene_index, _, _, _, _, _ = self.scan_for_keep(range(scene_index-1, -1, -1))
+        return scene_index, *self.update_preview(scene_index, split_percent)
+
+    def next_keep_702(self, scene_index, split_percent):
+        scene_index = int(scene_index)
+        scene_index, _, _, _, _, _ = self.scan_for_keep(range(scene_index+1, len(self.state.scene_names)))
+        return scene_index, *self.update_preview(scene_index, split_percent)
 
     def back_button702(self):
         return gr.update(selected=self.TAB_CHOOSE_SCENES)
