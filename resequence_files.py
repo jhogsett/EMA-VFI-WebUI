@@ -3,6 +3,7 @@ import os
 import shutil
 import glob
 import argparse
+import re
 from typing import Callable
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_utils import create_sample_set
@@ -138,7 +139,8 @@ class ResequenceFiles:
                             self.rename,
                             self.log_fn,
                             group_output_path,
-                            self.reverse).resequence(ignore_name_clash=ignore_name_clash)
+                            self.reverse).resequence(ignore_name_clash=ignore_name_clash,
+                                                     skip_if_not_required=False)
                     except ValueError as error:
                         errors.append(f"Error handling directory {group_name}: " + str(error))
                     Mtqdm().update_bar(bar)
@@ -152,11 +154,20 @@ class ResequenceFiles:
                                       contiguous=contiguous,
                                       ignore_name_clash=ignore_name_clash)
 
-    def resequence(self, ignore_name_clash=True) -> None:
+    def resequence(self, ignore_name_clash=True, skip_if_not_required=True) -> None:
         """Resesequence files in the directory per settings. Returns a count of the files resequenced. Raises ValueError on name clash."""
         files = sorted(glob.glob(os.path.join(self.input_path, "*." + self.file_type)),
                        reverse=self.reverse)
         num_files = len(files)
+
+        # if renaming files in place, check to see that they are not already in proper sequence
+        if self.rename and skip_if_not_required:
+            required, messages = self.required()
+            for message in messages:
+                self.log(message)
+            if not required:
+                self.log(f"skipping resequencing as not required per skip_if_not_required=True")
+                return
 
         if not ignore_name_clash:
             check_for_name_clash(files, self.new_base_filename, self.file_type)
@@ -186,6 +197,84 @@ class ResequenceFiles:
 
                 running_index += self.index_step
                 Mtqdm().update_bar(bar)
+
+    # before reqsequencing, check if the file set is already properly sequenced:
+    # - determine number width/positions based on file count
+    # - check that all files have only digits in the final number positions
+    # - and that they are all zero-filled
+    # - check that the first file is all zeroes or starts with one
+    # - and record whether the origin is 0 or 1
+    # - check that the last file equals the count of files (origin == 1) or count-1 (origin == 0)
+    # - check that there are no extra files
+    # - check that there are no missing files
+    # - check that there are no duplicate files
+    # - check that all integer positions are covered
+    # - check that the portion ahead of the number positions is identical for all files
+
+    def _required_get_file_index(self, num_width, filename):
+        test = f"(.*)(\d{{{num_width}}})\.(.*)"
+        matches = re.search(test, filename)
+        index = matches[2]
+        try:
+            return int(index)
+        except Exception:
+            raise ValueError(f"unable to determine index for file {filename}")
+
+    def required(self):
+        messages = ["ResequenceFiles.reuired() check"]
+        files = sorted(glob.glob(os.path.join(self.input_path, "*." + self.file_type)),
+                       reverse=self.reverse)
+        num_files = len(files)
+        if not num_files:
+            messages.append(f"directory {self.input_path} contains no files of type {self.file_type}")
+            return False, messages
+
+        num_width = len(str(num_files))
+        origin = 0
+        first_file = files[0]
+        last_file = files[-1]
+
+        messages.append("check for starting file index being zero or one")
+        try:
+            index = self._required_get_file_index(num_width, first_file)
+            if index == 0:
+                origin = 0
+            elif index == 1:
+                origin = 1
+            else:
+                messages.append("zero or one index starting file not found")
+                return True, messages
+        except Exception as error:
+            messages.append(str(error))
+            return True, messages
+
+        last_valid_index = ((num_files - 1) + origin)
+
+        messages.append(f"checking for ending file index being {last_valid_index}")
+        try:
+            index = self._required_get_file_index(num_width, last_file)
+            if index != last_valid_index:
+                messages.append(f"{last_valid_index} ending file not found")
+                return True, messages
+        except Exception as error:
+            messages.append(str(error))
+            return True, messages
+
+        messages.append("scan files for invalid missing, duplicate or invalid indexes")
+        next_valid_index = origin
+        for file in files[1:-1]:
+            next_valid_index += 1
+            try:
+                index = self._required_get_file_index(num_width, file)
+                if index != next_valid_index:
+                    messages.append(f"next valid file index {next_valid_index} not found")
+                    return True, messages
+            except Exception as error:
+                messages.append(str(error))
+                return True, messages
+
+        messages.append("Resequencing not required")
+        return False, messages
 
     def log(self, message : str) -> None:
         """Logging"""

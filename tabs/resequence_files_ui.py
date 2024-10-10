@@ -260,7 +260,8 @@ class ResequenceFiles(TabBase):
                              input_rename,
                              self.log,
                              output_path=output_path,
-                             reverse=input_reverse).resequence(ignore_name_clash=False)
+                             reverse=input_reverse).resequence(ignore_name_clash=False,
+                                                               skip_if_not_required=False)
         except ValueError as error:
             message = f"Error: {error}"
             if interactive:
