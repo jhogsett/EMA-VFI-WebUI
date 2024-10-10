@@ -211,17 +211,29 @@ class ResequenceFiles:
     # - check that all integer positions are covered
     # - check that the portion ahead of the number positions is identical for all files
 
-    def _required_get_file_index(self, num_width, filename):
+    def _get_file_details(self, num_width, filename):
         test = f"(.*)(\d{{{num_width}}})\.(.*)"
         matches = re.search(test, filename)
-        index = matches[2]
         try:
-            return int(index)
+            fixed_name = matches[1]
+            index = matches[2]
+            return fixed_name, int(index)
         except Exception:
-            raise ValueError(f"unable to determine index for file {filename}")
+            raise ValueError(f"unable to determine details for file {filename}")
+
+    def _validate_file(self, filename, num_width, name_part, index):
+        try:
+            fixed_name, index = self._get_file_details(num_width, filename)
+            if fixed_name != name_part:
+                return False, f"file found not starting with {name_part}"
+            if index != index:
+                return False, f"file not found with index {index}"
+            return True, None
+        except Exception as error:
+            return False, str(error)
 
     def required(self):
-        messages = ["ResequenceFiles.reuired() check"]
+        messages = ["ResequenceFiles.required() check"]
         files = sorted(glob.glob(os.path.join(self.input_path, "*." + self.file_type)),
                        reverse=self.reverse)
         num_files = len(files)
@@ -231,12 +243,14 @@ class ResequenceFiles:
 
         num_width = len(str(num_files))
         origin = 0
+        name_part = ""
         first_file = files[0]
         last_file = files[-1]
 
         messages.append("check for starting file index being zero or one")
         try:
-            index = self._required_get_file_index(num_width, first_file)
+            fixed_name, index = self._get_file_details(num_width, first_file)
+            name_part = fixed_name
             if index == 0:
                 origin = 0
             elif index == 1:
@@ -251,29 +265,20 @@ class ResequenceFiles:
         last_valid_index = ((num_files - 1) + origin)
 
         messages.append(f"checking for ending file index being {last_valid_index}")
-        try:
-            index = self._required_get_file_index(num_width, last_file)
-            if index != last_valid_index:
-                messages.append(f"{last_valid_index} ending file not found")
-                return True, messages
-        except Exception as error:
-            messages.append(str(error))
+        valid, error = self._validate_file(last_file, num_width, name_part, last_valid_index)
+        if not valid:
+            messages.append(error)
             return True, messages
 
-        messages.append("scan files for invalid missing, duplicate or invalid indexes")
+        messages.append("scan files for missing, duplicate or invalid indexes")
         next_valid_index = origin
         for file in files[1:-1]:
             next_valid_index += 1
-            try:
-                index = self._required_get_file_index(num_width, file)
-                if index != next_valid_index:
-                    messages.append(f"next valid file index {next_valid_index} not found")
-                    return True, messages
-            except Exception as error:
-                messages.append(str(error))
+            valid, error = self._validate_file(file, num_width, name_part, next_valid_index)
+            if not valid:
+                messages.append(error)
                 return True, messages
 
-        messages.append("Resequencing not required")
         return False, messages
 
     def log(self, message : str) -> None:
