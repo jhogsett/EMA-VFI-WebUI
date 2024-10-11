@@ -189,6 +189,7 @@ user_interface:
   log_file: None
   mtqdm_use_color: True
   mtqdm_palette: "default"
+  opening_tab: 0
   resources_path: "resources.csv"
   show_header: True
   theme: "default"

@@ -68,7 +68,7 @@ def create_ui(config : SimpleConfig,
         if config.user_interface["show_header"]:
             app_header.render()
 
-        with gr.Tabs() as main_tabs:
+        with gr.Tabs(selected=config.user_interface["opening_tab"]) as main_tabs:
             with gr.Tab("Interpolate Frames", id=APP_TAB_INTERPOLATE_FRAMES):
                 FrameInterpolation(config, engine, log.log).render_tab()
                 FrameSearch(config, engine, log.log).render_tab()
