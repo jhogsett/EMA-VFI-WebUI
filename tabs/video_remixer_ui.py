@@ -966,6 +966,13 @@ class VideoRemixer(TabBase):
                         "Use the **_Remix Settings_** and **_Set Up Project_** tabs to choose project options",
                                             color="more"))
                                 with gr.Row():
+                                    use_native_dimensions = gr.Checkbox(label="Use Native Dimensions", value=False)
+                                    with gr.Column(variant="compact"):
+                                        gr.Markdown(
+                                        format_markdown(
+                                    "Create projects using source video dimensions and frame rate, with no crop",
+                                            color="more"))
+                                with gr.Row():
                                    message_box716 = gr.Markdown(
                                         format_markdown(
                                 "Click Create Projects to: Make a project for each video"))
@@ -1506,11 +1513,11 @@ class VideoRemixer(TabBase):
         purge_button715.click(self.purge_button715, outputs=[tabs_video_remixer, message_box715])
 
         create_button716.click(self.create_button716,
-                            inputs=[videos_path, project_fps, split_type, scene_threshold,
-                                    break_duration, break_ratio, resize_w, resize_h, crop_w,
-                                    crop_h, crop_offset_x, crop_offset_y, frame_format,
-                                    deinterlace, split_time,
-                                    thumbnail_type, min_frames_per_scene, remove_source],
+                            inputs=[videos_path, use_native_dimensions, project_fps, split_type,
+                                    scene_threshold, break_duration, break_ratio, resize_w, resize_h,
+                                    crop_w, crop_h, crop_offset_x, crop_offset_y, frame_format,
+                                    deinterlace, split_time, thumbnail_type, min_frames_per_scene,
+                                    remove_source],
                             outputs=message_box716)
 
         process_button7170.click(self.process_button7170,
@@ -3665,6 +3672,7 @@ class VideoRemixer(TabBase):
 
     def create_button716(self,
                          videos_path,
+                         use_native_dimensions,
                          project_fps,
                          split_type,
                          scene_threshold,
@@ -3709,7 +3717,38 @@ class VideoRemixer(TabBase):
                         messages.append(message)
                         continue
 
-                    self._next_button1(self.state.project_path, project_fps, split_type, scene_threshold, break_duration, break_ratio, resize_w, resize_h, crop_w, crop_h, crop_offset_x, crop_offset_y, frame_format, deinterlace, split_time)
+                    if use_native_dimensions:
+                        self._next_button1(self.state.project_path,
+                                           self.state.project_fps,
+                                           split_type,
+                                           scene_threshold,
+                                           break_duration,
+                                           break_ratio,
+                                           self.state.resize_w,
+                                           self.state.resize_h,
+                                           self.state.resize_w,
+                                           self.state.resize_h,
+                                           -1,
+                                           -1,
+                                           frame_format,
+                                           deinterlace,
+                                           split_time)
+                    else:
+                        self._next_button1(self.state.project_path,
+                                           project_fps,
+                                           split_type,
+                                           scene_threshold,
+                                           break_duration,
+                                           break_ratio,
+                                           resize_w,
+                                           resize_h,
+                                           crop_w,
+                                           crop_h,
+                                           crop_offset_x,
+                                           crop_offset_y,
+                                           frame_format,
+                                           deinterlace,
+                                           split_time)
 
                     self._next_button2(thumbnail_type, min_frames_per_scene, False, remove_source)
 
