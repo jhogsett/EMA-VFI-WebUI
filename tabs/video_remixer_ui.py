@@ -548,6 +548,11 @@ class VideoRemixer(TabBase):
                             output_filepath_labeled = gr.Textbox(label="Output Filepath",
                                 max_lines=1,
                                 info="Enter a path and filename for the remixed video")
+                        with gr.Accordion("Advanced Options", open=False):
+                            with gr.Row(variant="compact", equal_height=False):
+                                volume_63 = gr.Slider(value=0.0,
+                                    label="Volume Adjustment in dB", minimum=-30.0,
+                                    maximum=30.0, step=0.1, container=False)
                         with gr.Row():
                             message_box63 = gr.Markdown(value=format_markdown(self.TAB63_DEFAULT_MESSAGE))
                         gr.Markdown(format_markdown("Progress can be tracked in the console", color="none", italic=True, bold=False))
@@ -1318,7 +1323,7 @@ class VideoRemixer(TabBase):
                                 label_shadow_alpha, label_shadow_size, label_draw_box,
                                 label_box_color, label_box_alpha, label_border_size,
                                 label_position_v, label_position_h, output_filepath_labeled,
-                                quality_slider_labeled],
+                                quality_slider_labeled, volume_63],
                         outputs=message_box63)
 
         back_button63.click(self.back_button63, outputs=tabs_video_remixer)
@@ -1529,7 +1534,8 @@ class VideoRemixer(TabBase):
                             inputs=[projects_path7170, project_state7170, resynthesize, inflate,
                                     resize, upscale, upscale_option, inflate_by_option,
                                     inflate_slow_option, resynth_option, auto_save_remix,
-                                    auto_delete_remix, auto_coalesce_remix, keep_scene_videos],
+                                    auto_delete_remix, auto_coalesce_remix, keep_scene_videos,
+                                    quality_slider, volume_60],
                             outputs=message_box7170)
 
         process_button7171.click(self.process_button7171,
@@ -2607,7 +2613,8 @@ class VideoRemixer(TabBase):
                       label_position_v,
                       label_position_h,
                       output_filepath,
-                      quality):
+                      quality,
+                      volume):
         if not self.state.project_path:
             return format_markdown("The project has not yet been set up from the Set Up Project tab.", "error")
 
@@ -2663,7 +2670,8 @@ class VideoRemixer(TabBase):
             try:
                 self.processor.save_custom_remix(output_filepath, kept_scenes,
                                                  labeled_video_options, labeled_audio_options,
-                                                 draw_text_options, use_scene_sorting=True)
+                                                 draw_text_options, use_scene_sorting=True,
+                                                 volume=volume)
                 return format_markdown(
                     f"Remixed labeled video {output_filepath} is complete.", "highlight")
             except FFRuntimeError as error:
@@ -3677,7 +3685,7 @@ class VideoRemixer(TabBase):
     def save_mp4_video(self, output_filepath, quality=None, volume=None):
         self.state.output_filepath = output_filepath
         self.state.output_quality = quality or self.config.remixer_settings["default_crf"]
-        self.state.output_volume = volume or self.state.project.SAFETY_DEFAULTS["output_volume"]
+        self.state.output_volume = volume or 0.0
 
         self.state.save()
 
@@ -3790,7 +3798,9 @@ class VideoRemixer(TabBase):
                           auto_save_remix,
                           auto_delete_remix,
                           auto_coalesce_remix,
-                          keep_scene_videos):
+                          keep_scene_videos,
+                          quality,
+                          volume):
         messages = []
         if not projects_path:
             return format_markdown(
@@ -3845,7 +3855,9 @@ class VideoRemixer(TabBase):
                                                  auto_save_remix,
                                                  auto_delete_remix,
                                                  auto_coalesce_remix,
-                                                 keep_scene_videos)
+                                                 keep_scene_videos,
+                                                 quality,
+                                                 volume)
                     messages.append(message)
 
                 except ValueError as error:

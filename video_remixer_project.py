@@ -487,7 +487,7 @@ class VideoRemixerProject():
         self.state.resynth_option = defaults["resynth_option"]
         self.state.frame_format = defaults["frame_format"]
         self.state.sound_format = defaults["sound_format"]
-        self.state.volume = defaults["volume"]
+        self.state.volume = defaults["output_volume"]
 
     def project_filepath(self, filename : str=DEF_FILENAME):
         return os.path.join(self.state.project_path, filename)
