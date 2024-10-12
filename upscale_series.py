@@ -93,7 +93,7 @@ class UpscaleSeries():
                                                         input_filename)
                 output_path = output_path or input_path
                 output_filepath = os.path.join(output_path, output_filename)
-                self.log(f"upscaling by {outscale} {filepath} to {output_filepath}")
+                # self.log(f"upscaling by {outscale} {filepath} to {output_filepath}")
 
                 if self.upscale_image(filepath, output_filepath, outscale):
                     output_dict[filepath] = output_filepath
@@ -101,7 +101,7 @@ class UpscaleSeries():
                     output_dict[filepath] = None
                 Mtqdm().update_bar(bar)
 
-        self.log(f"input and output paths:\n{output_dict}")
+        # self.log(f"input and output paths:\n{output_dict}")
         return output_dict
 
     def upscale_image(self,
