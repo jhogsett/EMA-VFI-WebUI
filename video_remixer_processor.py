@@ -203,7 +203,8 @@ class VideoRemixerProcessor():
                           custom_video_options,
                           custom_audio_options,
                           draw_text_options=None,
-                          use_scene_sorting=True):
+                          use_scene_sorting=True,
+                          volume=0.0):
         _, _, output_ext = split_filepath(output_filepath)
         output_ext = output_ext[1:]
 
@@ -214,8 +215,10 @@ class VideoRemixerProcessor():
                                                 draw_text_options=draw_text_options)
             self.state.save()
 
-        self.create_custom_scene_clips(kept_scenes, custom_audio_options=custom_audio_options,
-                                             custom_ext=output_ext)
+        self.create_custom_scene_clips(kept_scenes,
+                                       custom_audio_options=custom_audio_options,
+                                       custom_ext=output_ext,
+                                       volume=volume)
         self.state.save()
 
         if not self.state.clips:
@@ -2715,12 +2718,25 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                     global_options=self.global_options).slice()
         self.state.audio_clips = sorted(get_files(self.state.audio_clips_path))
 
-    def compute_inflated_audio_options(self, custom_audio_options, force_inflation, force_audio,
-                                       force_inflate_by, force_silent):
+    def compute_audio_options(self,
+                              custom_audio_options,
+                              force_inflation,
+                              force_audio,
+                              force_inflate_by,
+                              force_silent,
+                              volume = 0.0):
 
-        motion_factor, audio_slow_motion, silent_slow_motion, _project_inflation_rate, \
-            _forced_inflation_rate = self.compute_effective_slow_motion(force_inflation, force_audio,
-                                                                    force_inflate_by, force_silent)
+        if volume:
+            custom_audio_options += f" -filter:a \"volume={volume}dB\""
+
+        motion_factor, \
+        audio_slow_motion, \
+        silent_slow_motion, \
+        _project_inflation_rate, \
+        _forced_inflation_rate = self.compute_effective_slow_motion(force_inflation,
+                                                                    force_audio,
+                                                                    force_inflate_by,
+                                                                    force_silent)
 
         audio_motion_factor = motion_factor
 
@@ -3004,11 +3020,12 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                     force_inflation, force_audio, force_inflate_by, force_silent =\
                         self.compute_forced_inflation(scene_name)
 
-                    output_options = self.compute_inflated_audio_options("-c:a aac -shortest ",
-                                                                         force_inflation,
-                                                                         force_audio,
-                                                                         force_inflate_by,
-                                                                         force_silent)
+                    output_options = self.compute_audio_options("-c:a aac -shortest ",
+                                                                force_inflation,
+                                                                force_audio,
+                                                                force_inflate_by,
+                                                                force_silent,
+                                                                volume=self.state.output_volume)
                     combine_video_audio(scene_video_path,
                                         scene_audio_path,
                                         scene_output_filepath,
@@ -3022,7 +3039,8 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
     def create_custom_scene_clips(self,
                                   kept_scenes,
                                   custom_audio_options,
-                                  custom_ext):
+                                  custom_ext,
+                                  volume):
         if self.state.video_details["has_audio"]:
             with Mtqdm().open_bar(total=len(kept_scenes), desc="Remix Clips") as bar:
                 for index, scene_name in enumerate(kept_scenes):
@@ -3034,11 +3052,12 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                     force_inflation, force_audio, force_inflate_by, force_silent =\
                         self.compute_forced_inflation(scene_name)
 
-                    output_options = self.compute_inflated_audio_options(custom_audio_options,
+                    output_options = self.compute_audio_options(custom_audio_options,
                                                                 force_inflation,
                                                                 force_audio=force_audio,
                                                                 force_inflate_by=force_inflate_by,
-                                                                force_silent=force_silent)
+                                                                force_silent=force_silent,
+                                                                volume=volume)
 
                     combine_video_audio(scene_video_path, scene_audio_path,
                                         scene_output_filepath, global_options=self.global_options,

@@ -50,7 +50,9 @@ class VideoRemixerProject():
         "crop_w" : 1920,
         "crop_h" : 1080,
         "frame_format" : "png",
-        "sound_format" : "wav"
+        "sound_format" : "wav",
+        "output_quality" : 23,
+        "output_volume" : 0.0
     }
 
     DEF_FILENAME = "project.yaml"
@@ -485,6 +487,7 @@ class VideoRemixerProject():
         self.state.resynth_option = defaults["resynth_option"]
         self.state.frame_format = defaults["frame_format"]
         self.state.sound_format = defaults["sound_format"]
+        self.state.volume = defaults["output_volume"]
 
     def project_filepath(self, filename : str=DEF_FILENAME):
         return os.path.join(self.state.project_path, filename)

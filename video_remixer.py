@@ -100,6 +100,7 @@ class VideoRemixerState():
         self.summary_info6 = None # re-set on re-opening project
         self.output_filepath = None
         self.output_quality = None
+        self.output_volume = None
 
         # set during final clip creation and remix merging
         self.video_clips_path = None
