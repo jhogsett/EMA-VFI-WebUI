@@ -112,11 +112,11 @@ class TargetInterpolate():
 
         cv2.imwrite(before_file, img0)
         self.register_frame(before_file)
-        self.log("copied " + before_file)
+        # self.log("copied " + before_file)
 
         cv2.imwrite(after_file, img1)
         self.register_frame(after_file)
-        self.log("copied " + after_file)
+        # self.log("copied " + after_file)
 
     def _recursive_split_frames(self,
                                 first_index : float,
@@ -137,8 +137,9 @@ class TargetInterpolate():
 
             # no more work if the mid point entirely within the target range
             if float_range_in_range(mid_index, mid_index, min_target, max_target):
-                self.log("skipping, current split range " + f"{mid_index}"
-                    + " is inside target range " + f"{min_target},{max_target}")
+                ...
+                # self.log("skipping, current split range " + f"{mid_index}"
+                #     + " is inside target range " + f"{min_target},{max_target}")
             else:
                 # recurse into the half that gets closer to the target range
                 if float_range_in_range(min_target, max_target, first_index, mid_index,
@@ -150,9 +151,10 @@ class TargetInterpolate():
                     self._recursive_split_frames(mid_index, last_index, filepath_prefix,
                         min_target, max_target)
                 else:
-                    self.log("skipping, unable to locate target "+ f"{min_target},{max_target}"
-                        + " within split ranges " + f"{first_index},{mid_index}" + " and "
-                        + "{mid_index},{last_index}")
+                    ...
+                    # self.log("skipping, unable to locate target "+ f"{min_target},{max_target}"
+                    #     + " within split ranges " + f"{first_index},{mid_index}" + " and "
+                    #     + "{mid_index},{last_index}")
             self.exit_split()
 
     def _isolate_target_frame(self, keep_samples : bool):
@@ -170,10 +172,10 @@ class TargetInterpolate():
         new_found_file = f"{filepath}@{float_index}{ext}"
 
         if keep_samples:
-            self.log("copying " + found_file + " to " + new_found_file)
+            # self.log("copying " + found_file + " to " + new_found_file)
             shutil.copy(found_file, new_found_file)
         else:
-            self.log("renaming " + found_file + " to " + new_found_file)
+            # self.log("renaming " + found_file + " to " + new_found_file)
             os.replace(found_file, new_found_file)
         self.output_paths.append(new_found_file)
 
@@ -185,7 +187,7 @@ class TargetInterpolate():
             frame_files = [file for file in frame_files if file != found_file]
             frame_files = list(set(frame_files))
             for file in frame_files:
-                self.log("removing uneeded " + file)
+                # self.log("removing uneeded " + file)
                 os.remove(file)
 
     def reset_split_manager(self, num_splits : int):
@@ -250,7 +252,7 @@ class TargetInterpolate():
             float_part = result.group(2)
             ext_part = result.group(3)
             return file_part, float(float_part), ext_part
-        self.log("unable to split indexed filepath {filepath}")
+        # self.log("unable to split indexed filepath {filepath}")
         return None, 0.0, None
 
     def log(self, message):

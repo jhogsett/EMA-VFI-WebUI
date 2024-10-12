@@ -84,7 +84,7 @@ class InterpolateSeries():
                 filename = base_filename + "[" + str(base_index).zfill(num_width) + "]"
 
                 inner_bar_desc = f"Frame #{frame}"
-                self.log(f"creating inflated frames for frame files {before_file} - {after_file}")
+                # self.log(f"creating inflated frames for frame files {before_file} - {after_file}")
                 self.deep_interpolater.split_frames(before_file,
                                                     after_file,
                                                     num_splits,
