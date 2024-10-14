@@ -2665,9 +2665,20 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
 
     # General Remix Video Processing
 
+# fail case
+# compute_effective_slow_motion() False False None False
+# compute_effective_slow_motion(r) 0.25 True False 4 1
+
+# work case
+# compute_effective_slow_motion() True True 4X False
+# compute_effective_slow_motion(r) 4.0 True False 1 4
+
     # this works as a processing hint but not as a project option (with slow motion, the FPS is not 1 * project rate)
     def compute_effective_slow_motion(self, force_inflation, force_audio, force_inflate_by,
                                       force_silent):
+
+        print("\ncompute_effective_slow_motion()", force_inflation, force_audio, force_inflate_by, force_silent)
+
         audio_slow_motion = force_audio or (self.state.inflate and self.state.inflate_slow_option == "Audio")
         silent_slow_motion = force_silent or (self.state.inflate and self.state.inflate_slow_option == "Silent")
 
@@ -2677,10 +2688,15 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         # For slow motion hints, interpret the 'force_inflate_by' as relative to the project rate
         # If the forced inflation rate is 1 it means no inflation, not even at the project rate
         if audio_slow_motion or silent_slow_motion:
-            if forced_inflation_rate != 1:
-                forced_inflation_rate *= project_inflation_rate
+            if force_inflation:
+                if forced_inflation_rate != 1:
+                    forced_inflation_rate *= project_inflation_rate
+                motion_factor = forced_inflation_rate / project_inflation_rate
+            else:
+                motion_factor = self.inflation_rate(self.state.inflate_by_option)
 
-        motion_factor = forced_inflation_rate / project_inflation_rate
+        print("\ncompute_effective_slow_motion(r)", motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, forced_inflation_rate)
+
         return motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, \
             forced_inflation_rate
 
@@ -2729,7 +2745,9 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         if volume:
             custom_audio_options += f" -filter:a \"volume={volume}dB\""
 
-        motion_factor, \
+        print("\ncompute_audio_options()", force_inflation, force_audio, force_inflate_by, force_silent)
+
+        audio_motion_factor, \
         audio_slow_motion, \
         silent_slow_motion, \
         _project_inflation_rate, \
@@ -2738,7 +2756,16 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                                                                     force_inflate_by,
                                                                     force_silent)
 
-        audio_motion_factor = motion_factor
+        # # if not forcing inflating via a hint, these are reversed
+        # # TODO need to explain this
+        # if not force_inflation:
+        #     temp = audio_slow_motion
+        #     audio_slow_motion = audio_motion_factor
+        #     audio_motion_factor = temp
+
+        # print(audio_motion_factor, audio_slow_motion, silent_slow_motion, _project_inflation_rate, _forced_inflation_rate)
+
+        # audio_motion_factor = motion_factor
 
         if audio_slow_motion:
             if audio_motion_factor == 8:
@@ -2771,6 +2798,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
         else:
             output_options = custom_audio_options
 
+        print(output_options)
         return output_options
 
 
@@ -2943,7 +2971,18 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                 Mtqdm().update_bar(bar)
         self.state.video_clips = sorted(get_files(self.state.video_clips_path))
 
+# compute_inflated_fps() False False None False
+
+# compute_effective_slow_motion() False False None False
+
+# compute_effective_slow_motion(r) 4 True False 4 1
+
+# compute_inflated_fps(r) 479.52 16
+
     def compute_inflated_fps(self, force_inflation, force_audio, force_inflate_by, force_silent):
+
+        print("\ncompute_inflated_fps()", force_inflation, force_audio, force_inflate_by, force_silent)
+
         motion_factor, audio_slow_motion, silent_slow_motion, project_inflation_rate, \
             forced_inflation_rate = self.compute_effective_slow_motion(force_inflation, force_audio,
                                                                     force_inflate_by, force_silent)
@@ -2951,7 +2990,18 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
             if force_inflation:
                 fps_factor = project_inflation_rate
             else:
-                fps_factor = project_inflation_rate * motion_factor
+                # fps_factor = project_inflation_rate * motion_factor
+                fps_factor = project_inflation_rate
+
+# compute_inflated_fps() False False None False
+
+# compute_effective_slow_motion() False False None False
+
+# compute_effective_slow_motion(r) 4 True False 4 1
+
+# compute_inflated_fps(r) 119.88 4
+
+
         else:
             if force_inflation:
                 fps_factor = forced_inflation_rate
@@ -2959,6 +3009,9 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
                 fps_factor = project_inflation_rate
 
         inflation_and_slow_motion_considered_fps = self.state.project_fps * fps_factor
+
+        print("\ncompute_inflated_fps(r)", inflation_and_slow_motion_considered_fps, fps_factor)
+
         return inflation_and_slow_motion_considered_fps, fps_factor
 
     def compute_forced_inflation(self, scene_name):
