@@ -1802,10 +1802,12 @@ class VideoRemixer(TabBase):
                 format_markdown(f"Crop values should be <= Resize values", "warning"),\
                 *empty_args
 
-        if crop_offset_x < -1 or crop_offset_x > crop_w - 1 or \
-                crop_offset_y < -1 or crop_offset_y > crop_h - 1:
+        if crop_offset_x < -1 or \
+           crop_offset_x > resize_w - crop_w or \
+           crop_offset_y < -1 or \
+           crop_offset_y > resize_h - crop_h:
             return gr.update(selected=self.TAB_REMIX_SETTINGS), \
-                format_markdown(f"Crop Offset values should be >= -1 and less than Crop values",
+                format_markdown(f"Crop Offset values should be >= -1 and <= (Resize - Crop)",
                                 "warning"),\
                 *empty_args
 
