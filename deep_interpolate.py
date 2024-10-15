@@ -106,11 +106,11 @@ class DeepInterpolate():
 
         cv2.imwrite(before_file, img0)
         self.register_frame(before_file)
-        self.log("copied " + before_file)
+        # self.log("copied " + before_file)
 
         cv2.imwrite(after_file, img1)
         self.register_frame(after_file)
-        self.log("copied " + after_file)
+        # self.log("copied " + after_file)
 
     def _recursive_split_frames(self,
                                 first_index : float,
@@ -146,17 +146,17 @@ class DeepInterpolate():
             if resynthesis and (index == 0 or index == num_files - 1):
                 # if a resynthesis process, keep only the interpolated frames
                 os.remove(file)
-                self.log("resynthesis - removed uneeded " + file)
+                # self.log("resynthesis - removed uneeded " + file)
             elif continued and index == 0:
                 # if a continuation from a previous set of frames, delete the first frame
                 # to maintain continuity since it's duplicate of the previous round last frame
                 os.remove(file)
-                self.log("continuation - removed uneeded " + file)
+                # self.log("continuation - removed uneeded " + file)
             else:
                 new_filename = file_prefix + str(index).zfill(num_width) + "." + type
                 os.replace(file, new_filename)
                 self.output_paths.append(new_filename)
-                self.log("renamed " + file + " to " + new_filename)
+                # self.log("renamed " + file + " to " + new_filename)
             index += 1
 
     def reset_split_manager(self, num_splits : int):

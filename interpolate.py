@@ -89,7 +89,6 @@ class Interpolate:
         images = [I0[:, :, ::-1], mid[:, :, ::-1], I2[:, :, ::-1]]
         imsave(middle_filepath, images[1])
         self.output_paths.append(middle_filepath)
-        self.log("create_between_frame() saved " + middle_filepath)
 
     def create_between_frames(self,
                             before_filepath : str,
@@ -118,7 +117,6 @@ class Interpolate:
         images = [I0[:, :, ::-1]]
         imsave(output_filepath, images[0])
         self.output_paths.append(output_filepath)
-        self.log("create_between_frames() saved " + output_filepath)
 
         preds = model.multi_inference(I0_, I2_, TTA=TTA, time_list=[(i+1)*(1./set_count) for i in range(set_count - 1)], fast_TTA=TTA)
         for pred in preds:
@@ -132,13 +130,11 @@ class Interpolate:
                     output_filepath = os.path.join(output_path, f"{filename}@{time}.{self.type}")
                     imsave(output_filepath, image)
                     self.output_paths.append(output_filepath)
-                    self.log("create_between_frames() saved " + output_filepath)
                 Mtqdm().update_bar(bar)
 
         output_filepath = os.path.join(output_path, f"{filename}@1.0.{self.type}")
         imsave(output_filepath, images[-1])
         self.output_paths.append(output_filepath)
-        self.log("create_between_frames() saved " + output_filepath)
 
     def log(self, message):
         """Logging"""
