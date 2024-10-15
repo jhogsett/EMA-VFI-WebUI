@@ -2447,7 +2447,11 @@ class VideoRemixer(TabBase):
                 scene_files = get_files(self.state.clips_path)
                 if scene_files:
                     try:
-                        self.state.purge_files(self.state.project_path, scene_files)
+                        scene_filenames = []
+                        for scene_file in scene_files:
+                            _, filename, ext = split_filepath(scene_file)
+                            scene_filenames.append(filename + ext)
+                        self.state.purge_files(self.state.project_path, scene_filenames)
                         move_files(self.state.clips_path, self.state.project_path)
                         for file in scene_files:
                             messages.append(f"Scene video {file} moved to {self.state.project_path}")
