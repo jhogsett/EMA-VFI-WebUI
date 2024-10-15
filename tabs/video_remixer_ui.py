@@ -1802,10 +1802,12 @@ class VideoRemixer(TabBase):
                 format_markdown(f"Crop values should be <= Resize values", "warning"),\
                 *empty_args
 
-        if crop_offset_x < -1 or crop_offset_x > crop_w - 1 or \
-                crop_offset_y < -1 or crop_offset_y > crop_h - 1:
+        if crop_offset_x < -1 or \
+           crop_offset_x > resize_w - crop_w or \
+           crop_offset_y < -1 or \
+           crop_offset_y > resize_h - crop_h:
             return gr.update(selected=self.TAB_REMIX_SETTINGS), \
-                format_markdown(f"Crop Offset values should be >= -1 and less than Crop values",
+                format_markdown(f"Crop Offset values should be >= -1 and <= (Resize - Crop)",
                                 "warning"),\
                 *empty_args
 
@@ -2445,6 +2447,11 @@ class VideoRemixer(TabBase):
                 scene_files = get_files(self.state.clips_path)
                 if scene_files:
                     try:
+                        scene_filenames = []
+                        for scene_file in scene_files:
+                            _, filename, ext = split_filepath(scene_file)
+                            scene_filenames.append(filename + ext)
+                        self.state.purge_files(self.state.project_path, scene_filenames)
                         move_files(self.state.clips_path, self.state.project_path)
                         for file in scene_files:
                             messages.append(f"Scene video {file} moved to {self.state.project_path}")

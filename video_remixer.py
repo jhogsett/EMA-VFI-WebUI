@@ -478,6 +478,12 @@ class VideoRemixerState():
         else:
             return None
 
+    def purge_files(self, path : str, files : list, purged_path=None, additional_path=""):
+        if not path or not files:
+            return None
+        file_paths = [os.path.join(path, filename) for filename in files]
+        return self.purge_paths(file_paths, purged_path, False, additional_path)
+
     def purge_paths(self, path_list : list, keep_original=False, purged_path=None,
                     skip_empty_paths=False, additional_path=""):
         """Purge a list of paths to the purged content directory
