@@ -375,6 +375,11 @@ class VideoRemixerProject():
         self.log(f"creating clips directory {self.state.clips_path}")
         create_directory(self.state.clips_path)
 
+        # user will expect to return to scene chooser on reopening
+        self.state.save_progress("choose")
+
+        return f"Project {self.state.project_path} recovered"
+
     def export_project(self, new_project_path, new_project_name, kept_scenes):
         new_project_name = new_project_name.strip()
         full_new_project_path = os.path.join(new_project_path, new_project_name)
