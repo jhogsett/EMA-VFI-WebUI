@@ -1071,6 +1071,13 @@ class VideoRemixer(TabBase):
                                             "Delete all processed project content (except videos)",
                                             color="more"))
                                 with gr.Row():
+                                    process_recover_7171 = gr.Checkbox(value=False,
+                                        label="Recover Deleted Project")
+                                    with gr.Column(variant="compact"):
+                                        gr.Markdown(format_markdown(
+                                "Restore project from the original source video and project file.",
+                                            color="more"))
+                                with gr.Row():
                                     projects_path7171 = gr.Textbox(
                     label="Projects Path", max_lines=1,
                     placeholder="Path on this server to the Video Remixer projects to be processed",
@@ -1540,7 +1547,7 @@ class VideoRemixer(TabBase):
 
         process_button7171.click(self.process_button7171,
                             inputs=[projects_path7171, project_state7171, process_thumbnails_7171,
-                                    process_delete_7171, thumbnail_type],
+                                    process_delete_7171, process_recover_7171, thumbnail_type],
                             outputs=message_box7171)
 
         open_button718.click(self.open_button718,
@@ -3646,12 +3653,7 @@ class VideoRemixer(TabBase):
 
     def restore_button714(self):
         if self.state.project_path:
-            self.state.project.recover_project()
-
-            # user will expect to return to scene chooser on reopening
-            self.state.save_progress("choose")
-
-            message = f"Project recovered"
+            message = self.state.project.recover_project()
             return gr.update(selected=self.TAB_CHOOSE_SCENES), \
                 format_markdown(message), \
                 *self.scene_chooser_details(self.state.current_scene)
@@ -3875,6 +3877,7 @@ class VideoRemixer(TabBase):
                             project_state : str,
                             process_thumbnails : bool,
                             process_delete : bool,
+                            process_recover : bool,
                             thumbnail_type : str):
         messages = []
         if not projects_path:
@@ -3929,6 +3932,12 @@ class VideoRemixer(TabBase):
                     if process_delete:
                         try:
                             messages.append(self.delete_all_project_content())
+                        except ValueError as error:
+                            messages.append(str(error))
+
+                    if process_recover:
+                        try:
+                            messages.append(self.state.project.recover_project())
                         except ValueError as error:
                             messages.append(str(error))
 
