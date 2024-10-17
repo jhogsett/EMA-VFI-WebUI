@@ -156,6 +156,19 @@ class VideoRemixerProject():
                 except AttributeError:
                         state.sound_format = "wav"
 
+                # new output quality and output volume options
+                try:
+                    if not state.output_quality:
+                        state.output_quality = 23
+                except AttributeError:
+                        state.output_quality = 23
+
+                try:
+                    if not state.output_volume:
+                        state.output_volume = 0
+                except AttributeError:
+                        state.output_volume = 0
+
                 return state
 
             except YAMLError as error:
