@@ -69,7 +69,7 @@ class SplitScenes:
         if not self.type in valid_types:
             raise ValueError(f"'type' must be one of {', '.join([t for t in valid_types])}")
 
-    def split_scenes(self, format : str="png"):
+    def split_scenes(self, format : str="png", move : bool=False):
         files = sorted(glob.glob(os.path.join(self.input_path, f"*.{self.file_ext}")))
         num_files = len(files)
         num_width = len(str(num_files))
@@ -162,22 +162,18 @@ class SplitScenes:
 
         return group_paths
 
-    def split(self, type : str="png") -> list:
+    def split(self, type : str="png", move : bool=False) -> list:
         """Invoke the Split Scenes feature"""
-        # files = sorted(glob.glob(os.path.join(self.input_path, f"*.{self.file_ext}")))
-        # num_files = len(files)
-        # num_width = len(str(num_files))
-
         if self.type == "scene":
             if self.scene_threshold < 0.0 or self.scene_threshold > 1.0:
                 raise ValueError("'scene_threshold' must be between 0.0 and 1.0")
-            self.split_scenes(type)
+            self.split_scenes(type, move)
         else:
             if self.break_duration < 0.0:
                 raise ValueError("'break_duration' >= 0.0")
             if self.break_ratio < 0.0 or self.break_ratio > 1.0:
                 raise ValueError("'break_ratio' must be between 0.0 and 1.0")
-            self.split_breaks(type)
+            self.split_breaks(type, move)
 
         if self.dry_run:
             print(f"[Dry Run] Creating base output path {self.output_path}")
