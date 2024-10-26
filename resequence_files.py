@@ -8,7 +8,7 @@ from typing import Callable
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_utils import create_sample_set
 from webui_utils.mtqdm import Mtqdm
-from webui_utils.file_utils import get_directories, check_for_name_clash, get_files
+from webui_utils.file_utils import get_directories, check_for_name_clash, get_files, create_directory
 
 def main():
     """Use the Resequence Files feature from the command line"""
@@ -94,13 +94,22 @@ class ResequenceFiles:
 
     def resequence_groups(self, group_names : list, contiguous=True, ignore_name_clash=True):
         """Resequence files contained in the specified directory names at the input path. Returns a string with any errors."""
+
+        # count the original files across groups
         all_files_count = 0
         for group_name in group_names:
-            check_path = self.input_path if self.rename else self.output_path
-            group_check_path = os.path.join(check_path, group_name)
+            group_check_path = os.path.join(self.input_path, group_name)
             try:
                 group_files = glob.glob(os.path.join(group_check_path, "*." + self.file_type))
                 all_files_count += len(group_files)
+            except ValueError as error:
+                return str(error)
+
+        # check for name clashes in the output paths
+        for group_name in group_names:
+            group_check_path = os.path.join(self.output_path, group_name)
+            try:
+                group_files = glob.glob(os.path.join(group_check_path, "*." + self.file_type))
                 if not ignore_name_clash:
                     check_for_name_clash(group_files, self.file_type, self.new_base_filename)
             except ValueError as error:
@@ -109,6 +118,7 @@ class ResequenceFiles:
         if self.zero_fill == ResequenceFiles.ZERO_FILL_AUTO_DETECT:
             max_index_num = all_files_count * self.index_step
             batch_zero_fill = len(str(max_index_num))
+            print(batch_zero_fill, self.index_step)
         else:
             batch_zero_fill = self.zero_fill
 
@@ -119,6 +129,7 @@ class ResequenceFiles:
                 for group_name in group_names:
                     group_input_path = os.path.join(self.input_path, group_name)
                     group_output_path = os.path.join(self.output_path, group_name)
+                    create_directory(group_output_path)
                     try:
                         if contiguous:
                             group_start = running_start
@@ -140,7 +151,7 @@ class ResequenceFiles:
                             self.log_fn,
                             group_output_path,
                             self.reverse).resequence(ignore_name_clash=ignore_name_clash,
-                                                     skip_if_not_required=False)
+                                                     skip_if_not_required=not contiguous)
                     except ValueError as error:
                         errors.append(f"Error handling directory {group_name}: " + str(error))
                     Mtqdm().update_bar(bar)
