@@ -184,40 +184,17 @@ class SplitFrames:
                 else:
                     create_directory(group_path)
 
-                desc = "Copying" if self.action == "copy" else "Moving"
-                with Mtqdm().open_bar(total=num_group_files, desc=desc) as file_bar:
-                    for file in group_files:
-                        from_filepath = file
-                        _, filename, ext = split_filepath(file)
-                        to_filepath = os.path.join(group_path, filename + ext)
-                        if self.dry_run:
-                            print(f"[Dry Run] Copying {from_filepath} to {to_filepath}")
-                        else:
-                            shutil.copy(from_filepath, to_filepath)
-                        Mtqdm().update_bar(file_bar)
+                base_filename = f"{group_name}-{self.type}-split-frame"
+                ResequenceFiles(self.input_path,
+                                self.file_ext,
+                                base_filename,
+                                0, 1, 1, 0,
+                                num_width,
+                                False,
+                                self.log,
+                                output_path=group_path).resequence(move_files=self.action == "move",
+                                                                   file_list=group_files)
                 Mtqdm().update_bar(group_bar)
-
-                if add_resynthesis_frames or add_inflation_frame:
-                    if self.dry_run:
-                        print(f"[Dry Run] Resequencing files in {group_path}")
-                    else:
-                        base_filename = f"{group_name}-{self.type}-split-frame"
-                        ResequenceFiles(group_path,
-                                        self.file_ext,
-                                        base_filename,
-                                        0, 1, 1, 0, num_width,
-                                        True,
-                                        self.log).resequence()
-
-        if self.action != "copy":
-            with Mtqdm().open_bar(total=num_files, desc="Deleting") as bar:
-                for file in files:
-                    if os.path.exists(file):
-                        if self.dry_run:
-                            print(f"[Dry Run] Deleting {file}")
-                        else:
-                            os.remove(file)
-                    Mtqdm().update_bar(bar)
 
         return group_paths
 
