@@ -118,7 +118,6 @@ class ResequenceFiles:
         if self.zero_fill == ResequenceFiles.ZERO_FILL_AUTO_DETECT:
             max_index_num = all_files_count * self.index_step
             batch_zero_fill = len(str(max_index_num))
-            print(batch_zero_fill, self.index_step)
         else:
             batch_zero_fill = self.zero_fill
 
