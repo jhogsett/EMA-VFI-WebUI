@@ -42,7 +42,7 @@ engine_settings:
   model: "ours"
   use_time_step: False
 enhance_images_settings:
-  threshold_min: 1
+  threshold_min: 0.25
   threshold_max: 50
   threshold_step: 0.25
   threshold_default: 2
