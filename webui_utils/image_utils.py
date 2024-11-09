@@ -56,6 +56,6 @@ def get_average_lightness(image_path : str, stride : int = 1) -> int:
             total += pixel * stride
             pixel_count += 1
 
-        average = int(total / (pixel_count * stride))
+        average = total / (pixel_count * stride)
         return average
 
