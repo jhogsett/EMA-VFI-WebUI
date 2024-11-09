@@ -8,6 +8,7 @@ from webui_utils.simple_log import SimpleLog
 from webui_utils.file_utils import create_directory, is_safe_path, split_filepath
 from webui_utils.video_utils import get_detected_scenes, get_detected_breaks, scene_list_to_ranges
 from webui_utils.mtqdm import Mtqdm
+from resequence_files import ResequenceFiles
 
 def main():
     """Use the Split Scenes feature from the command line"""
@@ -69,7 +70,7 @@ class SplitScenes:
         if not self.type in valid_types:
             raise ValueError(f"'type' must be one of {', '.join([t for t in valid_types])}")
 
-    def split_scenes(self, format : str="png"):
+    def split_scenes(self, format : str="png", move_files : bool=False):
         files = sorted(glob.glob(os.path.join(self.input_path, f"*.{self.file_ext}")))
         num_files = len(files)
         num_width = len(str(num_files))
@@ -98,24 +99,23 @@ class SplitScenes:
                 else:
                     create_directory(group_path)
 
-                desc = "Copying"
-                with Mtqdm().open_bar(total=group_size, desc=desc) as file_bar:
-                    for index in range(first_index, last_index+1):
-                        frame_file = files[index]
-                        from_filepath = frame_file
-                        _, filename, ext = split_filepath(frame_file)
-                        to_filepath = os.path.join(group_path, filename + ext)
+                group_files = [files[index] for index in range(first_index, last_index+1)]
+                base_filename = f"{group_name}-{self.type}-split-frame"
+                ResequenceFiles(self.input_path,
+                                self.file_ext,
+                                base_filename,
+                                0, 1, 1, 0,
+                                num_width,
+                                False,
+                                self.log,
+                                output_path=group_path).resequence(move_files=move_files,
+                                                                   file_list=group_files)
 
-                        if self.dry_run:
-                            print(f"[Dry Run] Copying {from_filepath} to {to_filepath}")
-                        else:
-                            shutil.copy(from_filepath, to_filepath)
-                        Mtqdm().update_bar(file_bar)
                 Mtqdm().update_bar(scene_bar)
 
         return group_paths
 
-    def split_breaks(self, format : str="jpg"):
+    def split_breaks(self, format : str="jpg", move_files : bool=False):
         files = sorted(glob.glob(os.path.join(self.input_path, f"*.{self.file_ext}")))
         num_files = len(files)
         num_width = len(str(num_files))
@@ -145,39 +145,34 @@ class SplitScenes:
                 else:
                     create_directory(group_path)
 
-                desc = "Copying"
-                with Mtqdm().open_bar(total=group_size, desc=desc) as file_bar:
-                    for index in range(first_index, last_index+1):
-                        frame_file = files[index]
-                        from_filepath = frame_file
-                        _, filename, ext = split_filepath(frame_file)
-                        to_filepath = os.path.join(group_path, filename + ext)
+                group_files = [files[index] for index in range(first_index, last_index+1)]
+                base_filename = f"{group_name}-{self.type}-split-frame"
+                ResequenceFiles(self.input_path,
+                                self.file_ext,
+                                base_filename,
+                                0, 1, 1, 0,
+                                num_width,
+                                False,
+                                self.log,
+                                output_path=group_path).resequence(move_files=move_files,
+                                                                   file_list=group_files)
 
-                        if self.dry_run:
-                            print(f"[Dry Run] Copying {from_filepath} to {to_filepath}")
-                        else:
-                            shutil.copy(from_filepath, to_filepath)
-                        Mtqdm().update_bar(file_bar)
                 Mtqdm().update_bar(scene_bar)
 
         return group_paths
 
-    def split(self, type : str="png") -> list:
+    def split(self, type : str="png", move_files : bool=False) -> list:
         """Invoke the Split Scenes feature"""
-        # files = sorted(glob.glob(os.path.join(self.input_path, f"*.{self.file_ext}")))
-        # num_files = len(files)
-        # num_width = len(str(num_files))
-
         if self.type == "scene":
             if self.scene_threshold < 0.0 or self.scene_threshold > 1.0:
                 raise ValueError("'scene_threshold' must be between 0.0 and 1.0")
-            self.split_scenes(type)
+            self.split_scenes(type, move_files)
         else:
             if self.break_duration < 0.0:
                 raise ValueError("'break_duration' >= 0.0")
             if self.break_ratio < 0.0 or self.break_ratio > 1.0:
                 raise ValueError("'break_ratio' must be between 0.0 and 1.0")
-            self.split_breaks(type)
+            self.split_breaks(type, move_files)
 
         if self.dry_run:
             print(f"[Dry Run] Creating base output path {self.output_path}")

@@ -279,7 +279,7 @@ class VideoRemixerIngest():
                         global_options=self.state.global_options)
             Mtqdm().update_bar(bar)
 
-    def split_scenes(self, prevent_overwrite=False):
+    def split_scenes(self, prevent_overwrite=False, move_files=False):
         if prevent_overwrite and self.scenes_present():
                 return None
         try:
@@ -293,7 +293,8 @@ class VideoRemixerIngest():
                                 self.state.scene_threshold,
                                 0.0,
                                 0.0,
-                                self.state.log_fn).split(type=self.state.frame_format)
+                                self.state.log_fn).split(type=self.state.frame_format,
+                                                         move_files=move_files)
                     Mtqdm().update_bar(bar)
 
             elif self.state.split_type == "Break":
@@ -306,7 +307,8 @@ class VideoRemixerIngest():
                                 0.0,
                                 float(self.state.break_duration),
                                 float(self.state.break_ratio),
-                                self.state.log_fn).split(type=self.state.frame_format)
+                                self.state.log_fn).split(type=self.state.frame_format,
+                                                         move_files=move_files)
                     Mtqdm().update_bar(bar)
             elif self.state.split_type == "Time":
                 # split by seconds
@@ -317,7 +319,7 @@ class VideoRemixerIngest():
                     "precise",
                     0,
                     self.state.split_frames,
-                    "copy",
+                    "move" if move_files else "copy",
                     False,
                     self.state.log_fn).split()
             else:
@@ -329,7 +331,7 @@ class VideoRemixerIngest():
                     "precise",
                     1,
                     0,
-                    "copy",
+                    "move" if move_files else "copy",
                     False,
                     self.state.log_fn).split()
             return None

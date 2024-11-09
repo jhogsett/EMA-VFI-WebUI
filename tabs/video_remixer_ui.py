@@ -2010,7 +2010,7 @@ class VideoRemixer(TabBase):
             self.state.save()
 
             # split frames into scenes
-            error = self.state.ingest.split_scenes(prevent_overwrite=False)
+            error = self.state.ingest.split_scenes(prevent_overwrite=False, move_files=remove_source)
             if error:
                 raise ValueError(f"There was an error splitting the source video: {error}")
 

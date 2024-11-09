@@ -8,7 +8,7 @@ from typing import Callable
 from webui_utils.simple_log import SimpleLog
 from webui_utils.simple_utils import create_sample_set
 from webui_utils.mtqdm import Mtqdm
-from webui_utils.file_utils import get_directories, check_for_name_clash, get_files
+from webui_utils.file_utils import get_directories, check_for_name_clash, get_files, create_directory
 
 def main():
     """Use the Resequence Files feature from the command line"""
@@ -92,15 +92,24 @@ class ResequenceFiles:
 
     ZERO_FILL_AUTO_DETECT = -1
 
-    def resequence_groups(self, group_names : list, contiguous=True, ignore_name_clash=True):
+    def resequence_groups(self, group_names : list, contiguous=True, ignore_name_clash=True, move_files=False):
         """Resequence files contained in the specified directory names at the input path. Returns a string with any errors."""
+
+        # count the original files across groups
         all_files_count = 0
         for group_name in group_names:
-            check_path = self.input_path if self.rename else self.output_path
-            group_check_path = os.path.join(check_path, group_name)
+            group_check_path = os.path.join(self.input_path, group_name)
             try:
                 group_files = glob.glob(os.path.join(group_check_path, "*." + self.file_type))
                 all_files_count += len(group_files)
+            except ValueError as error:
+                return str(error)
+
+        # check for name clashes in the output paths
+        for group_name in group_names:
+            group_check_path = os.path.join(self.output_path, group_name)
+            try:
+                group_files = glob.glob(os.path.join(group_check_path, "*." + self.file_type))
                 if not ignore_name_clash:
                     check_for_name_clash(group_files, self.file_type, self.new_base_filename)
             except ValueError as error:
@@ -119,6 +128,7 @@ class ResequenceFiles:
                 for group_name in group_names:
                     group_input_path = os.path.join(self.input_path, group_name)
                     group_output_path = os.path.join(self.output_path, group_name)
+                    create_directory(group_output_path)
                     try:
                         if contiguous:
                             group_start = running_start
@@ -140,24 +150,26 @@ class ResequenceFiles:
                             self.log_fn,
                             group_output_path,
                             self.reverse).resequence(ignore_name_clash=ignore_name_clash,
-                                                     skip_if_not_required=False)
+                                                     skip_if_not_required=not contiguous,
+                                                     move_files=move_files)
                     except ValueError as error:
                         errors.append(f"Error handling directory {group_name}: " + str(error))
                     Mtqdm().update_bar(bar)
         if errors:
             return "\r\n".join(errors)
 
-    def resequence_batch(self, contiguous=True, ignore_name_clash=True):
+    def resequence_batch(self, contiguous=True, ignore_name_clash=True, move_files=False):
         """Resequence groups of files. Returns a string with any errors."""
         group_names = sorted(get_directories(self.input_path), reverse=self.reverse)
         return self.resequence_groups(group_names,
                                       contiguous=contiguous,
-                                      ignore_name_clash=ignore_name_clash)
+                                      ignore_name_clash=ignore_name_clash,
+                                      move_files=False)
 
-    def resequence(self, ignore_name_clash=True, skip_if_not_required=True) -> None:
+    def resequence(self, ignore_name_clash=True, skip_if_not_required=True, move_files=False, file_list=None) -> None:
         """Resesequence files in the directory per settings. Returns a count of the files resequenced. Raises ValueError on name clash."""
-        files = sorted(glob.glob(os.path.join(self.input_path, "*." + self.file_type)),
-                       reverse=self.reverse)
+        files = file_list or \
+            sorted(glob.glob(os.path.join(self.input_path, "*." + self.file_type)), reverse=self.reverse)
         num_files = len(files)
 
         # if renaming files in place, check to see that they are not already in proper sequence
@@ -180,7 +192,11 @@ class ResequenceFiles:
 
         running_index = self.start_index
         sample_set = create_sample_set(files, self.sample_offset, self.sample_stride)
-        pbar_title = "Resequence Rename" if self.rename else "Resequence Copy"
+
+        if self.rename:
+            pbar_title = "Resequence Rename"
+        else:
+            pbar_title = "Resequence Move" if move_files else "Resequence Copy"
         with Mtqdm().open_bar(total=len(sample_set), desc=pbar_title) as bar:
             for file in sample_set:
                 new_filename = \
@@ -193,7 +209,10 @@ class ResequenceFiles:
                         os.replace(old_filepath, new_filepath)
                 else:
                     new_filepath = os.path.join(self.output_path, new_filename)
-                    shutil.copy(old_filepath, new_filepath)
+                    if move_files:
+                        shutil.move(old_filepath, new_filepath)
+                    else:
+                        shutil.copy(old_filepath, new_filepath)
 
                 running_index += self.index_step
                 Mtqdm().update_bar(bar)
