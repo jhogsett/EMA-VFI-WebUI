@@ -46,7 +46,6 @@ def gif_frame_count(filepath : str):
 
 def get_average_lightness(image_path : str, stride : int = 1) -> int:
     with Image.open(image_path) as img:
-        # img = img.convert('L')
         pixels = img.getdata()
         total = 0
         pixel_count = 0

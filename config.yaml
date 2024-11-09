@@ -119,8 +119,8 @@ remixer_settings:
   - "qt"
   - "webm"
   - "wmv"
-  find_break_stride: 128
-  find_break_threshold: 1
+  find_break_stride: 2048
+  find_break_threshold: 0.25
   gif_end_delay: 1.0
   gif_factor: 10
   labeled_ffmpeg_video: -vf "drawtext=<LABEL>" -c:v libx264 -crf <CRF>
