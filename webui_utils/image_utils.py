@@ -46,16 +46,21 @@ def gif_frame_count(filepath : str):
 
 def get_average_lightness(image_path : str, stride : int = 1) -> int:
     with Image.open(image_path) as img:
-        img = img.convert('L')
         pixels = img.getdata()
         total = 0
         pixel_count = 0
         pixels = list(pixels)
+        color = isinstance(pixels[0], tuple)
+
         for pixel in pixels[::stride]:
+            if color: # https://stackoverflow.com/questions/596216/formula-to-determine-perceived-brightness-of-rgb-color
+                sample = int(0.299 * pixel[0] + 0.587 * pixel[1] + 0.114 * pixel[2])
+            else:
+                sample = pixel
+
             # assume the sampled pixel is an average representative of the stride range
-            total += pixel * stride
+            total += sample * stride
             pixel_count += 1
 
-        average = int(total / (pixel_count * stride))
+        average = total / (pixel_count * stride)
         return average
-

@@ -1157,7 +1157,7 @@ class VideoRemixer(TabBase):
 
         back_button2.click(self.back_button2, outputs=tabs_video_remixer)
 
-        thumbnail_type.change(self.thumb_change, inputs=thumbnail_type, show_progress=False)
+        thumbnail_type.input(self.thumb_change, inputs=thumbnail_type, show_progress=False)
 
         scene_state.change(self.scene_state_button, show_progress=False,
                             inputs=[scene_name, scene_state],
