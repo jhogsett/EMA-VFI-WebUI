@@ -3843,7 +3843,8 @@ class VideoRemixer(TabBase):
                         continue
 
                     message = self._next_button01(project_path)
-                    messages.append(message)
+                    if message:
+                        messages.append(message)
 
                     if not all_projects:
                         if not self.state.progress.startswith("process"):
@@ -3867,7 +3868,8 @@ class VideoRemixer(TabBase):
                                                  keep_scene_videos,
                                                  quality,
                                                  volume)
-                    messages.append(message)
+                    if message:
+                        messages.append(message)
 
                 except ValueError as error:
                     messages.append(str(error))
