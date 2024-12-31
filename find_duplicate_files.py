@@ -60,25 +60,50 @@ class FindDuplicateFiles:
                 # print("Hash:", info["hash"])
                 # print("\r\n")
 
+            result = {}
             kinds = ["basename", "bytes", "modified", "created", "hash"]
             for kind in kinds:
                 kind_result = []
-                for name in files_info:
-                    dupes = self.find_duplicate_info(files_info, kind)
+                dupes = self.find_duplicate_info(files_info, kind)
                 if dupes:
-                    print(f"Duplicates by {kind}")
+                    # print(f"Duplicates by {kind}")
 
                     dupe_list = [dupe['info'] for dupe in dupes]
                     dupe_set = sorted(set(dupe_list))
-                    for dupe in dupe_set:
+                    # print(dupe_set)
+                    for dupe_info in dupe_set:
+                        dupe_result = {}
+                        dupe_result_infos = []
                         for name, info in files_info.items():
-                            if info[kind] == dupe:
-                                kind_result.append(info)
+                            if info[kind] == dupe_info:
+                                dupe_result_infos.append(info)
+                        dupe_result[dupe_info] = dupe_result_infos
+                        kind_result.append(dupe_result)
                     if(kind_result):
-                        for result in kind_result:
-                            print(f"{result['basename']}: {result[kind]}")
-                        print()
+                        result[kind] = kind_result
+            if result:
                 print()
+                for kind, dupes in result.items():
+                    print(f"Duplicates by {kind}")
+                    for dupe in dupes:
+                        # for kind_value, entries in dupe.items():
+                        kind_values = sorted(dupe.keys())
+                        for kind_value in kind_values:
+                            entries = dupe[kind_value]
+                            if isinstance(kind_value, int):
+                                print(f"[{kind_value:,}]")
+                            elif isinstance(kind_value, float):
+                                # print(time.strftime('%Y-%m-%d %H:%M:%S:{}'.format(kind_value%1000), time.gmtime(kind_value/1000.0)))
+                                # print(time.strftime('%Y-%m-%d %H:%M:%S:{}'.format(kind_value), time.gmtime(kind_value/1000.0)))
+                                # print(kind_value)
+                                milliseconds = f"{kind_value - int(kind_value):.4f}"[2:]
+                                print(f"[{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(kind_value))}.{milliseconds}]")
+                            else:
+                                print(f"[{kind_value}]")
+                            for entry in entries:
+                                print(f"{entry['basename']}")
+                        print()
+                    print()
 
     @staticmethod
     def compute_file_hash(file_path : str, algorithm="sha256") -> str:
