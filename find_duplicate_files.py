@@ -14,24 +14,28 @@ def main():
     parser = argparse.ArgumentParser(description='Find Duplicate files')
     parser.add_argument("--path", default="./", type=str,
         help="Path to files to check")
+    parser.add_argument("--subpaths", dest="recursive", default=False, action="store_true",
+        help="True to recursively check all sub-paths")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
 
     log = SimpleLog(args.verbose)
-    FindDuplicateFiles(args.path, log.log).find()
+    FindDuplicateFiles(args.path, args.recursive, log.log).find()
 
 class FindDuplicateFiles:
     """Encapsulate logic for Find Duplicate Files feature"""
     def __init__(self,
                 path : str,
+                recursive : bool,
                 log_fn : Callable | None):
         self.path = path
+        self.resursive = recursive
         self.log_fn = log_fn
 
     def find(self) -> None:
         """Invoke the Find Duplicate Files feature"""
-        files = sorted(glob.glob(os.path.join(self.path, "*.*")))
+        files = sorted(glob.glob(os.path.join(self.path, "**", "*.*"), recursive=self.resursive))
         num_files = len(files)
         self.log(f"Found {num_files} files")
 
@@ -96,13 +100,13 @@ class FindDuplicateFiles:
 
                                     for kind_value in kind_values1:
                                         entries1 = dupe[kind_value]
-                                        entries_paths = [entry['abspath'] for entry in entries1]
+                                        entries_paths1 = [entry['abspath'] for entry in entries1]
 
                                         for kind_value2 in kind_values2:
                                             entries2 = dupe2[kind_value2]
                                             entries_paths2 = [entry['abspath'] for entry in entries2]
 
-                                            common_entries = list(set(entries_paths).intersection(entries_paths2))
+                                            common_entries = list(set(entries_paths1).intersection(entries_paths2))
                                             if len(common_entries) > 1:
                                                 record = {}
                                                 record["kind1"] = kind1
@@ -158,7 +162,7 @@ class FindDuplicateFiles:
 
                                             for kind_value in kind_values1:
                                                 entries1 = dupe[kind_value]
-                                                entries_paths = [entry['abspath'] for entry in entries1]
+                                                entries_paths1 = [entry['abspath'] for entry in entries1]
 
                                                 for kind_value2 in kind_values2:
                                                     entries2 = dupe2[kind_value2]
@@ -168,7 +172,7 @@ class FindDuplicateFiles:
                                                         entries3 = dupe3[kind_value3]
                                                         entries_paths3 = [entry['abspath'] for entry in entries3]
 
-                                                        common_entries = list(set(entries_paths).intersection(entries_paths2).intersection(entries_paths3))
+                                                        common_entries = list(set(entries_paths1).intersection(entries_paths2).intersection(entries_paths3))
                                                         if len(common_entries) > 1:
                                                             record = {}
                                                             record["kind1"] = kind1
@@ -240,7 +244,7 @@ class FindDuplicateFiles:
 
                                                     for kind_value in kind_values1:
                                                         entries1 = dupe[kind_value]
-                                                        entries_paths = [entry['abspath'] for entry in entries1]
+                                                        entries_paths1 = [entry['abspath'] for entry in entries1]
 
                                                         for kind_value2 in kind_values2:
                                                             entries2 = dupe2[kind_value2]
@@ -254,20 +258,19 @@ class FindDuplicateFiles:
                                                                     entries4 = dupe4[kind_value4]
                                                                     entries_paths4 = [entry['abspath'] for entry in entries4]
 
-
-                                                                common_entries = list(set(entries_paths).intersection(entries_paths2).intersection(entries_paths3).intersection(entries_paths4))
-                                                                if len(common_entries) > 1:
-                                                                    record = {}
-                                                                    record["kind1"] = kind1
-                                                                    record["kind2"] = kind2
-                                                                    record["kind3"] = kind3
-                                                                    record["kind4"] = kind4
-                                                                    record["kindvalue1"] = kind_value
-                                                                    record["kindvalue2"] = kind_value2
-                                                                    record["kindvalue3"] = kind_value3
-                                                                    record["kindvalue4"] = kind_value4
-                                                                    record["dupes"] = common_entries
-                                                                    reports.append(record)
+                                                                    common_entries = list(set(entries_paths1).intersection(entries_paths2).intersection(entries_paths3).intersection(entries_paths4))
+                                                                    if len(common_entries) > 1:
+                                                                        record = {}
+                                                                        record["kind1"] = kind1
+                                                                        record["kind2"] = kind2
+                                                                        record["kind3"] = kind3
+                                                                        record["kind4"] = kind4
+                                                                        record["kindvalue1"] = kind_value
+                                                                        record["kindvalue2"] = kind_value2
+                                                                        record["kindvalue3"] = kind_value3
+                                                                        record["kindvalue4"] = kind_value4
+                                                                        record["dupes"] = common_entries
+                                                                        reports.append(record)
 
                                     bar.update()
                                 bar.update()
@@ -276,7 +279,7 @@ class FindDuplicateFiles:
 
                 for report in reports:
                     print()
-                    print(f"Duplicates by [{report['kind1']}] and [{report['kind2']}] and [{report['kind2']}] and [{report['kind4']}]")
+                    print(f"Duplicates by [{report['kind1']}] and [{report['kind2']}] and [{report['kind3']}] and [{report['kind4']}]")
                     for entry in report['dupes']:
                         print(entry)
                     print()
