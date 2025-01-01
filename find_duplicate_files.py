@@ -53,25 +53,14 @@ class FindDuplicateFiles:
                     Mtqdm().update_bar(bar)
 
         if files_info:
-            # for name, info in files_info.items():
-                # print("File Name:", info["basename"])
-                # print("File Size:", info["bytes"])
-                # print("Modified:", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(info["modified"])))
-                # print("Created:", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(info["created"])))
-                # print("Hash:", info["hash"])
-                # print("\r\n")
-
             result = {}
-            kinds = ["abspath", "bytes", "modified", "created", "hash"]
+            kinds = ["basename", "bytes", "modified", "created", "hash"]
             for kind in kinds:
                 kind_result = []
                 dupes = self.find_duplicate_info(files_info, kind)
                 if dupes:
-                    # print(f"Duplicates by {kind}")
-
                     dupe_list = [dupe['info'] for dupe in dupes]
                     dupe_set = sorted(set(dupe_list))
-                    # print(dupe_set)
                     for dupe_info in dupe_set:
                         dupe_result = {}
                         dupe_result_infos = []
@@ -83,91 +72,225 @@ class FindDuplicateFiles:
                     if(kind_result):
                         result[kind] = kind_result
             if result:
-                # print()
-                # for kind, dupes in result.items():
-                #     print(f"Duplicates by {kind}")
+                reports = []
+                kind1_seen = []
+                kind2_seen = []
 
-                #     for dupe in dupes:
-                #         kind_values = sorted(dupe.keys())
+                with Mtqdm().open_bar(len(kinds) * (len(kinds)-1), desc="Finding Doubles") as bar:
 
-                #         for kind_value in kind_values:
-                #             entries = dupe[kind_value]
-                #             if isinstance(kind_value, int):
-                #                 print(f"[{kind_value:,}]")
-                #             elif isinstance(kind_value, float):
-                #                 milliseconds = f"{kind_value - int(kind_value):.4f}"[2:]
-                #                 print(f"[{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(kind_value))}.{milliseconds}]")
-                #             else:
-                #                 print(f"[{kind_value}]")
+                    kind_keys1 = result.keys()
+                    for kind1 in kind_keys1:
+                        kind1_seen.append(kind1)
+                        dupes1 = result[kind1]
 
-                #             for entry in entries:
-                #                 print(f"{entry['abspath']}")
-                #         print()
-                #     print()
+                        kind_keys2 = [key for key in result.keys() if key not in kind1_seen]
+                        for kind2 in kind_keys2:
+                            kind2_seen.append(kind2)
+                            dupes2 = result[kind2]
 
-                results = []
-                for kind, dupes in result.items():
-                    for kind_other, dupes_other in result.items():
-                        if kind_other == kind:
-                            continue
-                        for dupe in dupes:
-                            kind_values = sorted(dupe.keys())
-                            for dupe_other in dupes_other:
-                                kind_values_other = sorted(dupe_other.keys())
-                                for kind_value in kind_values:
-                                    entries = dupe[kind_value]
-                                    entries_paths = [entry['abspath'] for entry in entries]
-                                    for kind_value_other in kind_values_other:
-                                        entries_other = dupe_other[kind_value_other]
-                                        entries_paths_other = [entry['abspath'] for entry in entries_other]
-                                        common_entries = list(set(entries_paths).intersection(entries_paths_other))
-                                        if len(common_entries) > 1:
-                                            record = {}
-                                            record["kind1"] = kind
-                                            record["kind2"] = kind_other
-                                            record["kindvalue1"] = kind_value
-                                            record["kindvalue2"] = kind_value_other
-                                            record["dupes"] = common_entries
-                                            results.append(record)
-                                            # print(record)
-                                            # print()
-                for result in results:
+                            for dupe in dupes1:
+                                kind_values1 = sorted(dupe.keys())
+
+                                for dupe2 in dupes2:
+                                    kind_values2 = sorted(dupe2.keys())
+
+                                    for kind_value in kind_values1:
+                                        entries1 = dupe[kind_value]
+                                        entries_paths = [entry['abspath'] for entry in entries1]
+
+                                        for kind_value2 in kind_values2:
+                                            entries2 = dupe2[kind_value2]
+                                            entries_paths2 = [entry['abspath'] for entry in entries2]
+
+                                            common_entries = list(set(entries_paths).intersection(entries_paths2))
+                                            if len(common_entries) > 1:
+                                                record = {}
+                                                record["kind1"] = kind1
+                                                record["kind2"] = kind2
+                                                record["kindvalue1"] = kind_value
+                                                record["kindvalue2"] = kind_value2
+                                                record["dupes"] = common_entries
+                                                reports.append(record)
+
+                            bar.update()
+                        bar.update()
+
+                for report in reports:
                     print()
-                    print(f"Duplicates by {result['kind1']} and {result['kind2']}:")
-                    for entry in result['dupes']:
+                    print(f"Duplicates by [{report['kind1']}] and [{report['kind2']}]:")
+                    for entry in report['dupes']:
                         print(entry)
                     print()
 
-                """
->>> list1 = [1,2,3,4,5,6]
->>> list2 = [3, 5, 7, 9]
->>> list(set(list1).intersection(list2))
-
-                for each group of duplicate files within a kind+kind value, check for duplicate files in other kinds, kind values
-                files that match in other kinds+kind values are more likely to be duplicates of each other
-                e.g. files can easily have the same filename with different sizes
-
-                try each kind+kind value against each other
-                    find kind1+kind2 matches
-                    find triple, etc. for more likelihood
-
-Duplicates by bytes
-[150,601]
-C:\AI\CONDA\EMA-VFI-WebUI\DUPLICATEFILE.py
-C:\AI\CONDA\EMA-VFI-WebUI\video_remixer_processor.py
 
 
-Duplicates by modified
-[2024-10-14 08:58:32.2385]
-C:\AI\CONDA\EMA-VFI-WebUI\DUPLICATEFILE.py
-C:\AI\CONDA\EMA-VFI-WebUI\video_remixer_processor.py
+
+                reports = []
+                kind1_seen = []
+                kind2_seen = []
+                kind3_seen = []
+
+                with Mtqdm().open_bar(len(kinds) * (len(kinds)-1) * (len(kinds)-2), desc="Finding Triples") as bar:
+
+                    kind_keys1 = result.keys()
+                    for kind1 in kind_keys1:
+                        kind1_seen.append(kind1)
+                        dupes1 = result[kind1]
+
+                        kind_keys2 = [key for key in result.keys() if key not in kind1_seen]
+                        for kind2 in kind_keys2:
+                            kind2_seen.append(kind2)
+                            dupes2 = result[kind2]
+
+                            kind_keys3 = [key for key in result.keys() if key not in kind1_seen and key not in kind2_seen]
+                            for kind3 in kind_keys3:
+                                kind3_seen.append(kind3)
+                                dupes3 = result[kind3]
+
+                                for dupe in dupes1:
+                                    kind_values1 = sorted(dupe.keys())
+
+                                    for dupe2 in dupes2:
+                                        kind_values2 = sorted(dupe2.keys())
+
+                                        for dupe3 in dupes3:
+                                            kind_values3 = sorted(dupe3.keys())
+
+                                            for kind_value in kind_values1:
+                                                entries1 = dupe[kind_value]
+                                                entries_paths = [entry['abspath'] for entry in entries1]
+
+                                                for kind_value2 in kind_values2:
+                                                    entries2 = dupe2[kind_value2]
+                                                    entries_paths2 = [entry['abspath'] for entry in entries2]
+
+                                                    for kind_value3 in kind_values3:
+                                                        entries3 = dupe3[kind_value3]
+                                                        entries_paths3 = [entry['abspath'] for entry in entries3]
+
+                                                        common_entries = list(set(entries_paths).intersection(entries_paths2).intersection(entries_paths3))
+                                                        if len(common_entries) > 1:
+                                                            record = {}
+                                                            record["kind1"] = kind1
+                                                            record["kind2"] = kind2
+                                                            record["kind3"] = kind3
+                                                            record["kindvalue1"] = kind_value
+                                                            record["kindvalue2"] = kind_value2
+                                                            record["kindvalue3"] = kind_value3
+                                                            record["dupes"] = common_entries
+                                                            reports.append(record)
+
+                                bar.update()
+                            bar.update()
+                        bar.update()
+
+                for report in reports:
+                    print()
+                    print(f"Duplicates by [{report['kind1']}] and [{report['kind2']}] and [{report['kind3']}]")
+                    for entry in report['dupes']:
+                        print(entry)
+                    print()
 
 
-Duplicates by hash
-[40c71a4caed30ee7b669785f4ecefd5a3112d5e051317af1ba435a5051fa2c1e]
-C:\AI\CONDA\EMA-VFI-WebUI\DUPLICATEFILE.py
-C:\AI\CONDA\EMA-VFI-WebUI\video_remixer_processor.py
-                """
+
+
+
+
+                reports = []
+                kind1_seen = []
+                kind2_seen = []
+                kind3_seen = []
+                kind4_seen = []
+
+                with Mtqdm().open_bar(len(kinds) * (len(kinds)-1) * (len(kinds)-2) * (len(kinds)-3), desc="Finding Quaduples") as bar:
+
+                    kind_keys1 = result.keys()
+                    for kind1 in kind_keys1:
+                        kind1_seen.append(kind1)
+                        dupes1 = result[kind1]
+
+                        kind_keys2 = [key for key in result.keys() if key not in kind1_seen]
+                        for kind2 in kind_keys2:
+                            kind2_seen.append(kind2)
+                            dupes2 = result[kind2]
+
+                            kind_keys3 = [key for key in result.keys() if key not in kind1_seen and key not in kind2_seen]
+                            for kind3 in kind_keys3:
+                                kind3_seen.append(kind3)
+                                dupes3 = result[kind3]
+
+                                kind_keys4 = [key for key in result.keys() if key not in kind1_seen and key not in kind2_seen and key not in kind3_seen]
+                                for kind4 in kind_keys4:
+                                    kind4_seen.append(kind4)
+                                    dupes4 = result[kind4]
+
+
+                                    for dupe in dupes1:
+                                        kind_values1 = sorted(dupe.keys())
+
+                                        for dupe2 in dupes2:
+                                            kind_values2 = sorted(dupe2.keys())
+
+                                            for dupe3 in dupes3:
+                                                kind_values3 = sorted(dupe3.keys())
+
+                                                for dupe4 in dupes4:
+                                                    kind_values4 = sorted(dupe4.keys())
+
+
+                                                    for kind_value in kind_values1:
+                                                        entries1 = dupe[kind_value]
+                                                        entries_paths = [entry['abspath'] for entry in entries1]
+
+                                                        for kind_value2 in kind_values2:
+                                                            entries2 = dupe2[kind_value2]
+                                                            entries_paths2 = [entry['abspath'] for entry in entries2]
+
+                                                            for kind_value3 in kind_values3:
+                                                                entries3 = dupe3[kind_value3]
+                                                                entries_paths3 = [entry['abspath'] for entry in entries3]
+
+                                                                for kind_value4 in kind_values4:
+                                                                    entries4 = dupe4[kind_value4]
+                                                                    entries_paths4 = [entry['abspath'] for entry in entries4]
+
+
+                                                                common_entries = list(set(entries_paths).intersection(entries_paths2).intersection(entries_paths3).intersection(entries_paths4))
+                                                                if len(common_entries) > 1:
+                                                                    record = {}
+                                                                    record["kind1"] = kind1
+                                                                    record["kind2"] = kind2
+                                                                    record["kind3"] = kind3
+                                                                    record["kind4"] = kind4
+                                                                    record["kindvalue1"] = kind_value
+                                                                    record["kindvalue2"] = kind_value2
+                                                                    record["kindvalue3"] = kind_value3
+                                                                    record["kindvalue4"] = kind_value4
+                                                                    record["dupes"] = common_entries
+                                                                    reports.append(record)
+
+                                    bar.update()
+                                bar.update()
+                            bar.update()
+                        bar.update()
+
+                for report in reports:
+                    print()
+                    print(f"Duplicates by [{report['kind1']}] and [{report['kind2']}] and [{report['kind2']}] and [{report['kind4']}]")
+                    for entry in report['dupes']:
+                        print(entry)
+                    print()
+
+
+
+
+
+
+
+
+
+
+
 
     @staticmethod
     def compute_file_hash(file_path : str, algorithm="sha256") -> str:
