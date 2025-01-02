@@ -13,29 +13,49 @@ def main():
     """Use the Find Duplicate Files feature from the command line"""
     parser = argparse.ArgumentParser(description='Find Duplicate files')
     parser.add_argument("--path", default="./", type=str,
-        help="Path to files to check")
+        help="Path to files to check (default: '.\')")
+    parser.add_argument("--path2", default="", type=str,
+        help="Secondary path to files to check (optional, default none)")
+    parser.add_argument("--type", default="*", type=str,
+        help="Type of files to check (default: all types)")
     parser.add_argument("--subpaths", dest="recursive", default=False, action="store_true",
-        help="True to recursively check all sub-paths")
+        help="Recursively check all sub-paths")
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
     args = parser.parse_args()
 
     log = SimpleLog(args.verbose)
-    FindDuplicateFiles(args.path, args.recursive, log.log).find()
+    FindDuplicateFiles(args.path, args.path2, args.type, args.recursive, log.log).find()
 
 class FindDuplicateFiles:
     """Encapsulate logic for Find Duplicate Files feature"""
     def __init__(self,
                 path : str,
+                path2 : str,
+                type : str,
                 recursive : bool,
                 log_fn : Callable | None):
         self.path = path
-        self.resursive = recursive
+        self.path2 = path2
+        self.type = type
+        self.recursive = recursive
         self.log_fn = log_fn
 
     def find(self) -> None:
         """Invoke the Find Duplicate Files feature"""
-        files = sorted(glob.glob(os.path.join(self.path, "**", "*.*"), recursive=self.resursive))
+        wildcard = f"*.{self.type}"
+        files = []
+        files2 = []
+        if self.recursive:
+            files = sorted(glob.glob(os.path.join(self.path, "**", wildcard), recursive=True))
+            if self.path2:
+                files2 = sorted(glob.glob(os.path.join(self.path2, "**", wildcard), recursive=True))
+        else:
+            files = sorted(glob.glob(os.path.join(self.path, wildcard), recursive=False))
+            if self.path2:
+                files2 = sorted(glob.glob(os.path.join(self.path2, wildcard), recursive=False))
+        files = files + files2
+
         num_files = len(files)
         self.log(f"Found {num_files} files")
 
