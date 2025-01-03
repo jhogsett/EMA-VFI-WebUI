@@ -3,11 +3,13 @@ import argparse
 import glob
 import hashlib
 import os
+import re
 import time
 from typing import Callable
 from webui_utils.simple_log import SimpleLog
 from webui_utils.mtqdm import Mtqdm
 from webui_utils.color_out import ColorOut
+from webui_utils.file_utils import create_directory
 # from PIL import Image
 
 def main():
@@ -36,6 +38,18 @@ def main():
         ColorOut(f"Please choose one of these values for '--keep':\r\n{', '.join(FindDuplicateFiles.KEEPTYPES)}", "green")
         return
 
+    if args.dupepath and not args.keep:
+        ColorOut(f"Please include the '--keep' argument whe specifying '--dupepath'", "green")
+        return
+
+    if args.keep and not args.dupepath:
+        ColorOut("Please include the '--dupepath' argument when specifying '--keep'", "green")
+        return
+
+    if args.keepre:
+        ColorOut("The '-keepre' feature is not yet implemented", "green")
+        return
+
     log = SimpleLog(args.verbose)
     FindDuplicateFiles(args.path, args.path2, args.wild, args.recursive, args.dupepath, args.keep, args.keepre, log.log).find()
 
@@ -60,21 +74,21 @@ class FindDuplicateFiles:
         self.log_fn = log_fn
 
     KEEPTYPES = [
-        'firstfound',
-        'lastfound',
-        'shortestpath',
-        'longestpath',
-        'shortestname',
-        'longestname',
-        'mostcomplexname',
-        'leastcomplexname',
+        # 'firstfound',
+        # 'lastfound',
+        # 'shortestpath',
+        # 'longestpath',
+        # 'shortestname',
+        # 'longestname',
+        # 'mostcomplexname',
+        # 'leastcomplexname',
         'mostcomplexpath',
-        'leastcomplexpath',
-        'createdoldest',
-        'creatednewest',
-        'modifieddoldest',
-        'modifieddnewest',
-        'random'
+        # 'leastcomplexpath',
+        # 'createdoldest',
+        # 'creatednewest',
+        # 'modifieddoldest',
+        # 'modifieddnewest',
+        # 'random'
     ]
 
 
@@ -216,13 +230,42 @@ class FindDuplicateFiles:
                                 bar2.update()
                         bar.update()
 
-                for report in reports:
-                    print()
-                    print("-" * 100)
-                    print(f"Duplicates by [{report['kind1']}] and [{report['kind2']}]:")
-                    for entry in report['dupes']:
-                        print(entry)
-                    print()
+                if self.dupepath and self.keep:
+                    create_directory(self.dupepath)
+                    for report in reports:
+                        print()
+                        print("-" * 100)
+                        abspaths = report['dupes']
+                        scores = self.abspath_complexity_scores(abspaths)
+                        # print(scores)
+                        score_list = sorted(scores.values(), reverse=True)
+                        # keep_abspaths = []
+                        dupe_abspaths = []
+
+                        keep_abspath = None
+                        for abspath, score in scores.items():
+                            if not keep_abspath and score == score_list[0]:
+                                keep_abspath = abspath
+                            else:
+                                dupe_abspaths.append(abspath)
+
+                        # if len(keep_abspaths) > 1:
+                        #     # TODO better way to resolve multiple highest scoring complex paths
+                        #     keep_abspath = keep_abspaths[0]
+                        # else:
+                        #     keep_abspath = keep_abspaths[0]
+
+                        print(f"KEEP: {keep_abspath}")
+                        for dupe in dupe_abspaths:
+                            print(f"dedupe: {dupe}")
+                else:
+                    for report in reports:
+                        print()
+                        print("-" * 100)
+                        print(f"Duplicates by [{report['kind1']}] and [{report['kind2']}]:")
+                        for entry in report['dupes']:
+                            print(entry)
+                        print()
 
 
 
@@ -441,6 +484,48 @@ class FindDuplicateFiles:
                 entry["info"] = info[kind]
                 result.append(entry)
         return result
+
+    def abspath_complexity_scores(self, abspaths : list) -> dict:
+        result = {}
+        for abspath in abspaths:
+            score = self.complexity_score(abspath)
+            result[abspath] = score
+        return result
+
+    # from Gemini AI, vefified
+    # prompt: I need a methodology and a python algorithm for the following:
+    # I want to evaluate a set of Windows File names and determine whether they are
+    # simpler or more complex, for example Maybe by more complex it means a wider variety
+    # of characters or additional character sets or something. I'm looking for ideas.
+    def complexity_score(self, filename):
+        """
+        Calculates a complexity score for a given Windows filename.
+
+        Args:
+        filename: The Windows filename to evaluate.
+
+        Returns:
+        A complexity score, where higher scores indicate higher complexity.
+        """
+
+        score = 0
+
+        # Check for special characters
+        special_chars = re.findall(r"[^\w\s\.-]", filename)
+        score += len(set(special_chars)) * 2  # Weight special characters
+
+        # Check for uppercase letters
+        uppercase_count = sum(1 for char in filename if char.isupper())
+        score += uppercase_count / len(filename)  # Normalize by filename length
+
+        # Check for digits
+        digit_count = sum(1 for char in filename if char.isdigit())
+        score += digit_count / len(filename)  # Normalize by filename length
+
+        # Check for length
+        score += len(filename) / 100  # Normalize by length (longer filenames are slightly more complex)
+
+        return score
 
     def log(self, message : str) -> None:
         """Logging"""
