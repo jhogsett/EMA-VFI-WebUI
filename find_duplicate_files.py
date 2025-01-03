@@ -4,12 +4,13 @@ import glob
 import hashlib
 import os
 import re
+import shutil
 import time
 from typing import Callable
 from webui_utils.simple_log import SimpleLog
 from webui_utils.mtqdm import Mtqdm
 from webui_utils.color_out import ColorOut
-from webui_utils.file_utils import create_directory
+from webui_utils.file_utils import create_directory, split_filepath
 # from PIL import Image
 
 def main():
@@ -29,6 +30,10 @@ def main():
         help="If specified, indicates a selection 'type' for keeping a single file while dedeuplicating all others (default: None)")
     parser.add_argument("--keepre", default=None, type=str,
         help="If specified, indicates a selection regex for keeping a single file while deduplicating all others (default: None)")
+    parser.add_argument("--move", dest="move", default=False, action="store_true",
+        help="Move duplicate files in path1 to 'dupepath'")
+    parser.add_argument("--funnel", dest="funnel", default=False, action="store_true",
+        help="Repeatedly deduplicate to auto-numbered directories")
 
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
@@ -51,7 +56,10 @@ def main():
         return
 
     log = SimpleLog(args.verbose)
-    FindDuplicateFiles(args.path, args.path2, args.wild, args.recursive, args.dupepath, args.keep, args.keepre, log.log).find()
+    if args.funnel:
+        FindDuplicateFiles(args.path, args.path2, args.wild, args.recursive, args.dupepath, args.keep, args.keepre, args.move, log.log).funnel()
+    else:
+        FindDuplicateFiles(args.path, args.path2, args.wild, args.recursive, args.dupepath, args.keep, args.keepre, args.move, log.log).find()
 
 class FindDuplicateFiles:
     """Encapsulate logic for Find Duplicate Files feature"""
@@ -63,6 +71,7 @@ class FindDuplicateFiles:
                 dupepath : str,
                 keep : str,
                 keepre : str,
+                move : bool,
                 log_fn : Callable | None):
         self.path = path
         self.path2 = path2
@@ -71,6 +80,7 @@ class FindDuplicateFiles:
         self.dupepath = dupepath
         self.keep = keep
         self.keepre = keepre
+        self.move = move
         self.log_fn = log_fn
 
     KEEPTYPES = [
@@ -93,17 +103,43 @@ class FindDuplicateFiles:
 
 
 
-    def find(self) -> None:
-        """Invoke the Find Duplicate Files feature"""
+    def funnel(self) -> None:
+        """
+        Recursively deduplicate a directory into nested, automatically-numbered
+        directories containing further duplies. Stops when no more files are moved.
+        """
+        # do an initial deduplication to the dupepath
+        print("First dedplication")
+        have_moved = self.find()
+        last_dedupe_path = self.dupepath
+        step = 0
+
+        while have_moved:
+            step += 1
+            deeper_path = f"{self.dupepath}{step:02d}"
+            print(f"Step {step}")
+            have_moved = self.find(override_path=last_dedupe_path, override_dupepath=deeper_path)
+            last_dedupe_path = deeper_path
+            print(".", end="")
+        print()
+
+    def find(self, override_path : str | None=None, override_dupepath : str | None=None) -> int:
+        """
+        Invoke the Find Duplicate Files feature
+        returns the count of files moved
+        """
+        moved = 0
         files = []
         files2 = []
+        root_path = override_path or self.path
+        dupe_path = override_dupepath or self.dupepath
         if self.recursive:
-            path = os.path.join(self.path, "**", self.wild)
+            path = os.path.join(root_path, "**", self.wild)
             files = sorted(glob.glob(path, recursive=True))
             if self.path2:
                 files2 = sorted(glob.glob(os.path.join(self.path2, "**", self.wild), recursive=True))
         else:
-            path = os.path.join(self.path, self.wild)
+            path = os.path.join(root_path, self.wild)
             files = sorted(glob.glob(path, recursive=False))
             if self.path2:
                 files2 = sorted(glob.glob(os.path.join(self.path2, self.wild), recursive=False))
@@ -130,16 +166,16 @@ class FindDuplicateFiles:
                         file_info["hash"] = FindDuplicateFiles.compute_file_hash(file)
                     except Exception as error:
                         inaccessible_paths[file] = str(error)
-                        ColorOut(f"\r\nSkipping file {file} due to error: {str(error)}\r\n")
+                        self.log(f"\r\nSkipping file {file} due to error: {str(error)}")
                         continue
 
                     files_info[file] = file_info
                     Mtqdm().update_bar(bar)
 
         if inaccessible_paths:
-            print("Inaccessible Paths:")
+            # print("Inaccessible Paths:")
             for path, error in inaccessible_paths.items():
-                print(f"{path} : {error}")
+                # print(f"{path} : {error}")
                 files.remove(path)
 
         if files_info:
@@ -163,11 +199,9 @@ class FindDuplicateFiles:
                             for dupe_info in dupe_set:
                                 dupe_result = {}
                                 dupe_result_infos = []
-                                with Mtqdm().open_bar(len(dupe_set), desc="Correlating Files") as bar3:
-                                    for _, info in files_info.items():
-                                        if info[kind] == dupe_info:
-                                            dupe_result_infos.append(info)
-                                        bar3.update()
+                                for _, info in files_info.items():
+                                    if info[kind] == dupe_info:
+                                        dupe_result_infos.append(info)
 
                                 dupe_result[dupe_info] = dupe_result_infos
                                 kind_result.append(dupe_result)
@@ -182,64 +216,52 @@ class FindDuplicateFiles:
                 kind1_seen = []
                 kind2_seen = []
 
-
                 kind_keys1 = result.keys()
-                with Mtqdm().open_bar(len(kind_keys1), desc="Finding Matches-1") as bar:
-                    for kind1 in kind_keys1:
-                        kind1_seen.append(kind1)
-                        dupes1 = result[kind1]
+                for kind1 in kind_keys1:
+                    kind1_seen.append(kind1)
+                    dupes1 = result[kind1]
 
-                        kind_keys2 = [key for key in result.keys() if key not in kind1_seen]
-                        with Mtqdm().open_bar(len(kind_keys2), desc="Finding Matches-2") as bar2:
-                            for kind2 in kind_keys2:
-                                kind2_seen.append(kind2)
-                                dupes2 = result[kind2]
+                    kind_keys2 = [key for key in result.keys() if key not in kind1_seen]
+                    for kind2 in kind_keys2:
+                        kind2_seen.append(kind2)
+                        dupes2 = result[kind2]
 
-                                with Mtqdm().open_bar(len(dupes1), desc="Matching Duplicates") as bar3:
-                                    for dupe in dupes1:
-                                        kind_values1 = sorted(dupe.keys())
+                        with Mtqdm().open_bar(len(dupes1), desc="Matching Duplicates") as bar:
+                            for dupe in dupes1:
+                                kind_values1 = sorted(dupe.keys())
 
-                                        # with Mtqdm().open_bar(len(dupes2), desc="Examining Duplicates-1") as bar4:
-                                        for dupe2 in dupes2:
-                                            kind_values2 = sorted(dupe2.keys())
+                                for dupe2 in dupes2:
+                                    kind_values2 = sorted(dupe2.keys())
 
-                                            # with Mtqdm().open_bar(len(kind_values1), desc="Matching Kinds-1") as bar5:
-                                            for kind_value in kind_values1:
-                                                entries1 = dupe[kind_value]
-                                                entries_paths1 = [entry['abspath'] for entry in entries1]
+                                    for kind_value in kind_values1:
+                                        entries1 = dupe[kind_value]
+                                        entries_paths1 = [entry['abspath'] for entry in entries1]
 
-                                                # with Mtqdm().open_bar(len(kind_values2), desc="Matching Kinds-2") as bar6:
-                                                for kind_value2 in kind_values2:
-                                                    entries2 = dupe2[kind_value2]
-                                                    entries_paths2 = [entry['abspath'] for entry in entries2]
+                                        for kind_value2 in kind_values2:
+                                            entries2 = dupe2[kind_value2]
+                                            entries_paths2 = [entry['abspath'] for entry in entries2]
 
-                                                    common_entries = list(set(entries_paths1).intersection(entries_paths2))
-                                                    if len(common_entries) > 1:
-                                                        record = {}
-                                                        record["kind1"] = kind1
-                                                        record["kind2"] = kind2
-                                                        record["kindvalue1"] = kind_value
-                                                        record["kindvalue2"] = kind_value2
-                                                        record["dupes"] = common_entries
-                                                        reports.append(record)
+                                            common_entries = list(set(entries_paths1).intersection(entries_paths2))
+                                            if len(common_entries) > 1:
+                                                record = {}
+                                                record["kind1"] = kind1
+                                                record["kind2"] = kind2
+                                                record["kindvalue1"] = kind_value
+                                                record["kindvalue2"] = kind_value2
+                                                record["dupes"] = common_entries
+                                                reports.append(record)
+                                bar.update()
 
-                                                    # bar6.update()
-                                                # bar5.update()
-                                            # bar4.update()
-                                        bar3.update()
-                                bar2.update()
-                        bar.update()
+                if dupe_path and self.keep:
+                    if self.move:
+                        create_directory(dupe_path)
 
-                if self.dupepath and self.keep:
-                    create_directory(self.dupepath)
                     for report in reports:
                         print()
                         print("-" * 100)
                         abspaths = report['dupes']
                         scores = self.abspath_complexity_scores(abspaths)
-                        # print(scores)
                         score_list = sorted(scores.values(), reverse=True)
-                        # keep_abspaths = []
                         dupe_abspaths = []
 
                         keep_abspath = None
@@ -249,15 +271,18 @@ class FindDuplicateFiles:
                             else:
                                 dupe_abspaths.append(abspath)
 
-                        # if len(keep_abspaths) > 1:
-                        #     # TODO better way to resolve multiple highest scoring complex paths
-                        #     keep_abspath = keep_abspaths[0]
-                        # else:
-                        #     keep_abspath = keep_abspaths[0]
-
                         print(f"KEEP: {keep_abspath}")
+                        path_len = len(root_path)
                         for dupe in dupe_abspaths:
-                            print(f"dedupe: {dupe}")
+                            if self.path2 and dupe.startswith(self.path2):
+                                continue
+                            new_dupe_path = os.path.join(dupe_path, dupe[path_len+1:])
+                            print(f"MOVE: {dupe} to {new_dupe_path}")
+                            if self.move:
+                                path, _, _ = split_filepath(new_dupe_path)
+                                create_directory(path)
+                                shutil.move(dupe, new_dupe_path)
+                                moved += 1
                 else:
                     for report in reports:
                         print()
@@ -430,7 +455,7 @@ class FindDuplicateFiles:
                 #         print(entry)
                 #     print()
 
-
+        return moved
 
 
 
