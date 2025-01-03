@@ -34,6 +34,8 @@ def main():
         help="Move duplicate files in path1 to 'dupepath'")
     parser.add_argument("--funnel", dest="funnel", default=False, action="store_true",
         help="Repeatedly deduplicate to auto-numbered directories")
+    parser.add_argument("--defunnel", dest="defunnel", default=False, action="store_true",
+        help="Undo a funnel operation")
 
     parser.add_argument("--verbose", dest="verbose", default=False, action="store_true",
         help="Show extra details")
@@ -58,6 +60,8 @@ def main():
     log = SimpleLog(args.verbose)
     if args.funnel:
         FindDuplicateFiles(args.path, args.path2, args.wild, args.recursive, args.dupepath, args.keep, args.keepre, args.move, log.log).funnel()
+    elif args.defunnel:
+        FindDuplicateFiles(args.path, args.path2, args.wild, args.recursive, args.dupepath, args.keep, args.keepre, args.move, log.log).defunnel()
     else:
         FindDuplicateFiles(args.path, args.path2, args.wild, args.recursive, args.dupepath, args.keep, args.keepre, args.move, log.log).find()
 
@@ -100,6 +104,47 @@ class FindDuplicateFiles:
         # 'modifieddnewest',
         # 'random'
     ]
+
+    def defunnel(self) -> None:
+        """
+        Flatten a set of directories previously created using self.funnel()
+        """
+        print("First dedplication")
+        glob_dedupe_path = os.path.join(self.dupepath, "**", "*.*")
+
+        files = sorted(glob.glob(glob_dedupe_path, recursive=True))
+        with Mtqdm().open_bar(len(files), desc="Restoring Files") as bar:
+            for file in files:
+                if self.move:
+                    try:
+                        shutil.move(file, self.path)
+                    except Exception as error:
+                        self.log(f"error {str(error)} for file {file})")
+                bar.update()
+
+        step = 0
+        while True:
+            step += 1
+            deeper_path = f"{self.dupepath}{step:02d}"
+            if not os.path.exists(deeper_path):
+                break
+
+            glob_deeper_path = os.path.join(deeper_path, "**", "*.*")
+            print(f"Step {step} {glob_deeper_path}")
+
+            files = sorted(glob.glob(glob_deeper_path, recursive=True))
+            with Mtqdm().open_bar(len(files), desc="Restoring Files") as bar:
+                for file in files:
+                    if self.move:
+                        try:
+                            shutil.move(file, self.path)
+                        except Exception as error:
+                            self.log(f"error {str(error)} for file {file})")
+                    bar.update()
+
+        # the dupepath becomes the new root name for all the numbered paths
+        # using self.dupapath as a base, move all found directories and files
+        # to the original self.path
 
 
 
