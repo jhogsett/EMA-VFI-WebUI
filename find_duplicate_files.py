@@ -41,6 +41,16 @@ def main():
         help="Show extra details")
     args = parser.parse_args()
 
+    log = SimpleLog(args.verbose)
+
+    if args.keepre:
+        ColorOut("The '-keepre' feature is not yet implemented", "green")
+        return
+
+    if args.defunnel:
+        FindDuplicateFiles(args.path, args.path2, args.wild, args.recursive, args.dupepath, args.keep, args.keepre, args.move, log.log).defunnel()
+        return
+
     if args.keep and args.keep not in FindDuplicateFiles.KEEPTYPES:
         ColorOut(f"Please choose one of these values for '--keep':\r\n{', '.join(FindDuplicateFiles.KEEPTYPES)}", "green")
         return
@@ -53,15 +63,8 @@ def main():
         ColorOut("Please include the '--dupepath' argument when specifying '--keep'", "green")
         return
 
-    if args.keepre:
-        ColorOut("The '-keepre' feature is not yet implemented", "green")
-        return
-
-    log = SimpleLog(args.verbose)
     if args.funnel:
         FindDuplicateFiles(args.path, args.path2, args.wild, args.recursive, args.dupepath, args.keep, args.keepre, args.move, log.log).funnel()
-    elif args.defunnel:
-        FindDuplicateFiles(args.path, args.path2, args.wild, args.recursive, args.dupepath, args.keep, args.keepre, args.move, log.log).defunnel()
     else:
         FindDuplicateFiles(args.path, args.path2, args.wild, args.recursive, args.dupepath, args.keep, args.keepre, args.move, log.log).find()
 
@@ -88,21 +91,22 @@ class FindDuplicateFiles:
         self.log_fn = log_fn
 
     KEEPTYPES = [
-        # 'firstfound',
-        # 'lastfound',
-        # 'shortestpath',
-        # 'longestpath',
-        # 'shortestname',
-        # 'longestname',
-        # 'mostcomplexname',
-        # 'leastcomplexname',
-        'mostcomplexpath',
-        # 'leastcomplexpath',
-        # 'createdoldest',
-        # 'creatednewest',
-        # 'modifieddoldest',
-        # 'modifieddnewest',
+        # 'minfound',
+        # 'maxfound',
+        # 'minpath',
+        # 'maxpath',
+        # 'minname',
+        # 'maxname',
+        # 'minnamecomplex',
+        # 'maxnamecomplex',
+        'minpathcomplex',
+        'maxpathcomplex',
+        # 'mincreated',
+        # 'maxnewest',
+        # 'minmodified',
+        # 'maxmodified',
         # 'random'
+        # 'phsycial',
     ]
 
     def defunnel(self) -> None:
@@ -305,8 +309,11 @@ class FindDuplicateFiles:
                         print()
                         print("-" * 100)
                         abspaths = report['dupes']
-                        scores = self.abspath_complexity_scores(abspaths)
-                        score_list = sorted(scores.values(), reverse=True)
+                        keep_paths = [path for path in abspaths if not self.path2 or path.startswith(self.path2)]
+                        scores = self.abspath_complexity_scores(keep_paths)
+                        max_first = self.keep.startswith('max')
+                        # min_first = self.keep.startswith('min')
+                        score_list = sorted(scores.values(), reverse=max_first)
                         dupe_abspaths = []
 
                         keep_abspath = None
@@ -319,8 +326,8 @@ class FindDuplicateFiles:
                         print(f"KEEP: {keep_abspath}")
                         path_len = len(root_path)
                         for dupe in dupe_abspaths:
-                            if self.path2 and dupe.startswith(self.path2):
-                                continue
+                            # if self.path2 and dupe.startswith(self.path2):
+                            #     continue
                             new_dupe_path = os.path.join(dupe_path, dupe[path_len+1:])
                             print(f"MOVE: {dupe} to {new_dupe_path}")
                             if self.move:
