@@ -248,9 +248,15 @@ class FindDuplicateFiles:
                             for dupe_info in dupe_set:
                                 dupe_result = {}
                                 dupe_result_infos = []
-                                for _, info in files_info.items():
-                                    if info[kind] == dupe_info:
-                                        dupe_result_infos.append(info)
+                                try:
+                                    for _, info in files_info.items():
+                                        if info[kind] == dupe_info:
+                                            dupe_result_infos.append(info)
+                                except Exception as error:
+                                    print(error)
+                                    print(files_info)
+                                    bar2.update()
+                                    continue
 
                                 dupe_result[dupe_info] = dupe_result_infos
                                 kind_result.append(dupe_result)
@@ -309,25 +315,39 @@ class FindDuplicateFiles:
                         print()
                         print("-" * 100)
                         abspaths = report['dupes']
-                        keep_paths = [path for path in abspaths if not self.path2 or path.startswith(self.path2)]
-                        scores = self.abspath_complexity_scores(keep_paths)
-                        max_first = self.keep.startswith('max')
-                        # min_first = self.keep.startswith('min')
-                        score_list = sorted(scores.values(), reverse=max_first)
-                        dupe_abspaths = []
+                        # keep_paths = [path for path in abspaths if not self.path2 or not path.startswith(self.path2)]
+                        keep_paths = [path for path in abspaths if path.startswith(self.path)]
 
                         keep_abspath = None
-                        for abspath, score in scores.items():
-                            if not keep_abspath and score == score_list[0]:
-                                keep_abspath = abspath
-                            else:
-                                dupe_abspaths.append(abspath)
+                        dupe_abspaths = []
+                        if self.path2 and len(keep_paths) == 1:
+                            path2_paths = [path for path in abspaths if path.startswith(self.path2)]
+                            # if there's only one file in the keep path and duplicate
+                            # files from path2, that one file is to be deleted
+                            if len(path2_paths):
+                                dupe_abspaths.append(keep_paths[0])
+                                print(f"KEEP: Files in {self.path2}")
+                        else:
+                            scores = self.abspath_complexity_scores(keep_paths)
+                            max_first = self.keep.startswith('max')
+                            # min_first = self.keep.startswith('min')
+                            score_list = sorted(scores.values(), reverse=max_first)
+                            # print(score_list)
 
-                        print(f"KEEP: {keep_abspath}")
+                            for abspath, score in scores.items():
+                                if not keep_abspath and score == score_list[0]:
+                                    keep_abspath = abspath
+                                else:
+                                    dupe_abspaths.append(abspath)
+                                # print(abspath, score)
+                            print(f"KEEP: {keep_abspath}")
+
                         path_len = len(root_path)
                         for dupe in dupe_abspaths:
-                            # if self.path2 and dupe.startswith(self.path2):
-                            #     continue
+
+                            if self.path2 and dupe.startswith(self.path2):
+                                continue
+
                             new_dupe_path = os.path.join(dupe_path, dupe[path_len+1:])
                             print(f"MOVE: {dupe} to {new_dupe_path}")
                             if self.move:

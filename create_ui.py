@@ -38,6 +38,7 @@ from tabs.video_remixer_ui import VideoRemixer
 from tabs.video_assembler_ui import VideoAssembler
 from tabs.transpose_png_files_ui import TransposePngFiles
 from tabs.enhance_frames_ui import EnhanceFrames
+from tabs.file_deduplicater_ui import FileDeduplicator
 
 APP_TAB_INTERPOLATE_FRAMES=0
 APP_TAB_INTERPOLATE_VIDEO=1
@@ -122,6 +123,7 @@ def create_ui(config : SimpleConfig,
                     TransposePngFiles(config, engine, log.log).render_tab()
                     SimplifyPngFiles(config, engine, log.log).render_tab()
                     VideoAssembler(config, engine, log.log).render_tab()
+                    FileDeduplicator(config, engine, log.log).render_tab()
                 ChangeFPS(config, engine, log.log).render_tab()
                 EnhanceFrames(config, engine, log.log).render_tab()
                 GIFtoMP4(config, engine, log.log).render_tab()
