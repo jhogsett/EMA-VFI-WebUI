@@ -157,10 +157,10 @@ class FileDeduplicator(TabBase):
                 root_path = path.split(os.sep)[0]
                 path1_name = input_path[len(root_path)+1:]
 
-                if self.path2:
+                if input_path2:
                     path = os.path.normpath(input_path2)
-                    root_path = path.split(os.sep)[0]
-                    path2_name = input_path2[len(root_path)+1:]
+                    root_path2 = path.split(os.sep)[0]
+                    path2_name = input_path2[len(root_path2)+1:]
 
                     dupe_path = os.path.join(root_path, f"\DUPES-{path1_name}-{path2_name}")
                 else:
