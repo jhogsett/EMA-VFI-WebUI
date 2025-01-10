@@ -229,42 +229,80 @@ class FindDuplicateFiles:
 
         if files_info:
             result = {}
-            kinds = [
-                "hash",
-                "bytes",
-                # "basename",
-                # "modified",
-                # "created",
-            ]
 
-            with Mtqdm().open_bar(len(kinds), desc="Finding Duplicates") as bar:
-                for kind in kinds:
-                    kind_result = []
-                    dupes = self.find_duplicate_info(files_info, kind)
-                    if dupes:
-                        dupe_list = [dupe['info'] for dupe in dupes]
-                        dupe_set = sorted(set(dupe_list))
-                        with Mtqdm().open_bar(len(dupe_set), desc=f"Scanning for [{kind}] Matches") as bar2:
-                            for dupe_info in dupe_set:
-                                dupe_result = {}
-                                dupe_result_infos = []
-                                try:
-                                    for _, info in files_info.items():
-                                        if info[kind] == dupe_info:
-                                            dupe_result_infos.append(info)
-                                except Exception as error:
-                                    print(error)
-                                    print(files_info)
-                                    bar2.update()
-                                    continue
 
-                                dupe_result[dupe_info] = dupe_result_infos
-                                kind_result.append(dupe_result)
 
-                                if(kind_result):
-                                    result[kind] = kind_result
-                                bar2.update()
-                    bar.update()
+
+            hash_result = []
+            # hash_filenames = []
+            hash_files_info = {}
+            dupes = self.find_duplicate_info(files_info, "hash")
+            if dupes:
+                dupe_list = [dupe['info'] for dupe in dupes]
+                dupe_set = sorted(set(dupe_list))
+                with Mtqdm().open_bar(len(dupe_set), desc="Scanning for 'hash' Matches") as bar:
+                    for dupe_info in dupe_set:
+                        dupe_result = {}
+                        dupe_result_infos = []
+                        try:
+                            for name, info in files_info.items():
+                                if info["hash"] == dupe_info:
+                                    dupe_result_infos.append(info)
+                                    hash_files_info[name] = info
+                        except Exception as error:
+                            print(error)
+                            # print(files_info)
+                            bar.update()
+                            continue
+
+                        dupe_result[dupe_info] = dupe_result_infos
+                        hash_result.append(dupe_result)
+
+                        if(hash_result):
+                            result["hash"] = hash_result
+                        bar.update()
+
+            # # filter files_info by hash filenames
+            # hash_files_info = []
+            # for name, info in files_info.items():
+            #     if name in hash_filenames:
+
+
+            bytes_result = []
+            dupes = self.find_duplicate_info(hash_files_info, "bytes")
+            if dupes:
+
+                # print("*" * 100)
+                # print(dupes[0])
+# {'name': 'L:\\CONTENT\\2018\\06160110-9798-tubezzz.net.jpg', 'kind': 'hash', 'info': '9dfd7031e1cd647dffd9b7ad7c213fe113fc3b02adcd0246bc46b5f358a982fc'}
+
+                dupe_list = [dupe['info'] for dupe in dupes]
+                dupe_set = sorted(set(dupe_list))
+                with Mtqdm().open_bar(len(dupe_set), desc=f"Scanning for 'bytes' Matches") as bar:
+                    for dupe_info in dupe_set:
+                        dupe_result = {}
+                        dupe_result_infos = []
+                        try:
+                            for name, info in hash_files_info.items():
+                                if info["bytes"] == dupe_info:
+                                    dupe_result_infos.append(info)
+                        except Exception as error:
+                            print(error)
+                            # print(files_info)
+                            bar.update()
+                            continue
+
+                        dupe_result[dupe_info] = dupe_result_infos
+                        bytes_result.append(dupe_result)
+
+                        if(bytes_result):
+                            result["bytes"] = bytes_result
+                        bar.update()
+
+
+
+
+
 
             if result:
                 reports = []
@@ -364,168 +402,6 @@ class FindDuplicateFiles:
                             print(entry)
                         print()
 
-
-
-
-                # reports = []
-                # kind1_seen = []
-                # kind2_seen = []
-                # kind3_seen = []
-
-                # kind_keys1 = result.keys()
-                # with Mtqdm().open_bar(len(kind_keys1), desc="Finding Triple Matches-1") as bar:
-                #     for kind1 in kind_keys1:
-                #         kind1_seen.append(kind1)
-                #         dupes1 = result[kind1]
-
-                #         kind_keys2 = [key for key in result.keys() if key not in kind1_seen]
-                #         with Mtqdm().open_bar(len(kind_keys2), desc="Finding Triple Matches-2") as bar2:
-                #             for kind2 in kind_keys2:
-                #                 kind2_seen.append(kind2)
-                #                 dupes2 = result[kind2]
-
-                #                 kind_keys3 = [key for key in result.keys() if key not in kind1_seen and key not in kind2_seen]
-                #                 with Mtqdm().open_bar(len(kind_keys3), desc="Finding Triple Matches-3") as bar3:
-                #                     for kind3 in kind_keys3:
-                #                         kind3_seen.append(kind3)
-                #                         dupes3 = result[kind3]
-
-                #                         with Mtqdm().open_bar(len(dupes1), desc="Examinging Duplicates-1") as bar4:
-                #                             for dupe in dupes1:
-                #                                 kind_values1 = sorted(dupe.keys())
-
-                #                         # with Mtqdm().open_bar(len(dupes1), desc="Examinging Duplicates-2") as bar5:
-                #                             for dupe2 in dupes2:
-                #                                 kind_values2 = sorted(dupe2.keys())
-
-                #                                 for dupe3 in dupes3:
-                #                                     kind_values3 = sorted(dupe3.keys())
-
-                #                                     for kind_value in kind_values1:
-                #                                         entries1 = dupe[kind_value]
-                #                                         entries_paths1 = [entry['abspath'] for entry in entries1]
-
-                #                                         for kind_value2 in kind_values2:
-                #                                             entries2 = dupe2[kind_value2]
-                #                                             entries_paths2 = [entry['abspath'] for entry in entries2]
-
-                #                                             for kind_value3 in kind_values3:
-                #                                                 entries3 = dupe3[kind_value3]
-                #                                                 entries_paths3 = [entry['abspath'] for entry in entries3]
-
-                #                                                 common_entries = list(set(entries_paths1).intersection(entries_paths2).intersection(entries_paths3))
-                #                                                 if len(common_entries) > 1:
-                #                                                     record = {}
-                #                                                     record["kind1"] = kind1
-                #                                                     record["kind2"] = kind2
-                #                                                     record["kind3"] = kind3
-                #                                                     record["kindvalue1"] = kind_value
-                #                                                     record["kindvalue2"] = kind_value2
-                #                                                     record["kindvalue3"] = kind_value3
-                #                                                     record["dupes"] = common_entries
-                #                                                     reports.append(record)
-                #                                 # bar5.update()
-                #                                 bar4.update()
-                #                         bar3.update()
-                #                 bar2.update()
-                #         bar.update()
-
-                # for report in reports:
-                #     print()
-                #     print("-" * 100)
-                #     print(f"Duplicates by [{report['kind1']}] and [{report['kind2']}] and [{report['kind3']}]")
-                #     for entry in report['dupes']:
-                #         print(entry)
-                #     print()
-
-
-
-
-
-
-                # reports = []
-                # kind1_seen = []
-                # kind2_seen = []
-                # kind3_seen = []
-                # kind4_seen = []
-
-                # with Mtqdm().open_bar(len(kinds) * (len(kinds)-1) * (len(kinds)-2) * (len(kinds)-3), desc="Finding Full Matches") as bar:
-
-                #     kind_keys1 = result.keys()
-                #     for kind1 in kind_keys1:
-                #         kind1_seen.append(kind1)
-                #         dupes1 = result[kind1]
-
-                #         kind_keys2 = [key for key in result.keys() if key not in kind1_seen]
-                #         for kind2 in kind_keys2:
-                #             kind2_seen.append(kind2)
-                #             dupes2 = result[kind2]
-
-                #             kind_keys3 = [key for key in result.keys() if key not in kind1_seen and key not in kind2_seen]
-                #             for kind3 in kind_keys3:
-                #                 kind3_seen.append(kind3)
-                #                 dupes3 = result[kind3]
-
-                #                 kind_keys4 = [key for key in result.keys() if key not in kind1_seen and key not in kind2_seen and key not in kind3_seen]
-                #                 for kind4 in kind_keys4:
-                #                     kind4_seen.append(kind4)
-                #                     dupes4 = result[kind4]
-
-
-                #                     for dupe in dupes1:
-                #                         kind_values1 = sorted(dupe.keys())
-
-                #                         for dupe2 in dupes2:
-                #                             kind_values2 = sorted(dupe2.keys())
-
-                #                             for dupe3 in dupes3:
-                #                                 kind_values3 = sorted(dupe3.keys())
-
-                #                                 for dupe4 in dupes4:
-                #                                     kind_values4 = sorted(dupe4.keys())
-
-
-                #                                     for kind_value in kind_values1:
-                #                                         entries1 = dupe[kind_value]
-                #                                         entries_paths1 = [entry['abspath'] for entry in entries1]
-
-                #                                         for kind_value2 in kind_values2:
-                #                                             entries2 = dupe2[kind_value2]
-                #                                             entries_paths2 = [entry['abspath'] for entry in entries2]
-
-                #                                             for kind_value3 in kind_values3:
-                #                                                 entries3 = dupe3[kind_value3]
-                #                                                 entries_paths3 = [entry['abspath'] for entry in entries3]
-
-                #                                                 for kind_value4 in kind_values4:
-                #                                                     entries4 = dupe4[kind_value4]
-                #                                                     entries_paths4 = [entry['abspath'] for entry in entries4]
-
-                #                                                     common_entries = list(set(entries_paths1).intersection(entries_paths2).intersection(entries_paths3).intersection(entries_paths4))
-                #                                                     if len(common_entries) > 1:
-                #                                                         record = {}
-                #                                                         record["kind1"] = kind1
-                #                                                         record["kind2"] = kind2
-                #                                                         record["kind3"] = kind3
-                #                                                         record["kind4"] = kind4
-                #                                                         record["kindvalue1"] = kind_value
-                #                                                         record["kindvalue2"] = kind_value2
-                #                                                         record["kindvalue3"] = kind_value3
-                #                                                         record["kindvalue4"] = kind_value4
-                #                                                         record["dupes"] = common_entries
-                #                                                         reports.append(record)
-
-                #                     bar.update()
-                #                 bar.update()
-                #             bar.update()
-                #         bar.update()
-
-                # for report in reports:
-                #     print()
-                #     print(f"Duplicates by [{report['kind1']}] and [{report['kind2']}] and [{report['kind3']}] and [{report['kind4']}]")
-                #     for entry in report['dupes']:
-                #         print(entry)
-                #     print()
 
         return moved
 
