@@ -36,7 +36,8 @@ class FileDeduplicator(TabBase):
                         input_path = gr.Text(max_lines=1, label="Input Path",
                             info="Path on this server to the files & directories to be deduplicated")
                         input_path2 = gr.Text(max_lines=1, label="Input Path 2",
-                            info="Path on this server to optional files & directories as a read-only source of duplication")
+                            info="Path on this server to optional files & directories as a read-only source of duplication",
+                            placeholder="If specified, files in Input Path are only moved if duplicates are found in Input Path 2")
                     with gr.Row():
                         wildcard = gr.Text(value="*.*", max_lines=1, label="Wildcard",
                             info="Set to a value such as '*.jpg' to choose only 'jpg' files")

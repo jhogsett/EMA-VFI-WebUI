@@ -5,13 +5,11 @@ import hashlib
 import os
 import re
 import shutil
-import time
 from typing import Callable
 from webui_utils.simple_log import SimpleLog
 from webui_utils.mtqdm import Mtqdm
 from webui_utils.color_out import ColorOut
 from webui_utils.file_utils import create_directory, split_filepath
-# from PIL import Image
 
 def main():
     """Use the Find Duplicate Files feature from the command line"""
@@ -124,7 +122,7 @@ class FindDuplicateFiles:
                         shutil.move(file, self.path)
                     except Exception as error:
                         self.log(f"error {str(error)} for file {file})")
-                bar.update()
+                Mtqdm().update_bar(bar)
 
         step = 0
         while True:
@@ -144,13 +142,11 @@ class FindDuplicateFiles:
                             shutil.move(file, self.path)
                         except Exception as error:
                             self.log(f"error {str(error)} for file {file})")
-                    bar.update()
+                    Mtqdm().update_bar(bar)
 
         # the dupepath becomes the new root name for all the numbered paths
         # using self.dupapath as a base, move all found directories and files
         # to the original self.path
-
-
 
     def funnel(self) -> None:
         """
@@ -222,24 +218,19 @@ class FindDuplicateFiles:
                     Mtqdm().update_bar(bar)
 
         if inaccessible_paths:
-            # print("Inaccessible Paths:")
             for path, error in inaccessible_paths.items():
-                # print(f"{path} : {error}")
                 files.remove(path)
 
         if files_info:
             result = {}
 
-
-
-
             hash_result = []
-            # hash_filenames = []
             hash_files_info = {}
             dupes = self.find_duplicate_info(files_info, "hash")
             if dupes:
                 dupe_list = [dupe['info'] for dupe in dupes]
                 dupe_set = sorted(set(dupe_list))
+
                 with Mtqdm().open_bar(len(dupe_set), desc="Scanning for 'hash' Matches") as bar:
                     for dupe_info in dupe_set:
                         dupe_result = {}
@@ -251,8 +242,7 @@ class FindDuplicateFiles:
                                     hash_files_info[name] = info
                         except Exception as error:
                             print(error)
-                            # print(files_info)
-                            bar.update()
+                            Mtqdm().update_bar(bar)
                             continue
 
                         dupe_result[dupe_info] = dupe_result_infos
@@ -260,24 +250,14 @@ class FindDuplicateFiles:
 
                         if(hash_result):
                             result["hash"] = hash_result
-                        bar.update()
-
-            # # filter files_info by hash filenames
-            # hash_files_info = []
-            # for name, info in files_info.items():
-            #     if name in hash_filenames:
-
+                        Mtqdm().update_bar(bar)
 
             bytes_result = []
             dupes = self.find_duplicate_info(hash_files_info, "bytes")
             if dupes:
-
-                # print("*" * 100)
-                # print(dupes[0])
-# {'name': 'L:\\CONTENT\\2018\\06160110-9798-tubezzz.net.jpg', 'kind': 'hash', 'info': '9dfd7031e1cd647dffd9b7ad7c213fe113fc3b02adcd0246bc46b5f358a982fc'}
-
                 dupe_list = [dupe['info'] for dupe in dupes]
                 dupe_set = sorted(set(dupe_list))
+
                 with Mtqdm().open_bar(len(dupe_set), desc=f"Scanning for 'bytes' Matches") as bar:
                     for dupe_info in dupe_set:
                         dupe_result = {}
@@ -289,7 +269,7 @@ class FindDuplicateFiles:
                         except Exception as error:
                             print(error)
                             # print(files_info)
-                            bar.update()
+                            Mtqdm().update_bar(bar)
                             continue
 
                         dupe_result[dupe_info] = dupe_result_infos
@@ -297,12 +277,7 @@ class FindDuplicateFiles:
 
                         if(bytes_result):
                             result["bytes"] = bytes_result
-                        bar.update()
-
-
-
-
-
+                        Mtqdm().update_bar(bar)
 
             if result:
                 reports = []
@@ -343,7 +318,7 @@ class FindDuplicateFiles:
                                                 record["kindvalue2"] = kind_value2
                                                 record["dupes"] = common_entries
                                                 reports.append(record)
-                                bar.update()
+                                Mtqdm().update_bar(bar)
 
                 if dupe_path and self.keep:
                     if self.move:
@@ -353,36 +328,38 @@ class FindDuplicateFiles:
                         print()
                         print("-" * 100)
                         abspaths = report['dupes']
-                        # keep_paths = [path for path in abspaths if not self.path2 or not path.startswith(self.path2)]
                         keep_paths = [path for path in abspaths if path.startswith(self.path)]
 
-                        keep_abspath = None
                         dupe_abspaths = []
-                        if self.path2 and len(keep_paths) == 1:
+
+                        if self.path2:
+                            # only move files in path1 if duplicates were found in path2
+                            path1_paths = [path for path in abspaths if path.startswith(self.path)]
                             path2_paths = [path for path in abspaths if path.startswith(self.path2)]
-                            # if there's only one file in the keep path and duplicate
-                            # files from path2, that one file is to be deleted
                             if len(path2_paths):
-                                dupe_abspaths.append(keep_paths[0])
+                                dupe_abspaths = path1_paths
                                 print(f"KEEP: Files in {self.path2}")
+
                         else:
+                            # move files in path1 that were found to be duplicate
+                            # except one per the keep type
+                            keep_abspath = None
                             scores = self.abspath_complexity_scores(keep_paths)
                             max_first = self.keep.startswith('max')
                             # min_first = self.keep.startswith('min')
                             score_list = sorted(scores.values(), reverse=max_first)
-                            # print(score_list)
 
                             for abspath, score in scores.items():
                                 if not keep_abspath and score == score_list[0]:
                                     keep_abspath = abspath
                                 else:
                                     dupe_abspaths.append(abspath)
-                                # print(abspath, score)
                             print(f"KEEP: {keep_abspath}")
 
                         path_len = len(root_path)
                         for dupe in dupe_abspaths:
 
+                            # safety - never move files from path2
                             if self.path2 and dupe.startswith(self.path2):
                                 continue
 
@@ -402,17 +379,7 @@ class FindDuplicateFiles:
                             print(entry)
                         print()
 
-
         return moved
-
-
-
-
-
-
-
-
-
 
     @staticmethod
     def compute_file_hash(file_path : str, algorithm="sha256") -> str:
@@ -447,15 +414,18 @@ class FindDuplicateFiles:
         entries = []
         for name, info in file_info.items():
             entries.append(info[kind])
-        dupes = FindDuplicateFiles.find_duplicates(entries)
+        dupes = sorted(FindDuplicateFiles.find_duplicates(entries))
+
         result = []
-        for name, info in file_info.items():
-            if info[kind] in dupes:
-                entry = {}
-                entry["name"] = name
-                entry["kind"] = kind
-                entry["info"] = info[kind]
-                result.append(entry)
+        with Mtqdm().open_bar(len(file_info.keys()), desc="Compiling Duplicates") as bar:
+            for name, info in file_info.items():
+                if info[kind] in dupes:
+                    entry = {}
+                    entry["name"] = name
+                    entry["kind"] = kind
+                    entry["info"] = info[kind]
+                    result.append(entry)
+                Mtqdm().update_bar(bar)
         return result
 
     def abspath_complexity_scores(self, abspaths : list) -> dict:
