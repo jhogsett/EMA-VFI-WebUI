@@ -168,7 +168,7 @@ class FindDuplicateFiles:
             print(".", end="")
         print()
 
-    def find(self, override_path : str | None=None, override_dupepath : str | None=None) -> int:
+    def find(self, override_path : str | None=None, override_dupepath : str | None=None, path2_files_cache : list=None, path2_files_info_cache : dict=None) -> int:
         """
         Invoke the Find Duplicate Files feature
         returns the count of files moved
@@ -181,22 +181,32 @@ class FindDuplicateFiles:
         if self.recursive:
             path = os.path.join(root_path, "**", self.wild)
             files = sorted(glob.glob(path, recursive=True))
-            if self.path2:
+
+            if path2_files_cache:
+                files2 = path2_files_cache
+                self.log(f"Reusing path2 files cache length {len(path2_files_cache)}")
+
+            if not files2:
                 files2 = sorted(glob.glob(os.path.join(self.path2, "**", self.wild), recursive=True))
         else:
             path = os.path.join(root_path, self.wild)
             files = sorted(glob.glob(path, recursive=False))
-            if self.path2:
-                files2 = sorted(glob.glob(os.path.join(self.path2, self.wild), recursive=False))
-        files = files + files2
-        num_files = len(files)
-        self.log(f"Found {num_files} files")
 
+            if path2_files_cache:
+                files2 = path2_files_cache
+                self.log(f"Reusing path2 files cache length {len(path2_files_cache)}")
+
+            if not files2:
+                files2 = sorted(glob.glob(os.path.join(self.path2, self.wild), recursive=False))
+
+        # files = files + files2
+        self.log(f"Found {len(files) + len(files2)} files")
         files_info = {}
+        files2_info = {}
         inaccessible_paths = {}
 
         if files:
-            with Mtqdm().open_bar(len(files), desc="Collecting File Data") as bar:
+            with Mtqdm().open_bar(len(files), desc="Collecting Input Path Data") as bar:
                 for file in files:
                     file_info = {}
                     file_info["basename"] = os.path.basename(file)
@@ -216,6 +226,36 @@ class FindDuplicateFiles:
 
                     files_info[file] = file_info
                     Mtqdm().update_bar(bar)
+
+        if files2:
+            if path2_files_info_cache:
+                files2_info = path2_files_info_cache
+                self.log(f"Reusing path2 files info cache length {len(path2_files_info_cache)}")
+
+            if not files2_info:
+                with Mtqdm().open_bar(len(files2), desc="Collecting Purge Path Data") as bar:
+                    for file in files2:
+                        file_info = {}
+                        file_info["basename"] = os.path.basename(file)
+                        file_info["abspath"] = os.path.abspath(file)
+                        stats = os.stat(file)
+                        file_info["stats"] = stats
+                        file_info["bytes"] = stats.st_size
+                        file_info["modified"] = stats.st_mtime
+                        file_info["created"] = stats.st_ctime
+
+                        try:
+                            file_info["hash"] = FindDuplicateFiles.compute_file_hash(file)
+                        except Exception as error:
+                            inaccessible_paths[file] = str(error)
+                            self.log(f"\r\nSkipping file {file} due to error: {str(error)}")
+                            continue
+
+                        files2_info[file] = file_info
+                        Mtqdm().update_bar(bar)
+
+        files_info = files_info | files2_info
+        self.log(f"total files info length {len(files_info)}")
 
         if inaccessible_paths:
             for path, error in inaccessible_paths.items():
@@ -379,7 +419,7 @@ class FindDuplicateFiles:
                             print(entry)
                         print()
 
-        return moved
+        return moved, files2, files2_info
 
     @staticmethod
     def compute_file_hash(file_path : str, algorithm="sha256") -> str:

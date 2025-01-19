@@ -21,6 +21,9 @@ class FileDeduplicator(TabBase):
                     log_fn : Callable):
         TabBase.__init__(self, config, engine, log_fn)
 
+        self.input_path2_files_cache : list=None
+        self.input_path2_files_info_cache : dict=None
+
     DEFAULT_MESSAGE_SINGLE = "Click Deduplicate Files to: Scan the path and find matching duplicate files (can take from minutes to hours)"
     DEFAULT_MESSAGE_BATCH = "Click Deduplicate Batch to: Scan the paths in the batch path and find matching duplicate files (can take from minutes to hours)"
 
@@ -117,7 +120,7 @@ class FileDeduplicator(TabBase):
 
         path_names = sorted(get_directories(input_path_batch))
         if not path_names:
-            return format_markdown(f"No usable files or directories were found in batch input path {input_path_batch}", "error")
+            return format_markdown(f"No directories were found in batch input path {input_path_batch}", "error")
 
         # self.log(f"beginning batch combine video clips processing with input_path={input_path}")
         # self.log(f"found {len(path_names)} groups to process")
@@ -158,6 +161,10 @@ class FileDeduplicator(TabBase):
                     messages.append(f"Skipping path {path_name} due to error: {error}")
 
                 Mtqdm().update_bar(bar)
+
+        self.input_path2_files_cache = None
+        self.input_path2_files_info_cache = None
+
         if messages:
             messages = "\r\n".join(messages)
             return format_markdown(messages)
@@ -173,8 +180,6 @@ class FileDeduplicator(TabBase):
                           keep_type : str,
                           dupe_path : str,
                           interactive=True):
-        if interactive:
-            1/0
 
         """Deduplicate Files button handler"""
         if not input_path:
@@ -241,15 +246,23 @@ class FileDeduplicator(TabBase):
                 else:
                     raise ValueError(f"dupe_path {dupe_path} exists")
 
-        count = FindDuplicateFiles(input_path,
-                                   input_path2,
-                                   wildcard,
-                                   recursive,
-                                   dupe_path,
-                                   keep_type,
-                                   None,
-                                   move_files,
-                                   self.log_fn).find()
+        finder = FindDuplicateFiles(input_path,
+                                input_path2,
+                                wildcard,
+                                recursive,
+                                dupe_path,
+                                keep_type,
+                                None,
+                                move_files,
+                                self.log_fn)
+
+        if interactive:
+            count, _, _ = finder.find()
+        else:
+            # in batch mode, catch the input path2 data between rounds
+            count, self.input_path2_files_cache, self.input_path2_files_info_cache = finder.find(
+                path2_files_cache = self.input_path2_files_cache,
+                path2_files_info_cache = self.input_path2_files_info_cache)
 
         if interactive:
             return format_markdown(f"{count} duplicate files extracted to {dupe_path}")
