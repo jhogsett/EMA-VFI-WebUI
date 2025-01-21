@@ -41,6 +41,7 @@ class VideoRemixer(TabBase):
         self.state = None
         self.processor = None
         self.marked_scene = None
+        self.export_cut_scene_name = None
 
     TAB_REMIX_HOME = 0
     TAB_REMIX_SETTINGS = 1
@@ -756,9 +757,14 @@ class VideoRemixer(TabBase):
                                     project_name_703 = gr.Textbox(label="Exported Project Name", max_lines=1,
                                             info="Enter a name for the new project")
                                 with gr.Row():
+                                    cut_exported_703 = gr.Checkbox(
+        label="Cut Exported Scenes From Source Project",
+        info="If checked, the exported scenes will be removed from the currently loaded project")
+                                    return_703 = gr.Button(visible=False, value="Return to Current Project (Use if scenes were cut)", variant="primary")
+                                with gr.Row():
                                     message_box703 = gr.Markdown(format_markdown("Click Export Project to: Save the kept scenes as a new project"))
                                 export_project_703 = gr.Button("Export Project " + SimpleIcons.SLOW_SYMBOL,
-                                                        variant="stop", scale=0)
+                                                        variant="stop")
                                 with gr.Row():
                                     result_box703 = gr.Textbox(label="New Project Path", max_lines=1, visible=False)
                                     open_result703 = gr.Button("Open New Project", visible=False, scale=0, variant="primary")
@@ -768,9 +774,12 @@ class VideoRemixer(TabBase):
                                     import_path_7032 = gr.Textbox(label="Path to Project to Import", max_lines=1,
                                             info="Enter a path on this server to the directory containing the project to import")
                                 with gr.Row():
+                                    allow_overlap_7032 = gr.Checkbox(label="Allow Import of Overlapping Scene Ranges",
+                                                                     info="May cause unknown effects if scenes have overlapping frames")
+                                with gr.Row():
                                     message_box7032 = gr.Markdown(format_markdown("Click Import Project to: Add the project's scenes to this project"))
                                 import_project_7032 = gr.Button("Import Project " + SimpleIcons.SLOW_SYMBOL,
-                                                        variant="stop", scale=0)
+                                                        variant="stop")
 
                     # MANAGE STORAGE
                     with gr.Tab(SimpleIcons.HERB +" Manage Storage", id=self.TAB_EXTRA_MANAGE_STORAGE):
@@ -1451,13 +1460,18 @@ class VideoRemixer(TabBase):
         back_button702.click(self.back_button702, outputs=tabs_video_remixer)
 
         export_project_703.click(self.export_project_703,
-                                 inputs=[export_path_703, project_name_703],
-                                 outputs=[message_box703, result_box703, open_result703])
+                                 inputs=[export_path_703, project_name_703, cut_exported_703],
+                                 outputs=[message_box703, result_box703, open_result703, return_703])
+
+        return_703.click(self.return_703,
+                         outputs=[tabs_video_remixer, scene_index, scene_name, scene_image,
+                                  scene_state, scene_info, set_scene_label])
 
         open_result703.click(self.open_result703, inputs=result_box703,
                                 outputs=[tabs_video_remixer, project_load_path, message_box01])
 
-        import_project_7032.click(self.import_project_7032, inputs=import_path_7032,
+        import_project_7032.click(self.import_project_7032,
+                                  inputs=[import_path_7032, allow_overlap_7032],
                                   outputs=[tabs_video_remixer, message_box7032, scene_index,
                                              scene_name, scene_image, scene_state, scene_info,
                                              set_scene_label])
@@ -3098,8 +3112,11 @@ class VideoRemixer(TabBase):
                 use_alt_split, split_percent_alt, \
                 *empty_args
 
-    def export_project_703(self, new_project_path : str, new_project_name : str):
-        empty_args = dummy_args(2, gr.update(visible=False))
+    def export_project_703(self,
+                           new_project_path : str,
+                           new_project_name : str,
+                           cut_exported : bool):
+        empty_args = dummy_args(3, gr.update(visible=False))
         if not new_project_path:
             return format_markdown("Please enter a Project Path for the new project", "warning"), \
                 *empty_args
@@ -3113,24 +3130,40 @@ class VideoRemixer(TabBase):
         if not kept_scenes:
             return format_markdown("No kept scenes were found", "warning"), *empty_args
 
+        # remember the current scene name so it can be returned to after the scene indexes change
+        self.export_cut_scene_name = self.state.scene_names[self.state.current_scene]
+
         new_project_name = new_project_name.strip()
         full_new_project_path = os.path.join(new_project_path, new_project_name)
         try:
-            self.state.project.export_project(new_project_path, new_project_name, kept_scenes)
+            self.state.project.export_project(new_project_path,
+                                              new_project_name,
+                                              kept_scenes,
+                                              cut_exported)
             Session().set("last-video-remixer-export-dir", new_project_path)
             return format_markdown(f"Kept scenes saved as new project: {full_new_project_path} "), \
                 gr.update(visible=True, value=full_new_project_path), \
-                gr.update(visible=True)
+                gr.update(visible=True), \
+                gr.update(visible=cut_exported)
 
         except ValueError as error:
             return format_markdown(str(error), "error"), *empty_args
+
+    def return_703(self):
+        if self.export_cut_scene_name in self.state.scene_names:
+            self.state.current_scene = self.state.scene_names.index(self.export_cut_scene_name)
+        else:
+            self.state.current_scene = 0
+        self.state.save()
+        return gr.update(selected=self.TAB_CHOOSE_SCENES), \
+                    *self.scene_chooser_details(self.state.current_scene)
 
     def open_result703(self, new_project_path):
         return gr.update(selected=self.TAB_REMIX_HOME), \
             new_project_path, \
             format_markdown(self.TAB01_DEFAULT_MESSAGE)
 
-    def import_project_7032(self, import_path):
+    def import_project_7032(self, import_path : str, allow_overlap : bool):
         empty_args = dummy_args(6)
 
         if not os.path.exists(import_path):
@@ -3138,7 +3171,7 @@ class VideoRemixer(TabBase):
                     format_markdown(f"Directory '{import_path}' was not found", "error"), \
                     *empty_args
         try:
-            self.state.project.import_project(import_path)
+            self.state.project.import_project(import_path, allow_overlap)
         except ValueError as error:
             return gr.update(selected=self.TAB_REMIX_EXTRA), \
                     format_markdown(str(error), "error"), \
