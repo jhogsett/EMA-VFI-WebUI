@@ -72,8 +72,6 @@ class FileDeduplicator(TabBase):
                     gr.Markdown("*Progress can be tracked in the console*")
                     deduplicate_batch = gr.Button("Deduplicate Batch " + SimpleIcons.SLOW_SYMBOL, variant="primary")
 
-                # with gr.Tab(label="Create Duplicate Files Funnel"):
-
             # with gr.Accordion(SimpleIcons.TIPS_SYMBOL + " Guide", open=False):
             #     WebuiTips.video_assembler.render()
         deduplicate_button.click(self.deduplicate_files,
@@ -121,9 +119,6 @@ class FileDeduplicator(TabBase):
         path_names = sorted(get_directories(input_path_batch))
         if not path_names:
             return format_markdown(f"No directories were found in batch input path {input_path_batch}", "error")
-
-        # self.log(f"beginning batch combine video clips processing with input_path={input_path}")
-        # self.log(f"found {len(path_names)} groups to process")
 
         path = os.path.normpath(input_path_batch)
         batch_root_path = path.split(os.sep)[0]

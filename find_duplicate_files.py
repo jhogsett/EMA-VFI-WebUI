@@ -199,7 +199,6 @@ class FindDuplicateFiles:
             if not files2:
                 files2 = sorted(glob.glob(os.path.join(self.path2, self.wild), recursive=False))
 
-        # files = files + files2
         self.log(f"Found {len(files) + len(files2)} files")
         files_info = {}
         files2_info = {}
