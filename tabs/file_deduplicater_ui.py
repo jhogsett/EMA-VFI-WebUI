@@ -21,8 +21,8 @@ class FileDeduplicator(TabBase):
                     log_fn : Callable):
         TabBase.__init__(self, config, engine, log_fn)
 
-        self.input_path2_files_cache : list=None
-        self.input_path2_files_info_cache : dict=None
+    input_path2_files_cache : list=None
+    input_path2_files_info_cache : dict=None
 
     DEFAULT_MESSAGE_SINGLE = "Click Deduplicate Files to: Scan the path and find matching duplicate files (can take from minutes to hours)"
     DEFAULT_MESSAGE_BATCH = "Click Deduplicate Batch to: Scan the paths in the batch path and find matching duplicate files (can take from minutes to hours)"
@@ -162,8 +162,8 @@ class FileDeduplicator(TabBase):
 
                 Mtqdm().update_bar(bar)
 
-        self.input_path2_files_cache = None
-        self.input_path2_files_info_cache = None
+        FileDeduplicator.input_path2_files_cache = None
+        FileDeduplicator.input_path2_files_info_cache = None
 
         if messages:
             messages = "\r\n".join(messages)
@@ -231,7 +231,6 @@ class FileDeduplicator(TabBase):
         if input_path2:
             if not os.path.exists(input_path2):
                 if interactive:
-                    1/0
                     return format_markdown(f"Input path 2 {input_path2} was not found4", "error")
                 else:
                     raise ValueError(f"input path 2 {input_path2} not found")
@@ -260,9 +259,11 @@ class FileDeduplicator(TabBase):
             count, _, _ = finder.find()
         else:
             # in batch mode, catch the input path2 data between rounds
-            count, self.input_path2_files_cache, self.input_path2_files_info_cache = finder.find(
-                path2_files_cache = self.input_path2_files_cache,
-                path2_files_info_cache = self.input_path2_files_info_cache)
+            count, files_cache, files_info_cache = finder.find(
+                path2_files_cache = FileDeduplicator.input_path2_files_cache,
+                path2_files_info_cache = FileDeduplicator.input_path2_files_info_cache)
+            FileDeduplicator.input_path2_files_cache = files_cache
+            FileDeduplicator.input_path2_files_info_cache = files_info_cache
 
         if interactive:
             return format_markdown(f"{count} duplicate files extracted to {dupe_path}")

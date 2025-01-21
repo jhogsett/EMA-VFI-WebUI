@@ -259,7 +259,8 @@ class FindDuplicateFiles:
 
         if inaccessible_paths:
             for path, error in inaccessible_paths.items():
-                files.remove(path)
+                if path in files:
+                    files.remove(path)
 
         if files_info:
             result = {}
