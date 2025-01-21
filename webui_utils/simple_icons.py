@@ -109,6 +109,7 @@ class SimpleIcons:
     MEAT = "🥩"
     MENDING_HEART = "❤️‍🩹"
     MICROSCOPE = "🔬"
+    MIRROR = "🪞"
     PACKAGE = "📦"
     ROBOT = "🤖"
     ROCKET = "🚀"
@@ -185,6 +186,7 @@ class SimpleIcons:
         MAGNIFIER,
         MENDING_HEART,
         MICROSCOPE,
+        MIRROR,
         MOVIE,
         NOTEBOOK,
         NUMBERS,
