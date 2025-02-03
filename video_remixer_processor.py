@@ -2571,7 +2571,7 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
 
         if not size:
             if self.state.resize:
-                size = size or self.state.crop_w * self.state.crop_h
+                size = self.state.crop_w * self.state.crop_h
             else:
                 content_width = self.state.video_details["source_width"]
                 content_height = self.state.video_details["source_height"]
