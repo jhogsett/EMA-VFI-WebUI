@@ -758,7 +758,7 @@ class VideoRemixer(TabBase):
                                             info="Enter a name for the new project")
                                 with gr.Row():
                                     cut_exported_703 = gr.Checkbox(
-        label="Cut Exported Scenes From Source Project",
+        label="Cut Exported Scenes From Source Project (Speeds Up Export)",
         info="If checked, the exported scenes will be removed from the currently loaded project")
                                     return_703 = gr.Button(visible=False, value="Return to Current Project (Use if scenes were cut)", variant="primary")
                                 with gr.Row():
