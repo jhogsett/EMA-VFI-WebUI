@@ -186,7 +186,7 @@ class FindDuplicateFiles:
                 files2 = path2_files_cache
                 self.log(f"Reusing path2 files cache length {len(path2_files_cache)}")
 
-            if not files2:
+            if self.path2 and not files2:
                 files2 = sorted(glob.glob(os.path.join(self.path2, "**", self.wild), recursive=True))
         else:
             path = os.path.join(root_path, self.wild)
@@ -196,7 +196,7 @@ class FindDuplicateFiles:
                 files2 = path2_files_cache
                 self.log(f"Reusing path2 files cache length {len(path2_files_cache)}")
 
-            if not files2:
+            if self.path2 and not files2:
                 files2 = sorted(glob.glob(os.path.join(self.path2, self.wild), recursive=False))
 
         self.log(f"Found {len(files) + len(files2)} files")

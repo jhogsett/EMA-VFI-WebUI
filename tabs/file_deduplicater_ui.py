@@ -31,7 +31,7 @@ class FileDeduplicator(TabBase):
         """Render tab into UI"""
         with gr.Tab("File Deduplicater"):
             gr.Markdown(
-                SimpleIcons.MIRROR + "Extract duplicate files to n separate identical directory structure",
+                SimpleIcons.MIRROR + "Extract duplicate files to a separate identical directory structure",
                 elem_id="tabheading")
 
             with gr.Row():
