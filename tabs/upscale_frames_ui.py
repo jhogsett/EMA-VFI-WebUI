@@ -45,8 +45,8 @@ class UpscaleFrames(TabBase):
                                         placeholder="Path on this server to the frame PNG files",
                                         info="Also works with other formats like JPG, GIF, BMP")
                     output_path_text = gr.Text(max_lines=1, label="Output Path",
-                                        placeholder="Where to place the upscaled frames",
-                                        info="Leave blank save to Input Path")
+                                        placeholder="Leave blank to save to Input Path without frame numbering",
+                                        info="Where to place the upscaled frames")
                     message_box_single = gr.Markdown(format_markdown(self.DEFAULT_MESSAGE_SINGLE))
                     gr.Markdown("*Progress can be tracked in the console*")
                     upscale_button = gr.Button("Upscale Frames " + SimpleIcons.SLOW_SYMBOL,
