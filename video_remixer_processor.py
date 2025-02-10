@@ -2568,7 +2568,14 @@ f"Error in upscale_scenes() handling processing hint {upscale_hint} - skipping p
 
         # determine if cropped image size is above memory threshold requiring tiling
         use_tiling_over = self.state.remixer_settings["use_tiling_over"]
-        size = size or self.state.crop_w * self.state.crop_h
+
+        if not size:
+            if self.state.resize:
+                size = self.state.crop_w * self.state.crop_h
+            else:
+                content_width = self.state.video_details["source_width"]
+                content_height = self.state.video_details["source_height"]
+                size= content_width * content_height
 
         if size > use_tiling_over:
             tiling = self.realesrgan_settings["tiling"]

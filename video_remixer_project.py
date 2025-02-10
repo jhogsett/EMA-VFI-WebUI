@@ -393,7 +393,7 @@ class VideoRemixerProject():
 
         return f"Project {self.state.project_path} recovered"
 
-    def export_project(self, new_project_path, new_project_name, kept_scenes):
+    def export_project(self, new_project_path, new_project_name, kept_scenes, cut_exported : bool):
         new_project_name = new_project_name.strip()
         full_new_project_path = os.path.join(new_project_path, new_project_name)
 
@@ -434,6 +434,9 @@ class VideoRemixerProject():
         new_state.scene_names = []
         new_state.thumbnails = []
 
+        removed_scene_names = []
+        removed_thumbnails = []
+
         with Mtqdm().open_bar(total=len(kept_scenes), desc="Exporting") as bar:
             for index, scene_name in enumerate(self.state.scene_names):
                 state = self.state.scene_states[scene_name]
@@ -444,14 +447,31 @@ class VideoRemixerProject():
                     new_state.scene_names.append(scene_name)
                     scene_dir = os.path.join(self.state.scenes_path, scene_name)
                     new_scene_dir = os.path.join(new_state.scenes_path, scene_name)
-                    duplicate_directory(scene_dir, new_scene_dir)
+
+                    if cut_exported:
+                        shutil.move(scene_dir, new_scene_dir)
+                        removed_scene_names.append(scene_name)
+                        del self.state.scene_states[scene_name]
+                    else:
+                        duplicate_directory(scene_dir, new_scene_dir)
 
                     scene_thumbnail = self.state.thumbnails[index]
                     _, filename, ext = split_filepath(scene_thumbnail)
                     new_thumbnail = os.path.join(new_state.thumbnail_path, filename + ext)
                     new_state.thumbnails.append(new_thumbnail)
-                    shutil.copy(scene_thumbnail, new_thumbnail)
+                    if cut_exported:
+                        shutil.move(scene_thumbnail, new_thumbnail)
+                        removed_thumbnails.append(scene_thumbnail)
+                    else:
+                        shutil.copy(scene_thumbnail, new_thumbnail)
                     Mtqdm().update_bar(bar)
+
+        if cut_exported:
+            for scene_name in removed_scene_names:
+                self.state.scene_names.remove(scene_name)
+            for thumbnail in removed_thumbnails:
+                self.state.thumbnails.remove(thumbnail)
+            self.state.save()
 
         # remove scene labels that no longer match scene names
         filtered_labels = {}
@@ -561,7 +581,7 @@ class VideoRemixerProject():
 
         return path, messages.report()
 
-    def import_project(self, import_path):
+    def import_project(self, import_path : str, allow_overlap : bool):
         try:
             import_file = VideoRemixerProject.determine_project_filepath(import_path)
         except ValueError as error:
@@ -603,7 +623,7 @@ class VideoRemixerProject():
         current_range = range(current_lowest, current_highest + 1)
         import_range = range(import_lowest, import_highest + 1)
 
-        if ranges_overlap(current_range, import_range):
+        if not allow_overlap and ranges_overlap(current_range, import_range):
             message = "Unable to import from a project with overlapping scene ranges"
             self.log(message)
             raise ValueError(message)
