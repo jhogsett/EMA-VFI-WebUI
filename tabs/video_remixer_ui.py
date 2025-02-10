@@ -244,8 +244,8 @@ class VideoRemixer(TabBase):
                 info="Remake thumbnails with existing scenes if present, skipping project setup")
                 with gr.Accordion(label="More Options", open=False):
                     # with gr.Row(variant="compact"):
-                    remove_source = gr.Checkbox(value=False, label="Remove Source Frames",
-                        info="Delete the source frames after scenes have been created")
+                    remove_source = gr.Checkbox(value=False, label="Don't Keep Source Frames",
+                        info="Speed up project creation by moving source frames to scenes directories")
 
                 with gr.Row():
                     message_box2 = gr.Markdown(value=format_markdown(self.TAB2_DEFAULT_MESSAGE))
