@@ -1,6 +1,7 @@
 """File Deduplicater feature UI and event handlers"""
 import os
 from typing import Callable
+import yaml
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
@@ -226,7 +227,7 @@ class FileDeduplicator(TabBase):
         if input_path2:
             if not os.path.exists(input_path2):
                 if interactive:
-                    return format_markdown(f"Input path 2 {input_path2} was not found4", "error")
+                    return format_markdown(f"Input path 2 {input_path2} was not found", "error")
                 else:
                     raise ValueError(f"input path 2 {input_path2} not found")
 
@@ -251,7 +252,7 @@ class FileDeduplicator(TabBase):
                                 self.log_fn)
 
         if interactive:
-            count, _, _ = finder.find()
+            count, files_cache, files_info_cache = finder.find()
         else:
             # in batch mode, catch the input path2 data between rounds
             count, files_cache, files_info_cache = finder.find(
@@ -259,6 +260,17 @@ class FileDeduplicator(TabBase):
                 path2_files_info_cache = FileDeduplicator.input_path2_files_info_cache)
             FileDeduplicator.input_path2_files_cache = files_cache
             FileDeduplicator.input_path2_files_info_cache = files_info_cache
+
+        if input_path2:
+            basename = os.path.split(input_path2)[-1]
+            files_cache_name = os.path.join(dupe_path, basename + "-filescache.yaml")
+            files_info_cache_name = os.path.join(dupe_path, basename + "-filesinfocache.yaml")
+            if files_cache and not os.path.exists(files_cache_name):
+                with open(files_cache_name, "w", encoding="UTF-8") as file:
+                    yaml.dump(files_cache, file, width=1024)
+            if files_info_cache and not os.path.exists(files_info_cache_name):
+                with open(files_info_cache_name, "w", encoding="UTF-8") as file:
+                    yaml.dump(files_info_cache, file, width=1024)
 
         if interactive:
             return format_markdown(f"{count} duplicate files extracted to {dupe_path}")
