@@ -2,6 +2,7 @@
 import os
 from typing import Callable
 import yaml
+from yaml import Loader
 import gradio as gr
 from webui_utils.simple_config import SimpleConfig
 from webui_utils.simple_icons import SimpleIcons
@@ -212,17 +213,16 @@ class FileDeduplicator(TabBase):
                 # create default path
                 path = os.path.normpath(input_path)
                 root_path = path.split(os.sep)[0]
-                path1_name = input_path[len(root_path)+1:]
+                path1_name = input_path[len(root_path)+1:].replace("\\", "_")
 
                 if input_path2:
                     path = os.path.normpath(input_path2)
                     root_path2 = path.split(os.sep)[0]
-                    path2_name = input_path2[len(root_path2)+1:]
+                    path2_name = input_path2[len(root_path2)+1:].replace("\\", "_")
 
                     dupe_path = os.path.join(root_path, f"\DUPES-{path1_name}-{path2_name}")
                 else:
                     dupe_path = os.path.join(root_path, f"\DUPES-{path1_name}")
-
 
         if input_path2:
             if not os.path.exists(input_path2):
@@ -241,6 +241,20 @@ class FileDeduplicator(TabBase):
                 else:
                     raise ValueError(f"dupe_path {dupe_path} exists")
 
+        count = 0
+        files_cache = []
+        files_info_cache = {}
+
+        if input_path2 and not files_cache and not files_info_cache:
+            files_cache_name = os.path.join(input_path2, "filescache.yaml")
+            files_info_cache_name = os.path.join(input_path2, "filesinfocache.yaml")
+
+            if os.path.exists(files_cache_name) and os.path.exists(files_info_cache_name):
+                with open(files_cache_name, "r", encoding="UTF-8") as file:
+                    files_cache = yaml.load(file, Loader=Loader)
+                with open(files_info_cache_name, "r", encoding="UTF-8") as file:
+                    files_info_cache = yaml.load(file, Loader=Loader)
+
         finder = FindDuplicateFiles(input_path,
                                 input_path2,
                                 wildcard,
@@ -252,19 +266,28 @@ class FileDeduplicator(TabBase):
                                 self.log_fn)
 
         if interactive:
-            count, files_cache, files_info_cache = finder.find()
+            # count, files_cache, files_info_cache = finder.find()
+            count, files_cache, files_info_cache = finder.find(
+                path2_files_cache = files_cache,
+                path2_files_info_cache = files_info_cache)
         else:
             # in batch mode, catch the input path2 data between rounds
-            count, files_cache, files_info_cache = finder.find(
-                path2_files_cache = FileDeduplicator.input_path2_files_cache,
-                path2_files_info_cache = FileDeduplicator.input_path2_files_info_cache)
+            if(files_cache and files_info_cache):
+                count, files_cache, files_info_cache = finder.find(
+                    path2_files_cache = files_cache,
+                    path2_files_info_cache = files_info_cache)
+            else:
+                count, files_cache, files_info_cache = finder.find(
+                    path2_files_cache = FileDeduplicator.input_path2_files_cache,
+                    path2_files_info_cache = FileDeduplicator.input_path2_files_info_cache)
+
             FileDeduplicator.input_path2_files_cache = files_cache
             FileDeduplicator.input_path2_files_info_cache = files_info_cache
 
-        if input_path2:
-            basename = os.path.split(input_path2)[-1]
-            files_cache_name = os.path.join(dupe_path, basename + "-filescache.yaml")
-            files_info_cache_name = os.path.join(dupe_path, basename + "-filesinfocache.yaml")
+        if input_path2 and files_cache and files_info_cache:
+            # cache_files_basename = os.path.split(input_path2)[-1]
+            files_cache_name = os.path.join(dupe_path, "filescache.yaml")
+            files_info_cache_name = os.path.join(dupe_path, "filesinfocache.yaml")
             if files_cache and not os.path.exists(files_cache_name):
                 with open(files_cache_name, "w", encoding="UTF-8") as file:
                     yaml.dump(files_cache, file, width=1024)
@@ -276,3 +299,5 @@ class FileDeduplicator(TabBase):
             return format_markdown(f"{count} duplicate files extracted to {dupe_path}")
         else:
             return count
+
+# need to rethink path names, above changes of \ to _ creates a ton of dirs in batch mode
