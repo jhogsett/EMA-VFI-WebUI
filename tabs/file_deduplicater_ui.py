@@ -250,10 +250,17 @@ class FileDeduplicator(TabBase):
             files_info_cache_name = os.path.join(input_path2, "filesinfocache.yaml")
 
             if os.path.exists(files_cache_name) and os.path.exists(files_info_cache_name):
-                with open(files_cache_name, "r", encoding="UTF-8") as file:
-                    files_cache = yaml.load(file, Loader=Loader)
-                with open(files_info_cache_name, "r", encoding="UTF-8") as file:
-                    files_info_cache = yaml.load(file, Loader=Loader)
+                with Mtqdm().open_bar(total=1, desc="Loading YAML file") as bar:
+                    Mtqdm().message(bar, "Reloading Purge Input File Cache - no ETA")
+                    with open(files_cache_name, "r", encoding="UTF-8") as file:
+                        files_cache = yaml.load(file, Loader=Loader)
+                    Mtqdm().update_bar(bar)
+
+                with Mtqdm().open_bar(total=1, desc="Loading YAML file") as bar:
+                    Mtqdm().message(bar, "Reloading Purge Input Info Cache - no ETA")
+                    with open(files_info_cache_name, "r", encoding="UTF-8") as file:
+                        files_info_cache = yaml.load(file, Loader=Loader)
+                    Mtqdm().update_bar(bar)
 
         finder = FindDuplicateFiles(input_path,
                                 input_path2,
@@ -286,14 +293,20 @@ class FileDeduplicator(TabBase):
 
         if input_path2 and files_cache and files_info_cache:
             # cache_files_basename = os.path.split(input_path2)[-1]
-            files_cache_name = os.path.join(dupe_path, "filescache.yaml")
-            files_info_cache_name = os.path.join(dupe_path, "filesinfocache.yaml")
-            if files_cache and not os.path.exists(files_cache_name):
+            files_cache_name = os.path.join(input_path2, "filescache.yaml")
+            files_info_cache_name = os.path.join(input_path2, "filesinfocache.yaml")
+
+            with Mtqdm().open_bar(total=1, desc="Dumping YAML file") as bar:
+                Mtqdm().message(bar, "Saving Purge Input File Cache - no ETA")
                 with open(files_cache_name, "w", encoding="UTF-8") as file:
                     yaml.dump(files_cache, file, width=1024)
-            if files_info_cache and not os.path.exists(files_info_cache_name):
+                Mtqdm().update_bar(bar)
+
+            with Mtqdm().open_bar(total=1, desc="Dumping YAML file") as bar:
+                Mtqdm().message(bar, "Saving Purge Input Info Cache - no ETA")
                 with open(files_info_cache_name, "w", encoding="UTF-8") as file:
                     yaml.dump(files_info_cache, file, width=1024)
+                Mtqdm().update_bar(bar)
 
         if interactive:
             return format_markdown(f"{count} duplicate files extracted to {dupe_path}")

@@ -365,8 +365,9 @@ class FindDuplicateFiles:
                         create_directory(dupe_path)
 
                     for report in reports:
-                        print()
-                        print("-" * 100)
+                        # print()
+                        # print("-" * 100)
+                        separator_needed = False
                         abspaths = report['dupes']
                         keep_paths = [path for path in abspaths if path.startswith(self.path)]
 
@@ -378,8 +379,8 @@ class FindDuplicateFiles:
                             path2_paths = [path for path in abspaths if path.startswith(self.path2)]
                             if len(path2_paths):
                                 dupe_abspaths = path1_paths
-                                print(f"KEEP: Files in {self.path2}")
-
+                                # print(f"KEEP: Files in {self.path2}")
+                                # separator_needed = True
                         else:
                             # move files in path1 that were found to be duplicate
                             # except one per the keep type
@@ -395,6 +396,7 @@ class FindDuplicateFiles:
                                 else:
                                     dupe_abspaths.append(abspath)
                             print(f"KEEP: {keep_abspath}")
+                            separator_needed = True
 
                         path_len = len(root_path)
                         for dupe in dupe_abspaths:
@@ -405,11 +407,14 @@ class FindDuplicateFiles:
 
                             new_dupe_path = os.path.join(dupe_path, dupe[path_len+1:])
                             print(f"MOVE: {dupe} to {new_dupe_path}")
+                            separator_needed = True
                             if self.move:
                                 path, _, _ = split_filepath(new_dupe_path)
                                 create_directory(path)
                                 shutil.move(dupe, new_dupe_path)
                                 moved += 1
+                    if separator_needed:
+                        print()
                 else:
                     for report in reports:
                         print()
