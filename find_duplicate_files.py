@@ -264,101 +264,87 @@ class FindDuplicateFiles:
         if files_info:
             result = {}
 
+            # Optimized: Build hash index in single pass O(n) instead of O(n²)
+            hash_index = {}
+            with Mtqdm().open_bar(len(files_info), desc="Indexing by Hash") as bar:
+                for name, info in files_info.items():
+                    file_hash = info["hash"]
+                    if file_hash not in hash_index:
+                        hash_index[file_hash] = []
+                    hash_index[file_hash].append(info)
+                    Mtqdm().update_bar(bar)
+
+            # Filter to only groups with duplicates (2+ files)
             hash_result = []
-            hash_files_info = {}
-            dupes = self.find_duplicate_info(files_info, "hash")
-            if dupes:
-                dupe_list = [dupe['info'] for dupe in dupes]
-                dupe_set = sorted(set(dupe_list))
+            with Mtqdm().open_bar(len(hash_index), desc="Finding Hash Duplicates") as bar:
+                for file_hash, infos in hash_index.items():
+                    if len(infos) > 1:
+                        hash_result.append({file_hash: infos})
+                    Mtqdm().update_bar(bar)
 
-                with Mtqdm().open_bar(len(dupe_set), desc="Scanning for 'hash' Matches") as bar:
-                    for dupe_info in dupe_set:
-                        dupe_result = {}
-                        dupe_result_infos = []
-                        try:
-                            for name, info in files_info.items():
-                                if info["hash"] == dupe_info:
-                                    dupe_result_infos.append(info)
-                                    hash_files_info[name] = info
-                        except Exception as error:
-                            print(error)
-                            Mtqdm().update_bar(bar)
-                            continue
-
-                        dupe_result[dupe_info] = dupe_result_infos
-                        hash_result.append(dupe_result)
-
-                        if(hash_result):
-                            result["hash"] = hash_result
-                        Mtqdm().update_bar(bar)
-
-            bytes_result = []
-            dupes = self.find_duplicate_info(hash_files_info, "bytes")
-            if dupes:
-                dupe_list = [dupe['info'] for dupe in dupes]
-                dupe_set = sorted(set(dupe_list))
-
-                with Mtqdm().open_bar(len(dupe_set), desc=f"Scanning for 'bytes' Matches") as bar:
-                    for dupe_info in dupe_set:
-                        dupe_result = {}
-                        dupe_result_infos = []
-                        try:
-                            for name, info in hash_files_info.items():
-                                if info["bytes"] == dupe_info:
-                                    dupe_result_infos.append(info)
-                        except Exception as error:
-                            print(error)
-                            # print(files_info)
-                            Mtqdm().update_bar(bar)
-                            continue
-
-                        dupe_result[dupe_info] = dupe_result_infos
-                        bytes_result.append(dupe_result)
-
-                        if(bytes_result):
-                            result["bytes"] = bytes_result
-                        Mtqdm().update_bar(bar)
+            if hash_result:
+                result["hash"] = hash_result
 
             if result:
                 reports = []
-                kind1_seen = []
-                kind2_seen = []
 
-                kind_keys1 = result.keys()
-                for kind1 in kind_keys1:
-                    kind1_seen.append(kind1)
-                    dupes1 = result[kind1]
-
-                    kind_keys2 = [key for key in result.keys() if key not in kind1_seen]
-                    for kind2 in kind_keys2:
-                        kind2_seen.append(kind2)
-                        dupes2 = result[kind2]
-
-                        with Mtqdm().open_bar(len(dupes1), desc="Matching Duplicates") as bar:
-                            for dupe in dupes1:
-                                kind_values1 = sorted(dupe.keys())
-
-                                for dupe2 in dupes2:
-                                    kind_values2 = sorted(dupe2.keys())
-
-                                    for kind_value in kind_values1:
-                                        entries1 = dupe[kind_value]
-                                        entries_paths1 = [entry['abspath'] for entry in entries1]
-
-                                        for kind_value2 in kind_values2:
-                                            entries2 = dupe2[kind_value2]
-                                            entries_paths2 = [entry['abspath'] for entry in entries2]
-
-                                            common_entries = list(set(entries_paths1).intersection(entries_paths2))
-                                            if len(common_entries) > 1:
-                                                record = {}
-                                                record["kind1"] = kind1
-                                                record["kind2"] = kind2
-                                                record["kindvalue1"] = kind_value
-                                                record["kindvalue2"] = kind_value2
-                                                record["dupes"] = common_entries
-                                                reports.append(record)
+                # Optimized: Since hash matching guarantees identical content,
+                # we can directly use hash duplicate groups without cross-checking with bytes
+                if "hash" in result:
+                    hash_dupes = result["hash"]
+                    with Mtqdm().open_bar(len(hash_dupes), desc="Processing Duplicates") as bar:
+                        for dupe_group in hash_dupes:
+                            for hash_value, entries in dupe_group.items():
+                                if len(entries) > 1:
+                                    record = {}
+                                    record["kind1"] = "hash"
+                                    record["kind2"] = "bytes"
+                                    record["kindvalue1"] = hash_value
+                                    record["kindvalue2"] = entries[0]["bytes"]
+                                    record["dupes"] = [entry['abspath'] for entry in entries]
+                                    reports.append(record)
                                 Mtqdm().update_bar(bar)
+                else:
+                    # Fallback to original algorithm if no hash results
+                    # (kept for backwards compatibility with any edge cases)
+                    kind1_seen = []
+                    kind2_seen = []
+
+                    kind_keys1 = result.keys()
+                    for kind1 in kind_keys1:
+                        kind1_seen.append(kind1)
+                        dupes1 = result[kind1]
+
+                        kind_keys2 = [key for key in result.keys() if key not in kind1_seen]
+                        for kind2 in kind_keys2:
+                            kind2_seen.append(kind2)
+                            dupes2 = result[kind2]
+
+                            with Mtqdm().open_bar(len(dupes1), desc="Matching Duplicates") as bar:
+                                for dupe in dupes1:
+                                    kind_values1 = sorted(dupe.keys())
+
+                                    for dupe2 in dupes2:
+                                        kind_values2 = sorted(dupe2.keys())
+
+                                        for kind_value in kind_values1:
+                                            entries1 = dupe[kind_value]
+                                            entries_paths1 = [entry['abspath'] for entry in entries1]
+
+                                            for kind_value2 in kind_values2:
+                                                entries2 = dupe2[kind_value2]
+                                                entries_paths2 = [entry['abspath'] for entry in entries2]
+
+                                                common_entries = list(set(entries_paths1).intersection(entries_paths2))
+                                                if len(common_entries) > 1:
+                                                    record = {}
+                                                    record["kind1"] = kind1
+                                                    record["kind2"] = kind2
+                                                    record["kindvalue1"] = kind_value
+                                                    record["kindvalue2"] = kind_value2
+                                                    record["dupes"] = common_entries
+                                                    reports.append(record)
+                                    Mtqdm().update_bar(bar)
 
                 if dupe_path and self.keep:
                     if self.move:
