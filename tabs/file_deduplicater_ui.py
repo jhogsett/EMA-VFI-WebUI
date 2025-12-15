@@ -25,6 +25,11 @@ class FileDeduplicator(TabBase):
 
     input_path2_files_cache : list=None
     input_path2_files_info_cache : dict=None
+    input_path2_caches_persisted = False
+
+        # files_cache = []
+        # files_info_cache = {}
+        # caches_persisted = False
 
     DEFAULT_MESSAGE_SINGLE = "Click Deduplicate Files to: Scan the path and find matching duplicate files (can take from minutes to hours)"
     DEFAULT_MESSAGE_BATCH = "Click Deduplicate Batch to: Scan the paths in the batch path and find matching duplicate files (can take from minutes to hours)"
@@ -159,8 +164,9 @@ class FileDeduplicator(TabBase):
 
                 Mtqdm().update_bar(bar)
 
-        FileDeduplicator.input_path2_files_cache = None
-        FileDeduplicator.input_path2_files_info_cache = None
+        self.input_path2_files_cache = None
+        self.input_path2_files_info_cache = None
+        self.input_path2_caches_persisted = False
 
         if messages:
             messages = "\r\n".join(messages)
@@ -242,8 +248,9 @@ class FileDeduplicator(TabBase):
                     raise ValueError(f"dupe_path {dupe_path} exists")
 
         count = 0
-        files_cache = []
-        files_info_cache = {}
+        files_cache = self.input_path2_files_cache
+        files_info_cache = self.input_path2_files_info_cache
+        # caches_persisted = False
 
         if input_path2 and not files_cache and not files_info_cache:
             files_cache_name = os.path.join(input_path2, "filescache.yaml")
@@ -285,13 +292,13 @@ class FileDeduplicator(TabBase):
                     path2_files_info_cache = files_info_cache)
             else:
                 count, files_cache, files_info_cache = finder.find(
-                    path2_files_cache = FileDeduplicator.input_path2_files_cache,
-                    path2_files_info_cache = FileDeduplicator.input_path2_files_info_cache)
+                    path2_files_cache = self.input_path2_files_cache,
+                    path2_files_info_cache = self.input_path2_files_info_cache)
 
-            FileDeduplicator.input_path2_files_cache = files_cache
-            FileDeduplicator.input_path2_files_info_cache = files_info_cache
+            self.input_path2_files_cache = files_cache
+            self.input_path2_files_info_cache = files_info_cache
 
-        if input_path2 and files_cache and files_info_cache:
+        if input_path2 and files_cache and files_info_cache and not self.input_path2_caches_persisted:
             # cache_files_basename = os.path.split(input_path2)[-1]
             files_cache_name = os.path.join(input_path2, "filescache.yaml")
             files_info_cache_name = os.path.join(input_path2, "filesinfocache.yaml")
@@ -307,6 +314,8 @@ class FileDeduplicator(TabBase):
                 with open(files_info_cache_name, "w", encoding="UTF-8") as file:
                     yaml.dump(files_info_cache, file, width=1024)
                 Mtqdm().update_bar(bar)
+
+            self.input_path2_caches_persisted = True
 
         if interactive:
             return format_markdown(f"{count} duplicate files extracted to {dupe_path}")
